@@ -1,0 +1,78 @@
+@if (state$ | async; as state) {
+  @switch (state.status) {
+    @case ('loading') {
+      <section class="state-panel" aria-live="polite">
+        <span class="spinner" aria-hidden="true"></span>
+        Chargement du laboratoire…
+      </section>
+    }
+    @case ('error') {
+      <section class="state-panel error" role="alert">
+        <strong>Connexion impossible</strong>
+        <p>{{ state.message }}</p>
+      </section>
+    }
+    @case ('loaded') {
+      <header class="lab-header">
+        <div>
+          <p class="eyebrow">{{ state.lab.language }} · Laboratoire {{ state.lab.number }}</p>
+          <h1>{{ state.lab.title }}</h1>
+          <p>{{ state.lab.objectives.length }} objectifs · Seuil recommandé {{ state.lab.threshold }} %</p>
+        </div>
+        <span class="status">En cours</span>
+      </header>
+
+      <div class="workspace-grid">
+        <section class="lesson-column">
+          <article class="panel objectives">
+            <h2>Objectifs</h2>
+            <ul>
+              @for (objective of state.lab.objectives; track objective) {
+                <li>{{ objective }}</li>
+              }
+            </ul>
+          </article>
+
+          @for (section of state.lab.sections; track section.title) {
+            <article class="panel">
+              <h2>{{ section.title }}</h2>
+              <p>{{ section.content }}</p>
+            </article>
+          }
+
+          @for (concept of state.lab.keyConcepts; track concept.code) {
+            <article class="panel concept-card">
+              <p class="concept-label">Concept clé</p>
+              <h2>{{ concept.name }}</h2>
+              <p>{{ concept.definition }}</p>
+              <h3>Pourquoi il existe</h3>
+              <p>{{ concept.whyExists }}</p>
+              <h3>Erreur fréquente</h3>
+              <p>{{ concept.commonMistake }}</p>
+              <div class="mastery-question">
+                <strong>Question de maîtrise</strong>
+                <p>{{ concept.masteryQuestion }}</p>
+              </div>
+            </article>
+          }
+        </section>
+
+        <aside class="practice-column">
+          @for (exercise of state.lab.exercises; track exercise.code) {
+            <article class="panel exercise">
+              <p class="eyebrow">Exercice guidé</p>
+              <h2>{{ exercise.title }}</h2>
+              <p>{{ exercise.statement }}</p>
+              <pre aria-label="Code de départ"><code>{{ exercise.starterCode }}</code></pre>
+              <div class="actions">
+                <button type="button" disabled>Exécuter les tests</button>
+                <span>Runner prévu à l'étape suivante</span>
+              </div>
+            </article>
+          }
+        </aside>
+      </div>
+    }
+  }
+}
+

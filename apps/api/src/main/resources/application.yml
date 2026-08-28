@@ -1,0 +1,26 @@
+spring:
+  application:
+    name: dlr-api
+  datasource:
+    url: ${DLR_DB_URL:jdbc:postgresql://localhost:5432/dlr}
+    username: ${DLR_DB_USER:dlr}
+    password: ${DLR_DB_PASSWORD:dlr-local-only}
+  flyway:
+    enabled: true
+
+server:
+  error:
+    include-message: never
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+dlr:
+  content:
+    root: classpath:content
+  ollama:
+    url: ${DLR_OLLAMA_URL:http://localhost:11434}
+

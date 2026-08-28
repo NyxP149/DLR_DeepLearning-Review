@@ -1,0 +1,26 @@
+# Java / Maven
+**/target/
+**/.m2/
+*.log
+
+# Angular / Node
+**/node_modules/
+**/dist/
+**/.angular/
+**/.npm-cache/
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# Environment and local data
+.env
+.env.*
+!.env.example
+data/
+backups/
+
+# OS
+.DS_Store
+Thumbs.db

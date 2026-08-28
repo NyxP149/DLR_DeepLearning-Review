@@ -1,0 +1,63 @@
+{
+  "code": "JAVA-01",
+  "language": "JAVA",
+  "number": 1,
+  "slug": "syntaxe-compilation-jvm",
+  "title": "Syntaxe, compilation, JVM et premier programme",
+  "difficulty": "BASE",
+  "threshold": 70,
+  "objectives": [
+    "Expliquer le rôle du compilateur Java et de la JVM",
+    "Compiler et exécuter un programme Java minimal",
+    "Reconnaître les éléments essentiels d'une classe Java",
+    "Interpréter une erreur de compilation simple"
+  ],
+  "sections": [
+    {
+      "title": "Du code source au programme exécuté",
+      "content": "Le fichier .java contient le code source. javac le compile en bytecode dans un fichier .class. La JVM charge ensuite ce bytecode et l'exécute sur la machine courante."
+    },
+    {
+      "title": "Premier programme",
+      "content": "Une application Java commence dans une méthode public static void main(String[] args). La classe publique et le fichier source portent le même nom."
+    }
+  ],
+  "keyConcepts": [
+    {
+      "code": "JAVA-JVM-BYTECODE",
+      "name": "Bytecode et JVM",
+      "definition": "Le bytecode est la représentation intermédiaire produite par le compilateur Java et exécutée par la JVM.",
+      "whyExists": "Il sépare le langage Java du système d'exploitation et permet au même programme compilé de fonctionner sur plusieurs plateformes.",
+      "whyImportant": "Comprendre cette chaîne aide à diagnostiquer les erreurs de compilation, de version et d'exécution rencontrées dans les projets professionnels.",
+      "minimalExample": "javac Hello.java produit Hello.class, puis java Hello demande à la JVM de l'exécuter.",
+      "commonMistake": "Confondre javac, qui compile le code source, avec java, qui lance une classe compilée.",
+      "masteryQuestion": "Pourquoi Java utilise-t-il une JVM au lieu de compiler directement un exécutable propre à Windows ?",
+      "masteryProof": "Compiler puis exécuter le programme et expliquer le rôle de chaque fichier obtenu."
+    }
+  ],
+  "exercises": [
+    {
+      "code": "HELLO-DLR",
+      "title": "Présenter son premier laboratoire",
+      "statement": "Complète la méthode main afin d'afficher exactement : DLR Java Lab 1",
+      "starterCode": "public class Main {\n    public static void main(String[] args) {\n        // Écris ton instruction ici\n    }\n}\n"
+    }
+  ],
+  "quiz": [
+    {
+      "code": "JAVA-01-Q1",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Quel outil transforme un fichier .java en bytecode ?",
+      "choices": ["java", "javac", "JVM", "JAR"],
+      "correctChoice": 1
+    },
+    {
+      "code": "JAVA-01-Q2",
+      "type": "FREE_TEXT",
+      "prompt": "Explique avec tes propres mots la relation entre le code source, le bytecode et la JVM.",
+      "choices": [],
+      "correctChoice": null
+    }
+  ]
+}
+

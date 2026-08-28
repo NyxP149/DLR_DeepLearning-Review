@@ -1,0 +1,20 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: dlr
+      POSTGRES_USER: dlr
+      POSTGRES_PASSWORD: dlr-local-only
+    ports:
+      - "5432:5432"
+    volumes:
+      - dlr-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dlr -d dlr"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  dlr-postgres-data:
+
