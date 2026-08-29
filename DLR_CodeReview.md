@@ -293,3 +293,37 @@ Ce fichier conserve l'historique des modifications, décisions techniques, bugs 
 - Test HTTP du profil local et des indicateurs du parcours V1.
 - Suite rapide : 17 tests réussis, 0 échec ; 3 tests Docker conditionnels exclus de ce passage.
 - Build Angular réussi : tableau de bord lazy-loaded de 6,37 kB.
+
+## 2026-08-29 — Reprise, import IDE et répétition espacée
+
+### Modifications
+
+- Migration Flyway V6 conservant l'état détaillé de la checklist et l'étape de répétition.
+- Endpoint de reprise du workspace courant avec tentative, dernier code, origine, quiz et checklist.
+- Restauration automatique du brouillon Angular à l'ouverture d'un laboratoire.
+- Import navigateur de fichiers `.java`, limité à 64 Kio et enregistré avec l'origine `IMPORT`.
+- API et écran Révisions avec cycles J+1, J+3, J+7, J+14 et J+30.
+- Une difficulté reprogramme la même étape à J+1 ; une réussite avance vers l'intervalle suivant.
+
+### Décisions
+
+- Le backend reste l'autorité de reprise ; le navigateur ne conserve pas un identifiant de tentative comme unique source de vérité.
+- L'import navigateur lit uniquement le fichier explicitement choisi. Les chemins absolus et liens symboliques ne sont jamais transmis par l'API Web File.
+- Chaque passage de révision reste historisé : l'élément courant est terminé puis un nouvel élément est créé si le cycle continue.
+
+### Bugs et incidents
+
+#### Le build Angular parallèle dépasse sa fenêtre d'observation
+
+- **Symptôme :** le lancement parallèle s'achève sans résumé Angular ni nouvel artefact, alors que les tests backend réussissent.
+- **Cause :** le build prend environ 25 secondes, auxquelles s'ajoute l'initialisation ; la fenêtre de 30 secondes a interrompu l'observation au mauvais moment.
+- **Résolution :** relance isolée sans animation de progression, terminée avec succès.
+- **Impact :** aucun défaut applicatif ; aucun résultat incomplet n'a été considéré comme une validation.
+
+### Validations
+
+- Flyway V1 à V6 validées sur H2 et appliquées sur PostgreSQL 17.11 réel.
+- Suite rapide : 19 tests réussis, 0 échec ; 3 tests Docker conditionnels exclus de ce passage.
+- Test HTTP réel : profil et six laboratoires chargés, brouillon `IMPORT` JAVA-02 restauré à l'identique, checklist `true/false/true` restaurée.
+- Build Angular réussi : espace laboratoire 22,06 kB et écran Révisions 5,28 kB lazy-loaded.
+- API temporaire arrêtée proprement après validation.

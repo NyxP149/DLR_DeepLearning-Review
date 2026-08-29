@@ -53,10 +53,11 @@ public class JdbcAssessmentRepository implements AssessmentRepository {
         jdbcTemplate.update("delete from attempt_checklist where attempt_id = ?", checklist.attemptId());
         jdbcTemplate.update(
                 """
-                insert into attempt_checklist (attempt_id, completed_items, total_items, updated_at)
-                values (?, ?, ?, ?)
+                insert into attempt_checklist (attempt_id, completed_items, total_items, completed_state, updated_at)
+                values (?, ?, ?, ?, ?)
                 """,
                 checklist.attemptId(), checklist.completedItems(), checklist.totalItems(),
+                encode(checklist.completed()),
                 Timestamp.from(checklist.updatedAt()));
         return checklist;
     }
@@ -65,17 +66,30 @@ public class JdbcAssessmentRepository implements AssessmentRepository {
     public Optional<Checklist> findChecklist(UUID attemptId) {
         return jdbcTemplate.query(
                         """
-                        select attempt_id, completed_items, total_items, updated_at
+                        select attempt_id, completed_items, total_items, completed_state, updated_at
                         from attempt_checklist where attempt_id = ?
                         """,
                         (result, row) -> new Checklist(
                                 result.getObject("attempt_id", UUID.class),
                                 result.getInt("completed_items"),
                                 result.getInt("total_items"),
+                                decode(result.getString("completed_state"), result.getInt("total_items")),
                                 result.getTimestamp("updated_at").toInstant()),
                         attemptId)
                 .stream()
                 .findFirst();
+    }
+
+    private String encode(List<Boolean> completed) {
+        return completed.stream().map(value -> Boolean.TRUE.equals(value) ? "1" : "0")
+                .collect(java.util.stream.Collectors.joining(","));
+    }
+
+    private List<Boolean> decode(String state, int total) {
+        if (state == null || state.isBlank()) {
+            return java.util.Collections.nCopies(total, false);
+        }
+        return java.util.Arrays.stream(state.split(",")).map("1"::equals).toList();
     }
 
     @Override

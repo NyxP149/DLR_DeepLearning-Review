@@ -167,6 +167,26 @@ class AttemptExecutionControllerTest {
                 .andExpect(jsonPath("$.errorOutput").value(org.hamcrest.Matchers.containsString("Test visible échoué")));
     }
 
+    @Test
+    void resumesTheLatestDraftAnswersAndChecklist() throws Exception {
+        String attemptId = startAttempt();
+        submit(attemptId);
+        answerChoice(attemptId, 1);
+        mockMvc.perform(put("/api/attempts/{id}/checklist", attemptId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"completed\":[true,false,true]}"))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get("/api/labs/JAVA-01/attempts/current"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.attempt.id").value(attemptId))
+                .andExpect(jsonPath("$.sourceCode").value(org.hamcrest.Matchers.containsString("public class Main")))
+                .andExpect(jsonPath("$.quizAnswers[0].selectedChoice").value(1))
+                .andExpect(jsonPath("$.checklist[0]").value(true))
+                .andExpect(jsonPath("$.checklist[1]").value(false))
+                .andExpect(jsonPath("$.checklist[2]").value(true));
+    }
+
     private String startAttempt() throws Exception {
         String body = mockMvc.perform(post("/api/labs/JAVA-01/attempts"))
                 .andExpect(status().isCreated())

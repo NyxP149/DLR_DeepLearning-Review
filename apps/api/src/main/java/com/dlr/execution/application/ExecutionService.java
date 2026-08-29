@@ -103,4 +103,9 @@ public class ExecutionService {
         }
         return resultRepository.save(result);
     }
+
+    public java.util.Optional<Submission> latestSubmission(UUID attemptId) {
+        attemptService.get(attemptId);
+        return submissionRepository.findLatestByAttemptId(attemptId);
+    }
 }

@@ -12,6 +12,11 @@ export const routes: Routes = [
       import('./features/paths/paths.component').then((module) => module.PathsComponent)
   },
   {
+    path: 'reviews',
+    loadComponent: () =>
+      import('./features/reviews/reviews.component').then((module) => module.ReviewsComponent)
+  },
+  {
     path: 'labs/:code',
     loadComponent: () =>
       import('./features/lab-workspace/lab-workspace.component').then(

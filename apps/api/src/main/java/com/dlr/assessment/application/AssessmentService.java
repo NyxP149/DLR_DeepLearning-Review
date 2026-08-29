@@ -123,7 +123,14 @@ public class AssessmentService {
         }
         int completedItems = (int) completed.stream().filter(Boolean.TRUE::equals).count();
         return assessmentRepository.saveChecklist(new AssessmentRepository.Checklist(
-                attemptId, completedItems, completed.size(), Instant.now(clock)));
+                attemptId, completedItems, completed.size(), List.copyOf(completed), Instant.now(clock)));
+    }
+
+    public AssessmentState state(UUID attemptId) {
+        attemptService.get(attemptId);
+        return new AssessmentState(
+                assessmentRepository.findAnswers(attemptId),
+                assessmentRepository.findChecklist(attemptId).map(AssessmentRepository.Checklist::completed).orElse(List.of()));
     }
 
     @Transactional
@@ -216,5 +223,8 @@ public class AssessmentService {
             int threshold,
             boolean reviewScheduled
     ) {
+    }
+
+    public record AssessmentState(List<AssessmentRepository.QuizAnswer> answers, List<Boolean> checklist) {
     }
 }

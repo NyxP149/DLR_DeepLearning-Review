@@ -30,7 +30,7 @@ public interface AssessmentRepository {
     ) {
     }
 
-    record Checklist(UUID attemptId, int completedItems, int totalItems, Instant updatedAt) {
+    record Checklist(UUID attemptId, int completedItems, int totalItems, List<Boolean> completed, Instant updatedAt) {
         public BigDecimal score() {
             return BigDecimal.valueOf(completedItems)
                     .multiply(BigDecimal.valueOf(100))

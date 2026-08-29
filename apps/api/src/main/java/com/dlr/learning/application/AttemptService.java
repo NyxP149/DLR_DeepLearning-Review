@@ -12,6 +12,7 @@ import java.time.Clock;
 import java.time.Instant;
 import java.math.BigDecimal;
 import java.util.UUID;
+import java.util.Optional;
 
 @Service
 public class AttemptService {
@@ -52,6 +53,13 @@ public class AttemptService {
         return attemptRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "ATTEMPT_NOT_FOUND", "Tentative introuvable : " + id));
+    }
+
+    public Optional<Attempt> current(String labCode) {
+        labCatalog.findByCode(labCode)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "LAB_NOT_FOUND", "Laboratoire introuvable : " + labCode));
+        return attemptRepository.findLatestInProgress(labCode.toUpperCase());
     }
 
     @Transactional

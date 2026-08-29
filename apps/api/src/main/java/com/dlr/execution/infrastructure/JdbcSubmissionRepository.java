@@ -51,6 +51,19 @@ public class JdbcSubmissionRepository implements SubmissionRepository {
                 .findFirst();
     }
 
+    @Override
+    public Optional<Submission> findLatestByAttemptId(UUID attemptId) {
+        return jdbcTemplate.query(
+                        """
+                        select id, attempt_id, language, source_code, origin, created_at
+                        from submission where attempt_id = ? order by created_at desc limit 1
+                        """,
+                        this::mapSubmission,
+                        attemptId)
+                .stream()
+                .findFirst();
+    }
+
     private Submission mapSubmission(ResultSet result, int rowNumber) throws SQLException {
         return new Submission(
                 result.getObject("id", UUID.class),
@@ -61,4 +74,3 @@ public class JdbcSubmissionRepository implements SubmissionRepository {
                 result.getTimestamp("created_at").toInstant());
     }
 }
-

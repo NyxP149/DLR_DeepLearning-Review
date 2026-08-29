@@ -52,6 +52,22 @@ public class JdbcAttemptRepository implements AttemptRepository {
     }
 
     @Override
+    public Optional<Attempt> findLatestInProgress(String labCode) {
+        return jdbcTemplate.query(
+                        """
+                        select id, lab_id, started_at, completed_at, status, score, continued_below_threshold
+                        from attempt
+                        where lab_id = ? and status = 'IN_PROGRESS'
+                        order by started_at desc
+                        limit 1
+                        """,
+                        this::mapAttempt,
+                        labCode)
+                .stream()
+                .findFirst();
+    }
+
+    @Override
     public Attempt complete(
             UUID id,
             AttemptStatus status,

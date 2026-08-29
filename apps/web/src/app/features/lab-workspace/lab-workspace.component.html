@@ -21,6 +21,9 @@
         </div>
         <span class="status">En cours</span>
       </header>
+      @if (resumed()) {
+        <p class="resume-banner" role="status">Brouillon précédent restauré depuis PostgreSQL.</p>
+      }
 
       <div class="workspace-grid">
         <section class="lesson-column">
@@ -64,6 +67,13 @@
               <h2>{{ exercise.title }}</h2>
               <p>{{ exercise.statement }}</p>
               <label class="editor-label" for="java-source">Code Java</label>
+              <div class="import-row">
+                <span>Origine : {{ sourceOrigin() }}</span>
+                <label class="import-button">
+                  Importer un fichier .java
+                  <input type="file" accept=".java,text/x-java-source" (change)="onFileSelected($event)" />
+                </label>
+              </div>
               <textarea
                 id="java-source"
                 class="code-editor"

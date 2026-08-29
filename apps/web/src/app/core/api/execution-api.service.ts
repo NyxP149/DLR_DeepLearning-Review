@@ -49,6 +49,14 @@ export interface CompletionResult {
   reviewScheduled: boolean;
 }
 
+export interface AttemptWorkspace {
+  attempt: Attempt;
+  sourceCode: string | null;
+  sourceOrigin: 'EDITOR' | 'PASTE' | 'IMPORT' | null;
+  quizAnswers: { questionId: string; selectedChoice: number | null; answerText: string | null; feedback: string }[];
+  checklist: boolean[];
+}
+
 @Injectable({ providedIn: 'root' })
 export class ExecutionApiService {
   private readonly http = inject(HttpClient);
@@ -61,10 +69,20 @@ export class ExecutionApiService {
     );
   }
 
-  submit(attemptId: string, sourceCode: string): Observable<SubmissionResponse> {
+  currentWorkspace(labCode: string): Observable<AttemptWorkspace | null> {
+    return this.http.get<AttemptWorkspace | null>(
+      `${this.apiUrl}/labs/${encodeURIComponent(labCode)}/attempts/current`
+    );
+  }
+
+  submit(
+    attemptId: string,
+    sourceCode: string,
+    origin: 'EDITOR' | 'PASTE' | 'IMPORT' = 'EDITOR'
+  ): Observable<SubmissionResponse> {
     return this.http.post<SubmissionResponse>(
       `${this.apiUrl}/attempts/${encodeURIComponent(attemptId)}/submissions`,
-      { language: 'JAVA', sourceCode, origin: 'EDITOR' }
+      { language: 'JAVA', sourceCode, origin }
     );
   }
 

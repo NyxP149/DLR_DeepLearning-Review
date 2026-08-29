@@ -13,7 +13,7 @@ import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
           <a routerLink="/paths" routerLinkActive="active">Mon parcours</a>
           <a routerLink="/labs/JAVA-01" routerLinkActive="active">Laboratoire</a>
           <span class="disabled" aria-disabled="true">Concepts clés</span>
-          <span class="disabled" aria-disabled="true">Calendrier</span>
+          <a routerLink="/reviews" routerLinkActive="active">Révisions</a>
         </nav>
         <p class="build-label">DLR V1 · Java 01–06</p>
       </aside>

@@ -38,6 +38,8 @@ export class LabWorkspaceComponent {
   readonly completing = signal(false);
   readonly completion = signal<CompletionResult | null>(null);
   readonly completionError = signal<string | null>(null);
+  readonly sourceOrigin = signal<'EDITOR' | 'PASTE' | 'IMPORT'>('EDITOR');
+  readonly resumed = signal(false);
 
   private attemptId: string | null = null;
   private activeLabCode = 'JAVA-01';
@@ -46,17 +48,27 @@ export class LabWorkspaceComponent {
     map((params) => params.get('code') ?? 'JAVA-01'),
     switchMap((code) =>
       this.labApi.getLab(code).pipe(
-        tap((lab) => {
+        switchMap((lab) => this.executionApi.currentWorkspace(lab.code).pipe(
+          tap((workspace) => {
           this.activeLabCode = lab.code;
-          this.attemptId = null;
+          this.attemptId = workspace?.attempt.id ?? null;
           this.execution.set(null);
           this.executionError.set(null);
-          this.quizValues.set({});
-          this.checklist.set(lab.checklist.map(() => false));
+          this.quizValues.set(Object.fromEntries((workspace?.quizAnswers ?? []).map((answer) => [
+            answer.questionId,
+            answer.selectedChoice ?? answer.answerText ?? ''
+          ])));
+          this.checklist.set(workspace?.checklist.length === lab.checklist.length
+            ? workspace.checklist
+            : lab.checklist.map(() => false));
           this.completion.set(null);
           this.completionError.set(null);
-          this.code.set(lab.exercises[0]?.starterCode ?? '');
+          this.code.set(workspace?.sourceCode ?? lab.exercises[0]?.starterCode ?? '');
+          this.sourceOrigin.set(workspace?.sourceOrigin ?? 'EDITOR');
+          this.resumed.set(workspace !== null);
         }),
+          map(() => lab)
+        )),
         map((lab) => ({ status: 'loaded', lab }) as const),
         startWith({ status: 'loading' } as const),
         catchError(() =>
@@ -71,6 +83,25 @@ export class LabWorkspaceComponent {
 
   onCodeInput(event: Event): void {
     this.code.set((event.target as HTMLTextAreaElement).value);
+    this.sourceOrigin.set('EDITOR');
+  }
+
+  async onFileSelected(event: Event): Promise<void> {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    input.value = '';
+    if (!file) return;
+    if (!file.name.toLowerCase().endsWith('.java')) {
+      this.executionError.set('Seuls les fichiers source .java sont acceptés.');
+      return;
+    }
+    if (file.size > 65_536) {
+      this.executionError.set('Le fichier dépasse la limite de 64 Kio.');
+      return;
+    }
+    this.code.set(await file.text());
+    this.sourceOrigin.set('IMPORT');
+    this.executionError.set(null);
   }
 
   async runCode(): Promise<void> {
@@ -84,7 +115,7 @@ export class LabWorkspaceComponent {
     try {
       const attemptId = await this.ensureAttempt();
       const submission = await firstValueFrom(
-        this.executionApi.submit(attemptId, this.code())
+        this.executionApi.submit(attemptId, this.code(), this.sourceOrigin())
       );
       const result = await firstValueFrom(this.executionApi.run(submission.id));
       this.execution.set(result);

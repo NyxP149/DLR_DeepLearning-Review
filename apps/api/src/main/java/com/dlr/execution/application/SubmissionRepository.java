@@ -10,5 +10,6 @@ public interface SubmissionRepository {
     Submission save(Submission submission);
 
     Optional<Submission> findById(UUID id);
-}
 
+    Optional<Submission> findLatestByAttemptId(UUID attemptId);
+}

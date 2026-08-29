@@ -13,6 +13,8 @@ public interface AttemptRepository {
 
     Optional<Attempt> findById(UUID id);
 
+    Optional<Attempt> findLatestInProgress(String labCode);
+
     Attempt complete(UUID id, AttemptStatus status, BigDecimal score, ScoreBreakdown breakdown, java.time.Instant completedAt);
 
     Attempt allowContinuation(UUID id);
