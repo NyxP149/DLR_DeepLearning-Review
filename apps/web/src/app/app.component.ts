@@ -9,6 +9,7 @@ import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
       <aside class="sidebar" aria-label="Navigation principale">
         <a class="brand" routerLink="/">DLR<span>.</span></a>
         <nav>
+          <a routerLink="/dashboard" routerLinkActive="active">Tableau de bord</a>
           <a routerLink="/paths" routerLinkActive="active">Mon parcours</a>
           <a routerLink="/labs/JAVA-01" routerLinkActive="active">Laboratoire</a>
           <span class="disabled" aria-disabled="true">Concepts clés</span>

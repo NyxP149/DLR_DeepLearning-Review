@@ -271,3 +271,25 @@ Ce fichier conserve l'historique des modifications, décisions techniques, bugs 
 - Flyway V1 à V4 validées sur H2 en mode PostgreSQL.
 - Suite rapide : 16 tests réussis, 0 échec ; les 3 tests Docker conditionnels sont exclus de ce passage après avoir été validés au jalon précédent.
 - Build Angular réussi : vue Parcours lazy-loaded de 3,57 kB et espace laboratoire de 20,01 kB.
+
+## 2026-08-29 — Tableau de bord local
+
+### Modifications
+
+- Migration Flyway V5 initialisant le profil mono-utilisateur local.
+- Endpoint `GET /api/dashboard` agrégeant progression, moyenne, tentatives en cours, révisions, XP, niveau et activité récente.
+- Tableau de bord Angular responsive avec action directe vers le prochain laboratoire.
+- Navigation principale activée pour le tableau de bord, le parcours et l'espace laboratoire.
+
+### Décisions
+
+- Le tableau de bord lit exclusivement PostgreSQL et le catalogue versionné ; aucune statistique métier n'est simulée dans Angular.
+- Le premier barème de gamification accorde 100 XP par laboratoire terminé et un niveau tous les 500 XP. Ce calcul simple restera distinct du niveau de maîtrise.
+- Le profil par défaut est créé par migration seulement si aucun profil n'existe, afin de préserver les réglages futurs.
+
+### Validations
+
+- Flyway V1 à V5 appliquées sur H2 en mode PostgreSQL.
+- Test HTTP du profil local et des indicateurs du parcours V1.
+- Suite rapide : 17 tests réussis, 0 échec ; 3 tests Docker conditionnels exclus de ce passage.
+- Build Angular réussi : tableau de bord lazy-loaded de 6,37 kB.
