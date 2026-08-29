@@ -4,6 +4,15 @@ import { Observable } from 'rxjs';
 
 import { LabContent } from '../../features/lab-workspace/lab.model';
 
+export interface LabSummary {
+  code: string;
+  language: string;
+  number: number;
+  title: string;
+  difficulty: string;
+  threshold: number;
+}
+
 @Injectable({ providedIn: 'root' })
 export class LabApiService {
   private readonly http = inject(HttpClient);
@@ -11,5 +20,9 @@ export class LabApiService {
 
   getLab(code: string): Observable<LabContent> {
     return this.http.get<LabContent>(`${this.apiUrl}/labs/${encodeURIComponent(code)}`);
+  }
+
+  listLabs(): Observable<LabSummary[]> {
+    return this.http.get<LabSummary[]>(`${this.apiUrl}/labs`);
   }
 }

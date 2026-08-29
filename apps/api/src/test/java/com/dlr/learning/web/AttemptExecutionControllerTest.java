@@ -150,6 +150,23 @@ class AttemptExecutionControllerTest {
                 .andExpect(jsonPath("$.continuedBelowThreshold").value(true));
     }
 
+    @Test
+    void reportsAFailedTestWhenTheProgramOutputIsWrong() throws Exception {
+        when(codeRunner.run(any())).thenAnswer(invocation -> {
+            var submission = invocation.getArgument(0, com.dlr.execution.domain.Submission.class);
+            return new ExecutionResult(
+                    UUID.randomUUID(), submission.id(), ExecutionStatus.SUCCESS, 0,
+                    "Mauvaise sortie", "", 50, Instant.now());
+        });
+
+        String attemptId = startAttempt();
+        String submissionId = submit(attemptId);
+        mockMvc.perform(post("/api/submissions/{id}/run", submissionId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("TESTS_FAILED"))
+                .andExpect(jsonPath("$.errorOutput").value(org.hamcrest.Matchers.containsString("Test visible échoué")));
+    }
+
     private String startAttempt() throws Exception {
         String body = mockMvc.perform(post("/api/labs/JAVA-01/attempts"))
                 .andExpect(status().isCreated())

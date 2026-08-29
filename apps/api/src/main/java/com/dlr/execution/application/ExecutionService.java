@@ -4,6 +4,7 @@ import com.dlr.execution.domain.ExecutionResult;
 import com.dlr.execution.domain.Submission;
 import com.dlr.execution.domain.SubmissionOrigin;
 import com.dlr.learning.application.AttemptService;
+import com.dlr.catalog.application.LabCatalog;
 import com.dlr.shared.web.ResourceNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -23,6 +24,7 @@ public class ExecutionService {
     private final SubmissionRepository submissionRepository;
     private final ExecutionResultRepository resultRepository;
     private final CodeRunner codeRunner;
+    private final LabCatalog labCatalog;
     private final Clock clock;
 
     @Autowired
@@ -30,9 +32,10 @@ public class ExecutionService {
             AttemptService attemptService,
             SubmissionRepository submissionRepository,
             ExecutionResultRepository resultRepository,
-            CodeRunner codeRunner
+            CodeRunner codeRunner,
+            LabCatalog labCatalog
     ) {
-        this(attemptService, submissionRepository, resultRepository, codeRunner, Clock.systemUTC());
+        this(attemptService, submissionRepository, resultRepository, codeRunner, labCatalog, Clock.systemUTC());
     }
 
     ExecutionService(
@@ -40,12 +43,14 @@ public class ExecutionService {
             SubmissionRepository submissionRepository,
             ExecutionResultRepository resultRepository,
             CodeRunner codeRunner,
+            LabCatalog labCatalog,
             Clock clock
     ) {
         this.attemptService = attemptService;
         this.submissionRepository = submissionRepository;
         this.resultRepository = resultRepository;
         this.codeRunner = codeRunner;
+        this.labCatalog = labCatalog;
         this.clock = clock;
     }
 
@@ -80,6 +85,22 @@ public class ExecutionService {
         Submission submission = submissionRepository.findById(submissionId)
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "SUBMISSION_NOT_FOUND", "Soumission introuvable : " + submissionId));
-        return resultRepository.save(codeRunner.run(submission));
+        ExecutionResult result = codeRunner.run(submission);
+        if (result.status() == com.dlr.execution.domain.ExecutionStatus.SUCCESS) {
+            var attempt = attemptService.get(submission.attemptId());
+            var lab = labCatalog.findByCode(attempt.labCode())
+                    .orElseThrow(() -> new ResourceNotFoundException(
+                            "LAB_NOT_FOUND", "Laboratoire introuvable : " + attempt.labCode()));
+            String expected = lab.exercises().getFirst().expectedOutput().strip();
+            if (!result.standardOutput().strip().equals(expected)) {
+                result = new ExecutionResult(
+                        result.id(), result.submissionId(),
+                        com.dlr.execution.domain.ExecutionStatus.TESTS_FAILED,
+                        result.exitCode(), result.standardOutput(),
+                        "Test visible échoué : la sortie du programme ne correspond pas exactement à la consigne.",
+                        result.durationMs(), result.createdAt());
+            }
+        }
+        return resultRepository.save(result);
     }
 }

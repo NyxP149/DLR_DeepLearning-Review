@@ -40,7 +40,8 @@
       "code": "HELLO-DLR",
       "title": "Présenter son premier laboratoire",
       "statement": "Complète la méthode main afin d'afficher exactement : DLR Java Lab 1",
-      "starterCode": "public class Main {\n    public static void main(String[] args) {\n        // Écris ton instruction ici\n    }\n}\n"
+      "starterCode": "public class Main {\n    public static void main(String[] args) {\n        // Écris ton instruction ici\n    }\n}\n",
+      "expectedOutput": "DLR Java Lab 1"
     }
   ],
   "quiz": [

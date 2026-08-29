@@ -1,0 +1,12 @@
+{
+  "code":"JAVA-02","language":"JAVA","number":2,"slug":"variables-types-operateurs","title":"Variables, types primitifs, opérateurs et conversions","difficulty":"BASE","threshold":70,
+  "objectives":["Choisir un type primitif adapté","Déclarer des variables lisibles","Utiliser les opérateurs sans conversion involontaire"],
+  "sections":[
+    {"title":"Nommer et typer une valeur","content":"Une variable associe un nom, un type et une valeur. Java vérifie à la compilation que les opérations respectent le type déclaré."},
+    {"title":"Conversions explicites","content":"Une conversion élargissante est sûre. Une conversion réductrice exige un cast et peut perdre de l'information : elle doit donc être intentionnelle."}
+  ],
+  "keyConcepts":[{"code":"JAVA-STATIC-TYPING","name":"Typage statique","definition":"Le type d'une variable est connu et contrôlé avant l'exécution.","whyExists":"Il détecte tôt les opérations incohérentes et rend les contrats du code visibles.","whyImportant":"Les erreurs de type deviennent des retours immédiats du compilateur plutôt que des incidents en production.","minimalExample":"int quantity = 3; double price = 9.5;","commonMistake":"Utiliser double pour une somme d'argent ou caster sans vérifier la plage.","masteryQuestion":"Que gagne-t-on à connaître les types pendant la compilation ?","masteryProof":"Justifier le type de chaque donnée d'une petite facture."}],
+  "exercises":[{"code":"VARIABLES-INVOICE","title":"Calculer une facture simple","statement":"Déclare une quantité de 3 et un prix entier de 14, puis affiche exactement : total=42","starterCode":"public class Main {\n    public static void main(String[] args) {\n        // Déclare les variables et calcule le total\n    }\n}\n","expectedOutput":"total=42"}],
+  "quiz":[{"code":"JAVA-02-Q1","type":"SINGLE_CHOICE","prompt":"Quel type convient à un nombre entier courant ?","choices":["boolean","int","char","double"],"correctChoice":1,"expectedKeywords":[]},{"code":"JAVA-02-Q2","type":"FREE_TEXT","prompt":"Explique pourquoi une conversion réductrice doit être explicite.","choices":[],"correctChoice":null,"expectedKeywords":["perte","information","type","cast"]}],
+  "checklist":["Je distingue les types entiers et décimaux","Je sais expliquer un cast","Je donne des noms clairs aux variables"]
+}

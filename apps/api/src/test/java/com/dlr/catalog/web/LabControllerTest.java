@@ -25,6 +25,7 @@ class LabControllerTest {
                 .andExpect(jsonPath("$.threshold").value(70))
                 .andExpect(jsonPath("$.keyConcepts[0].whyExists").isNotEmpty())
                 .andExpect(jsonPath("$.exercises[0].starterCode").isNotEmpty())
+                .andExpect(jsonPath("$.exercises[0].expectedOutput").doesNotExist())
                 .andExpect(jsonPath("$.quiz[0].correctChoice").doesNotExist());
     }
 
@@ -33,5 +34,14 @@ class LabControllerTest {
         mockMvc.perform(get("/api/labs/UNKNOWN"))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.title").value("LAB_NOT_FOUND"));
+    }
+
+    @Test
+    void exposesTheSixJavaMvpLabsInOrder() throws Exception {
+        mockMvc.perform(get("/api/labs"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(6))
+                .andExpect(jsonPath("$[0].code").value("JAVA-01"))
+                .andExpect(jsonPath("$[5].code").value("JAVA-06"));
     }
 }

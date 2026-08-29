@@ -21,7 +21,7 @@ export interface SubmissionResponse {
 export interface ExecutionResult {
   id: string;
   submissionId: string;
-  status: 'SUCCESS' | 'COMPILATION_ERROR' | 'RUNTIME_ERROR' | 'TIMEOUT' | 'RUNNER_ERROR';
+  status: 'SUCCESS' | 'TESTS_FAILED' | 'COMPILATION_ERROR' | 'RUNTIME_ERROR' | 'TIMEOUT' | 'RUNNER_ERROR';
   exitCode: number | null;
   standardOutput: string;
   errorOutput: string;

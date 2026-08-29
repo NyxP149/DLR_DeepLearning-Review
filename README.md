@@ -8,9 +8,9 @@ DLR est une application locale d'apprentissage de la programmation. La V1 commen
 - API Spring Boot Java 21 ;
 - squelette Angular standalone ;
 - PostgreSQL et Flyway préparés ;
-- contenu versionné du laboratoire Java 1 ;
-- endpoint de consultation du laboratoire ;
-- calcul déterministe du score ;
+- six laboratoires Java fondamentaux versionnés ;
+- catalogue et vue du parcours Java 1 à 6 ;
+- exécution isolée, assertions de résultat et calcul déterministe du score ;
 - journal de développement dans `DLR_CodeReview.md`.
 
 ## Structure

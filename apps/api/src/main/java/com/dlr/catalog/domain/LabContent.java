@@ -46,7 +46,8 @@ public record LabContent(
             String code,
             String title,
             String statement,
-            String starterCode
+            String starterCode,
+            String expectedOutput
     ) {
     }
 

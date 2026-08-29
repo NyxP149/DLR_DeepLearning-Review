@@ -247,3 +247,27 @@ Ce fichier conserve l'historique des modifications, décisions techniques, bugs 
 - Parcours réel API → PostgreSQL → Docker → quiz → checklist → bilan : statut `COMPLETED`, score `100.00`, sortie `DLR Java Lab 1`.
 - Build Angular réussi ; l'espace laboratoire lazy-loaded atteint 20,28 kB bruts. Seul l'avertissement connu du cache optionnel `lmdb` subsiste.
 - API temporaire arrêtée après validation ; PostgreSQL DLR reste démarré.
+
+## 2026-08-29 — Catalogue Java V1 et tests de résultat
+
+### Modifications
+
+- Ajout des laboratoires Java 2 à 6 avec objectifs, cours, concept clé, exercice, quiz de connexion et checklist.
+- Migration Flyway V4 ajoutant ces activités au catalogue relationnel.
+- Ajout d'une sortie attendue privée pour chaque exercice et du statut `TESTS_FAILED`.
+- Transformation du DTO d'exercice afin que l'assertion attendue ne soit jamais envoyée au navigateur.
+- Ajout de la vue Angular « Mon parcours » présentant les six activités et leurs seuils.
+
+### Décisions
+
+- Un processus terminé avec le code de sortie zéro ne suffit plus à réussir : la sortie normalisée doit aussi correspondre à l'assertion versionnée de l'exercice.
+- Les assertions restent côté backend. La consigne visible permet de comprendre le résultat attendu sans révéler une structure de test cachée.
+
+### Validations
+
+- Un programme compilable avec une mauvaise sortie reçoit `TESTS_FAILED` dans un test HTTP dédié.
+- L'API ne sérialise ni `expectedOutput` ni `correctChoice`.
+- Les six JSON pédagogiques sont chargés et triés de `JAVA-01` à `JAVA-06`.
+- Flyway V1 à V4 validées sur H2 en mode PostgreSQL.
+- Suite rapide : 16 tests réussis, 0 échec ; les 3 tests Docker conditionnels sont exclus de ce passage après avoir été validés au jalon précédent.
+- Build Angular réussi : vue Parcours lazy-loaded de 3,57 kB et espace laboratoire de 20,01 kB.

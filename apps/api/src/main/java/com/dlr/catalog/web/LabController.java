@@ -57,7 +57,7 @@ public class LabController {
             List<String> objectives,
             List<LabContent.LessonSection> sections,
             List<LabContent.KeyConcept> keyConcepts,
-            List<LabContent.Exercise> exercises,
+            List<ExerciseResponse> exercises,
             List<QuizQuestionResponse> quiz,
             List<String> checklist
     ) {
@@ -73,9 +73,15 @@ public class LabController {
                     lab.objectives(),
                     lab.sections(),
                     lab.keyConcepts(),
-                    lab.exercises(),
+                    lab.exercises().stream().map(ExerciseResponse::from).toList(),
                     lab.quiz().stream().map(QuizQuestionResponse::from).toList(),
                     lab.checklist());
+        }
+    }
+
+    public record ExerciseResponse(String code, String title, String statement, String starterCode) {
+        static ExerciseResponse from(LabContent.Exercise exercise) {
+            return new ExerciseResponse(exercise.code(), exercise.title(), exercise.statement(), exercise.starterCode());
         }
     }
 
