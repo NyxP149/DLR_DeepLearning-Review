@@ -11,6 +11,7 @@ export interface LabContent {
   keyConcepts: KeyConcept[];
   exercises: Exercise[];
   quiz: QuizQuestion[];
+  checklist: string[];
 }
 
 export interface LessonSection {

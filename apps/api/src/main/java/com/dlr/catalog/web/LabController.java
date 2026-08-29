@@ -58,7 +58,8 @@ public class LabController {
             List<LabContent.LessonSection> sections,
             List<LabContent.KeyConcept> keyConcepts,
             List<LabContent.Exercise> exercises,
-            List<QuizQuestionResponse> quiz
+            List<QuizQuestionResponse> quiz,
+            List<String> checklist
     ) {
         static LabDetailResponse from(LabContent lab) {
             return new LabDetailResponse(
@@ -73,7 +74,8 @@ public class LabController {
                     lab.sections(),
                     lab.keyConcepts(),
                     lab.exercises(),
-                    lab.quiz().stream().map(QuizQuestionResponse::from).toList());
+                    lab.quiz().stream().map(QuizQuestionResponse::from).toList(),
+                    lab.checklist());
         }
     }
 

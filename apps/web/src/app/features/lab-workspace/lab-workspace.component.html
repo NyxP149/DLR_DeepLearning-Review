@@ -97,6 +97,92 @@
               }
             </article>
           }
+
+          <article class="panel assessment-panel">
+            <p class="eyebrow">Validation des acquis</p>
+            <h2>Quiz et explication</h2>
+            <div class="quiz-list">
+              @for (question of state.lab.quiz; track question.code; let questionIndex = $index) {
+                <fieldset class="quiz-question">
+                  <legend><span>{{ questionIndex + 1 }}.</span> {{ question.prompt }}</legend>
+                  @if (question.type === 'SINGLE_CHOICE') {
+                    <div class="choice-list">
+                      @for (choice of question.choices; track choice; let choiceIndex = $index) {
+                        <label>
+                          <input
+                            type="radio"
+                            [name]="question.code"
+                            [checked]="quizValues()[question.code] === choiceIndex"
+                            (change)="onQuizChoice(question.code, choiceIndex)"
+                          />
+                          <span>{{ choice }}</span>
+                        </label>
+                      }
+                    </div>
+                  } @else {
+                    <textarea
+                      class="answer-editor"
+                      rows="5"
+                      placeholder="Explique avec tes propres mots…"
+                      [value]="quizValues()[question.code]"
+                      (input)="onQuizText(question.code, $event)"
+                    ></textarea>
+                  }
+                </fieldset>
+              }
+            </div>
+          </article>
+
+          <article class="panel assessment-panel">
+            <h2>Checklist personnelle</h2>
+            <p>Sois honnête : cette partie mesure ton recul, pas seulement le résultat du programme.</p>
+            <div class="checklist">
+              @for (item of state.lab.checklist; track item; let itemIndex = $index) {
+                <label>
+                  <input
+                    type="checkbox"
+                    [checked]="checklist()[itemIndex]"
+                    (change)="onChecklistChange(itemIndex, $event)"
+                  />
+                  <span>{{ item }}</span>
+                </label>
+              }
+            </div>
+            <button class="complete-button" type="button" [disabled]="completing()" (click)="completeLab(state.lab)">
+              {{ completing() ? 'Calcul du bilan…' : 'Terminer et calculer mon score' }}
+            </button>
+
+            @if (completion(); as result) {
+              <section class="completion-card" [class.below]="result.attempt.status === 'COMPLETED_BELOW_THRESHOLD'" aria-live="polite">
+                <p class="completion-score">{{ result.attempt.score }} %</p>
+                <div>
+                  <h3>{{ result.attempt.status === 'COMPLETED' ? 'Laboratoire validé' : 'À consolider' }}</h3>
+                  <p>Seuil recommandé : {{ result.threshold }} %</p>
+                </div>
+                <dl class="score-breakdown">
+                  <div><dt>Tests</dt><dd>{{ result.breakdown.tests }} %</dd></div>
+                  <div><dt>Quiz</dt><dd>{{ result.breakdown.quiz }} %</dd></div>
+                  <div><dt>Pratique</dt><dd>{{ result.breakdown.practice }} %</dd></div>
+                  <div><dt>Connexion</dt><dd>{{ result.breakdown.connections }} %</dd></div>
+                  <div><dt>Auto-évaluation</dt><dd>{{ result.breakdown.selfAssessment }} %</dd></div>
+                </dl>
+                @if (result.reviewScheduled) {
+                  <p>Une révision prioritaire a été programmée pour demain.</p>
+                }
+                @if (result.attempt.status === 'COMPLETED_BELOW_THRESHOLD' && !result.attempt.continuedBelowThreshold) {
+                  <button type="button" class="secondary-button" (click)="continueBelowThreshold()">
+                    Continuer malgré le seuil
+                  </button>
+                }
+                @if (result.attempt.continuedBelowThreshold) {
+                  <p class="continuation-confirmed">Poursuite confirmée · la révision reste programmée.</p>
+                }
+              </section>
+            }
+            @if (completionError(); as message) {
+              <p class="execution-error" role="alert">{{ message }}</p>
+            }
+          </article>
         </aside>
       </div>
     }

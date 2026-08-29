@@ -14,7 +14,8 @@ public record LabContent(
         List<LessonSection> sections,
         List<KeyConcept> keyConcepts,
         List<Exercise> exercises,
-        List<QuizQuestion> quiz
+        List<QuizQuestion> quiz,
+        List<String> checklist
 ) {
     public LabContent {
         objectives = List.copyOf(objectives);
@@ -22,6 +23,7 @@ public record LabContent(
         keyConcepts = List.copyOf(keyConcepts);
         exercises = List.copyOf(exercises);
         quiz = List.copyOf(quiz);
+        checklist = List.copyOf(checklist);
     }
 
     public record LessonSection(String title, String content) {
@@ -53,11 +55,12 @@ public record LabContent(
             String type,
             String prompt,
             List<String> choices,
-            Integer correctChoice
+            Integer correctChoice,
+            List<String> expectedKeywords
     ) {
         public QuizQuestion {
             choices = choices == null ? List.of() : List.copyOf(choices);
+            expectedKeywords = expectedKeywords == null ? List.of() : List.copyOf(expectedKeywords);
         }
     }
 }
-

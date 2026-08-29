@@ -40,4 +40,12 @@ public class ApiExceptionHandler {
         detail.setType(URI.create("urn:dlr:error:invalid-request"));
         return detail;
     }
+
+    @ExceptionHandler(IllegalStateException.class)
+    ProblemDetail handleIllegalState(IllegalStateException exception) {
+        ProblemDetail detail = ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, exception.getMessage());
+        detail.setTitle("INVALID_ATTEMPT_STATE");
+        detail.setType(URI.create("urn:dlr:error:invalid-attempt-state"));
+        return detail;
+    }
 }

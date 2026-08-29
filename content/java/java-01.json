@@ -49,15 +49,21 @@
       "type": "SINGLE_CHOICE",
       "prompt": "Quel outil transforme un fichier .java en bytecode ?",
       "choices": ["java", "javac", "JVM", "JAR"],
-      "correctChoice": 1
+      "correctChoice": 1,
+      "expectedKeywords": []
     },
     {
       "code": "JAVA-01-Q2",
       "type": "FREE_TEXT",
       "prompt": "Explique avec tes propres mots la relation entre le code source, le bytecode et la JVM.",
       "choices": [],
-      "correctChoice": null
+      "correctChoice": null,
+      "expectedKeywords": ["source", "bytecode", "JVM", "compile"]
     }
+  ],
+  "checklist": [
+    "Je sais distinguer javac de java",
+    "Je peux expliquer le rôle du bytecode",
+    "Je peux compiler et exécuter une classe Main"
   ]
 }
-

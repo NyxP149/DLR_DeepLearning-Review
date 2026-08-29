@@ -6,6 +6,8 @@ export interface Attempt {
   id: string;
   labCode: string;
   status: 'IN_PROGRESS' | 'COMPLETED' | 'COMPLETED_BELOW_THRESHOLD';
+  score: number | null;
+  continuedBelowThreshold: boolean;
 }
 
 export interface SubmissionResponse {
@@ -25,6 +27,26 @@ export interface ExecutionResult {
   errorOutput: string;
   durationMs: number;
   createdAt: string;
+}
+
+export interface QuizAnswerResponse {
+  questionId: string;
+  score: number;
+  feedback: string;
+}
+
+export interface CompletionResult {
+  attempt: Attempt;
+  breakdown: {
+    tests: number;
+    quiz: number;
+    practice: number;
+    connections: number;
+    selfAssessment: number;
+    version: string;
+  };
+  threshold: number;
+  reviewScheduled: boolean;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -49,6 +71,38 @@ export class ExecutionApiService {
   run(submissionId: string): Observable<ExecutionResult> {
     return this.http.post<ExecutionResult>(
       `${this.apiUrl}/submissions/${encodeURIComponent(submissionId)}/run`,
+      {}
+    );
+  }
+
+  answerQuiz(
+    attemptId: string,
+    questionId: string,
+    answer: { selectedChoice?: number; answerText?: string }
+  ): Observable<QuizAnswerResponse> {
+    return this.http.put<QuizAnswerResponse>(
+      `${this.apiUrl}/attempts/${encodeURIComponent(attemptId)}/quiz/${encodeURIComponent(questionId)}`,
+      answer
+    );
+  }
+
+  saveChecklist(attemptId: string, completed: boolean[]): Observable<void> {
+    return this.http.put<void>(
+      `${this.apiUrl}/attempts/${encodeURIComponent(attemptId)}/checklist`,
+      { completed }
+    );
+  }
+
+  complete(attemptId: string): Observable<CompletionResult> {
+    return this.http.post<CompletionResult>(
+      `${this.apiUrl}/attempts/${encodeURIComponent(attemptId)}/complete`,
+      {}
+    );
+  }
+
+  continueBelowThreshold(attemptId: string): Observable<Attempt> {
+    return this.http.post<Attempt>(
+      `${this.apiUrl}/attempts/${encodeURIComponent(attemptId)}/continue`,
       {}
     );
   }

@@ -200,3 +200,50 @@ Ce fichier conserve l'historique des modifications, décisions techniques, bugs 
 - PostgreSQL DLR démarré et sain sur le port hôte `5434`, sans modifier les conteneurs déjà présents sur les ports `5432`, `5433` et `8080`.
 - Parcours HTTP réel validé de bout en bout : santé de l'API, chargement de `JAVA-01`, création d'une tentative, sauvegarde d'une soumission, compilation et exécution Docker avec statut `SUCCESS` et sortie `DLR Java Lab 1`.
 - API temporaire de validation arrêtée proprement après le test ; PostgreSQL DLR reste disponible pour la suite du développement.
+
+## 2026-08-29 — Clôture déterministe d'un laboratoire
+
+### Modifications
+
+- Migration Flyway V3 : réponses de quiz, checklist, détail du score, décision de poursuivre et révisions programmées.
+- Correction déterministe des choix simples et des réponses de connexion par critères conservés uniquement côté backend.
+- Calcul du bilan à partir du dernier résultat Docker, du quiz, de la pratique, des connexions et de l'auto-évaluation.
+- Statuts `COMPLETED` et `COMPLETED_BELOW_THRESHOLD`, avec poursuite explicite sous le seuil.
+- Création automatique d'une révision à J+1 lorsqu'un score est insuffisant.
+- Interface Angular complète pour répondre au quiz, remplir la checklist, afficher le détail du score et confirmer la poursuite.
+
+### Décisions
+
+- La version du barème (`V1`) et tous les sous-scores sont enregistrés avec la tentative afin de rendre le résultat reproductible.
+- Une tentative ne peut être terminée sans exécution, sans toutes les réponses au quiz ou sans checklist.
+- La réponse libre utilise des critères déterministes minimaux dans cette tranche. Ollama enrichira ensuite le feedback qualitatif sans remplacer ce score reproductible.
+
+### Bugs et incidents
+
+#### L'option du dépôt Maven est mal transmise par PowerShell
+
+- **Symptôme :** Maven interprète une partie de `-Dmaven.repo.local=...` comme un objectif de plugin lorsque le chemin contient des espaces.
+- **Cause :** transmission ambiguë de l'argument au lanceur natif Windows.
+- **Résolution :** résolution explicite de `mvn.cmd`, variable PowerShell dédiée au chemin et argument complet placé entre guillemets.
+- **Prévention :** conserver cette forme pour tous les lancements Maven dans ce workspace contenant une esperluette et des espaces.
+
+#### Le premier chemin de cache Maven sélectionné est vide
+
+- **Symptôme :** le mode hors ligne ne retrouve pas le parent Spring Boot.
+- **Cause :** les dépendances existantes se trouvent dans `apps/api/.m2/repository`, et non dans le cache `.m2` créé par erreur à la racine.
+- **Résolution :** utilisation du cache backend réel ; le dossier racine vide reste ignoré par Git.
+
+#### Angular signale une coalescence nulle inutile
+
+- **Symptôme :** diagnostic `NG8102` sur la valeur de la réponse libre.
+- **Cause :** le type indexé du signal exclut déjà `null` et `undefined`.
+- **Résolution :** suppression de l'opérateur `??` inutile dans le template.
+
+### Validations
+
+- Flyway V3 appliquée avec succès sur H2 en mode PostgreSQL et sur PostgreSQL 17.11 réel.
+- Suite backend finale : 14 tests réussis, 0 échec, 0 ignoré, dont 3 tests Docker réels.
+- Deux nouveaux parcours HTTP testés : validation à 100 % et score sous le seuil avec révision puis poursuite explicite.
+- Parcours réel API → PostgreSQL → Docker → quiz → checklist → bilan : statut `COMPLETED`, score `100.00`, sortie `DLR Java Lab 1`.
+- Build Angular réussi ; l'espace laboratoire lazy-loaded atteint 20,28 kB bruts. Seul l'avertissement connu du cache optionnel `lmdb` subsiste.
+- API temporaire arrêtée après validation ; PostgreSQL DLR reste démarré.

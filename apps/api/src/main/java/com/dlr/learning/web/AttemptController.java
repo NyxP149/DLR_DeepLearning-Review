@@ -32,5 +32,9 @@ public class AttemptController {
     public Attempt get(@PathVariable UUID id) {
         return attemptService.get(id);
     }
-}
 
+    @PostMapping("/attempts/{id}/continue")
+    public Attempt continueBelowThreshold(@PathVariable UUID id) {
+        return attemptService.continueBelowThreshold(id);
+    }
+}

@@ -9,6 +9,7 @@ import org.springframework.stereotype.Repository;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
+import java.math.BigDecimal;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -40,7 +41,7 @@ public class JdbcAttemptRepository implements AttemptRepository {
     public Optional<Attempt> findById(UUID id) {
         return jdbcTemplate.query(
                         """
-                        select id, lab_id, started_at, completed_at, status
+                        select id, lab_id, started_at, completed_at, status, score, continued_below_threshold
                         from attempt
                         where id = ?
                         """,
@@ -50,6 +51,32 @@ public class JdbcAttemptRepository implements AttemptRepository {
                 .findFirst();
     }
 
+    @Override
+    public Attempt complete(
+            UUID id,
+            AttemptStatus status,
+            BigDecimal score,
+            ScoreBreakdown breakdown,
+            java.time.Instant completedAt
+    ) {
+        jdbcTemplate.update(
+                """
+                update attempt
+                set completed_at = ?, status = ?, score = ?, tests_score = ?, quiz_score = ?,
+                    practice_score = ?, connections_score = ?, self_assessment_score = ?, score_version = ?
+                where id = ?
+                """,
+                Timestamp.from(completedAt), status.name(), score, breakdown.tests(), breakdown.quiz(),
+                breakdown.practice(), breakdown.connections(), breakdown.selfAssessment(), breakdown.version(), id);
+        return findById(id).orElseThrow();
+    }
+
+    @Override
+    public Attempt allowContinuation(UUID id) {
+        jdbcTemplate.update("update attempt set continued_below_threshold = true where id = ?", id);
+        return findById(id).orElseThrow();
+    }
+
     private Attempt mapAttempt(ResultSet result, int rowNumber) throws SQLException {
         Timestamp completedAt = result.getTimestamp("completed_at");
         return new Attempt(
@@ -57,7 +84,8 @@ public class JdbcAttemptRepository implements AttemptRepository {
                 result.getString("lab_id"),
                 result.getTimestamp("started_at").toInstant(),
                 completedAt == null ? null : completedAt.toInstant(),
-                AttemptStatus.valueOf(result.getString("status")));
+                AttemptStatus.valueOf(result.getString("status")),
+                result.getBigDecimal("score"),
+                result.getBoolean("continued_below_threshold"));
     }
 }
-
