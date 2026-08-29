@@ -9,8 +9,12 @@ export interface Dashboard {
   averageScore: number;
   inProgressAttempts: number;
   pendingReviews: number;
+  studyMinutes: number;
+  currentStreak: number;
+  bestStreak: number;
   xp: number;
   level: number;
+  badges: { code: string; label: string; description: string; unlocked: boolean }[];
   nextLabCode: string | null;
   recentAttempts: { labCode: string; status: string; score: number | null; startedAt: string; completedAt: string | null }[];
 }

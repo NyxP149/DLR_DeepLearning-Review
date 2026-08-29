@@ -1,28 +1,36 @@
 package com.dlr.analytics.application;
 
 import com.dlr.analytics.infrastructure.DashboardQueries;
+import com.dlr.analytics.domain.StreakCalculator;
 import com.dlr.catalog.application.LabCatalog;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.time.LocalDate;
 
 @Service
 public class DashboardService {
 
     private final DashboardQueries queries;
     private final LabCatalog catalog;
+    private final StreakCalculator streakCalculator;
 
-    public DashboardService(DashboardQueries queries, LabCatalog catalog) {
+    public DashboardService(DashboardQueries queries, LabCatalog catalog, StreakCalculator streakCalculator) {
         this.queries = queries;
         this.catalog = catalog;
+        this.streakCalculator = streakCalculator;
     }
 
     public Dashboard dashboard() {
         int totalLabs = catalog.findAll().size();
         int completed = Math.min(queries.completedLabs(), totalLabs);
-        int xp = completed * 100;
-        int level = xp / 500 + 1;
+        int completedReviews = queries.completedReviews();
+        int completedSessions = queries.completedSessions();
+        int studyMinutes = queries.totalStudyMinutes();
+        var streak = streakCalculator.calculate(queries.completedSessionDates(), LocalDate.now());
+        int xp = completed * 100 + completedReviews * 25 + completedSessions * 20;
+        int level = xp / 250 + 1;
         var completedLabCodes = queries.completedLabCodes();
         String nextLab = catalog.findAll().stream()
                 .filter(lab -> !completedLabCodes.contains(lab.code()))
@@ -33,7 +41,17 @@ public class DashboardService {
                 queries.profile(), totalLabs, completed,
                 totalLabs == 0 ? 0 : (completed * 100) / totalLabs,
                 queries.averageScore(), queries.inProgressAttempts(), queries.pendingReviews(),
-                xp, level, nextLab, queries.recentAttempts());
+                studyMinutes, streak.current(), streak.best(), xp, level,
+                badges(completed, completedReviews, studyMinutes, streak.best()), nextLab, queries.recentAttempts());
+    }
+
+    private List<Badge> badges(int completedLabs, int completedReviews, int studyMinutes, int bestStreak) {
+        return List.of(
+                new Badge("FIRST_LAB", "Premier pas", "Terminer un laboratoire", completedLabs >= 1),
+                new Badge("RHYTHM_3", "Rythme durable", "Étudier trois jours consécutifs", bestStreak >= 3),
+                new Badge("REVIEWER", "Mémoire active", "Valider cinq révisions", completedReviews >= 5),
+                new Badge("FOCUS_10H", "Concentration", "Cumuler dix heures d'étude", studyMinutes >= 600),
+                new Badge("JAVA_V1", "Fondations Java", "Terminer les six laboratoires Java V1", completedLabs >= 6));
     }
 
     public record Dashboard(
@@ -44,10 +62,17 @@ public class DashboardService {
             BigDecimal averageScore,
             int inProgressAttempts,
             int pendingReviews,
+            int studyMinutes,
+            int currentStreak,
+            int bestStreak,
             int xp,
             int level,
+            List<Badge> badges,
             String nextLabCode,
             List<DashboardQueries.RecentAttempt> recentAttempts
     ) {
+    }
+
+    public record Badge(String code, String label, String description, boolean unlocked) {
     }
 }

@@ -25,6 +25,9 @@ class DashboardControllerTest {
                 .andExpect(jsonPath("$.totalLabs").value(6))
                 .andExpect(jsonPath("$.completedLabs").isNumber())
                 .andExpect(jsonPath("$.averageScore").isNumber())
-                .andExpect(jsonPath("$.level").isNumber());
+                .andExpect(jsonPath("$.level").isNumber())
+                .andExpect(jsonPath("$.currentStreak").isNumber())
+                .andExpect(jsonPath("$.studyMinutes").isNumber())
+                .andExpect(jsonPath("$.badges.length()").value(5));
     }
 }

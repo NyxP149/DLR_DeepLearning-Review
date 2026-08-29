@@ -6,6 +6,7 @@ import org.springframework.stereotype.Repository;
 import java.math.BigDecimal;
 import java.sql.Timestamp;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.List;
 
 @Repository
@@ -49,6 +50,30 @@ public class DashboardQueries {
         Integer count = jdbcTemplate.queryForObject(
                 "select count(*) from review_item where status = 'PENDING'", Integer.class);
         return count == null ? 0 : count;
+    }
+
+    public int completedReviews() {
+        Integer count = jdbcTemplate.queryForObject(
+                "select count(*) from review_item where status = 'COMPLETED'", Integer.class);
+        return count == null ? 0 : count;
+    }
+
+    public int completedSessions() {
+        Integer count = jdbcTemplate.queryForObject(
+                "select count(*) from study_session where status = 'COMPLETED'", Integer.class);
+        return count == null ? 0 : count;
+    }
+
+    public int totalStudyMinutes() {
+        Integer total = jdbcTemplate.queryForObject(
+                "select coalesce(sum(actual_minutes), 0) from study_session where status = 'COMPLETED'", Integer.class);
+        return total == null ? 0 : total;
+    }
+
+    public List<LocalDate> completedSessionDates() {
+        return jdbcTemplate.query(
+                "select session_date from study_session where status = 'COMPLETED' order by session_date",
+                (result, row) -> result.getDate("session_date").toLocalDate());
     }
 
     public BigDecimal averageScore() {

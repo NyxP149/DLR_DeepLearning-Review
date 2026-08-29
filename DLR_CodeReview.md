@@ -504,3 +504,25 @@ Ce fichier conserve l'historique des modifications, décisions techniques, bugs 
 - Build Angular réussi sans erreur CSS ; bundle initial 266,45 kB brut.
 - Sauvegarde réelle créée : archive custom PostgreSQL 17.11 de 26 326 octets et 64 entrées vérifiées par `pg_restore -l`.
 - Garde-fou de restauration validé sans modification de la base ; les serveurs temporaires ont été arrêtés proprement.
+
+## 2026-08-29 — Temps, séries, XP et badges
+
+### Modifications
+
+- Calcul du temps d'étude réel depuis les séances terminées.
+- Série actuelle et meilleur record, avec maintien pendant un jour de repos.
+- XP dérivé d'efforts uniques : laboratoires distincts, révisions terminées et séances datées.
+- Cinq badges V1 : premier laboratoire, rythme sur trois jours, cinq révisions, dix heures de concentration et fondations Java.
+- Dashboard rapproché du mockup avec six indicateurs et une grille de réussites verrouillées/déverrouillées.
+
+### Décisions
+
+- Aucun endpoint n'accorde directement des XP : les points sont recalculés depuis les preuves persistées.
+- Une journée sans séance ne casse pas immédiatement la série, afin de ne pas punir un repos planifié.
+- Maîtrise et gamification restent séparées : les badges n'altèrent ni les scores ni l'état des concepts.
+
+### Validations
+
+- Trois tests unitaires couvrent la série courante, le record, le repos toléré et l'expiration.
+- Suite backend : 26 tests exécutés, 0 échec ; 3 tests Docker conditionnels exclus du passage rapide.
+- Build Angular réussi ; dashboard enrichi de 8,45 kB en chargement paresseux.
