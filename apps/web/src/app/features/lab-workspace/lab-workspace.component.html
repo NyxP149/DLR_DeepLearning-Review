@@ -63,11 +63,38 @@
               <p class="eyebrow">Exercice guidé</p>
               <h2>{{ exercise.title }}</h2>
               <p>{{ exercise.statement }}</p>
-              <pre aria-label="Code de départ"><code>{{ exercise.starterCode }}</code></pre>
+              <label class="editor-label" for="java-source">Code Java</label>
+              <textarea
+                id="java-source"
+                class="code-editor"
+                spellcheck="false"
+                [value]="code()"
+                (input)="onCodeInput($event)"
+                aria-describedby="runner-description"
+              ></textarea>
               <div class="actions">
-                <button type="button" disabled>Exécuter les tests</button>
-                <span>Runner prévu à l'étape suivante</span>
+                <button type="button" [disabled]="running()" (click)="runCode()">
+                  {{ running() ? 'Exécution…' : 'Compiler et exécuter' }}
+                </button>
+                <span id="runner-description">Runner Java isolé par Docker</span>
               </div>
+              @if (execution(); as result) {
+                <section class="execution-result" [class.success]="result.status === 'SUCCESS'" aria-live="polite">
+                  <div>
+                    <strong>{{ result.status }}</strong>
+                    <span>{{ result.durationMs }} ms</span>
+                  </div>
+                  @if (result.standardOutput) {
+                    <pre><code>{{ result.standardOutput }}</code></pre>
+                  }
+                  @if (result.errorOutput) {
+                    <pre class="stderr"><code>{{ result.errorOutput }}</code></pre>
+                  }
+                </section>
+              }
+              @if (executionError(); as message) {
+                <p class="execution-error" role="alert">{{ message }}</p>
+              }
             </article>
           }
         </aside>
@@ -75,4 +102,3 @@
     }
   }
 }
-

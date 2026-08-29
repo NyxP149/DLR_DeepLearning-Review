@@ -24,14 +24,23 @@ infrastructure/ configuration locale
 
 ## Démarrage du backend
 
-Prérequis : Java 21 et Maven 3.8+.
+Prérequis : Java 21, Maven 3.8+ et Docker Desktop démarré.
+
+Depuis la racine du dépôt, préparer PostgreSQL et l'image du runner :
+
+```powershell
+docker compose up -d postgres
+.\infrastructure\scripts\build-runners.ps1
+```
+
+Le port PostgreSQL hôte par défaut est `5434` afin de ne pas entrer en conflit avec les autres instances locales.
 
 ```powershell
 cd apps/api
 mvn spring-boot:run
 ```
 
-L'API est ensuite disponible sur `http://localhost:8080/api`.
+L'API est ensuite disponible sur `http://localhost:8081/api`.
 
 ## Tests backend
 
@@ -50,9 +59,18 @@ npm install
 npm start
 ```
 
-Le frontend utilise par défaut l'API `http://localhost:8080/api`.
+Le frontend utilise par défaut l'API `http://localhost:8081/api`.
 
 ## Infrastructure locale
 
-`compose.yaml` prépare PostgreSQL. Le runner Docker et Ollama seront branchés dans les étapes suivantes.
+`compose.yaml` prépare PostgreSQL. Docker Desktop doit être démarré. Si la commande `docker` n'est pas dans le `PATH`, le script détecte automatiquement l'installation utilisateur de Docker Desktop.
 
+Construire l'image isolée du runner Java :
+
+```powershell
+.\infrastructure\scripts\build-runners.ps1
+```
+
+Le runner désactive le réseau, utilise un utilisateur non privilégié, un système de fichiers en lecture seule, des limites CPU/mémoire/processus et un timeout côté backend.
+
+Ollama sera branché dans une étape suivante.

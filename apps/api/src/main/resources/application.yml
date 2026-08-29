@@ -2,13 +2,14 @@ spring:
   application:
     name: dlr-api
   datasource:
-    url: ${DLR_DB_URL:jdbc:postgresql://localhost:5432/dlr}
+    url: ${DLR_DB_URL:jdbc:postgresql://localhost:5434/dlr}
     username: ${DLR_DB_USER:dlr}
     password: ${DLR_DB_PASSWORD:dlr-local-only}
   flyway:
     enabled: true
 
 server:
+  port: ${DLR_API_PORT:8081}
   error:
     include-message: never
 
@@ -23,4 +24,7 @@ dlr:
     root: classpath:content
   ollama:
     url: ${DLR_OLLAMA_URL:http://localhost:11434}
-
+  execution:
+    docker-cli: ${DLR_DOCKER_CLI:docker}
+    java-image: ${DLR_JAVA_RUNNER_IMAGE:dlr/java-runner:21}
+    timeout-seconds: ${DLR_RUNNER_TIMEOUT_SECONDS:10}

@@ -15,6 +15,8 @@ Ce fichier conserve l'historique des modifications, décisions techniques, bugs 
 - Ajout du premier contenu pédagogique versionné : Java, laboratoire 1.
 - Ajout de l'API de consultation des parcours et laboratoires.
 - Ajout du calcul déterministe du score et de ses tests unitaires.
+- Ajout de la persistance des tentatives, soumissions et résultats d'exécution.
+- Ajout du runner Java Docker et de l'éditeur Angular exécutable.
 
 ### Décisions
 
@@ -76,12 +78,55 @@ Ce fichier conserve l'historique des modifications, décisions techniques, bugs 
 - **Résolution :** exécution finale de Maven hors de cette restriction, en mode hors ligne et limitée au cache local déjà téléchargé.
 - **Impact :** aucun changement applicatif ; les 5 tests repassent correctement.
 
+#### Spring ne sélectionne pas les constructeurs de production
+
+- **Symptôme :** le contexte de test échoue avec `No default constructor found` sur `ExecutionService`.
+- **Cause :** les services possèdent un constructeur public de production et un constructeur secondaire destiné aux tests déterministes ; avec plusieurs constructeurs, Spring exige un choix explicite.
+- **Résolution :** annotation `@Autowired` sur les constructeurs de production de `AttemptService`, `ExecutionService` et `DockerJavaRunner`.
+- **Prévention :** les constructeurs secondaires restent non publics et les tests de contexte Spring couvrent désormais leur instanciation.
+
+#### Les chemins du script PowerShell du runner sont corrompus
+
+- **Symptôme :** Docker reçoit un contexte ressemblant à `scripts\\....\\runnersjava-runner` et ne trouve pas le Dockerfile.
+- **Cause :** les antislashs du texte généré ont été interprétés comme des séquences d'échappement, notamment `\r` et `\b`.
+- **Résolution :** utilisation de séparateurs `/` dans les segments transmis à `Join-Path`, correctement pris en charge sous Windows.
+- **Prévention :** le script est exécuté réellement pendant la validation de chaque modification du runner.
+
+#### Le marqueur de patch est injecté dans le Dockerfile
+
+- **Symptôme :** Alpine reçoit `addgroup ... runner + && adduser ...` et refuse l'argument supplémentaire.
+- **Cause :** le caractère de continuation de ligne du Dockerfile a échappé le saut de ligne lors de la génération et conservé le `+` de la ligne suivante.
+- **Résolution :** regroupement de la création du groupe et de l'utilisateur sur une instruction `RUN` unique.
+- **Prévention :** éviter les continuations de ligne dans les petits Dockerfiles générés.
+
+#### `javac` est introuvable dans l'image JDK
+
+- **Symptôme :** même le programme valide retourne `COMPILATION_ERROR` avec `sh: javac: not found`.
+- **Cause :** le runner utilisait `sh -lc`. Le shell de connexion Alpine recharge son profil et remplace le `PATH` fourni par l'image Eclipse Temurin, qui contient le répertoire du JDK.
+- **Résolution :** utilisation de `sh -c`, qui conserve l'environnement et le `PATH` de l'image.
+- **Prévention :** test d'intégration obligatoire compilant et exécutant réellement un programme Java valide.
+
+#### Le port PostgreSQL prévu pour DLR est déjà occupé
+
+- **Symptôme :** le port `5432` est publié par `lfm_languegesforme-postgres-1` et le port `5433` par `bts-postgres`.
+- **Cause :** plusieurs projets Docker locaux utilisent déjà PostgreSQL.
+- **Résolution :** DLR utilise par défaut le port hôte `5434`, configurable avec `DLR_DB_PORT` et `DLR_DB_URL`.
+- **Prévention :** vérification des ports actifs avant le premier `docker compose up` ; aucun conteneur existant n'est arrêté ou modifié.
+
+#### Le port HTTP 8080 est déjà utilisé
+
+- **Symptôme :** `mailmind-frontend-1` publie déjà `127.0.0.1:8080`.
+- **Cause :** DLR partage la machine avec plusieurs applications Docker locales.
+- **Résolution :** l'API DLR utilise par défaut `8081`, configurable avec `DLR_API_PORT`; les services Angular pointent sur ce port.
+- **Prévention :** les ports de développement DLR sont centralisés dans la configuration et l'exemple d'environnement.
+
 #### Docker n'est pas disponible dans le PATH
 
 - **Symptôme :** la commande `docker` est inconnue.
-- **Cause :** Docker Desktop n'est pas installé ou n'est pas exposé à l'environnement courant.
-- **Résolution :** la configuration Compose est créée, mais les runners de code restent désactivés tant que Docker n'est pas disponible.
-- **Impact :** l'isolation et l'exécution du code utilisateur ne font pas partie de cette première tranche validable.
+- **Cause réelle :** Docker Desktop est installé pour l'utilisateur dans `%LOCALAPPDATA%\Programs\DockerDesktop`, mais son dossier `resources\bin` n'est pas dans le `PATH` du sandbox.
+- **Résolution :** détection automatique de cette installation utilisateur par le backend et par le script de construction des runners. La variable `DLR_DOCKER_CLI` reste disponible pour tout autre emplacement.
+- **Validation :** Docker Desktop 4.83.0, client/Engine 29.6.2 et Compose 5.3.1 répondent correctement.
+- **Impact :** le runner Java Docker peut maintenant être implémenté et validé.
 
 #### Maven cible un dépôt local non accessible
 
@@ -97,6 +142,20 @@ Ce fichier conserve l'historique des modifications, décisions techniques, bugs 
 - **Résolution :** exécution approuvée de Maven avec accès réseau, limitée au téléchargement des dépendances dans le cache du projet.
 - **Impact :** aucun artefact tiers n'est ajouté au dépôt Git ; seuls les caches locaux ignorés sont créés.
 
+#### Le démarrage Spring Boot hors ligne manque des dépendances du plugin
+
+- **Symptôme :** `mvn --offline spring-boot:run` échoue alors que la compilation et les tests fonctionnent déjà hors ligne.
+- **Cause :** certaines dépendances propres au plugin `spring-boot-maven-plugin` ne sont téléchargées qu'au premier lancement de l'application.
+- **Résolution :** premier lancement Maven avec accès réseau autorisé et dépôt local isolé, puis réutilisation du cache pour les lancements suivants.
+- **Impact :** aucun changement applicatif ; les dépendances restent dans le cache Maven ignoré par Git.
+
+#### PostgreSQL DLR s'arrête après un changement d'état de Docker Desktop
+
+- **Symptôme :** la vérification finale montre le conteneur DLR arrêté avec le code `255`, alors qu'il était sain pendant le test de bout en bout.
+- **Cause probable :** interruption du moteur Docker Desktop ; les journaux applicatifs et les données ne signalent pas de panne PostgreSQL.
+- **Résolution :** redémarrage ciblé avec `docker compose up -d postgres`, sans agir sur les autres conteneurs de la machine.
+- **Validation :** le même volume est remonté, le port `5434` est republié et le contrôle de santé PostgreSQL repasse à `healthy`.
+
 ### Validations
 
 - Backend : compilation Java 21 réussie.
@@ -105,3 +164,39 @@ Ce fichier conserve l'historique des modifications, décisions techniques, bugs 
 - Sécurité du quiz : test de non-exposition de la réponse correcte réussi.
 - Frontend : build Angular de production réussi.
 - Bundle frontend initial : 242,00 kB bruts, dont 7,35 kB chargés paresseusement pour le laboratoire.
+
+## 2026-08-29 — Tentatives et runner Java Docker
+
+### Modifications
+
+- Migration Flyway V2 : tables `submission` et `execution_result`.
+- API de création et reprise d'une tentative.
+- API de sauvegarde d'une soumission Java.
+- API de compilation et d'exécution d'une soumission.
+- Détection automatique du Docker CLI installé pour l'utilisateur.
+- Image `dlr/java-runner:21` basée sur Eclipse Temurin 21 JDK Alpine.
+- Isolation : aucun réseau, système racine en lecture seule, utilisateur 10001, capacités Linux supprimées, `no-new-privileges`, limites de mémoire, CPU et processus.
+- Limites applicatives : code source de 64 Kio, sorties de 64 Kio et timeout configurable.
+- Connexion de l'éditeur Angular aux API de tentative, soumission et exécution.
+
+### Décisions
+
+- Le runner reste synchrone pour la première tranche verticale ; une file locale viendra lorsque plusieurs exécutions concurrentes devront être prises en charge.
+- L'exécution Docker est effectuée hors transaction afin de ne pas conserver une connexion PostgreSQL pendant la compilation.
+- Les flux standard sont drainés même après leur limite d'affichage afin d'éviter un blocage du processus ; seul leur contenu conservé est tronqué.
+- Les tests Docker sont activés explicitement avec `DLR_RUN_DOCKER_TESTS=true`.
+
+### Validations
+
+- Image `dlr/java-runner:21` construite avec succès.
+- Programme Java valide compilé et exécuté dans le conteneur.
+- Erreur de compilation détectée avec le statut `COMPILATION_ERROR`.
+- Boucle infinie interrompue avec le statut `TIMEOUT`.
+- Migrations Flyway V1 et V2 appliquées avec succès en test.
+- Suite finale : 12 tests réussis, 0 échec, dont 3 tests Docker réels.
+- Build Angular de production réussi après connexion au runner.
+- Bundle Angular actuel : 246,96 kB initiaux et 11,44 kB chargés paresseusement pour le laboratoire.
+- Image vérifiée avec l'utilisateur non privilégié `10001:10001` ; aucun conteneur `dlr-java-*` abandonné.
+- PostgreSQL DLR démarré et sain sur le port hôte `5434`, sans modifier les conteneurs déjà présents sur les ports `5432`, `5433` et `8080`.
+- Parcours HTTP réel validé de bout en bout : santé de l'API, chargement de `JAVA-01`, création d'une tentative, sauvegarde d'une soumission, compilation et exécution Docker avec statut `SUCCESS` et sortie `DLR Java Lab 1`.
+- API temporaire de validation arrêtée proprement après le test ; PostgreSQL DLR reste disponible pour la suite du développement.

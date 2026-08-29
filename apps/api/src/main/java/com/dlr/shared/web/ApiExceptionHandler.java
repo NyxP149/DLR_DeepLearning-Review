@@ -31,5 +31,13 @@ public class ApiExceptionHandler {
                 .toList());
         return detail;
     }
-}
 
+    @ExceptionHandler(IllegalArgumentException.class)
+    ProblemDetail handleIllegalArgument(IllegalArgumentException exception) {
+        ProblemDetail detail = ProblemDetail.forStatusAndDetail(
+                HttpStatus.BAD_REQUEST, exception.getMessage());
+        detail.setTitle("INVALID_REQUEST");
+        detail.setType(URI.create("urn:dlr:error:invalid-request"));
+        return detail;
+    }
+}
