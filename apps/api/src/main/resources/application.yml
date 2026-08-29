@@ -25,7 +25,7 @@ dlr:
   ollama:
     url: ${DLR_OLLAMA_URL:http://localhost:11434}
     model: ${DLR_OLLAMA_MODEL:llama3.1:latest}
-    timeout-seconds: ${DLR_OLLAMA_TIMEOUT_SECONDS:120}
+    timeout-seconds: ${DLR_OLLAMA_TIMEOUT_SECONDS:180}
   execution:
     docker-cli: ${DLR_DOCKER_CLI:docker}
     java-image: ${DLR_JAVA_RUNNER_IMAGE:dlr/java-runner:21}

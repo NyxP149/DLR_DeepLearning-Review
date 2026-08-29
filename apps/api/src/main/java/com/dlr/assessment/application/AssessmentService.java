@@ -169,17 +169,17 @@ public class AssessmentService {
                 executionScore, quizScore, executionScore, connectionScore, selfAssessmentScore, SCORE_VERSION);
         Attempt completed = attemptService.complete(attemptId, calculated.score(), breakdown, lab.threshold());
 
-        boolean reviewScheduled = completed.status() == AttemptStatus.COMPLETED_BELOW_THRESHOLD;
-        if (reviewScheduled) {
-            Instant now = Instant.now(clock);
-            assessmentRepository.createReview(
-                    attemptId,
-                    lab.code(),
-                    now.plus(1, ChronoUnit.DAYS),
-                    "Score " + calculated.score() + " % sous le seuil recommandé de " + lab.threshold() + " %.",
-                    now);
-        }
-        return new CompletionResult(completed, breakdown, lab.threshold(), reviewScheduled);
+        Instant now = Instant.now(clock);
+        String reviewReason = completed.status() == AttemptStatus.COMPLETED_BELOW_THRESHOLD
+                ? "Score " + calculated.score() + " % sous le seuil recommandé de " + lab.threshold() + " %."
+                : "Consolider les concepts du laboratoire avec la répétition espacée.";
+        assessmentRepository.createReview(
+                attemptId,
+                lab.code(),
+                now.plus(1, ChronoUnit.DAYS),
+                reviewReason,
+                now);
+        return new CompletionResult(completed, breakdown, lab.threshold(), true);
     }
 
     private Attempt requireInProgress(UUID attemptId) {

@@ -342,7 +342,7 @@ Ce fichier conserve l'historique des modifications, décisions techniques, bugs 
 ### Décisions
 
 - `llama3.1:latest` est le modèle V1 par défaut sur cette installation : il suit correctement les consignes françaises sans exposer de raisonnement interne.
-- La génération est limitée à 160 tokens, 70 mots demandés et 120 secondes. Ces valeurs restent configurables.
+- La génération vise environ 120 mots, avec une marge de 220 tokens et 180 secondes. Cette limite protège les performances CPU locales sans forcer une explication artificiellement courte ; les valeurs restent configurables.
 - La sortie attendue privée des tests n'entre jamais dans le contexte des explications ou indices.
 
 ### Bugs et incidents
@@ -374,3 +374,40 @@ Ce fichier conserve l'historique des modifications, décisions techniques, bugs 
 - Suite rapide : 20 tests réussis, 0 échec ; 3 tests Docker conditionnels exclus de ce passage.
 - Build Angular réussi : espace laboratoire enrichi de 25,86 kB lazy-loaded.
 - Test Ollama réel via l'API DLR : modèle disponible, réponse française complète et interaction persistée localement.
+
+## 2026-08-29 — Concepts clés et consolidation systématique
+
+### Modifications
+
+- Endpoint de maîtrise regroupant les concepts des six laboratoires Java.
+- Calcul d'état entièrement déterministe : non commencé, à revoir, en consolidation ou maîtrisé.
+- Écran Concepts avec synthèse, progression, explications, erreurs fréquentes et preuves de maîtrise.
+- Le cycle J+1, J+3, J+7, J+14 et J+30 est maintenant planifié après toute tentative terminée, y compris au-dessus du seuil.
+- Réglage Ollama assoupli à environ 120 mots, 220 tokens et 180 secondes pour préserver la qualité tant que les performances restent acceptables.
+
+### Décisions
+
+- Un concept n'est marqué `MASTERED` qu'après un score au-dessus du seuil et la validation de l'étape J+30.
+- Le meilleur score terminé du laboratoire alimente l'état ; l'IA n'altère jamais cette mesure.
+- Les détails du concept restent accessibles avant toute tentative afin de soutenir l'apprentissage, sans exposer les réponses des quiz ou tests privés.
+
+### Bugs et incidents
+
+#### Maven utilise un dépôt local non accessible par défaut
+
+- **Symptôme :** `mvn test` tente d'écrire dans `C:\.m2\repository` et échoue avec `LocalRepositoryNotAccessibleException` ; aucun `mvnw.cmd` n'est présent dans le dépôt.
+- **Cause :** configuration Maven système distincte du profil utilisateur dans l'environnement d'exécution.
+- **Résolution :** exécution avec `-Dmaven.repo.local=C:\Users\sanyx\.m2\repository`.
+
+#### Le test de concepts dépend de l'état H2 partagé
+
+- **Symptôme :** le premier concept est `CONSOLIDATING` au lieu de `NOT_STARTED` lors de la suite complète.
+- **Cause :** la base H2 en mémoire utilise `DB_CLOSE_DELAY=-1` et conserve la tentative créée par un test d'intégration précédent.
+- **Résolution :** le contrat teste l'existence de l'état calculé sur le concept déjà manipulé et l'état initial sur un concept non manipulé.
+- **Prévention :** les assertions d'API ne supposent plus que l'ordre de la suite implique une base vide.
+
+### Validations
+
+- Suite backend : 21 tests exécutés, 0 échec ; 3 tests Docker conditionnels exclus de ce passage rapide.
+- Build Angular de production réussi ; écran Concepts chargé paresseusement dans un bundle de 7,33 kB.
+- Le contrat HTTP confirme la présence des six concepts, de leur état et de leurs preuves de maîtrise.

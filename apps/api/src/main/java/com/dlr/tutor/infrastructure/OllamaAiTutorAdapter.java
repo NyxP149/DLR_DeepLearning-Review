@@ -20,7 +20,7 @@ public class OllamaAiTutorAdapter implements AiTutorPort {
     public OllamaAiTutorAdapter(
             @Value("${dlr.ollama.url:http://localhost:11434}") String url,
             @Value("${dlr.ollama.model:llama3.1:latest}") String model,
-            @Value("${dlr.ollama.timeout-seconds:120}") int timeoutSeconds
+            @Value("${dlr.ollama.timeout-seconds:180}") int timeoutSeconds
     ) {
         HttpClient client = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(3)).build();
         JdkClientHttpRequestFactory factory = new JdkClientHttpRequestFactory(client);
@@ -52,7 +52,7 @@ public class OllamaAiTutorAdapter implements AiTutorPort {
                             List.of(new Message("system", systemPrompt), new Message("user", userPrompt)),
                             false,
                             false,
-                            new Options(0.3, 160)))
+                            new Options(0.3, 220)))
                     .retrieve()
                     .body(ChatResponse.class);
             if (response == null || response.message() == null || response.message().content().isBlank()) {

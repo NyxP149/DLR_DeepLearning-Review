@@ -17,6 +17,11 @@ export const routes: Routes = [
       import('./features/reviews/reviews.component').then((module) => module.ReviewsComponent)
   },
   {
+    path: 'concepts',
+    loadComponent: () =>
+      import('./features/concepts/concepts.component').then((module) => module.ConceptsComponent)
+  },
+  {
     path: 'labs/:code',
     loadComponent: () =>
       import('./features/lab-workspace/lab-workspace.component').then(

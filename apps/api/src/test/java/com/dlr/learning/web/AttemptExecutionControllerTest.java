@@ -119,7 +119,7 @@ class AttemptExecutionControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.attempt.status").value("COMPLETED"))
                 .andExpect(jsonPath("$.attempt.score").value(100))
-                .andExpect(jsonPath("$.reviewScheduled").value(false));
+                .andExpect(jsonPath("$.reviewScheduled").value(true));
     }
 
     @Test
