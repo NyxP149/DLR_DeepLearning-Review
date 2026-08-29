@@ -130,6 +130,46 @@
   border-color: color-mix(in srgb, var(--accent) 28%, var(--border));
 }
 
+.tutor-trigger,
+.hint-button {
+  background: transparent;
+  border: 1px solid color-mix(in srgb, var(--accent) 55%, var(--border));
+  border-radius: .6rem;
+  color: #b8d1ff;
+  cursor: pointer;
+  font: inherit;
+  font-size: .78rem;
+  font-weight: 700;
+  padding: .6rem .75rem;
+}
+
+.hint-button { margin-top: .7rem; }
+
+.tutor-heading {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+}
+
+.tutor-heading h2 { margin-bottom: 0; }
+
+.tutor-heading > span {
+  color: var(--text-muted);
+  font-size: .75rem;
+}
+
+.tutor-heading > span.online { color: var(--success); }
+
+.tutor-answer {
+  background: color-mix(in srgb, var(--accent-soft) 70%, var(--surface));
+  border-left: 3px solid var(--accent);
+  border-radius: 0 .7rem .7rem 0;
+  line-height: 1.65;
+  margin-top: 1rem;
+  padding: 1rem;
+  white-space: pre-wrap;
+}
+
 .mastery-question {
   background: color-mix(in srgb, var(--background) 75%, transparent);
   border-left: 3px solid var(--accent);

@@ -327,3 +327,50 @@ Ce fichier conserve l'historique des modifications, décisions techniques, bugs 
 - Test HTTP réel : profil et six laboratoires chargés, brouillon `IMPORT` JAVA-02 restauré à l'identique, checklist `true/false/true` restaurée.
 - Build Angular réussi : espace laboratoire 22,06 kB et écran Révisions 5,28 kB lazy-loaded.
 - API temporaire arrêtée proprement après validation.
+
+## 2026-08-29 — Professeur Ollama local
+
+### Modifications
+
+- Migration Flyway V7 pour l'historique local des interactions IA.
+- Port `AiTutorPort` et adaptateur Ollama remplaçable.
+- Endpoints de disponibilité, explication contextualisée et indices progressifs de niveau 1 à 3.
+- Empreinte SHA-256 du prompt conservée avec la réponse ; le prompt brut n'est pas écrit en base.
+- Interface de laboratoire indiquant le modèle, l'état connecté/dégradé, les explications et les indices.
+- Erreur stable `OLLAMA_UNAVAILABLE` en HTTP 503 sans désactiver le cours, le runner ni le score.
+
+### Décisions
+
+- `llama3.1:latest` est le modèle V1 par défaut sur cette installation : il suit correctement les consignes françaises sans exposer de raisonnement interne.
+- La génération est limitée à 160 tokens, 70 mots demandés et 120 secondes. Ces valeurs restent configurables.
+- La sortie attendue privée des tests n'entre jamais dans le contexte des explications ou indices.
+
+### Bugs et incidents
+
+#### La configuration Ollama manque dans le profil de test
+
+- **Symptôme :** le contexte Spring échoue avec `Could not resolve placeholder 'dlr.ollama.url'` dans les tests utilisant le YAML de test.
+- **Cause :** le fichier `src/test/resources/application.yml` remplace la section applicative principale.
+- **Résolution :** ajout d'une valeur locale par défaut directement dans l'injection de configuration de l'adaptateur.
+- **Prévention :** les services optionnels doivent toujours pouvoir être construits avec leurs valeurs locales sûres.
+
+#### Qwen3 bloque puis expose son raisonnement interne
+
+- **Symptôme :** plusieurs requêtes dépassent 45 puis 90 secondes ; le modèle reste à `100% CPU` et `Stopping...`. Après redémarrage, `think=false` et `/no_think` déplacent encore le raisonnement anglais dans `content`.
+- **Cause :** comportement du modèle `qwen3:4b` installé et accumulation de requêtes dans la file Ollama.
+- **Résolution :** redémarrage ciblé du seul serveur Ollama bloqué, génération bornée, puis sélection de `llama3.1:latest` comme défaut fiable.
+- **Impact :** aucun modèle ni donnée supprimé ; Qwen3 reste installable/sélectionnable manuellement.
+
+#### La première réponse llama3.1 est tronquée
+
+- **Symptôme :** la réponse française s'arrête au milieu de l'exemple avec une limite de 80 tokens.
+- **Résolution :** contrat à 70 mots maximum et marge de 160 tokens.
+- **Validation :** réponse finale de 68 mots, ponctuation finale, exemple et question de maîtrise en 42,97 secondes.
+
+### Validations
+
+- Flyway V1 à V7 validées sur H2 et V7 appliquée sur PostgreSQL 17.11.
+- Test de contrat du statut et de l'explication avec adaptateur simulé.
+- Suite rapide : 20 tests réussis, 0 échec ; 3 tests Docker conditionnels exclus de ce passage.
+- Build Angular réussi : espace laboratoire enrichi de 25,86 kB lazy-loaded.
+- Test Ollama réel via l'API DLR : modèle disponible, réponse française complète et interaction persistée localement.

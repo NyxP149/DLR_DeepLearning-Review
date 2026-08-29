@@ -56,6 +56,9 @@
                 <strong>Question de maîtrise</strong>
                 <p>{{ concept.masteryQuestion }}</p>
               </div>
+              <button class="tutor-trigger" type="button" [disabled]="tutorLoading()" (click)="explainConcept(concept.code)">
+                Demander une explication à Ollama
+              </button>
             </article>
           }
         </section>
@@ -88,6 +91,9 @@
                 </button>
                 <span id="runner-description">Runner Java isolé par Docker</span>
               </div>
+              <button class="hint-button" type="button" [disabled]="tutorLoading() || hintLevel() >= 3" (click)="requestHint()">
+                {{ hintLevel() === 0 ? 'Obtenir un indice' : 'Indice suivant (' + hintLevel() + '/3)' }}
+              </button>
               @if (execution(); as result) {
                 <section class="execution-result" [class.success]="result.status === 'SUCCESS'" aria-live="polite">
                   <div>
@@ -107,6 +113,14 @@
               }
             </article>
           }
+
+          <article class="panel tutor-panel">
+            <div class="tutor-heading"><div><p class="eyebrow">Professeur IA local</p><h2>{{ tutorModel() }}</h2></div><span [class.online]="tutorAvailable()">{{ tutorAvailable() ? 'Connecté' : 'Mode dégradé' }}</span></div>
+            @if (tutorLoading()) { <p aria-live="polite">Ollama prépare une réponse…</p> }
+            @if (tutorResponse(); as response) { <div class="tutor-answer" aria-live="polite">{{ response }}</div> }
+            @if (tutorError(); as message) { <p class="execution-error" role="alert">{{ message }}</p> }
+            @if (!tutorAvailable() && !tutorError()) { <p>Le cours, le runner et le score restent disponibles sans Ollama.</p> }
+          </article>
 
           <article class="panel assessment-panel">
             <p class="eyebrow">Validation des acquis</p>

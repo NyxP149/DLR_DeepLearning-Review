@@ -10,6 +10,7 @@ import {
   CompletionResult
 } from '../../core/api/execution-api.service';
 import { LabApiService } from '../../core/api/lab-api.service';
+import { TutorApiService } from '../../core/api/tutor-api.service';
 import { LabContent } from './lab.model';
 
 type LabViewState =
@@ -28,6 +29,7 @@ export class LabWorkspaceComponent {
   private readonly route = inject(ActivatedRoute);
   private readonly labApi = inject(LabApiService);
   private readonly executionApi = inject(ExecutionApiService);
+  private readonly tutorApi = inject(TutorApiService);
 
   readonly code = signal('');
   readonly running = signal(false);
@@ -40,9 +42,22 @@ export class LabWorkspaceComponent {
   readonly completionError = signal<string | null>(null);
   readonly sourceOrigin = signal<'EDITOR' | 'PASTE' | 'IMPORT'>('EDITOR');
   readonly resumed = signal(false);
+  readonly tutorAvailable = signal(false);
+  readonly tutorModel = signal('Ollama');
+  readonly tutorLoading = signal(false);
+  readonly tutorResponse = signal<string | null>(null);
+  readonly tutorError = signal<string | null>(null);
+  readonly hintLevel = signal(0);
 
   private attemptId: string | null = null;
   private activeLabCode = 'JAVA-01';
+
+  constructor() {
+    this.tutorApi.status().subscribe({
+      next: (status) => { this.tutorAvailable.set(status.available); this.tutorModel.set(status.selectedModel); },
+      error: () => this.tutorAvailable.set(false)
+    });
+  }
 
   readonly state$: Observable<LabViewState> = this.route.paramMap.pipe(
     map((params) => params.get('code') ?? 'JAVA-01'),
@@ -185,6 +200,31 @@ export class LabWorkspaceComponent {
       this.completionError.set(this.errorMessage(error));
     } finally {
       this.completing.set(false);
+    }
+  }
+
+  async explainConcept(conceptCode: string): Promise<void> {
+    await this.askTutor(() => firstValueFrom(this.tutorApi.explain(this.activeLabCode, conceptCode)));
+  }
+
+  async requestHint(): Promise<void> {
+    const level = Math.min(3, this.hintLevel() + 1);
+    this.hintLevel.set(level);
+    await this.askTutor(() => firstValueFrom(this.tutorApi.hint(this.activeLabCode, this.code(), level)));
+  }
+
+  private async askTutor(request: () => Promise<{ content: string }>): Promise<void> {
+    if (this.tutorLoading()) return;
+    this.tutorLoading.set(true);
+    this.tutorError.set(null);
+    try {
+      this.tutorResponse.set((await request()).content);
+      this.tutorAvailable.set(true);
+    } catch (error) {
+      this.tutorError.set(this.errorMessage(error));
+      this.tutorAvailable.set(false);
+    } finally {
+      this.tutorLoading.set(false);
     }
   }
 

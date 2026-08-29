@@ -7,6 +7,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import java.net.URI;
+import com.dlr.tutor.application.TutorUnavailableException;
 
 @RestControllerAdvice
 public class ApiExceptionHandler {
@@ -46,6 +47,14 @@ public class ApiExceptionHandler {
         ProblemDetail detail = ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, exception.getMessage());
         detail.setTitle("INVALID_ATTEMPT_STATE");
         detail.setType(URI.create("urn:dlr:error:invalid-attempt-state"));
+        return detail;
+    }
+
+    @ExceptionHandler(TutorUnavailableException.class)
+    ProblemDetail handleTutorUnavailable(TutorUnavailableException exception) {
+        ProblemDetail detail = ProblemDetail.forStatusAndDetail(HttpStatus.SERVICE_UNAVAILABLE, exception.getMessage());
+        detail.setTitle("OLLAMA_UNAVAILABLE");
+        detail.setType(URI.create("urn:dlr:error:ollama-unavailable"));
         return detail;
     }
 }
