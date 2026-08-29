@@ -14,6 +14,8 @@ import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
           <a routerLink="/labs/JAVA-01" routerLinkActive="active">Laboratoire</a>
           <a routerLink="/concepts" routerLinkActive="active">Concepts clés</a>
           <a routerLink="/reviews" routerLinkActive="active">Révisions</a>
+          <a routerLink="/planning" routerLinkActive="active">Planning</a>
+          <a routerLink="/settings" routerLinkActive="active">Paramètres</a>
         </nav>
         <p class="build-label">DLR V1 · Java 01–06</p>
       </aside>

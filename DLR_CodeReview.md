@@ -411,3 +411,44 @@ Ce fichier conserve l'historique des modifications, décisions techniques, bugs 
 - Suite backend : 21 tests exécutés, 0 échec ; 3 tests Docker conditionnels exclus de ce passage rapide.
 - Build Angular de production réussi ; écran Concepts chargé paresseusement dans un bundle de 7,33 kB.
 - Le contrat HTTP confirme la présence des six concepts, de leur état et de leurs preuves de maîtrise.
+
+## 2026-08-29 — Profil local et planning d'apprentissage
+
+### Modifications
+
+- Migration Flyway V8 ajoutant les séances d'étude réalisées.
+- API de lecture et modification du profil unique avec validation du rythme sur trois ou quatre mois.
+- Calendrier calculé sur 14 jours depuis les minutes disponibles en semaine et le week-end.
+- Enregistrement des minutes réelles, des séances reportées et d'une petite récompense facultative.
+- Écrans Planning et Paramètres, avec statut Ollama en lecture seule.
+- README actualisé avec l'état réel de la V1.
+
+### Décisions
+
+- Les séances futures sont calculées sans écriture ; seules les séances clôturées sont persistées.
+- Une durée quotidienne est bornée entre 15 et 240 minutes dans le profil, et un temps réel entre 0 et 480 minutes.
+- Zéro minute signifie une séance reportée, sans punition ni faux temps d'étude.
+- La modification du modèle Ollama reste une configuration locale par variable d'environnement pour la V1.
+
+### Bugs et incidents
+
+#### Spring ne choisit pas le constructeur du planificateur
+
+- **Symptôme :** tous les contextes de test échouent avec `No default constructor found`.
+- **Cause :** `PlanningService` expose un constructeur public et un constructeur secondaire destiné aux tests avec une horloge contrôlable.
+- **Résolution :** annotation explicite du constructeur d'injection principal avec `@Autowired`.
+
+#### Angular Forms absent du socle minimal
+
+- **Symptôme :** le build ne résout pas `@angular/forms` pour les deux nouveaux formulaires.
+- **Cause :** le paquet n'est volontairement pas installé dans le frontend minimal.
+- **Résolution :** champs contrôlés par leurs valeurs et événements DOM natifs, sans ajouter de dépendance.
+- **Impact :** bundles plus petits et aucune installation réseau supplémentaire.
+
+### Validations
+
+- Suite backend : 23 tests exécutés, 0 échec ; 3 tests Docker conditionnels exclus du passage rapide.
+- Build Angular réussi : Planning 8,07 kB et Paramètres 6,43 kB en chargement paresseux.
+- Flyway V8 appliquée avec succès sur PostgreSQL 17.11 réel dans Docker Desktop.
+- Test HTTP réel en lecture : profil local, 14 séances calculées, 1 140 minutes prévues et six concepts disponibles.
+- API temporaire arrêtée proprement après la validation.

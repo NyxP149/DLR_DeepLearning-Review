@@ -22,6 +22,16 @@ export const routes: Routes = [
       import('./features/concepts/concepts.component').then((module) => module.ConceptsComponent)
   },
   {
+    path: 'planning',
+    loadComponent: () =>
+      import('./features/planning/planning.component').then((module) => module.PlanningComponent)
+  },
+  {
+    path: 'settings',
+    loadComponent: () =>
+      import('./features/settings/settings.component').then((module) => module.SettingsComponent)
+  },
+  {
     path: 'labs/:code',
     loadComponent: () =>
       import('./features/lab-workspace/lab-workspace.component').then(

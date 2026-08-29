@@ -1,16 +1,17 @@
 # DLR — Deep Learning & Review
 
-DLR est une application locale d'apprentissage de la programmation. La V1 commence par une tranche verticale autour du laboratoire Java 1 avant d'étendre le parcours.
+DLR est une application locale d'apprentissage de la programmation, avec évaluation déterministe, exécution isolée et professeur Ollama optionnel.
 
 ## État actuel
 
-- monorepo initialisé ;
 - API Spring Boot Java 21 ;
-- squelette Angular standalone ;
-- PostgreSQL et Flyway préparés ;
+- application Angular standalone en thème sombre ;
+- persistance PostgreSQL versionnée par Flyway ;
 - six laboratoires Java fondamentaux versionnés ;
-- catalogue et vue du parcours Java 1 à 6 ;
-- exécution isolée, assertions de résultat et calcul déterministe du score ;
+- parcours, laboratoire, reprise de brouillon, quiz, checklist et import `.java` ;
+- exécution Docker isolée, assertions privées et score déterministe ;
+- tableau de bord, concepts clés, révisions espacées et planning ;
+- profil local modifiable et professeur Ollama en mode explication/indice ;
 - journal de développement dans `DLR_CodeReview.md`.
 
 ## Structure
@@ -73,4 +74,6 @@ Construire l'image isolée du runner Java :
 
 Le runner désactive le réseau, utilise un utilisateur non privilégié, un système de fichiers en lecture seule, des limites CPU/mémoire/processus et un timeout côté backend.
 
-Ollama sera branché dans une étape suivante.
+## Professeur local
+
+Ollama est optionnel : DLR reste utilisable si le serveur est arrêté. Le modèle V1 par défaut est `llama3.1:latest` et se configure avec `DLR_OLLAMA_MODEL`. Les prompts bruts ne sont pas persistés ; seules leur empreinte et la réponse locale le sont.
