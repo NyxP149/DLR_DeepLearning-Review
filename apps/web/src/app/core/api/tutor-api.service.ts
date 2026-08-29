@@ -15,4 +15,7 @@ export class TutorApiService {
   hint(labCode: string, sourceCode: string, level: number) {
     return this.http.post<TutorResponse>(`${this.url}/hint`, { labCode, sourceCode, level });
   }
+  reviewAnswer(labCode: string, questionCode: string, answer: string) {
+    return this.http.post<TutorResponse>(`${this.url}/review-answer`, { labCode, questionCode, answer });
+  }
 }

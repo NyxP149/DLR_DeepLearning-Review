@@ -9,6 +9,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -33,7 +34,10 @@ class LabControllerTest {
     void returnsAStableProblemForAnUnknownLab() throws Exception {
         mockMvc.perform(get("/api/labs/UNKNOWN"))
                 .andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.title").value("LAB_NOT_FOUND"));
+                .andExpect(header().exists("X-Correlation-ID"))
+                .andExpect(jsonPath("$.title").value("LAB_NOT_FOUND"))
+                .andExpect(jsonPath("$.correlationId").isNotEmpty())
+                .andExpect(jsonPath("$.suggestedAction").isNotEmpty());
     }
 
     @Test

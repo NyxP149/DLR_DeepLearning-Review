@@ -77,14 +77,12 @@
                   <input type="file" accept=".java,text/x-java-source" (change)="onFileSelected($event)" />
                 </label>
               </div>
-              <textarea
+              <dlr-code-editor
                 id="java-source"
-                class="code-editor"
-                spellcheck="false"
                 [value]="code()"
-                (input)="onCodeInput($event)"
+                (valueChange)="onCodeChange($event)"
                 aria-describedby="runner-description"
-              ></textarea>
+              />
               <div class="actions">
                 <button type="button" [disabled]="running()" (click)="runCode()">
                   {{ running() ? 'Exécution…' : 'Compiler et exécuter' }}
@@ -151,6 +149,12 @@
                       [value]="quizValues()[question.code]"
                       (input)="onQuizText(question.code, $event)"
                     ></textarea>
+                    <button
+                      class="tutor-trigger"
+                      type="button"
+                      [disabled]="tutorLoading()"
+                      (click)="reviewFreeText(question.code)"
+                    >Analyser ma réponse avec Ollama</button>
                   }
                 </fieldset>
               }

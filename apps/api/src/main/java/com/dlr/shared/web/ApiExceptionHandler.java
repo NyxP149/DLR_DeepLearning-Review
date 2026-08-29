@@ -5,6 +5,7 @@ import org.springframework.http.ProblemDetail;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import jakarta.servlet.http.HttpServletRequest;
 
 import java.net.URI;
 import com.dlr.tutor.application.TutorUnavailableException;
@@ -13,15 +14,15 @@ import com.dlr.tutor.application.TutorUnavailableException;
 public class ApiExceptionHandler {
 
     @ExceptionHandler(ResourceNotFoundException.class)
-    ProblemDetail handleNotFound(ResourceNotFoundException exception) {
+    ProblemDetail handleNotFound(ResourceNotFoundException exception, HttpServletRequest request) {
         ProblemDetail detail = ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, exception.getMessage());
         detail.setTitle(exception.code());
         detail.setType(URI.create("urn:dlr:error:" + exception.code().toLowerCase()));
-        return detail;
+        return enrich(detail, request, "Vérifie l'identifiant demandé puis recharge la ressource.");
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
-    ProblemDetail handleValidation(MethodArgumentNotValidException exception) {
+    ProblemDetail handleValidation(MethodArgumentNotValidException exception, HttpServletRequest request) {
         ProblemDetail detail = ProblemDetail.forStatusAndDetail(
                 HttpStatus.BAD_REQUEST,
                 "La requête contient des valeurs invalides.");
@@ -30,31 +31,38 @@ public class ApiExceptionHandler {
         detail.setProperty("errors", exception.getBindingResult().getFieldErrors().stream()
                 .map(error -> error.getField() + ": " + error.getDefaultMessage())
                 .toList());
-        return detail;
+        return enrich(detail, request, "Corrige les champs indiqués puis renvoie la requête.");
     }
 
     @ExceptionHandler(IllegalArgumentException.class)
-    ProblemDetail handleIllegalArgument(IllegalArgumentException exception) {
+    ProblemDetail handleIllegalArgument(IllegalArgumentException exception, HttpServletRequest request) {
         ProblemDetail detail = ProblemDetail.forStatusAndDetail(
                 HttpStatus.BAD_REQUEST, exception.getMessage());
         detail.setTitle("INVALID_REQUEST");
         detail.setType(URI.create("urn:dlr:error:invalid-request"));
-        return detail;
+        return enrich(detail, request, "Corrige les données envoyées puis réessaie.");
     }
 
     @ExceptionHandler(IllegalStateException.class)
-    ProblemDetail handleIllegalState(IllegalStateException exception) {
+    ProblemDetail handleIllegalState(IllegalStateException exception, HttpServletRequest request) {
         ProblemDetail detail = ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, exception.getMessage());
         detail.setTitle("INVALID_ATTEMPT_STATE");
         detail.setType(URI.create("urn:dlr:error:invalid-attempt-state"));
-        return detail;
+        return enrich(detail, request, "Recharge l'état courant du laboratoire avant de continuer.");
     }
 
     @ExceptionHandler(TutorUnavailableException.class)
-    ProblemDetail handleTutorUnavailable(TutorUnavailableException exception) {
+    ProblemDetail handleTutorUnavailable(TutorUnavailableException exception, HttpServletRequest request) {
         ProblemDetail detail = ProblemDetail.forStatusAndDetail(HttpStatus.SERVICE_UNAVAILABLE, exception.getMessage());
         detail.setTitle("OLLAMA_UNAVAILABLE");
         detail.setType(URI.create("urn:dlr:error:ollama-unavailable"));
+        return enrich(detail, request, "Démarre Ollama ou poursuis le laboratoire en mode dégradé.");
+    }
+
+    private ProblemDetail enrich(ProblemDetail detail, HttpServletRequest request, String suggestedAction) {
+        Object correlationId = request.getAttribute(CorrelationIdFilter.ATTRIBUTE);
+        detail.setProperty("correlationId", correlationId == null ? "unknown" : correlationId.toString());
+        detail.setProperty("suggestedAction", suggestedAction);
         return detail;
     }
 }

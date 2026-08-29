@@ -526,3 +526,60 @@ Ce fichier conserve l'historique des modifications, décisions techniques, bugs 
 - Trois tests unitaires couvrent la série courante, le record, le repos toléré et l'expiration.
 - Suite backend : 26 tests exécutés, 0 échec ; 3 tests Docker conditionnels exclus du passage rapide.
 - Build Angular réussi ; dashboard enrichi de 8,45 kB en chargement paresseux.
+
+## 2026-08-29 — Finition du laboratoire, erreurs et documentation API
+
+### Modifications
+
+- Ajout d'un identifiant de corrélation `X-Correlation-ID` sur chaque réponse HTTP, généré localement ou repris après validation stricte de l'en-tête entrant.
+- Enrichissement uniforme des erreurs `ProblemDetail` avec `correlationId` et une `suggestedAction` directement exploitable par l'interface.
+- Correction qualitative Ollama des réponses libres depuis le laboratoire, sans note et sans modification du score déterministe.
+- Les prompts de correction n'exposent ni mots-clés attendus, ni bonne réponse, ni sortie privée du runner.
+- Documentation OpenAPI 3.1 de 24 routes et interface Swagger locale.
+- Remplacement de la zone de code par Monaco Editor 0.56.0 avec coloration Java, recherche, pliage, raccourcis d'édition et worker local.
+- Chargement différé de Monaco pour conserver un bundle initial léger ; éditeur natif de repli sur mobile ou en cas d'échec de chargement.
+- Mise à jour du README avec les routes Swagger et les capacités du professeur local.
+
+### Décisions
+
+- Springdoc 2.8.17 est retenu conformément à sa matrice officielle de compatibilité avec Spring Boot 3.5.
+- Monaco est servi entièrement en local : aucun CDN et aucune dépendance réseau à l'exécution.
+- Le retour Ollama aide à reformuler et à raisonner mais ne devient jamais une source de vérité pour les points.
+- Le texte pédagogique reste complet ; les limites concernent uniquement les entrées envoyées à Ollama pour maîtriser temps de réponse et mémoire.
+
+### Bugs et incidents
+
+#### Le lanceur npm global pointe vers un module absent
+
+- **Symptôme :** `npm run build` recherche `npm-cli.js` dans le dossier npm utilisateur et échoue avant Angular.
+- **Cause :** le préfixe npm local de la machine masque le CLI livré avec Node.js.
+- **Résolution :** validation exécutée avec le chemin explicite du CLI npm installé dans `C:\Program Files\nodejs`; aucun fichier applicatif n'était en cause.
+
+#### Monaco complet exige une police non gérée par le builder
+
+- **Symptôme :** le build Angular échoue sur `codicon.ttf` après l'import de `features/register.all`.
+- **Cause :** l'import global enregistre aussi des fonctions inutiles et leur police d'icônes, pour laquelle aucun loader TTF n'est configuré.
+- **Résolution :** enregistrement explicite des seules fonctions utiles à l'apprentissage Java ; le build réussit et le code reste coloré dans l'éditeur.
+
+#### La version DOMPurify transitive de Monaco est signalée par l'audit
+
+- **Symptôme :** npm rapporte une vulnérabilité modérée et une faible dans la dépendance DOMPurify épinglée par Monaco.
+- **Résolution :** remplacement npm global par DOMPurify 3.4.13, première version corrigée selon l'avis GitHub ; audit ramené à zéro vulnérabilité.
+
+#### Ollama invente une restriction sur le bytecode
+
+- **Symptôme :** le premier test réel affirme à tort que le bytecode doit être généré pour une plateforme cible, alors que la réponse de l'apprenant décrit correctement sa portabilité.
+- **Cause :** la question et les objectifs seuls ne fournissent pas une base factuelle assez contraignante au modèle génératif.
+- **Résolution :** injection des sections et concepts publics du laboratoire comme références fiables, interdiction d'inventer un fait absent, obligation d'annoncer les critères et de ne pas fabriquer une erreur lorsque la réponse est exacte.
+- **Validation :** le second passage reconnaît le compilateur, la JVM et la portabilité, propose une reformulation cohérente et conserve le caractère strictement qualitatif de la correction.
+
+### Validations
+
+- Suite backend finale : 27 tests exécutés, 0 échec, 0 ignoré, dont les 3 tests Docker réels.
+- Build Angular de production réussi ; bundle initial 266,90 kB brut malgré Monaco chargé à la demande.
+- Contrôle navigateur réel : Monaco est monté, colorise Java et expose une zone d'édition accessible dans le laboratoire.
+- OpenAPI 3.1 réel : titre `DLR API`, 24 routes et Swagger UI opérationnel sur `/swagger-ui.html`.
+- Erreur HTTP réelle : statut 404, identifiant `dlr-smoke-001` propagé dans l'en-tête et le corps, action suggérée présente.
+- PostgreSQL 17.11 réel à jour sur Flyway V8 et Ollama `llama3.1:latest` détecté localement.
+- Deux appels réels de correction Ollama effectués ; l'incident factuel initial a été reproduit, corrigé puis revalidé.
+- Audit npm final : 0 vulnérabilité.

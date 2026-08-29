@@ -13,6 +13,7 @@ import { LabApiService } from '../../core/api/lab-api.service';
 import { TutorApiService } from '../../core/api/tutor-api.service';
 import { DraftStoreService } from '../../core/storage/draft-store.service';
 import { LabContent } from './lab.model';
+import { CodeEditorComponent } from '../../shared/code-editor/code-editor.component';
 
 type LabViewState =
   | { status: 'loading' }
@@ -21,7 +22,7 @@ type LabViewState =
 
 @Component({
   selector: 'dlr-lab-workspace',
-  imports: [AsyncPipe],
+  imports: [AsyncPipe, CodeEditorComponent],
   templateUrl: './lab-workspace.component.html',
   styleUrl: './lab-workspace.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -104,8 +105,8 @@ export class LabWorkspaceComponent {
     )
   );
 
-  onCodeInput(event: Event): void {
-    this.code.set((event.target as HTMLTextAreaElement).value);
+  onCodeChange(value: string): void {
+    this.code.set(value);
     this.sourceOrigin.set('EDITOR');
     this.scheduleDraft();
   }
@@ -221,6 +222,15 @@ export class LabWorkspaceComponent {
     const level = Math.min(3, this.hintLevel() + 1);
     this.hintLevel.set(level);
     await this.askTutor(() => firstValueFrom(this.tutorApi.hint(this.activeLabCode, this.code(), level)));
+  }
+
+  async reviewFreeText(questionCode: string): Promise<void> {
+    const answer = this.quizValues()[questionCode];
+    if (typeof answer !== 'string' || answer.trim().length === 0) {
+      this.tutorError.set('Rédige d’abord une réponse avant de demander une correction.');
+      return;
+    }
+    await this.askTutor(() => firstValueFrom(this.tutorApi.reviewAnswer(this.activeLabCode, questionCode, answer)));
   }
 
   private async askTutor(request: () => Promise<{ content: string }>): Promise<void> {

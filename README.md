@@ -8,10 +8,10 @@ DLR est une application locale d'apprentissage de la programmation, avec évalua
 - application Angular standalone en thème sombre ;
 - persistance PostgreSQL versionnée par Flyway ;
 - six laboratoires Java fondamentaux versionnés ;
-- parcours, laboratoire, reprise de brouillon, quiz, checklist et import `.java` ;
+- parcours, laboratoire, éditeur Monaco, reprise de brouillon, quiz, checklist et import `.java` ;
 - exécution Docker isolée, assertions privées et score déterministe ;
 - tableau de bord, concepts clés, révisions espacées et planning ;
-- profil local modifiable et professeur Ollama en mode explication/indice ;
+- profil local modifiable et professeur Ollama en mode explication, indice et correction qualitative ;
 - PWA installable avec cache du shell et brouillons locaux IndexedDB ;
 - journal de développement dans `DLR_CodeReview.md`.
 
@@ -43,6 +43,7 @@ mvn spring-boot:run
 ```
 
 L'API est ensuite disponible sur `http://localhost:8081/api`.
+Sa spécification OpenAPI est exposée sur `http://localhost:8081/api-docs` et l'interface Swagger sur `http://localhost:8081/swagger-ui.html`.
 
 ## Tests backend
 

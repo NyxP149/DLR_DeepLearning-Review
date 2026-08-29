@@ -12,6 +12,7 @@ import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.HexFormat;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 public class TutorService {
@@ -79,6 +80,42 @@ public class TutorService {
                 Niveau d'indice : %d. %s
                 """.formatted(lab.title(), lab.exercises().getFirst().statement(), safeCode, level, instruction);
         return respond("HINT_" + level, prompt);
+    }
+
+    public TutorResponse reviewAnswer(String labCode, String questionCode, String answer) {
+        LabContent lab = lab(labCode);
+        LabContent.QuizQuestion question = lab.quiz().stream()
+                .filter(item -> item.code().equals(questionCode) && "FREE_TEXT".equals(item.type()))
+                .findFirst()
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "QUIZ_QUESTION_NOT_FOUND", "Question libre introuvable : " + questionCode));
+        String safeAnswer = answer.strip().substring(0, Math.min(answer.strip().length(), 4_000));
+        String trustedReferences = lab.sections().stream()
+                .map(section -> section.title() + " : " + section.content())
+                .collect(Collectors.joining("\n"));
+        String conceptReferences = lab.keyConcepts().stream()
+                .map(concept -> concept.name() + " : " + concept.definition() + " " + concept.whyExists())
+                .collect(Collectors.joining("\n"));
+        String prompt = """
+                Laboratoire : %s
+                Objectifs : %s
+                Question ouverte : %s
+                Références pédagogiques fiables :
+                %s
+                %s
+
+                Réponse de l'apprenant :
+                %s
+
+                Fais une correction exclusivement qualitative, sans note et sans modifier le score.
+                Utilise uniquement les références pédagogiques ci-dessus pour établir les faits ; n'invente aucun prérequis ni aucune restriction.
+                Commence par « Critères utilisés : » et cite brièvement les idées publiques attendues, sans révéler de barème caché.
+                Identifie d'abord les idées justes, puis une imprécision ou un manque important.
+                Si la réponse est déjà exacte au regard des références, dis-le clairement sans fabriquer d'erreur.
+                Propose enfin une reformulation courte et termine par une question de réflexion.
+                """.formatted(lab.title(), String.join(" ; ", lab.objectives()), question.prompt(),
+                trustedReferences, conceptReferences, safeAnswer);
+        return respond("FREE_TEXT_REVIEW", prompt);
     }
 
     private TutorResponse respond(String purpose, String prompt) {

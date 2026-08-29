@@ -19,6 +19,14 @@ management:
       exposure:
         include: health,info
 
+springdoc:
+  api-docs:
+    path: /api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    operations-sorter: method
+    tags-sorter: alpha
+
 dlr:
   content:
     root: classpath:content

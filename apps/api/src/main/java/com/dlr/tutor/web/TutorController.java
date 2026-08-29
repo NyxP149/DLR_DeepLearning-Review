@@ -38,6 +38,11 @@ public class TutorController {
         return tutorService.hint(request.labCode(), request.sourceCode(), request.level());
     }
 
+    @PostMapping("/review-answer")
+    public TutorService.TutorResponse reviewAnswer(@Valid @RequestBody ReviewAnswerRequest request) {
+        return tutorService.reviewAnswer(request.labCode(), request.questionCode(), request.answer());
+    }
+
     public record ExplainRequest(
             @NotBlank String labCode,
             @NotBlank String conceptCode,
@@ -48,5 +53,11 @@ public class TutorController {
             @NotBlank String labCode,
             @Size(max = 65_536) String sourceCode,
             @Min(1) @Max(3) int level
+    ) {}
+
+    public record ReviewAnswerRequest(
+            @NotBlank String labCode,
+            @NotBlank String questionCode,
+            @NotBlank @Size(max = 4_000) String answer
     ) {}
 }
