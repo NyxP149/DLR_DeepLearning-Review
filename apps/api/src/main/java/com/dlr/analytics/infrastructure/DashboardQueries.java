@@ -33,6 +33,12 @@ public class DashboardQueries {
         return count == null ? 0 : count;
     }
 
+    public List<String> completedLabCodes() {
+        return jdbcTemplate.queryForList(
+                "select distinct lab_id from attempt where status in ('COMPLETED', 'COMPLETED_BELOW_THRESHOLD')",
+                String.class);
+    }
+
     public int inProgressAttempts() {
         Integer count = jdbcTemplate.queryForObject(
                 "select count(*) from attempt where status = 'IN_PROGRESS'", Integer.class);

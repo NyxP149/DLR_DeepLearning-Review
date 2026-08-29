@@ -9,3 +9,8 @@ bootstrapApplication(AppComponent, {
   providers: [provideHttpClient(), provideRouter(routes)]
 }).catch((error: unknown) => console.error(error));
 
+if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').catch((error: unknown) => console.warn('Service worker DLR indisponible', error));
+  });
+}

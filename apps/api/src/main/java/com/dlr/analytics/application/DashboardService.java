@@ -23,8 +23,9 @@ public class DashboardService {
         int completed = Math.min(queries.completedLabs(), totalLabs);
         int xp = completed * 100;
         int level = xp / 500 + 1;
+        var completedLabCodes = queries.completedLabCodes();
         String nextLab = catalog.findAll().stream()
-                .skip(completed)
+                .filter(lab -> !completedLabCodes.contains(lab.code()))
                 .findFirst()
                 .map(lab -> lab.code())
                 .orElse(null);

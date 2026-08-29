@@ -11,6 +11,7 @@ import {
 } from '../../core/api/execution-api.service';
 import { LabApiService } from '../../core/api/lab-api.service';
 import { TutorApiService } from '../../core/api/tutor-api.service';
+import { DraftStoreService } from '../../core/storage/draft-store.service';
 import { LabContent } from './lab.model';
 
 type LabViewState =
@@ -30,6 +31,7 @@ export class LabWorkspaceComponent {
   private readonly labApi = inject(LabApiService);
   private readonly executionApi = inject(ExecutionApiService);
   private readonly tutorApi = inject(TutorApiService);
+  private readonly drafts = inject(DraftStoreService);
 
   readonly code = signal('');
   readonly running = signal(false);
@@ -51,6 +53,7 @@ export class LabWorkspaceComponent {
 
   private attemptId: string | null = null;
   private activeLabCode = 'JAVA-01';
+  private draftTimer: ReturnType<typeof setTimeout> | null = null;
 
   constructor() {
     this.tutorApi.status().subscribe({
@@ -81,6 +84,11 @@ export class LabWorkspaceComponent {
           this.code.set(workspace?.sourceCode ?? lab.exercises[0]?.starterCode ?? '');
           this.sourceOrigin.set(workspace?.sourceOrigin ?? 'EDITOR');
           this.resumed.set(workspace !== null);
+          if (workspace === null) {
+            void this.restoreLocalDraft(lab.code);
+          } else {
+            void this.drafts.remove(lab.code);
+          }
         }),
           map(() => lab)
         )),
@@ -99,6 +107,7 @@ export class LabWorkspaceComponent {
   onCodeInput(event: Event): void {
     this.code.set((event.target as HTMLTextAreaElement).value);
     this.sourceOrigin.set('EDITOR');
+    this.scheduleDraft();
   }
 
   async onFileSelected(event: Event): Promise<void> {
@@ -117,6 +126,7 @@ export class LabWorkspaceComponent {
     this.code.set(await file.text());
     this.sourceOrigin.set('IMPORT');
     this.executionError.set(null);
+    this.scheduleDraft();
   }
 
   async runCode(): Promise<void> {
@@ -234,6 +244,22 @@ export class LabWorkspaceComponent {
       this.attemptId = attempt.id;
     }
     return this.attemptId;
+  }
+
+  private scheduleDraft(): void {
+    if (this.draftTimer !== null) clearTimeout(this.draftTimer);
+    this.draftTimer = setTimeout(() => {
+      this.draftTimer = null;
+      void this.drafts.save(this.activeLabCode, this.code());
+    }, 400);
+  }
+
+  private async restoreLocalDraft(labCode: string): Promise<void> {
+    const sourceCode = await this.drafts.load(labCode);
+    if (sourceCode !== null && this.activeLabCode === labCode && this.attemptId === null) {
+      this.code.set(sourceCode);
+      this.resumed.set(true);
+    }
   }
 
   private errorMessage(error: unknown): string {

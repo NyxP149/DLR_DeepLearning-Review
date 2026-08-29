@@ -42,15 +42,16 @@ import { LabApiService } from '../../core/api/lab-api.service';
     .page-header p { color: var(--accent); font-size: .78rem; font-weight: 750; letter-spacing: .09em; text-transform: uppercase; }
     .page-header h1 { font-size: clamp(2rem, 4vw, 3rem); margin: .25rem 0; }
     .page-header span, .lab-card p, .lab-card small { color: var(--text-muted); }
-    .path-grid { display: grid; gap: .85rem; }
-    .lab-card { align-items: center; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); color: var(--text); display: grid; gap: 1rem; grid-template-columns: auto 1fr auto; padding: 1rem; text-decoration: none; transition: border-color .2s, transform .2s; }
+    .path-grid { display: grid; gap: .7rem; grid-template-columns: repeat(6,minmax(0,1fr)); }
+    .lab-card { align-content: start; background: var(--surface); border: 1px solid var(--border); border-radius: .75rem; color: var(--text); display: grid; gap: .7rem; min-height: 9.5rem; padding: .85rem; text-decoration: none; transition: border-color .2s, transform .2s; }
     .lab-card:hover, .lab-card:focus-visible { border-color: var(--accent); transform: translateY(-2px); }
-    .number { align-items: center; background: var(--accent-soft); border-radius: .8rem; color: #a9c8ff; display: flex; font-size: 1.1rem; font-weight: 800; height: 3rem; justify-content: center; width: 3rem; }
+    .number { align-items: center; background: var(--accent-soft); border-radius: .65rem; color: #b9b0ff; display: flex; font-size: 1rem; font-weight: 800; height: 2.5rem; justify-content: center; width: 2.5rem; }
     .lab-card h2 { font-size: 1rem; margin: .2rem 0 .35rem; }
     .lab-card p { font-size: .72rem; margin: 0; }
-    .arrow { color: var(--accent); font-size: 1.4rem; }
+    .arrow { align-self:end;color:var(--success);font-size:1.2rem;justify-self:end; }
     .state { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem; }
     .error { color: var(--danger); }
+    @media(max-width:1050px){.path-grid{grid-template-columns:repeat(3,1fr)}}@media(max-width:620px){.path-grid{grid-template-columns:repeat(2,1fr)}}
     @media (prefers-reduced-motion: reduce) { .lab-card { transition: none; } }
   `],
   changeDetection: ChangeDetectionStrategy.OnPush

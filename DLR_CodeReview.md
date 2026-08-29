@@ -452,3 +452,55 @@ Ce fichier conserve l'historique des modifications, décisions techniques, bugs 
 - Flyway V8 appliquée avec succès sur PostgreSQL 17.11 réel dans Docker Desktop.
 - Test HTTP réel en lecture : profil local, 14 séances calculées, 1 140 minutes prévues et six concepts disponibles.
 - API temporaire arrêtée proprement après la validation.
+
+## 2026-08-29 — Alignement UI, PWA et sauvegarde locale
+
+### Modifications
+
+- `DLR_UI_Mockup.html` devient la référence visuelle explicite de l'implémentation Angular.
+- Shell rapproché du mockup : barre supérieure, logo violet/menthe, sidebar compacte, panneaux bleu nuit et accent violet.
+- Parcours Java transformé en carte de six nœuds responsive.
+- Progression de la sidebar, objectif quotidien, nom et initiales chargés depuis le vrai profil.
+- Correction du prochain laboratoire : premier code non terminé, sans supposer que les laboratoires sont réalisés dans l'ordre.
+- Manifeste PWA, icônes vectorielles, service worker et cache du shell.
+- Brouillons de code IndexedDB avec repli `localStorage` et écriture différée de 400 ms.
+- Scripts PowerShell de sauvegarde et restauration PostgreSQL au format custom.
+
+### Décisions
+
+- Le mockup guide la hiérarchie, les couleurs, les espacements et les comportements responsive ; les données fictives du mockup ne remplacent jamais les données réelles de l'API.
+- Le service worker ne met pas en cache les appels vers l'API sur le port 8081 ; les données métier restent sous l'autorité de PostgreSQL.
+- Les brouillons locaux complètent la reprise backend en cas de coupure avant la première soumission, puis sont supprimés lorsqu'un workspace persistant existe.
+- La restauration exige `-Force` et utilise une transaction unique avec nettoyage contrôlé des objets PostgreSQL.
+
+### Bugs et incidents
+
+#### Deux accolades CSS restent après la refonte du shell
+
+- **Symptôme :** Angular produit le bundle mais signale deux avertissements `Unexpected "}"`.
+- **Résolution :** suppression des accolades isolées et reconstruction sans avertissement de syntaxe CSS.
+
+#### L'origine locale 127.0.0.1 est refusée par CORS
+
+- **Symptôme :** le navigateur affiche correctement le shell mais le dashboard indique `API indisponible`.
+- **Cause :** seul `http://localhost:4200` était autorisé, alors que le serveur de validation utilisait `http://127.0.0.1:4200`.
+- **Résolution :** autorisation explicite des deux origines locales, sans joker réseau.
+
+#### Un patch partiel du dashboard duplique une méthode
+
+- **Symptôme :** l'ajout de `completedLabCodes()` est appliqué avant l'échec d'un second fragment devenu obsolète, laissant deux déclarations identiques.
+- **Résolution :** inspection immédiate du fichier, suppression du doublon et application séparée des modifications frontend.
+
+#### Les apostrophes typographiques cassent les scripts PowerShell
+
+- **Symptôme :** le parseur s'arrête sur le message `n’est pas démarré` avant toute opération Docker.
+- **Résolution :** utilisation de chaînes doubles pour ces messages ; aucune sauvegarde ou restauration n'avait été lancée avant la correction.
+
+### Validations
+
+- Contrôle visuel réel du dashboard et du parcours dans le navigateur intégré, en bureau et en viewport mobile 390 × 844.
+- Manifeste et service worker servis en HTTP 200 ; manifeste, icônes et worker présents dans le build de production.
+- Suite backend : 23 tests exécutés, 0 échec ; 3 tests Docker conditionnels exclus du passage rapide.
+- Build Angular réussi sans erreur CSS ; bundle initial 266,45 kB brut.
+- Sauvegarde réelle créée : archive custom PostgreSQL 17.11 de 26 326 octets et 64 entrées vérifiées par `pg_restore -l`.
+- Garde-fou de restauration validé sans modification de la base ; les serveurs temporaires ont été arrêtés proprement.

@@ -12,6 +12,7 @@ DLR est une application locale d'apprentissage de la programmation, avec évalua
 - exécution Docker isolée, assertions privées et score déterministe ;
 - tableau de bord, concepts clés, révisions espacées et planning ;
 - profil local modifiable et professeur Ollama en mode explication/indice ;
+- PWA installable avec cache du shell et brouillons locaux IndexedDB ;
 - journal de développement dans `DLR_CodeReview.md`.
 
 ## Structure
@@ -73,6 +74,20 @@ Construire l'image isolée du runner Java :
 ```
 
 Le runner désactive le réseau, utilise un utilisateur non privilégié, un système de fichiers en lecture seule, des limites CPU/mémoire/processus et un timeout côté backend.
+
+## Sauvegarde locale
+
+Créer une sauvegarde PostgreSQL binaire dans le dossier ignoré `backups/` :
+
+```powershell
+.\infrastructure\scripts\backup-database.ps1
+```
+
+Restaurer explicitement une sauvegarde (cette opération remplace les données actuelles) :
+
+```powershell
+.\infrastructure\scripts\restore-database.ps1 -BackupFile .\backups\dlr-AAAAMMJJ-HHMMSS.dump -Force
+```
 
 ## Professeur local
 
