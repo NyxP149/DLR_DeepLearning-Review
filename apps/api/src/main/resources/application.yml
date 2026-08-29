@@ -28,6 +28,8 @@ springdoc:
     tags-sorter: alpha
 
 dlr:
+  web:
+    allowed-origins: ${DLR_ALLOWED_ORIGINS:http://localhost:4200,http://127.0.0.1:4200}
   content:
     root: classpath:content
   ollama:
@@ -38,3 +40,5 @@ dlr:
     docker-cli: ${DLR_DOCKER_CLI:docker}
     java-image: ${DLR_JAVA_RUNNER_IMAGE:dlr/java-runner:21}
     timeout-seconds: ${DLR_RUNNER_TIMEOUT_SECONDS:10}
+  sync:
+    pairing-code: ${DLR_SYNC_PAIRING_CODE:}

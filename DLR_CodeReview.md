@@ -583,3 +583,42 @@ Ce fichier conserve l'historique des modifications, décisions techniques, bugs 
 - PostgreSQL 17.11 réel à jour sur Flyway V8 et Ollama `llama3.1:latest` détecté localement.
 - Deux appels réels de correction Ollama effectués ; l'incident factuel initial a été reproduit, corrigé puis revalidé.
 - Audit npm final : 0 vulnérabilité.
+
+## 2026-08-29 — V2.1 : appairage et journal de synchronisation
+
+### Modifications
+
+- Migration Flyway V9 pour les appareils, changements synchronisés et conflits.
+- Appairage explicite avec jeton aléatoire de 256 bits ; seule son empreinte SHA-256 est persistée.
+- Appairage sans code limité aux adresses loopback ; code `DLR_SYNC_PAIRING_CODE` obligatoire pour un appareil distant.
+- Envoi idempotent par UUID d’opération, version d’entité et horloge logique monotone.
+- Conservation des deux variantes lorsqu’une même version reçoit deux contenus différents.
+- Lecture incrémentale par curseur, liste des conflits et révocation immédiate d’un appareil.
+- Écran Paramètres V2 pour choisir le serveur, appairer le navigateur, afficher les appareils et les révoquer.
+- Origines CORS configurables par liste exacte avec `DLR_ALLOWED_ORIGINS`, sans joker réseau.
+
+### Décisions
+
+- Le journal de synchronisation est indépendant du fournisseur cloud, décision explicitement reportée dans la conception.
+- Les charges sont limitées à 128 Kio et 50 opérations par requête pour protéger le compagnon local.
+- Les types synchronisables sont une liste fermée ; Ollama, Docker, images et modèles ne passent jamais dans ce canal.
+- Un jeton révoqué devient immédiatement inutilisable et n’est jamais renvoyé par l’API après l’appairage initial.
+
+### Bugs et incidents
+
+#### Le fixture JSON perd son type `ObjectNode`
+
+- **Symptôme :** le test ne compile pas après un appel générique `set`, puis l’enchaînement de `put`.
+- **Résolution :** construction explicite du changement et de la requête en variables typées ; aucun code applicatif n’était affecté.
+
+#### Spring ne choisit pas le constructeur du service de synchronisation
+
+- **Symptôme :** le contexte échoue avec `No default constructor found`.
+- **Cause :** présence d’un constructeur public d’injection et d’un constructeur secondaire à horloge contrôlable.
+- **Résolution :** annotation `@Autowired` explicite du constructeur de production.
+
+### Validations
+
+- Deux tests d’intégration réussis couvrent appairage local, refus distant sans code, authentification, doublon, conflit, curseur, lecture et révocation.
+- Les neuf migrations Flyway sont appliquées avec succès sur H2 en mode PostgreSQL.
+- Build Angular réussi ; bundle initial stable à 266,91 kB brut.

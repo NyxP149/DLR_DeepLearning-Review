@@ -14,6 +14,7 @@ DLR est une application locale d'apprentissage de la programmation, avec évalua
 - profil local modifiable et professeur Ollama en mode explication, indice et correction qualitative ;
 - PWA installable avec cache du shell et brouillons locaux IndexedDB ;
 - journal de développement dans `DLR_CodeReview.md`.
+- synchronisation V2 par appareils appairés, journal idempotent et conflits sans perte.
 
 ## Structure
 
@@ -93,3 +94,14 @@ Restaurer explicitement une sauvegarde (cette opération remplace les données a
 ## Professeur local
 
 Ollama est optionnel : DLR reste utilisable si le serveur est arrêté. Le modèle V1 par défaut est `llama3.1:latest` et se configure avec `DLR_OLLAMA_MODEL`. Les prompts bruts ne sont pas persistés ; seules leur empreinte et la réponse locale le sont.
+
+## Synchronisation V2
+
+Le PC principal peut appairer son navigateur sans code depuis l’écran Paramètres. Pour autoriser un autre appareil, définis un code privé et les origines frontend exactes avant de démarrer l’API :
+
+```powershell
+$env:DLR_SYNC_PAIRING_CODE="un-code-long-et-prive"
+$env:DLR_ALLOWED_ORIGINS="http://localhost:4200,http://192.168.1.20:4200"
+```
+
+Chaque appareil reçoit un jeton affiché une seule fois et stocké uniquement dans son navigateur. Les envois sont idempotents ; deux modifications concurrentes d’une même version sont conservées comme variantes conflictuelles.

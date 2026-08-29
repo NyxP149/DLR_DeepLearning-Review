@@ -3,6 +3,7 @@ import { firstValueFrom } from 'rxjs';
 
 import { Profile, ProfileApiService } from '../../core/api/profile-api.service';
 import { TutorApiService, TutorStatus } from '../../core/api/tutor-api.service';
+import { SyncApiService, SyncDevice } from '../../core/api/sync-api.service';
 
 @Component({
   selector: 'dlr-settings',
@@ -30,20 +31,46 @@ import { TutorApiService, TutorStatus } from '../../core/api/tutor-api.service';
           <small>Le modèle se configure dans <code>.env</code>. Les échanges restent sur cette machine.</small>
         } @else { <p class="muted">Statut Ollama indisponible. Le reste de DLR continue de fonctionner.</p> }
       </section>
+      <section class="sync-panel">
+        <div class="section-heading"><div><p>Synchronisation personnelle</p><h2>Appareils V2</h2></div><span [class.online]="paired()">{{ paired() ? 'Appairé' : 'Local uniquement' }}</span></div>
+        <div class="pairing-form">
+          <label>Serveur DLR <input [value]="syncServer" (input)="syncServer = inputValue($event)" placeholder="http://localhost:8081"></label>
+          <label>Nom de cet appareil <input [value]="deviceName" (input)="deviceName = inputValue($event)" maxlength="80"></label>
+          <label>Code d’appairage <input type="password" [value]="pairingCode" (input)="pairingCode = inputValue($event)" autocomplete="one-time-code" placeholder="Optionnel sur le PC principal"></label>
+          <button type="button" [disabled]="syncBusy() || paired()" (click)="pairDevice()">{{ syncBusy() ? 'Appairage…' : 'Appairer cet appareil' }}</button>
+        </div>
+        <small>Le jeton est conservé uniquement dans ce navigateur. Sans code configuré côté serveur, l’appairage est limité au PC principal.</small>
+        @if (syncMessage()) { <p class="sync-message" aria-live="polite">{{ syncMessage() }}</p> }
+        @if (devices().length) {
+          <div class="device-list">
+            @for (device of devices(); track device.id) {
+              <div><span><strong>{{ device.name }}</strong><small>Dernière activité : {{ device.lastSeenAt }}</small></span><button type="button" class="danger" (click)="revokeDevice(device.id)">Révoquer</button></div>
+            }
+          </div>
+        }
+      </section>
     </div>
   `,
   styles: [`
-    :host{display:block}header{margin-bottom:1.5rem}header p{color:var(--accent);font-size:.78rem;font-weight:750;letter-spacing:.09em;text-transform:uppercase}header h1{font-size:clamp(2rem,4vw,3rem);margin:.2rem 0}header span,label,small,.muted,dt{color:var(--text-muted)}.grid{display:grid;gap:1rem;grid-template-columns:1fr 1fr}.grid>form,.grid>section{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:1.2rem}h2{font-size:1.1rem;margin:0 0 1rem}form{display:grid;gap:.85rem}label{display:grid;font-size:.78rem;gap:.3rem}input,select{background:var(--background);border:1px solid var(--border);border-radius:.55rem;color:var(--text);font:inherit;padding:.65rem}button{background:var(--accent);border:0;border-radius:.55rem;color:white;cursor:pointer;font:inherit;font-weight:750;padding:.7rem}.saved{color:var(--success);font-size:.78rem}.ollama{align-items:center;display:flex;font-weight:750;gap:.5rem}.ollama span{background:var(--danger);border-radius:50%;height:.7rem;width:.7rem}.ollama span.online{background:var(--success)}dl div{border-top:1px solid var(--border);display:grid;gap:.25rem;padding:.8rem 0}dt{font-size:.72rem}dd{margin:0}.state{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:1rem}.error{color:var(--danger)}@media(max-width:760px){.grid{grid-template-columns:1fr}}
+    :host{display:block}header{margin-bottom:1.5rem}header p,.section-heading p{color:var(--accent);font-size:.78rem;font-weight:750;letter-spacing:.09em;text-transform:uppercase}header h1{font-size:clamp(2rem,4vw,3rem);margin:.2rem 0}header span,label,small,.muted,dt{color:var(--text-muted)}.grid{display:grid;gap:1rem;grid-template-columns:1fr 1fr}.grid>form,.grid>section{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:1.2rem}h2{font-size:1.1rem;margin:0 0 1rem}form{display:grid;gap:.85rem}label{display:grid;font-size:.78rem;gap:.3rem}input,select{background:var(--background);border:1px solid var(--border);border-radius:.55rem;color:var(--text);font:inherit;padding:.65rem}button{background:var(--accent);border:0;border-radius:.55rem;color:white;cursor:pointer;font:inherit;font-weight:750;padding:.7rem}button:disabled{cursor:not-allowed;opacity:.55}.saved{color:var(--success);font-size:.78rem}.ollama{align-items:center;display:flex;font-weight:750;gap:.5rem}.ollama span{background:var(--danger);border-radius:50%;height:.7rem;width:.7rem}.ollama span.online{background:var(--success)}dl div{border-top:1px solid var(--border);display:grid;gap:.25rem;padding:.8rem 0}dt{font-size:.72rem}dd{margin:0}.state{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:1rem}.error{color:var(--danger)}.sync-panel{grid-column:1/-1}.section-heading{align-items:center;display:flex;justify-content:space-between}.section-heading p{margin:0}.section-heading h2{margin:.25rem 0 1rem}.section-heading>span{background:var(--surface-raised);border:1px solid var(--border);border-radius:99px;color:var(--text-muted);font-size:.75rem;padding:.45rem .7rem}.section-heading>span.online{color:var(--success)}.pairing-form{align-items:end;display:grid;gap:.75rem;grid-template-columns:1.2fr 1fr 1fr auto}.device-list{display:grid;gap:.5rem;margin-top:1rem}.device-list>div{align-items:center;background:var(--surface-raised);border:1px solid var(--border);border-radius:.65rem;display:flex;justify-content:space-between;padding:.75rem}.device-list span{display:grid;gap:.2rem}.danger{background:transparent;border:1px solid var(--danger);color:var(--danger);font-size:.75rem}.sync-message{color:var(--success);font-size:.82rem}@media(max-width:900px){.pairing-form{grid-template-columns:1fr 1fr}}@media(max-width:760px){.grid,.pairing-form{grid-template-columns:1fr}}
   `],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class SettingsComponent {
   private readonly profiles = inject(ProfileApiService);
   private readonly tutors = inject(TutorApiService);
+  private readonly sync = inject(SyncApiService);
   readonly saving = signal(false);
   readonly saved = signal(false);
   readonly error = signal<string | null>(null);
   readonly tutor = signal<TutorStatus | null>(null);
+  readonly devices = signal<SyncDevice[]>([]);
+  readonly paired = signal(this.sync.isPaired());
+  readonly syncBusy = signal(false);
+  readonly syncMessage = signal<string | null>(null);
+  syncServer = this.sync.serverUrl();
+  deviceName = typeof navigator === 'undefined' ? 'Appareil DLR' : `DLR · ${navigator.platform || 'navigateur'}`;
+  pairingCode = '';
   profile: Profile = { displayName: '', targetMonths: 4, weekdayMinutes: 90, weekendMinutes: 60 };
 
   constructor() { void this.load(); }
@@ -52,6 +79,30 @@ export class SettingsComponent {
   setText(field: 'displayName', event: Event): void { this.profile = { ...this.profile, [field]: (event.target as HTMLInputElement).value }; }
   setNumber(field: 'targetMonths' | 'weekdayMinutes' | 'weekendMinutes', event: Event): void {
     this.profile = { ...this.profile, [field]: Number((event.target as HTMLInputElement).value) };
+  }
+  inputValue(event: Event): string { return (event.target as HTMLInputElement).value; }
+
+  async pairDevice(): Promise<void> {
+    if (!this.deviceName.trim() || !this.syncServer.trim()) return;
+    this.syncBusy.set(true); this.syncMessage.set(null);
+    try {
+      this.sync.configureServer(this.syncServer.trim());
+      const pairing = await firstValueFrom(this.sync.pair(this.deviceName.trim(), this.pairingCode));
+      this.sync.remember(pairing); this.paired.set(true); this.pairingCode = '';
+      await this.loadDevices(); this.syncMessage.set('Appareil appairé. Le jeton privé ne sera plus affiché.');
+    } catch { this.syncMessage.set('Appairage refusé. Vérifie le serveur et le code d’appairage.'); }
+    finally { this.syncBusy.set(false); }
+  }
+
+  async revokeDevice(deviceId: string): Promise<void> {
+    this.syncBusy.set(true); this.syncMessage.set(null);
+    try {
+      await firstValueFrom(this.sync.revoke(deviceId));
+      if (deviceId === this.sync.currentDeviceId()) { this.sync.forget(); this.paired.set(false); this.devices.set([]); }
+      else await this.loadDevices();
+      this.syncMessage.set('Appareil révoqué. Son ancien jeton est désormais inutilisable.');
+    } catch { this.syncMessage.set('La révocation a échoué. Recharge la liste des appareils.'); }
+    finally { this.syncBusy.set(false); }
   }
 
   async save(): Promise<void> {
@@ -65,5 +116,11 @@ export class SettingsComponent {
     try { this.profile = await firstValueFrom(this.profiles.get()); }
     catch { this.error.set('Impossible de charger le profil local.'); }
     try { this.tutor.set(await firstValueFrom(this.tutors.status())); } catch { this.tutor.set(null); }
+    if (this.paired()) await this.loadDevices();
+  }
+
+  private async loadDevices(): Promise<void> {
+    try { this.devices.set(await firstValueFrom(this.sync.devices())); }
+    catch { this.sync.forget(); this.paired.set(false); this.devices.set([]); }
   }
 }

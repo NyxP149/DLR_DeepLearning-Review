@@ -9,9 +9,18 @@ import jakarta.servlet.http.HttpServletRequest;
 
 import java.net.URI;
 import com.dlr.tutor.application.TutorUnavailableException;
+import com.dlr.sync.application.SyncAuthenticationException;
 
 @RestControllerAdvice
 public class ApiExceptionHandler {
+
+    @ExceptionHandler(SyncAuthenticationException.class)
+    ProblemDetail handleSyncAuthentication(SyncAuthenticationException exception, HttpServletRequest request) {
+        ProblemDetail detail = ProblemDetail.forStatusAndDetail(HttpStatus.UNAUTHORIZED, exception.getMessage());
+        detail.setTitle("SYNC_AUTHENTICATION_REQUIRED");
+        detail.setType(URI.create("urn:dlr:error:sync-authentication-required"));
+        return enrich(detail, request, "Appaire cet appareil ou renouvelle son jeton de synchronisation.");
+    }
 
     @ExceptionHandler(ResourceNotFoundException.class)
     ProblemDetail handleNotFound(ResourceNotFoundException exception, HttpServletRequest request) {
