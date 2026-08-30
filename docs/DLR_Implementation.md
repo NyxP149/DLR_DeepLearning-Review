@@ -982,4 +982,17 @@ Flyway V15 crée les quatre chemins de base absents de PostgreSQL, active les si
 
 La page Parcours charge les progressions `JAVA`, `PYTHON`, `TYPESCRIPT`, `SPRING_BOOT`, `ANGULAR`, `SQL` et `DEVOPS`. Un sélecteur rend seulement le parcours actif afin d'éviter plus de cent cartes simultanées dans le DOM. Le portfolio accepte les 113 codes de preuve. L'en-tête du laboratoire affiche le parcours pédagogique, tandis que l'éditeur continue d'indiquer honnêtement le langage du runner.
 
+## V3.1 — Learn LLMs, projets framework et E2E
+
+Le parcours Learn LLMs est complet sur douze activités séquentielles. `LLM-02` à `LLM-10` couvrent échantillonnage, templates, JSON structuré, évaluation, embeddings, chunking, recherche, RAG et sécurité. `LLM-11` est le projet d'assistant RAG local évalué et `LLM-12` le défi de comparaison de stratégies de contexte. Les expériences utilisent Python sans réseau et annoncent explicitement qu'elles simulent les mécanismes plutôt qu'un modèle distant.
+
+Flyway V16 ajoute les onze activités relationnelles et passe `LEARN_LLM` à `AVAILABLE`. Le catalogue expose désormais 124 contenus et huit progressions sélectionnables.
+
+Les preuves rapides Spring Boot et Angular restent exécutables dans les runners historiques. Elles sont complétées par deux projets réellement multi-fichiers sous `projects/` :
+
+- `spring-professional-api` : Maven, Spring Boot 3.5, contrôleur, service, modèle et test d'intégration MockMvc ;
+- `angular-professional-dashboard` : Angular standalone strict, composant, template, styles, service injectable et signals.
+
+Les tests end-to-end Playwright couvrent la santé de l'API, le catalogue Learn LLMs, l'ouverture d'un laboratoire, la présence du concept clé, du runner et de la réinitialisation, ainsi que la navigation Dashboard → Parcours. Chromium est installé séparément par `node ./node_modules/@playwright/test/cli.js install chromium`, puis la suite s'exécute avec `npm run e2e` depuis `apps/web`.
+
 Le générateur `infrastructure/scripts/generate-expanded-curriculum.mjs` conserve la source structurée des 81 contenus et de la migration. Les JSON générés restent les artefacts versionnés et chargés par l'application.

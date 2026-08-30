@@ -25,7 +25,7 @@
     },
     {
       "title": "Défi de synthèse",
-      "content": "La preuve unifichier valide ici la frontière d'architecture hors réseau ; le laboratoire explique ensuite son branchement aux annotations et dépendances Spring Boot réelles."
+      "content": "Le défi s’appuie sur projects/spring-professional-api : inspecte les frontières Controller/Service, exécute mvn test, puis ajoute un cas d’erreur HTTP sans casser le contrat nominal."
     }
   ],
   "keyConcepts": [

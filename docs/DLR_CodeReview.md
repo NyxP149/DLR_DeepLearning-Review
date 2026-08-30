@@ -933,6 +933,45 @@ Ce fichier conserve l'historique des modifications, décisions techniques, bugs 
 ### Validations
 
 - 114 ressources de contenu chargées : 113 laboratoires et le catalogue des parcours.
+
+## 2026-08-30 — V3.1 : Learn LLMs complet, projets framework et E2E
+
+### Modifications
+
+- Ajout de `LLM-02` à `LLM-12`, avec prérequis séquentiels, projet RAG `LLM-11` et défi final `LLM-12`.
+- Migration Flyway V16 et passage de Learn LLMs au statut `AVAILABLE`.
+- Catalogue porté à 124 laboratoires et page Parcours étendue à huit progressions.
+- Ajout d'un vrai projet Spring Boot multi-fichiers avec test MockMvc dans `projects/spring-professional-api`.
+- Ajout d'un vrai projet Angular standalone multi-fichiers dans `projects/angular-professional-dashboard`.
+- Ajout de Playwright, Chromium et trois scénarios end-to-end du parcours utilisateur.
+
+### Bugs rencontrés et résolution
+
+#### Les commandes npm échouent lorsque le chemin contient `&`
+
+- **Symptôme :** les shims Windows `ng`, `npx` et `playwright` découpaient le chemin `DLR_DeepLearning&Review 2`, puis cherchaient les modules dans `C:\\Users\\sanyx\\Documents\\ChatGPT`.
+- **Cause :** le shim `.cmd` réinterprétait l'esperluette comme séparateur de commande.
+- **Résolution :** les scripts invoquent directement Node et le fichier JavaScript de l'outil (`node ./node_modules/.../ng.js` et `node ./node_modules/@playwright/test/cli.js`).
+
+#### Le premier E2E utilisait des sélecteurs ambigus
+
+- **Symptôme :** Playwright trouvait deux titres `Learn LLMs` et deux compteurs `12 disponibles / 12 prévues`.
+- **Cause :** la carte catalogue et la région de progression exposent volontairement le même texte.
+- **Résolution :** le test cible maintenant le bouton du catalogue puis la région accessible `Progression LEARN_LLM`. Le mode strict de Playwright reste activé.
+
+#### Maven et npm ne peuvent pas écrire dans leurs caches depuis le bac à sable
+
+- **Symptôme :** Maven tentait `C:\\.m2` et npm ne retrouvait pas son installation utilisateur.
+- **Résolution :** les validations qui nécessitent les caches utilisateur sont exécutées avec l'autorisation locale dédiée ; aucun chemin système n'est modifié.
+
+### Validation
+
+- Backend DLR : 50 tests réussis, 0 échec, 9 tests Docker optionnels ignorés dans la passe standard ; 16 migrations H2 validées.
+- Projet Spring professionnel : 1 test d'intégration MockMvc réussi.
+- Build Angular DLR et build du dashboard professionnel réussis.
+- Playwright : 3 scénarios Chromium réussis.
+- Un test Docker dédié exécute les 12 expériences Learn LLMs et compare exactement leurs sorties.
+- Audit npm des dépendances de production : 0 vulnérabilité ; les alertes restantes concernent uniquement l'outillage de développement.
 - Migration V15 validée sur H2 puis appliquée de V14 à V15 sur PostgreSQL 17.11 réel.
 - Tests ciblés catalogue/progression/tableau de bord : 9 réussis.
 - Tests Docker des 64 contenus TypeScript, Spring, Angular, SQL et DevOps : 0 échec en 264,5 s.

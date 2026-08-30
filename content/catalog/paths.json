@@ -27,10 +27,10 @@
     "expectedActivityCount": 24
   },
   {
-    "code": "LEARN_LLM", "title": "Learn LLMs", "status": "BETA",
+    "code": "LEARN_LLM", "title": "Learn LLMs", "status": "AVAILABLE",
     "professionalObjectives": ["Comprendre, mesurer et intégrer les LLMs avec Python sans masquer leurs limites"],
     "prerequisites": ["PYTHON"], "keyConcepts": ["tokens", "prompts", "embeddings", "RAG", "évaluation"],
-    "activityTypes": ["LAB", "EXPERIMENT", "PROJECT"], "executionEnvironment": "docker-python-3.13",
+    "activityTypes": ["LAB", "EXPERIMENT", "PROJECT", "CHALLENGE"], "executionEnvironment": "docker-python-3.13",
     "assessmentStrategy": "Expériences reproductibles, assertions et analyse critique", "project": "Assistant RAG local évalué",
     "challenge": "Comparer plusieurs stratégies de contexte", "portfolioSkills": ["Python", "LLMs", "évaluation IA"],
     "expectedActivityCount": 12

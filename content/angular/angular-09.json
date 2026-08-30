@@ -25,7 +25,7 @@
     },
     {
       "title": "Projet portfolio",
-      "content": "La preuve TypeScript isole le contrat réactif ; son intégration dans un composant Angular est décrite sans rendre le runner dépendant d'un navigateur."
+      "content": "La preuve rapide isole le contrat réactif. Le workspace projects/angular-professional-dashboard fournit une vraie application Angular multi-fichiers : composant standalone, template, styles, service injectable et signals, validés par npm run build."
     }
   ],
   "keyConcepts": [

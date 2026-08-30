@@ -1,0 +1,85 @@
+{
+  "code": "LLM-11",
+  "language": "PYTHON",
+  "number": 11,
+  "slug": "projet-professionnel-assistant-rag-local-evalue",
+  "title": "Projet professionnel : assistant RAG local évalué",
+  "difficulty": "PROJET",
+  "threshold": 80,
+  "activityType": "PROJECT",
+  "prerequisites": [
+    "LLM-10"
+  ],
+  "objectives": [
+    "Construire un assistant local avec recherche, citations et évaluation",
+    "Produire une expérience hors réseau reproductible",
+    "Documenter une limite et une métrique de contrôle"
+  ],
+  "sections": [
+    {
+      "title": "Concept et décision",
+      "content": "Projet professionnel : assistant RAG local évalué doit être évalué comme un composant logiciel : entrées explicites, sorties contrôlées, métriques et cas d’échec. Aucun appel à un service distant n’est nécessaire pour apprendre le mécanisme.",
+      "conceptCodes": [
+        "LLM-PROJECT"
+      ]
+    },
+    {
+      "title": "Projet portfolio",
+      "content": "L’expérience isole le mécanisme LLM-PROJECT. Elle reste volontairement déterministe afin de distinguer un défaut de pipeline d’une variation propre aux modèles génératifs."
+    }
+  ],
+  "keyConcepts": [
+    {
+      "code": "LLM-PROJECT",
+      "name": "Projet professionnel : assistant RAG local évalué",
+      "definition": "Projet professionnel : assistant RAG local évalué est ici un contrat mesurable entre une entrée, une transformation et une preuve de sortie.",
+      "whyExists": "Les résultats d’un LLM sont probabilistes ; le système qui l’entoure doit rendre les hypothèses et contrôles explicites.",
+      "whyImportant": "Sans mesure, provenance et cas d’échec, une démonstration convaincante ne garantit pas un produit fiable.",
+      "minimalExample": "Le programme LLM-11 reproduit localement le mécanisme essentiel et affiche une preuve stable.",
+      "commonMistake": "Évaluer un seul exemple favorable ou confondre plausibilité et exactitude.",
+      "masteryQuestion": "Quelle métrique et quel cas d’échec utiliserais-tu pour projet professionnel : assistant rag local évalué ?",
+      "masteryProof": "Exécuter la preuve, modifier une entrée et expliquer le résultat ainsi que la limite du modèle local."
+    }
+  ],
+  "exercises": [
+    {
+      "code": "LLM-11-E1",
+      "title": "Construire un assistant local avec recherche, citations et évaluation",
+      "statement": "Exécute l’expérience et conserve exactement la sortie attendue. Explique ensuite quelle partie serait remplacée par un modèle réel.",
+      "starterCode": "from dataclasses import dataclass\n\n@dataclass(frozen=True)\nclass Answer:\n    text: str\n    source: str\n\ncorpus = {\"JVM\": \"La JVM exécute le bytecode\", \"JDK\": \"Le JDK compile le code\"}\nanswer = Answer(corpus[\"JVM\"], \"JVM\")\nassert \"bytecode\" in answer.text and answer.source in corpus\nprint(f\"Réponse: {answer.text} [{answer.source}]\")\nprint(\"Évaluation: 2/2\")\n",
+      "expectedOutput": "Réponse: La JVM exécute le bytecode [JVM]\nÉvaluation: 2/2"
+    }
+  ],
+  "quiz": [
+    {
+      "code": "LLM-11-Q1",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Quelle validation est la plus solide ?",
+      "choices": [
+        "Plusieurs cas reproductibles avec métriques et provenance",
+        "Une réponse qui semble correcte",
+        "Une démonstration sans jeu de test"
+      ],
+      "correctChoice": 0,
+      "expectedKeywords": []
+    },
+    {
+      "code": "LLM-11-Q2",
+      "type": "FREE_TEXT",
+      "prompt": "Nomme une limite et le contrôle associé.",
+      "choices": [],
+      "correctChoice": null,
+      "expectedKeywords": [
+        "limite",
+        "test",
+        "mesure"
+      ]
+    }
+  ],
+  "checklist": [
+    "Je sais expliquer le mécanisme",
+    "Je peux reproduire la preuve hors réseau",
+    "Je distingue simulation locale et modèle réel",
+    "Je peux nommer une métrique et un risque"
+  ]
+}

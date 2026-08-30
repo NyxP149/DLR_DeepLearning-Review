@@ -12,7 +12,7 @@ import { LabApiService, LabProgressState, LabSummary, PathDescriptor, PathProgre
     <header class="page-header">
       <p>Catalogue V3</p>
       <h1>Parcours professionnels</h1>
-      <span>Sept parcours exécutables, avec progression dédiée, projets portfolio et défis de synthèse.</span>
+      <span>Huit parcours exécutables, avec progression dédiée, projets portfolio et défis de synthèse.</span>
     </header>
     @if (state$ | async; as state) {
       @if (state.status === 'loading') {
@@ -62,7 +62,7 @@ import { LabApiService, LabProgressState, LabSummary, PathDescriptor, PathProgre
 })
 export class PathsComponent {
   private readonly labs = inject(LabApiService);
-  readonly progressivePaths = ['JAVA', 'PYTHON', 'TYPESCRIPT', 'SPRING_BOOT', 'ANGULAR', 'SQL', 'DEVOPS'] as const;
+  readonly progressivePaths = ['JAVA', 'PYTHON', 'TYPESCRIPT', 'LEARN_LLM', 'SPRING_BOOT', 'ANGULAR', 'SQL', 'DEVOPS'] as const;
   readonly selectedPath = signal<string>('JAVA');
   private readonly progressRequests = Object.fromEntries(this.progressivePaths.map((code) => [code, this.labs.pathProgress(code)]));
   readonly state$ = forkJoin({ labs: this.labs.listLabs(), paths: this.labs.listPaths(), progresses: forkJoin(this.progressRequests) }).pipe(

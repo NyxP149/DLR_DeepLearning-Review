@@ -1,0 +1,85 @@
+{
+  "code": "LLM-03",
+  "language": "PYTHON",
+  "number": 3,
+  "slug": "templates-de-prompts-et-separation-des-donnees",
+  "title": "Templates de prompts et séparation des données",
+  "difficulty": "BASE",
+  "threshold": 70,
+  "activityType": "LAB",
+  "prerequisites": [
+    "LLM-02"
+  ],
+  "objectives": [
+    "Construire une consigne stable sans confondre instructions et données",
+    "Produire une expérience hors réseau reproductible",
+    "Documenter une limite et une métrique de contrôle"
+  ],
+  "sections": [
+    {
+      "title": "Concept et décision",
+      "content": "Templates de prompts et séparation des données doit être évalué comme un composant logiciel : entrées explicites, sorties contrôlées, métriques et cas d’échec. Aucun appel à un service distant n’est nécessaire pour apprendre le mécanisme.",
+      "conceptCodes": [
+        "LLM-TEMPLATES"
+      ]
+    },
+    {
+      "title": "Expérience locale",
+      "content": "L’expérience isole le mécanisme LLM-TEMPLATES. Elle reste volontairement déterministe afin de distinguer un défaut de pipeline d’une variation propre aux modèles génératifs."
+    }
+  ],
+  "keyConcepts": [
+    {
+      "code": "LLM-TEMPLATES",
+      "name": "Templates de prompts et séparation des données",
+      "definition": "Templates de prompts et séparation des données est ici un contrat mesurable entre une entrée, une transformation et une preuve de sortie.",
+      "whyExists": "Les résultats d’un LLM sont probabilistes ; le système qui l’entoure doit rendre les hypothèses et contrôles explicites.",
+      "whyImportant": "Sans mesure, provenance et cas d’échec, une démonstration convaincante ne garantit pas un produit fiable.",
+      "minimalExample": "Le programme LLM-03 reproduit localement le mécanisme essentiel et affiche une preuve stable.",
+      "commonMistake": "Évaluer un seul exemple favorable ou confondre plausibilité et exactitude.",
+      "masteryQuestion": "Quelle métrique et quel cas d’échec utiliserais-tu pour templates de prompts et séparation des données ?",
+      "masteryProof": "Exécuter la preuve, modifier une entrée et expliquer le résultat ainsi que la limite du modèle local."
+    }
+  ],
+  "exercises": [
+    {
+      "code": "LLM-03-E1",
+      "title": "Construire une consigne stable sans confondre instructions et données",
+      "statement": "Exécute l’expérience et conserve exactement la sortie attendue. Explique ensuite quelle partie serait remplacée par un modèle réel.",
+      "starterCode": "def prompt(task: str, data: str) -> str:\n    return f\"TÂCHE: {task}\\nDONNÉES:\\n<data>{data}</data>\\nFORMAT: JSON\"\n\nvalue = prompt(\"résumer\", \"Java utilise la JVM\")\nprint(value)\n",
+      "expectedOutput": "TÂCHE: résumer\nDONNÉES:\n<data>Java utilise la JVM</data>\nFORMAT: JSON"
+    }
+  ],
+  "quiz": [
+    {
+      "code": "LLM-03-Q1",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Quelle validation est la plus solide ?",
+      "choices": [
+        "Plusieurs cas reproductibles avec métriques et provenance",
+        "Une réponse qui semble correcte",
+        "Une démonstration sans jeu de test"
+      ],
+      "correctChoice": 0,
+      "expectedKeywords": []
+    },
+    {
+      "code": "LLM-03-Q2",
+      "type": "FREE_TEXT",
+      "prompt": "Nomme une limite et le contrôle associé.",
+      "choices": [],
+      "correctChoice": null,
+      "expectedKeywords": [
+        "limite",
+        "test",
+        "mesure"
+      ]
+    }
+  ],
+  "checklist": [
+    "Je sais expliquer le mécanisme",
+    "Je peux reproduire la preuve hors réseau",
+    "Je distingue simulation locale et modèle réel",
+    "Je peux nommer une métrique et un risque"
+  ]
+}

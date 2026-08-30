@@ -25,7 +25,7 @@
     },
     {
       "title": "Défi de synthèse",
-      "content": "La preuve TypeScript isole le contrat réactif ; son intégration dans un composant Angular est décrite sans rendre le runner dépendant d'un navigateur."
+      "content": "Le défi s’appuie sur projects/angular-professional-dashboard : mesure le build de production, conserve le typage strict et fais évoluer le composant, le service et le template comme des fichiers indépendants."
     }
   ],
   "keyConcepts": [
