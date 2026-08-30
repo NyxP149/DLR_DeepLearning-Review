@@ -1,5 +1,6 @@
 package com.dlr.planning.application;
 
+import com.dlr.catalog.application.PathProgressService;
 import com.dlr.profile.application.ProfileService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -12,6 +13,7 @@ import java.time.Clock;
 import java.time.DayOfWeek;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -23,20 +25,24 @@ public class PlanningService {
 
     private final JdbcTemplate jdbcTemplate;
     private final ProfileService profileService;
+    private final PathProgressService pathProgressService;
     private final Clock clock;
 
     @Autowired
-    public PlanningService(JdbcTemplate jdbcTemplate, ProfileService profileService) {
-        this(jdbcTemplate, profileService, Clock.systemDefaultZone());
+    public PlanningService(JdbcTemplate jdbcTemplate, ProfileService profileService,
+                           PathProgressService pathProgressService) {
+        this(jdbcTemplate, profileService, pathProgressService, Clock.systemDefaultZone());
     }
 
-    PlanningService(JdbcTemplate jdbcTemplate, ProfileService profileService, Clock clock) {
+    PlanningService(JdbcTemplate jdbcTemplate, ProfileService profileService,
+                    PathProgressService pathProgressService, Clock clock) {
         this.jdbcTemplate = jdbcTemplate;
         this.profileService = profileService;
+        this.pathProgressService = pathProgressService;
         this.clock = clock;
     }
 
-    public CalendarView calendar(int days) {
+    public CalendarView calendar(int days, String pathCode) {
         if (days < 1 || days > 31) {
             throw new IllegalArgumentException("Le calendrier accepte de 1 à 31 jours.");
         }
@@ -51,7 +57,75 @@ public class PlanningService {
                 .toList();
         int planned = sessions.stream().mapToInt(StudySession::plannedMinutes).sum();
         int actual = sessions.stream().mapToInt(StudySession::actualMinutes).sum();
-        return new CalendarView(start, end, planned, actual, sessions);
+        return new CalendarView(start, end, planned, actual, pathCode.toUpperCase(),
+                buildActivities(pathCode, profile), sessions);
+    }
+
+    private List<PlannedActivity> buildActivities(String pathCode, ProfileService.Profile profile) {
+        PathProgressService.PathProgress progress = pathProgressService.progress(pathCode);
+        Map<String, Instant> completionDates = loadCompletionDates();
+        LocalDate today = LocalDate.now(clock);
+        LocalDate lastEffectiveDate = progress.labs().stream()
+                .filter(lab -> lab.state() == PathProgressService.LabState.COMPLETED)
+                .map(lab -> completionDates.get(lab.code()))
+                .filter(java.util.Objects::nonNull)
+                .map(instant -> instant.atZone(clock.getZone()).toLocalDate())
+                .max(LocalDate::compareTo)
+                .orElse(null);
+        String nextCode = progress.nextLabCode();
+        String previousCode = null;
+        java.util.ArrayList<PlannedActivity> activities = new java.util.ArrayList<>();
+
+        for (PathProgressService.LabProgress lab : progress.labs()) {
+            Instant completedAt = completionDates.get(lab.code());
+            if (lab.state() == PathProgressService.LabState.COMPLETED) {
+                LocalDate effectiveDate = completedAt == null ? null
+                        : completedAt.atZone(clock.getZone()).toLocalDate();
+                activities.add(new PlannedActivity(lab.code(), lab.title(), lab.activityType(),
+                        "COMPLETED", effectiveDate, null, completedAt));
+            } else if (lab.code().equals(nextCode)) {
+                LocalDate anchor = lastEffectiveDate == null ? today
+                        : max(today, lastEffectiveDate.plusDays(1));
+                LocalDate effectiveDate = nextStudyDate(anchor, profile);
+                activities.add(new PlannedActivity(lab.code(), lab.title(), lab.activityType(),
+                        lab.state().name(), effectiveDate, previousCode, null));
+            } else {
+                activities.add(new PlannedActivity(lab.code(), lab.title(), lab.activityType(),
+                        "WAITING_FOR_COMPLETION", null, previousCode, null));
+            }
+            previousCode = lab.code();
+        }
+        return List.copyOf(activities);
+    }
+
+    private LocalDate nextStudyDate(LocalDate start, ProfileService.Profile profile) {
+        LocalDate candidate = start;
+        for (int offset = 0; offset < 14; offset++) {
+            if (plannedMinutes(candidate, profile) > 0) return candidate;
+            candidate = candidate.plusDays(1);
+        }
+        return start;
+    }
+
+    private Map<String, Instant> loadCompletionDates() {
+        Map<String, Instant> dates = new HashMap<>();
+        jdbcTemplate.query(
+                """
+                select lab_id, max(completed_at) as completed_at
+                from attempt
+                where status = 'COMPLETED'
+                   or (status = 'COMPLETED_BELOW_THRESHOLD' and continued_below_threshold = true)
+                group by lab_id
+                """,
+                (org.springframework.jdbc.core.RowCallbackHandler) result -> {
+                    Timestamp completedAt = result.getTimestamp("completed_at");
+                    if (completedAt != null) dates.put(result.getString("lab_id"), completedAt.toInstant());
+                });
+        return dates;
+    }
+
+    private LocalDate max(LocalDate first, LocalDate second) {
+        return first.isAfter(second) ? first : second;
     }
 
     @Transactional
@@ -114,8 +188,11 @@ public class PlanningService {
     }
 
     public record CalendarView(LocalDate start, LocalDate end, int plannedMinutes, int actualMinutes,
-                               List<StudySession> sessions) {
+                               String pathCode, List<PlannedActivity> activities, List<StudySession> sessions) {
     }
+
+    public record PlannedActivity(String code, String title, String activityType, String status,
+                                  LocalDate effectiveDate, String availableAfterLabCode, Instant completedAt) {}
 
     public record StudySession(LocalDate date, int plannedMinutes, int actualMinutes, String status,
                                String reward, Instant completedAt) {

@@ -30,3 +30,15 @@ test('navigation principale sans page introuvable', async ({ page }) => {
   await expect(page).toHaveURL(/\/paths$/);
   await expect(page.getByRole('heading', { name: 'Parcours professionnels' })).toBeVisible();
 });
+
+test('le planning ne date que la prochaine activité disponible', async ({ page }) => {
+  await page.goto('/planning');
+  await expect(page.getByRole('heading', { name: 'Planning dynamique' })).toBeVisible();
+  const timeline = page.getByLabel('Planning glissant JAVA');
+  await expect(timeline).toBeVisible();
+  await expect(timeline.getByText('Prochaine date effective')).toHaveCount(1);
+  await expect(timeline.getByText('Date calculée à la validation').first()).toBeVisible();
+
+  await page.getByLabel('Parcours').selectOption('SQL');
+  await expect(page.getByLabel('Planning glissant SQL')).toBeVisible();
+});

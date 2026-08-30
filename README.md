@@ -11,6 +11,7 @@ DLR est une application locale d'apprentissage de la programmation, avec évalua
 - parcours, laboratoire, éditeur Monaco, reprise de brouillon, quiz, checklist et import `.java` ;
 - exécution Docker isolée, assertions privées et score déterministe ;
 - tableau de bord, concepts clés, révisions espacées et planning ;
+- planning glissant : seule la prochaine activité est datée, après la fin effective de son prérequis ;
 - profil local modifiable et professeur Ollama en mode explication, indice et correction qualitative ;
 - PWA installable avec cache du shell et brouillons locaux IndexedDB ;
 - documentation de conception et d'implémentation dans [`docs/`](docs/) ;

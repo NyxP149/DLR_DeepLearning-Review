@@ -23,8 +23,11 @@ public class PlanningController {
     }
 
     @GetMapping
-    public PlanningService.CalendarView calendar(@RequestParam(defaultValue = "14") int days) {
-        return service.calendar(days);
+    public PlanningService.CalendarView calendar(
+            @RequestParam(defaultValue = "14") int days,
+            @RequestParam(defaultValue = "JAVA") String path
+    ) {
+        return service.calendar(days, path);
     }
 
     @PostMapping("/{date}")

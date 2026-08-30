@@ -972,6 +972,31 @@ Ce fichier conserve l'historique des modifications, décisions techniques, bugs 
 - Playwright : 3 scénarios Chromium réussis.
 - Un test Docker dédié exécute les 12 expériences Learn LLMs et compare exactement leurs sorties.
 - Audit npm des dépendances de production : 0 vulnérabilité ; les alertes restantes concernent uniquement l'outillage de développement.
+
+## 2026-08-30 — V3.2 : planning basé sur les fins effectives
+
+### Modifications
+
+- Ajout d'une chronologie d'activités à la réponse du calendrier.
+- Sélection des huit parcours directement depuis la page Planning.
+- Conservation de la date réelle des laboratoires terminés.
+- Calcul d'une date uniquement pour la prochaine activité déverrouillée.
+- Affichage `Après LAB-XX` pour les activités qui attendent encore leur prérequis.
+
+### Bug corrigé : dates futures figées avant la progression réelle
+
+- **Symptôme :** le calendrier pouvait suggérer des dates indépendantes du moment où le laboratoire précédent était réellement terminé.
+- **Cause :** le planificateur ne connaissait que les séances quotidiennes et ne reliait pas sa projection aux tentatives de laboratoire.
+- **Résolution :** la projection lit les tentatives qualifiantes et leur `completed_at`. Après chaque validation, la prochaine date est recalculée à partir de cette fin effective et du rythme semaine/week-end du profil.
+- **Garantie :** les étapes ultérieures n'ont aucune date tant que leur prérequis n'est pas validé ; elles ne deviennent donc jamais artificiellement en retard.
+
+### Validation
+
+- Test d'intégration : une fin effective de `SQL-01` date `SQL-02` au jour d'étude suivant et laisse `SQL-03` sans date.
+- Tests Planning : 3 réussis, 0 échec.
+- Suite backend complète : 51 tests, 0 échec, 9 contrôles Docker optionnels ignorés dans la passe standard.
+- Build Angular de production réussi.
+- E2E Chromium : contrôle qu'une seule prochaine activité est datée et que le changement de parcours recalcule la chronologie.
 - Migration V15 validée sur H2 puis appliquée de V14 à V15 sur PostgreSQL 17.11 réel.
 - Tests ciblés catalogue/progression/tableau de bord : 9 réussis.
 - Tests Docker des 64 contenus TypeScript, Spring, Angular, SQL et DevOps : 0 échec en 264,5 s.

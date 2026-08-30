@@ -995,4 +995,16 @@ Les preuves rapides Spring Boot et Angular restent exécutables dans les runners
 
 Les tests end-to-end Playwright couvrent la santé de l'API, le catalogue Learn LLMs, l'ouverture d'un laboratoire, la présence du concept clé, du runner et de la réinitialisation, ainsi que la navigation Dashboard → Parcours. Chromium est installé séparément par `node ./node_modules/@playwright/test/cli.js install chromium`, puis la suite s'exécute avec `npm run e2e` depuis `apps/web`.
 
+## V3.2 — Planning glissant sur fin effective
+
+Le calendrier ne prédate plus tous les laboratoires. Pour chacun des huit parcours, la chronologie applique les règles suivantes :
+
+- une activité terminée conserve la date réelle de `attempt.completed_at` ;
+- seule la prochaine activité disponible reçoit une date effective ;
+- cette date est au plus tôt le lendemain de la dernière fin effective, ou aujourd'hui si cette fin est plus ancienne ;
+- un jour configuré à zéro minute est ignoré au profit du prochain jour d'étude ;
+- toutes les activités suivantes restent sans date et indiquent le laboratoire dont elles attendent la validation.
+
+Le recalcul est effectué à chaque lecture de `GET /api/calendar?path=...`. Il n'écrit donc aucune date spéculative et réagit immédiatement à la validation ou à la réinitialisation d'un laboratoire.
+
 Le générateur `infrastructure/scripts/generate-expanded-curriculum.mjs` conserve la source structurée des 81 contenus et de la migration. Les JSON générés restent les artefacts versionnés et chargés par l'application.
