@@ -1,0 +1,85 @@
+{
+  "code": "PYTHON-20",
+  "language": "PYTHON",
+  "number": 20,
+  "slug": "architecture-hexagonale-et-separation-des-responsabilites",
+  "title": "Architecture hexagonale et séparation des responsabilités",
+  "difficulty": "PROFESSIONNEL",
+  "threshold": 75,
+  "activityType": "LAB",
+  "prerequisites": [
+    "PYTHON-19"
+  ],
+  "objectives": [
+    "Expliquer architecture hexagonale et séparation des responsabilités",
+    "Construire une preuve exécutable et déterministe",
+    "Relier le concept à une décision professionnelle"
+  ],
+  "sections": [
+    {
+      "title": "Concept et usage professionnel",
+      "content": "Architecture hexagonale et séparation des responsabilités répond à un besoin concret de maintenabilité, de sûreté ou de performance. Le laboratoire demande de rendre la décision observable et vérifiable.",
+      "conceptCodes": [
+        "PYTHON-ARCHITECTURE"
+      ]
+    },
+    {
+      "title": "Mise en pratique",
+      "content": "La preuve minimale est locale, déterministe et peut être enrichie sans changer le contrat attendu."
+    }
+  ],
+  "keyConcepts": [
+    {
+      "code": "PYTHON-ARCHITECTURE",
+      "name": "Architecture hexagonale et séparation des responsabilités",
+      "definition": "Architecture hexagonale et séparation des responsabilités est traité comme un contrat explicite dont le comportement peut être vérifié.",
+      "whyExists": "Il réduit les hypothèses implicites et rend le système plus simple à faire évoluer.",
+      "whyImportant": "En contexte professionnel, la preuve reproductible facilite la revue, le diagnostic et la maintenance.",
+      "minimalExample": "Une petite preuve PYTHON-20 vérifie le cas nominal et expose une sortie stable.",
+      "commonMistake": "Appliquer la technique sans mesurer son effet ni documenter sa frontière.",
+      "masteryQuestion": "Quelle contrainte de architecture hexagonale et séparation des responsabilités doit rester vraie lorsque le système évolue ?",
+      "masteryProof": "Exécuter la preuve, expliquer son invariant et proposer un cas d’échec."
+    }
+  ],
+  "exercises": [
+    {
+      "code": "PYTHON-20-E1",
+      "title": "Valider architecture hexagonale et séparation des responsabilités",
+      "statement": "Conserve l'invariant et produis exactement : PYTHON-20: preuve validée",
+      "starterCode": "from dataclasses import dataclass\n\n@dataclass(frozen=True, slots=True)\nclass Evidence:\n    concept: str\n    validated: bool\n\nevidence = Evidence(\"PYTHON-ARCHITECTURE\", True)\nassert evidence.validated\nprint(\"PYTHON-20: preuve validée\")\n",
+      "expectedOutput": "PYTHON-20: preuve validée"
+    }
+  ],
+  "quiz": [
+    {
+      "code": "PYTHON-20-Q1",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Quelle preuve est la plus utile en revue ?",
+      "choices": [
+        "Une exécution déterministe avec invariant explicite",
+        "Une sortie aléatoire",
+        "Une capture sans code"
+      ],
+      "correctChoice": 0,
+      "expectedKeywords": []
+    },
+    {
+      "code": "PYTHON-20-Q2",
+      "type": "FREE_TEXT",
+      "prompt": "Explique une décision liée à architecture hexagonale et séparation des responsabilités.",
+      "choices": [],
+      "correctChoice": null,
+      "expectedKeywords": [
+        "contrat",
+        "preuve",
+        "test"
+      ]
+    }
+  ],
+  "checklist": [
+    "Je peux expliquer le concept sans réciter une définition",
+    "Je sais exécuter et modifier la preuve",
+    "Je peux nommer un risque et son contrôle",
+    "Je relie cette étape à la suivante"
+  ]
+}

@@ -1,0 +1,85 @@
+{
+  "code": "TYPESCRIPT-19",
+  "language": "TYPESCRIPT",
+  "number": 19,
+  "slug": "evenements-files-de-taches-et-concurrence",
+  "title": "Événements, files de tâches et concurrence",
+  "difficulty": "PROFESSIONNEL",
+  "threshold": 75,
+  "activityType": "LAB",
+  "prerequisites": [
+    "TYPESCRIPT-18"
+  ],
+  "objectives": [
+    "Expliquer événements, files de tâches et concurrence",
+    "Construire une preuve exécutable et déterministe",
+    "Relier le concept à une décision professionnelle"
+  ],
+  "sections": [
+    {
+      "title": "Concept et usage professionnel",
+      "content": "Événements, files de tâches et concurrence répond à un besoin concret de maintenabilité, de sûreté ou de performance. Le laboratoire demande de rendre la décision observable et vérifiable.",
+      "conceptCodes": [
+        "TYPESCRIPT-EVENTS"
+      ]
+    },
+    {
+      "title": "Mise en pratique",
+      "content": "La preuve minimale est locale, déterministe et peut être enrichie sans changer le contrat attendu."
+    }
+  ],
+  "keyConcepts": [
+    {
+      "code": "TYPESCRIPT-EVENTS",
+      "name": "Événements, files de tâches et concurrence",
+      "definition": "Événements, files de tâches et concurrence est traité comme un contrat explicite dont le comportement peut être vérifié.",
+      "whyExists": "Il réduit les hypothèses implicites et rend le système plus simple à faire évoluer.",
+      "whyImportant": "En contexte professionnel, la preuve reproductible facilite la revue, le diagnostic et la maintenance.",
+      "minimalExample": "Une petite preuve TYPESCRIPT-19 vérifie le cas nominal et expose une sortie stable.",
+      "commonMistake": "Appliquer la technique sans mesurer son effet ni documenter sa frontière.",
+      "masteryQuestion": "Quelle contrainte de événements, files de tâches et concurrence doit rester vraie lorsque le système évolue ?",
+      "masteryProof": "Exécuter la preuve, expliquer son invariant et proposer un cas d’échec."
+    }
+  ],
+  "exercises": [
+    {
+      "code": "TYPESCRIPT-19-E1",
+      "title": "Valider événements, files de tâches et concurrence",
+      "statement": "Conserve l'invariant et produis exactement : TYPESCRIPT-19: preuve validée",
+      "starterCode": "type Evidence = Readonly<{ concept: string; validated: boolean }>;\nconst evidence: Evidence = { concept: 'TYPESCRIPT-EVENTS', validated: true };\nif (!evidence.validated) throw new Error('preuve invalide');\nconsole.log('TYPESCRIPT-19: preuve validée');\n",
+      "expectedOutput": "TYPESCRIPT-19: preuve validée"
+    }
+  ],
+  "quiz": [
+    {
+      "code": "TYPESCRIPT-19-Q1",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Quelle preuve est la plus utile en revue ?",
+      "choices": [
+        "Une exécution déterministe avec invariant explicite",
+        "Une sortie aléatoire",
+        "Une capture sans code"
+      ],
+      "correctChoice": 0,
+      "expectedKeywords": []
+    },
+    {
+      "code": "TYPESCRIPT-19-Q2",
+      "type": "FREE_TEXT",
+      "prompt": "Explique une décision liée à événements, files de tâches et concurrence.",
+      "choices": [],
+      "correctChoice": null,
+      "expectedKeywords": [
+        "contrat",
+        "preuve",
+        "test"
+      ]
+    }
+  ],
+  "checklist": [
+    "Je peux expliquer le concept sans réciter une définition",
+    "Je sais exécuter et modifier la preuve",
+    "Je peux nommer un risque et son contrôle",
+    "Je relie cette étape à la suivante"
+  ]
+}

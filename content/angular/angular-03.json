@@ -1,0 +1,85 @@
+{
+  "code": "ANGULAR-03",
+  "language": "TYPESCRIPT",
+  "number": 3,
+  "slug": "composants-inputs-outputs-et-composition",
+  "title": "Composants, inputs, outputs et composition",
+  "difficulty": "BASE",
+  "threshold": 70,
+  "activityType": "LAB",
+  "prerequisites": [
+    "ANGULAR-02"
+  ],
+  "objectives": [
+    "Expliquer composants, inputs, outputs et composition",
+    "Construire une preuve exécutable et déterministe",
+    "Relier le concept à une décision professionnelle"
+  ],
+  "sections": [
+    {
+      "title": "Concept et usage professionnel",
+      "content": "Composants, inputs, outputs et composition répond à un besoin concret de maintenabilité, de sûreté ou de performance. Le laboratoire demande de rendre la décision observable et vérifiable.",
+      "conceptCodes": [
+        "ANGULAR-COMPONENTS"
+      ]
+    },
+    {
+      "title": "Mise en pratique",
+      "content": "La preuve TypeScript isole le contrat réactif ; son intégration dans un composant Angular est décrite sans rendre le runner dépendant d'un navigateur."
+    }
+  ],
+  "keyConcepts": [
+    {
+      "code": "ANGULAR-COMPONENTS",
+      "name": "Composants, inputs, outputs et composition",
+      "definition": "Composants, inputs, outputs et composition est traité comme un contrat explicite dont le comportement peut être vérifié.",
+      "whyExists": "Il réduit les hypothèses implicites et rend le système plus simple à faire évoluer.",
+      "whyImportant": "En contexte professionnel, la preuve reproductible facilite la revue, le diagnostic et la maintenance.",
+      "minimalExample": "Une petite preuve ANGULAR-03 vérifie le cas nominal et expose une sortie stable.",
+      "commonMistake": "Appliquer la technique sans mesurer son effet ni documenter sa frontière.",
+      "masteryQuestion": "Quelle contrainte de composants, inputs, outputs et composition doit rester vraie lorsque le système évolue ?",
+      "masteryProof": "Exécuter la preuve, expliquer son invariant et proposer un cas d’échec."
+    }
+  ],
+  "exercises": [
+    {
+      "code": "ANGULAR-03-E1",
+      "title": "Valider composants, inputs, outputs et composition",
+      "statement": "Conserve l'invariant et produis exactement : ANGULAR-03: preuve validée",
+      "starterCode": "type Evidence = Readonly<{ concept: string; validated: boolean }>;\nconst evidence: Evidence = { concept: 'ANGULAR-COMPONENTS', validated: true };\nif (!evidence.validated) throw new Error('preuve invalide');\nconsole.log('ANGULAR-03: preuve validée');\n",
+      "expectedOutput": "ANGULAR-03: preuve validée"
+    }
+  ],
+  "quiz": [
+    {
+      "code": "ANGULAR-03-Q1",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Quelle preuve est la plus utile en revue ?",
+      "choices": [
+        "Une exécution déterministe avec invariant explicite",
+        "Une sortie aléatoire",
+        "Une capture sans code"
+      ],
+      "correctChoice": 0,
+      "expectedKeywords": []
+    },
+    {
+      "code": "ANGULAR-03-Q2",
+      "type": "FREE_TEXT",
+      "prompt": "Explique une décision liée à composants, inputs, outputs et composition.",
+      "choices": [],
+      "correctChoice": null,
+      "expectedKeywords": [
+        "contrat",
+        "preuve",
+        "test"
+      ]
+    }
+  ],
+  "checklist": [
+    "Je peux expliquer le concept sans réciter une définition",
+    "Je sais exécuter et modifier la preuve",
+    "Je peux nommer un risque et son contrôle",
+    "Je relie cette étape à la suivante"
+  ]
+}

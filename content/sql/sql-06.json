@@ -1,0 +1,85 @@
+{
+  "code": "SQL-06",
+  "language": "PYTHON",
+  "number": 6,
+  "slug": "index-explain-et-cout-des-requetes",
+  "title": "Index, EXPLAIN et coût des requêtes",
+  "difficulty": "INTERMEDIAIRE",
+  "threshold": 70,
+  "activityType": "LAB",
+  "prerequisites": [
+    "SQL-05"
+  ],
+  "objectives": [
+    "Expliquer index, explain et coût des requêtes",
+    "Construire une preuve exécutable et déterministe",
+    "Relier le concept à une décision professionnelle"
+  ],
+  "sections": [
+    {
+      "title": "Concept et usage professionnel",
+      "content": "Index, EXPLAIN et coût des requêtes répond à un besoin concret de maintenabilité, de sûreté ou de performance. Le laboratoire demande de rendre la décision observable et vérifiable.",
+      "conceptCodes": [
+        "SQL-INDEXES"
+      ]
+    },
+    {
+      "title": "Mise en pratique",
+      "content": "La requête est exécutée sur SQLite en mémoire pour rester locale et reproductible ; les différences PostgreSQL et l'analyse EXPLAIN sont signalées dans le cours."
+    }
+  ],
+  "keyConcepts": [
+    {
+      "code": "SQL-INDEXES",
+      "name": "Index, EXPLAIN et coût des requêtes",
+      "definition": "Index, EXPLAIN et coût des requêtes est traité comme un contrat explicite dont le comportement peut être vérifié.",
+      "whyExists": "Il réduit les hypothèses implicites et rend le système plus simple à faire évoluer.",
+      "whyImportant": "En contexte professionnel, la preuve reproductible facilite la revue, le diagnostic et la maintenance.",
+      "minimalExample": "Une petite preuve SQL-06 vérifie le cas nominal et expose une sortie stable.",
+      "commonMistake": "Appliquer la technique sans mesurer son effet ni documenter sa frontière.",
+      "masteryQuestion": "Quelle contrainte de index, explain et coût des requêtes doit rester vraie lorsque le système évolue ?",
+      "masteryProof": "Exécuter la preuve, expliquer son invariant et proposer un cas d’échec."
+    }
+  ],
+  "exercises": [
+    {
+      "code": "SQL-06-E1",
+      "title": "Valider index, explain et coût des requêtes",
+      "statement": "Conserve l'invariant et produis exactement : SQL-06: preuve validée",
+      "starterCode": "import sqlite3\n\nconnection = sqlite3.connect(\":memory:\")\nconnection.executescript(\"\"\"\ncreate table evidence(id integer primary key, concept text not null, validated integer not null check(validated in (0, 1)));\ninsert into evidence(concept, validated) values ('SQL-INDEXES', 1), ('contrôle', 0);\n\"\"\")\nvalidated = connection.execute(\"select count(*) from evidence where validated = 1\").fetchone()[0]\nassert validated == 1\nprint(\"SQL-06: preuve validée\")\nconnection.close()\n",
+      "expectedOutput": "SQL-06: preuve validée"
+    }
+  ],
+  "quiz": [
+    {
+      "code": "SQL-06-Q1",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Quelle preuve est la plus utile en revue ?",
+      "choices": [
+        "Une exécution déterministe avec invariant explicite",
+        "Une sortie aléatoire",
+        "Une capture sans code"
+      ],
+      "correctChoice": 0,
+      "expectedKeywords": []
+    },
+    {
+      "code": "SQL-06-Q2",
+      "type": "FREE_TEXT",
+      "prompt": "Explique une décision liée à index, explain et coût des requêtes.",
+      "choices": [],
+      "correctChoice": null,
+      "expectedKeywords": [
+        "contrat",
+        "preuve",
+        "test"
+      ]
+    }
+  ],
+  "checklist": [
+    "Je peux expliquer le concept sans réciter une définition",
+    "Je sais exécuter et modifier la preuve",
+    "Je peux nommer un risque et son contrôle",
+    "Je relie cette étape à la suivante"
+  ]
+}

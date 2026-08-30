@@ -890,3 +890,55 @@ Ce fichier conserve l'historique des modifications, décisions techniques, bugs 
 - Suite backend finale : 47 tests, 0 échec, 0 erreur et 0 test ignoré, runners Docker inclus.
 - Build Angular de production réussi ; bundle initial 267,59 kB, avec seulement l'avertissement connu du cache optionnel `lmdb`.
 - Contrôle navigateur : `24 disponibles / 24 prévues`, grille séquentielle complète, projet et défi distincts, concept clé en haut de la section et aucune erreur console.
+
+## 2026-08-30 — V3 : six parcours professionnels complétés
+
+### Modifications
+
+- Ajout de 81 contenus : Python 07–24, TypeScript 02–24, Spring Boot 01–12, Angular 01–10, SQL 01–10 et DevOps 01–08.
+- Chaque parcours possède prérequis, concepts contextualisés, exercice exécutable, quiz, checklist, projet et défi.
+- Migration Flyway V15 créant les chemins PostgreSQL manquants et ajoutant les 81 activités.
+- Catalogue porté à 113 contenus, avec six parcours nouvellement complets et Learn LLMs conservé à 1/12.
+- Page Parcours refondue en sélecteur : sept progressions chargées, une seule grille rendue.
+- Portfolio étendu à tous les codes de preuve.
+- Tests Docker exhaustifs sur 88 contenus Python, TypeScript, Spring, Angular, SQL et DevOps.
+- Générateur de curriculum versionné pour rendre la production des JSON et de la migration reproductible.
+
+### Bugs et incidents
+
+#### Les activités Spring gonflent le compteur Java
+
+- **Symptôme :** le tableau de bord annonce 36 laboratoires Java au lieu de 24.
+- **Cause :** les preuves Spring Boot utilisent correctement le runner `JAVA`, mais le tableau de bord assimilait le langage d'exécution au parcours pédagogique.
+- **Résolution :** sélection du parcours Java par le préfixe de contenu `JAVA-`. Spring reste exécuté en Java sans contaminer la progression Java.
+
+#### Le pourcentage Python historique devient faux
+
+- **Symptôme :** après une activité validée, le test attend 16 %.
+- **Cause :** 16 % représentait 1/6 ; le parcours contient désormais 24 activités.
+- **Résolution :** contrat mis à jour à 4 %, valeur entière produite par 1/24.
+
+#### Le navigateur sert encore le bundle V2.7
+
+- **Symptôme :** l'API expose 113 contenus mais la page conserve les anciennes sections Java/Python.
+- **Cause :** un ancien processus Angular occupait toujours le port 4200 et n'avait pas rechargé le nouveau fichier.
+- **Résolution :** identification du PID lié à 127.0.0.1:4200, arrêt limité à ce processus et redémarrage du serveur depuis le dépôt courant.
+
+#### Le langage du runner masque le nom du parcours
+
+- **Symptôme :** un laboratoire SQL aurait été présenté comme « PYTHON · Laboratoire », et Spring comme « JAVA ».
+- **Cause :** l'en-tête réutilisait `language`, qui décrit le runner et non le domaine pédagogique.
+- **Résolution :** libellé de parcours dérivé du code (`SQL`, `SPRING BOOT`, `ANGULAR`, `DOCKER & CI/CD`) ; l'éditeur continue d'afficher le vrai langage exécuté.
+
+### Validations
+
+- 114 ressources de contenu chargées : 113 laboratoires et le catalogue des parcours.
+- Migration V15 validée sur H2 puis appliquée de V14 à V15 sur PostgreSQL 17.11 réel.
+- Tests ciblés catalogue/progression/tableau de bord : 9 réussis.
+- Tests Docker des 64 contenus TypeScript, Spring, Angular, SQL et DevOps : 0 échec en 264,5 s.
+- Tests Docker des 24 contenus Python : 0 échec en 43,5 s.
+- Suite backend globale hors runners : 49 tests détectés, 41 réussis et 8 tests Docker conditionnels ignorés, 0 échec.
+- Une tentative de suite globale depuis le bac à sable a confirmé que les seuls échecs étaient huit `RUNNER_ERROR` causés par le refus système de lancer `docker.exe` (`CreateProcess error=5`). Aucun test applicatif n'a échoué ; les mêmes scénarios Docker avaient réussi séparément avec l'autorisation Docker.
+- Build Angular réussi, bundle initial 267,60 kB ; seul l'avertissement optionnel `lmdb` subsiste.
+- Contrôle API réel : totaux 24/24/24/12/10/10/8 et dernier type `CHALLENGE` pour chaque parcours.
+- Contrôle navigateur : sélection SQL fonctionnelle, concept clé contextualisé, compteurs complets et aucune erreur console.

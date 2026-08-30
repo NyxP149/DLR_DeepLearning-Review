@@ -9,19 +9,19 @@
     "expectedActivityCount": 24
   },
   {
-    "code": "PYTHON", "title": "Python depuis Java", "status": "BETA",
+    "code": "PYTHON", "title": "Python depuis Java", "status": "AVAILABLE",
     "professionalObjectives": ["Développer des programmes Python testables en transférant les acquis Java"],
     "prerequisites": ["JAVA"], "keyConcepts": ["typage dynamique", "fonctions", "contrats", "collections", "JSON", "dataclasses", "pipelines"],
-    "activityTypes": ["LAB", "QUIZ", "REVIEW", "PROJECT"], "executionEnvironment": "docker-python-3.13",
+    "activityTypes": ["LAB", "QUIZ", "REVIEW", "PROJECT", "CHALLENGE"], "executionEnvironment": "docker-python-3.13",
     "assessmentStrategy": "Sorties déterministes, quiz comparatifs et preuves de maîtrise", "project": "Pipeline local de commandes",
     "challenge": "Transformer, valider et agréger des données de façon idiomatique", "portfolioSkills": ["Python 3.13", "tests", "JSON", "modélisation de données"],
     "expectedActivityCount": 24
   },
   {
-    "code": "TYPESCRIPT", "title": "TypeScript depuis Java", "status": "BETA",
+    "code": "TYPESCRIPT", "title": "TypeScript depuis Java", "status": "AVAILABLE",
     "professionalObjectives": ["Construire des programmes TypeScript stricts pour Node.js et Angular"],
     "prerequisites": ["PYTHON"], "keyConcepts": ["types structurels", "unions", "génériques", "asynchronisme"],
-    "activityTypes": ["LAB", "QUIZ", "PROJECT"], "executionEnvironment": "docker-node-22-typescript",
+    "activityTypes": ["LAB", "QUIZ", "PROJECT", "CHALLENGE"], "executionEnvironment": "docker-node-22-typescript",
     "assessmentStrategy": "Compilation stricte, sorties déterministes et explications comparatives", "project": "Application TypeScript/Angular",
     "challenge": "Concevoir un module asynchrone fortement typé", "portfolioSkills": ["TypeScript 5.9", "Node.js", "Angular"],
     "expectedActivityCount": 24
@@ -36,30 +36,30 @@
     "expectedActivityCount": 12
   },
   {
-    "code": "SPRING_BOOT", "title": "Spring Boot professionnel", "status": "PLANNED",
+    "code": "SPRING_BOOT", "title": "Spring Boot professionnel", "status": "AVAILABLE",
     "professionalObjectives": ["Concevoir une API REST robuste et observable"], "prerequisites": ["JAVA"],
-    "keyConcepts": ["HTTP", "injection", "validation", "persistance"], "activityTypes": ["LAB", "PROJECT", "ARCHITECTURE_REVIEW"],
+    "keyConcepts": ["HTTP", "injection", "validation", "persistance"], "activityTypes": ["LAB", "PROJECT", "CHALLENGE"],
     "executionEnvironment": "docker-java-21", "assessmentStrategy": "Tests d'intégration et contrats HTTP",
     "project": "API métier PostgreSQL", "challenge": "Durcir et exploiter l'API", "portfolioSkills": ["Spring Boot", "REST", "PostgreSQL"], "expectedActivityCount": 12
   },
   {
-    "code": "ANGULAR", "title": "Angular avancé", "status": "PLANNED",
+    "code": "ANGULAR", "title": "Angular avancé", "status": "AVAILABLE",
     "professionalObjectives": ["Construire une interface accessible, réactive et testable"], "prerequisites": ["TYPESCRIPT"],
-    "keyConcepts": ["signals", "RxJS", "routing", "accessibilité"], "activityTypes": ["LAB", "PROJECT", "UI_REVIEW"],
+    "keyConcepts": ["signals", "RxJS", "routing", "accessibilité"], "activityTypes": ["LAB", "PROJECT", "CHALLENGE"],
     "executionEnvironment": "node-browser", "assessmentStrategy": "Tests composants, accessibilité et budgets bundle",
     "project": "Dashboard métier", "challenge": "Optimiser une application complexe", "portfolioSkills": ["Angular", "RxJS", "accessibilité"], "expectedActivityCount": 10
   },
   {
-    "code": "SQL", "title": "SQL et optimisation", "status": "PLANNED",
+    "code": "SQL", "title": "SQL et optimisation", "status": "AVAILABLE",
     "professionalObjectives": ["Modéliser et optimiser des données relationnelles"], "prerequisites": [],
-    "keyConcepts": ["modélisation", "jointures", "index", "transactions"], "activityTypes": ["LAB", "QUERY_CHALLENGE", "PROJECT"],
+    "keyConcepts": ["modélisation", "jointures", "index", "transactions"], "activityTypes": ["LAB", "PROJECT", "CHALLENGE"],
     "executionEnvironment": "postgresql-sandbox", "assessmentStrategy": "Résultats déterministes et plans d'exécution",
     "project": "Schéma analytique", "challenge": "Réduire le coût de requêtes réelles", "portfolioSkills": ["SQL", "PostgreSQL", "performance"], "expectedActivityCount": 10
   },
   {
-    "code": "DEVOPS", "title": "Docker et CI/CD", "status": "PLANNED",
+    "code": "DEVOPS", "title": "Docker et CI/CD", "status": "AVAILABLE",
     "professionalObjectives": ["Livrer une application reproductible et observable"], "prerequisites": ["JAVA"],
-    "keyConcepts": ["conteneurs", "réseaux", "pipelines", "sécurité"], "activityTypes": ["LAB", "INCIDENT", "PROJECT"],
+    "keyConcepts": ["conteneurs", "réseaux", "pipelines", "sécurité"], "activityTypes": ["LAB", "PROJECT", "CHALLENGE"],
     "executionEnvironment": "docker-isolated", "assessmentStrategy": "Contrôles de configuration et scénarios d'incident",
     "project": "Pipeline de livraison", "challenge": "Diagnostiquer une panne de production simulée", "portfolioSkills": ["Docker", "CI/CD", "exploitation"], "expectedActivityCount": 8
   }

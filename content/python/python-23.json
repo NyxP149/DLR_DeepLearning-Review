@@ -1,0 +1,85 @@
+{
+  "code": "PYTHON-23",
+  "language": "PYTHON",
+  "number": 23,
+  "slug": "projet-professionnel-service-de-donnees-python",
+  "title": "Projet professionnel : service de données Python",
+  "difficulty": "PROJET",
+  "threshold": 80,
+  "activityType": "PROJECT",
+  "prerequisites": [
+    "PYTHON-22"
+  ],
+  "objectives": [
+    "Expliquer projet professionnel : service de données python",
+    "Construire une preuve exécutable et déterministe",
+    "Relier le concept à une décision professionnelle"
+  ],
+  "sections": [
+    {
+      "title": "Concept et usage professionnel",
+      "content": "Projet professionnel : service de données Python répond à un besoin concret de maintenabilité, de sûreté ou de performance. Le laboratoire demande de rendre la décision observable et vérifiable.",
+      "conceptCodes": [
+        "PYTHON-PROJECT"
+      ]
+    },
+    {
+      "title": "Projet portfolio",
+      "content": "La preuve minimale est locale, déterministe et peut être enrichie sans changer le contrat attendu."
+    }
+  ],
+  "keyConcepts": [
+    {
+      "code": "PYTHON-PROJECT",
+      "name": "Projet professionnel : service de données Python",
+      "definition": "Projet professionnel : service de données Python est traité comme un contrat explicite dont le comportement peut être vérifié.",
+      "whyExists": "Il réduit les hypothèses implicites et rend le système plus simple à faire évoluer.",
+      "whyImportant": "En contexte professionnel, la preuve reproductible facilite la revue, le diagnostic et la maintenance.",
+      "minimalExample": "Une petite preuve PYTHON-23 vérifie le cas nominal et expose une sortie stable.",
+      "commonMistake": "Appliquer la technique sans mesurer son effet ni documenter sa frontière.",
+      "masteryQuestion": "Quelle contrainte de projet professionnel : service de données python doit rester vraie lorsque le système évolue ?",
+      "masteryProof": "Exécuter la preuve, expliquer son invariant et proposer un cas d’échec."
+    }
+  ],
+  "exercises": [
+    {
+      "code": "PYTHON-23-E1",
+      "title": "Valider projet professionnel : service de données python",
+      "statement": "Conserve l'invariant et produis exactement : PYTHON-23: preuve validée",
+      "starterCode": "from dataclasses import dataclass\n\n@dataclass(frozen=True, slots=True)\nclass Evidence:\n    concept: str\n    validated: bool\n\nevidence = Evidence(\"PYTHON-PROJECT\", True)\nassert evidence.validated\nprint(\"PYTHON-23: preuve validée\")\n",
+      "expectedOutput": "PYTHON-23: preuve validée"
+    }
+  ],
+  "quiz": [
+    {
+      "code": "PYTHON-23-Q1",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Quelle preuve est la plus utile en revue ?",
+      "choices": [
+        "Une exécution déterministe avec invariant explicite",
+        "Une sortie aléatoire",
+        "Une capture sans code"
+      ],
+      "correctChoice": 0,
+      "expectedKeywords": []
+    },
+    {
+      "code": "PYTHON-23-Q2",
+      "type": "FREE_TEXT",
+      "prompt": "Explique une décision liée à projet professionnel : service de données python.",
+      "choices": [],
+      "correctChoice": null,
+      "expectedKeywords": [
+        "contrat",
+        "preuve",
+        "test"
+      ]
+    }
+  ],
+  "checklist": [
+    "Je peux expliquer le concept sans réciter une définition",
+    "Je sais exécuter et modifier la preuve",
+    "Je peux nommer un risque et son contrôle",
+    "Je peux présenter cette preuve dans mon portfolio"
+  ]
+}

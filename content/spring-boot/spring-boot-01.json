@@ -1,0 +1,85 @@
+{
+  "code": "SPRING_BOOT-01",
+  "language": "JAVA",
+  "number": 1,
+  "slug": "demarrage-auto-configuration-et-configuration-typee",
+  "title": "Démarrage, auto-configuration et configuration typée",
+  "difficulty": "BASE",
+  "threshold": 70,
+  "activityType": "LAB",
+  "prerequisites": [
+    "JAVA-24"
+  ],
+  "objectives": [
+    "Expliquer démarrage, auto-configuration et configuration typée",
+    "Construire une preuve exécutable et déterministe",
+    "Relier le concept à une décision professionnelle"
+  ],
+  "sections": [
+    {
+      "title": "Concept et usage professionnel",
+      "content": "Démarrage, auto-configuration et configuration typée répond à un besoin concret de maintenabilité, de sûreté ou de performance. Le laboratoire demande de rendre la décision observable et vérifiable.",
+      "conceptCodes": [
+        "SPRING-BOOTSTRAP"
+      ]
+    },
+    {
+      "title": "Mise en pratique",
+      "content": "La preuve unifichier valide ici la frontière d'architecture hors réseau ; le laboratoire explique ensuite son branchement aux annotations et dépendances Spring Boot réelles."
+    }
+  ],
+  "keyConcepts": [
+    {
+      "code": "SPRING-BOOTSTRAP",
+      "name": "Démarrage, auto-configuration et configuration typée",
+      "definition": "Démarrage, auto-configuration et configuration typée est traité comme un contrat explicite dont le comportement peut être vérifié.",
+      "whyExists": "Il réduit les hypothèses implicites et rend le système plus simple à faire évoluer.",
+      "whyImportant": "En contexte professionnel, la preuve reproductible facilite la revue, le diagnostic et la maintenance.",
+      "minimalExample": "Une petite preuve SPRING_BOOT-01 vérifie le cas nominal et expose une sortie stable.",
+      "commonMistake": "Appliquer la technique sans mesurer son effet ni documenter sa frontière.",
+      "masteryQuestion": "Quelle contrainte de démarrage, auto-configuration et configuration typée doit rester vraie lorsque le système évolue ?",
+      "masteryProof": "Exécuter la preuve, expliquer son invariant et proposer un cas d’échec."
+    }
+  ],
+  "exercises": [
+    {
+      "code": "SPRING_BOOT-01-E1",
+      "title": "Valider démarrage, auto-configuration et configuration typée",
+      "statement": "Conserve l'invariant et produis exactement : SPRING_BOOT-01: preuve validée",
+      "starterCode": "record Evidence(String concept, boolean validated) {}\npublic class Main {\n    public static void main(String[] args) {\n        var evidence = new Evidence(\"SPRING-BOOTSTRAP\", true);\n        if (!evidence.validated()) throw new IllegalStateException(\"preuve invalide\");\n        System.out.println(\"SPRING_BOOT-01: preuve validée\");\n    }\n}\n",
+      "expectedOutput": "SPRING_BOOT-01: preuve validée"
+    }
+  ],
+  "quiz": [
+    {
+      "code": "SPRING_BOOT-01-Q1",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Quelle preuve est la plus utile en revue ?",
+      "choices": [
+        "Une exécution déterministe avec invariant explicite",
+        "Une sortie aléatoire",
+        "Une capture sans code"
+      ],
+      "correctChoice": 0,
+      "expectedKeywords": []
+    },
+    {
+      "code": "SPRING_BOOT-01-Q2",
+      "type": "FREE_TEXT",
+      "prompt": "Explique une décision liée à démarrage, auto-configuration et configuration typée.",
+      "choices": [],
+      "correctChoice": null,
+      "expectedKeywords": [
+        "contrat",
+        "preuve",
+        "test"
+      ]
+    }
+  ],
+  "checklist": [
+    "Je peux expliquer le concept sans réciter une définition",
+    "Je sais exécuter et modifier la preuve",
+    "Je peux nommer un risque et son contrôle",
+    "Je relie cette étape à la suivante"
+  ]
+}

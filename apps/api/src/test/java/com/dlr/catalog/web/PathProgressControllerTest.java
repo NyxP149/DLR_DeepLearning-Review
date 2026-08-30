@@ -35,7 +35,7 @@ class PathProgressControllerTest {
         mockMvc.perform(get("/api/paths/PYTHON/progress"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.completedLabs").value(1))
-                .andExpect(jsonPath("$.progressPercent").value(16))
+                .andExpect(jsonPath("$.progressPercent").value(4))
                 .andExpect(jsonPath("$.nextLabCode").value("PYTHON-02"))
                 .andExpect(jsonPath("$.labs[1].state").value("AVAILABLE"));
 

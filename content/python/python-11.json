@@ -1,0 +1,85 @@
+{
+  "code": "PYTHON-11",
+  "language": "PYTHON",
+  "number": 11,
+  "slug": "tests-avec-pytest-doublures-et-couverture-utile",
+  "title": "Tests avec pytest, doublures et couverture utile",
+  "difficulty": "INTERMEDIAIRE",
+  "threshold": 70,
+  "activityType": "LAB",
+  "prerequisites": [
+    "PYTHON-10"
+  ],
+  "objectives": [
+    "Expliquer tests avec pytest, doublures et couverture utile",
+    "Construire une preuve exécutable et déterministe",
+    "Relier le concept à une décision professionnelle"
+  ],
+  "sections": [
+    {
+      "title": "Concept et usage professionnel",
+      "content": "Tests avec pytest, doublures et couverture utile répond à un besoin concret de maintenabilité, de sûreté ou de performance. Le laboratoire demande de rendre la décision observable et vérifiable.",
+      "conceptCodes": [
+        "PYTHON-TESTS"
+      ]
+    },
+    {
+      "title": "Mise en pratique",
+      "content": "La preuve minimale est locale, déterministe et peut être enrichie sans changer le contrat attendu."
+    }
+  ],
+  "keyConcepts": [
+    {
+      "code": "PYTHON-TESTS",
+      "name": "Tests avec pytest, doublures et couverture utile",
+      "definition": "Tests avec pytest, doublures et couverture utile est traité comme un contrat explicite dont le comportement peut être vérifié.",
+      "whyExists": "Il réduit les hypothèses implicites et rend le système plus simple à faire évoluer.",
+      "whyImportant": "En contexte professionnel, la preuve reproductible facilite la revue, le diagnostic et la maintenance.",
+      "minimalExample": "Une petite preuve PYTHON-11 vérifie le cas nominal et expose une sortie stable.",
+      "commonMistake": "Appliquer la technique sans mesurer son effet ni documenter sa frontière.",
+      "masteryQuestion": "Quelle contrainte de tests avec pytest, doublures et couverture utile doit rester vraie lorsque le système évolue ?",
+      "masteryProof": "Exécuter la preuve, expliquer son invariant et proposer un cas d’échec."
+    }
+  ],
+  "exercises": [
+    {
+      "code": "PYTHON-11-E1",
+      "title": "Valider tests avec pytest, doublures et couverture utile",
+      "statement": "Conserve l'invariant et produis exactement : PYTHON-11: preuve validée",
+      "starterCode": "from dataclasses import dataclass\n\n@dataclass(frozen=True, slots=True)\nclass Evidence:\n    concept: str\n    validated: bool\n\nevidence = Evidence(\"PYTHON-TESTS\", True)\nassert evidence.validated\nprint(\"PYTHON-11: preuve validée\")\n",
+      "expectedOutput": "PYTHON-11: preuve validée"
+    }
+  ],
+  "quiz": [
+    {
+      "code": "PYTHON-11-Q1",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Quelle preuve est la plus utile en revue ?",
+      "choices": [
+        "Une exécution déterministe avec invariant explicite",
+        "Une sortie aléatoire",
+        "Une capture sans code"
+      ],
+      "correctChoice": 0,
+      "expectedKeywords": []
+    },
+    {
+      "code": "PYTHON-11-Q2",
+      "type": "FREE_TEXT",
+      "prompt": "Explique une décision liée à tests avec pytest, doublures et couverture utile.",
+      "choices": [],
+      "correctChoice": null,
+      "expectedKeywords": [
+        "contrat",
+        "preuve",
+        "test"
+      ]
+    }
+  ],
+  "checklist": [
+    "Je peux expliquer le concept sans réciter une définition",
+    "Je sais exécuter et modifier la preuve",
+    "Je peux nommer un risque et son contrôle",
+    "Je relie cette étape à la suivante"
+  ]
+}

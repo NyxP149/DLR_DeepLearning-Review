@@ -1,0 +1,85 @@
+{
+  "code": "TYPESCRIPT-22",
+  "language": "TYPESCRIPT",
+  "number": 22,
+  "slug": "preparation-angular-decorateurs-et-rxjs",
+  "title": "Préparation Angular, décorateurs et RxJS",
+  "difficulty": "PROFESSIONNEL",
+  "threshold": 75,
+  "activityType": "LAB",
+  "prerequisites": [
+    "TYPESCRIPT-21"
+  ],
+  "objectives": [
+    "Expliquer préparation angular, décorateurs et rxjs",
+    "Construire une preuve exécutable et déterministe",
+    "Relier le concept à une décision professionnelle"
+  ],
+  "sections": [
+    {
+      "title": "Concept et usage professionnel",
+      "content": "Préparation Angular, décorateurs et RxJS répond à un besoin concret de maintenabilité, de sûreté ou de performance. Le laboratoire demande de rendre la décision observable et vérifiable.",
+      "conceptCodes": [
+        "TYPESCRIPT-ANGULAR"
+      ]
+    },
+    {
+      "title": "Mise en pratique",
+      "content": "La preuve minimale est locale, déterministe et peut être enrichie sans changer le contrat attendu."
+    }
+  ],
+  "keyConcepts": [
+    {
+      "code": "TYPESCRIPT-ANGULAR",
+      "name": "Préparation Angular, décorateurs et RxJS",
+      "definition": "Préparation Angular, décorateurs et RxJS est traité comme un contrat explicite dont le comportement peut être vérifié.",
+      "whyExists": "Il réduit les hypothèses implicites et rend le système plus simple à faire évoluer.",
+      "whyImportant": "En contexte professionnel, la preuve reproductible facilite la revue, le diagnostic et la maintenance.",
+      "minimalExample": "Une petite preuve TYPESCRIPT-22 vérifie le cas nominal et expose une sortie stable.",
+      "commonMistake": "Appliquer la technique sans mesurer son effet ni documenter sa frontière.",
+      "masteryQuestion": "Quelle contrainte de préparation angular, décorateurs et rxjs doit rester vraie lorsque le système évolue ?",
+      "masteryProof": "Exécuter la preuve, expliquer son invariant et proposer un cas d’échec."
+    }
+  ],
+  "exercises": [
+    {
+      "code": "TYPESCRIPT-22-E1",
+      "title": "Valider préparation angular, décorateurs et rxjs",
+      "statement": "Conserve l'invariant et produis exactement : TYPESCRIPT-22: preuve validée",
+      "starterCode": "type Evidence = Readonly<{ concept: string; validated: boolean }>;\nconst evidence: Evidence = { concept: 'TYPESCRIPT-ANGULAR', validated: true };\nif (!evidence.validated) throw new Error('preuve invalide');\nconsole.log('TYPESCRIPT-22: preuve validée');\n",
+      "expectedOutput": "TYPESCRIPT-22: preuve validée"
+    }
+  ],
+  "quiz": [
+    {
+      "code": "TYPESCRIPT-22-Q1",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Quelle preuve est la plus utile en revue ?",
+      "choices": [
+        "Une exécution déterministe avec invariant explicite",
+        "Une sortie aléatoire",
+        "Une capture sans code"
+      ],
+      "correctChoice": 0,
+      "expectedKeywords": []
+    },
+    {
+      "code": "TYPESCRIPT-22-Q2",
+      "type": "FREE_TEXT",
+      "prompt": "Explique une décision liée à préparation angular, décorateurs et rxjs.",
+      "choices": [],
+      "correctChoice": null,
+      "expectedKeywords": [
+        "contrat",
+        "preuve",
+        "test"
+      ]
+    }
+  ],
+  "checklist": [
+    "Je peux expliquer le concept sans réciter une définition",
+    "Je sais exécuter et modifier la preuve",
+    "Je peux nommer un risque et son contrôle",
+    "Je relie cette étape à la suivante"
+  ]
+}

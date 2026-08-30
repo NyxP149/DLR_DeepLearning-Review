@@ -947,3 +947,39 @@ La page Parcours affiche une progression Java dédiée et une grille de 24 carte
 Le runner Java copie maintenant `Main.java` dans `/work`, compile et exécute depuis ce volume temporaire. Les écritures relatives, notamment celles de `JAVA-13`, fonctionnent sans rendre la racine du conteneur modifiable. Le montage source reste en lecture seule, le réseau est désactivé et les limites CPU, mémoire et processus sont conservées.
 
 Un test d'intégration parcourt les 24 contenus dans Docker : les six starters historiques doivent compiler, puis les 18 nouvelles preuves doivent en plus produire leur sortie exacte. Les tests de contrôleur vérifient le total, les types projet/défi, la progression, les prérequis et les six badges du tableau de bord.
+
+## 31. V3 — extension des parcours professionnels
+
+### 31.1 Catalogue livré
+
+Le catalogue contient 113 contenus versionnés :
+
+- Java : 24/24 ;
+- Python : 24/24 ;
+- TypeScript : 24/24 ;
+- Spring Boot professionnel : 12/12 ;
+- Angular avancé : 10/10 ;
+- SQL et optimisation : 10/10 ;
+- Docker et CI/CD : 8/8 ;
+- Learn LLMs : 1/12, inchangé dans cette livraison.
+
+Les six séquences ajoutées sont strictement ordonnées. Leur avant-dernière activité est un projet portfolio et leur dernière activité un défi à seuil renforcé. Spring Boot et Docker/CI-CD requièrent `JAVA-24`, Angular requiert `TYPESCRIPT-24`, tandis que SQL reste un parcours autonome. Les tentatives Python et TypeScript existantes sont conservées.
+
+### 31.2 Preuves exécutables
+
+Le contrat unifichier existant est réutilisé pour garder chaque laboratoire local, rapide et déterministe :
+
+- Python et Docker/CI-CD s'exécutent dans le runner Python 3.13 ;
+- TypeScript et Angular passent par la compilation TypeScript stricte puis Node.js ;
+- Spring Boot utilise une preuve Java 21 qui isole le contrat architectural avant son intégration à un projet Spring multi-fichiers ;
+- SQL exécute réellement DDL, données et requête dans une base SQLite en mémoire, et le cours distingue les fonctions ou plans PostgreSQL spécifiques.
+
+Cette couche n'est pas présentée comme un remplacement de Maven, d'un navigateur Angular ou d'un serveur PostgreSQL dédié. Elle constitue la preuve déterministe évaluée par DLR ; les projets professionnels portent l'intégration complète.
+
+### 31.3 Migration et interface
+
+Flyway V15 crée les quatre chemins de base absents de PostgreSQL, active les six parcours et ajoute les 81 laboratoires manquants. La migration est additive et n'efface aucune tentative.
+
+La page Parcours charge les progressions `JAVA`, `PYTHON`, `TYPESCRIPT`, `SPRING_BOOT`, `ANGULAR`, `SQL` et `DEVOPS`. Un sélecteur rend seulement le parcours actif afin d'éviter plus de cent cartes simultanées dans le DOM. Le portfolio accepte les 113 codes de preuve. L'en-tête du laboratoire affiche le parcours pédagogique, tandis que l'éditeur continue d'indiquer honnêtement le langage du runner.
+
+Le générateur `infrastructure/scripts/generate-expanded-curriculum.mjs` conserve la source structurée des 81 contenus et de la migration. Les JSON générés restent les artefacts versionnés et chargés par l'application.

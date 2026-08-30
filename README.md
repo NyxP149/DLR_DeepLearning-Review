@@ -7,7 +7,7 @@ DLR est une application locale d'apprentissage de la programmation, avec évalua
 - API Spring Boot Java 21 ;
 - application Angular standalone en thème sombre ;
 - persistance PostgreSQL versionnée par Flyway ;
-- parcours Java professionnel complet de 24 activités, six étapes Python professionnelles et deux tranches V2.5 exécutables (TypeScript, Learn LLMs) ;
+- 113 activités disponibles : Java 24, Python 24, TypeScript 24, Spring Boot 12, Angular 10, SQL 10, Docker/CI-CD 8 et Learn LLMs 1 ;
 - parcours, laboratoire, éditeur Monaco, reprise de brouillon, quiz, checklist et import `.java` ;
 - exécution Docker isolée, assertions privées et score déterministe ;
 - tableau de bord, concepts clés, révisions espacées et planning ;
@@ -105,6 +105,14 @@ Le parcours Java livre maintenant 24 activités séquentielles : 22 laboratoires
 La route `GET /api/paths/JAVA/progress` expose les 24 états et le prérequis de chaque étape. Le catalogue affiche `24 disponibles / 24 prévues`, tandis que Python reste honnêtement indiqué à `6 / 24`. Les preuves Java sont également disponibles dans le portfolio et le tableau de bord débloque un badge professionnel après les 24 validations.
 
 Les programmes Java s'exécutent dans `/work`, un espace temporaire inscriptible du conteneur isolé. Cela permet les exercices sur les fichiers tout en conservant le réseau coupé, la racine en lecture seule et les limites de ressources.
+
+## Catalogue V3 — parcours professionnels étendus
+
+Six parcours supplémentaires disposent maintenant de leur progression et de leur séquence complète : Python et TypeScript sur 24 activités, Spring Boot sur 12, Angular sur 10, SQL sur 10 et Docker/CI-CD sur 8. Chaque séquence termine par un projet portfolio puis un défi final. Learn LLMs reste volontairement une tranche séparée de `1 / 12`, car il n'était pas inclus dans cette livraison.
+
+La page **Mon parcours** charge les sept progressions mais n'affiche qu'une grille sélectionnée à la fois. Cette organisation maintient le DOM léger malgré les 113 contenus. Les cartes du catalogue servent de sélecteur et conservent les états disponible, en cours, verrouillé, projet et défi.
+
+Les preuves Spring Boot utilisent Java 21, les preuves Angular utilisent TypeScript strict, et les contrôles Docker/CI-CD utilisent Python. Les laboratoires SQL exécutent de vraies instructions SQL dans SQLite en mémoire afin de rester reproductibles et hors réseau ; les différences PostgreSQL sont explicitement indiquées dans les cours. Ces preuves unifichier valident les concepts et préparent les projets complets sans prétendre remplacer une application Spring ou Angular multi-fichiers.
 
 ## Sauvegarde locale
 

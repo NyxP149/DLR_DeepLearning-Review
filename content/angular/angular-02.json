@@ -1,0 +1,85 @@
+{
+  "code": "ANGULAR-02",
+  "language": "TYPESCRIPT",
+  "number": 2,
+  "slug": "signals-computed-et-effets-maitrises",
+  "title": "Signals, computed et effets maîtrisés",
+  "difficulty": "BASE",
+  "threshold": 70,
+  "activityType": "LAB",
+  "prerequisites": [
+    "ANGULAR-01"
+  ],
+  "objectives": [
+    "Expliquer signals, computed et effets maîtrisés",
+    "Construire une preuve exécutable et déterministe",
+    "Relier le concept à une décision professionnelle"
+  ],
+  "sections": [
+    {
+      "title": "Concept et usage professionnel",
+      "content": "Signals, computed et effets maîtrisés répond à un besoin concret de maintenabilité, de sûreté ou de performance. Le laboratoire demande de rendre la décision observable et vérifiable.",
+      "conceptCodes": [
+        "ANGULAR-SIGNALS"
+      ]
+    },
+    {
+      "title": "Mise en pratique",
+      "content": "La preuve TypeScript isole le contrat réactif ; son intégration dans un composant Angular est décrite sans rendre le runner dépendant d'un navigateur."
+    }
+  ],
+  "keyConcepts": [
+    {
+      "code": "ANGULAR-SIGNALS",
+      "name": "Signals, computed et effets maîtrisés",
+      "definition": "Signals, computed et effets maîtrisés est traité comme un contrat explicite dont le comportement peut être vérifié.",
+      "whyExists": "Il réduit les hypothèses implicites et rend le système plus simple à faire évoluer.",
+      "whyImportant": "En contexte professionnel, la preuve reproductible facilite la revue, le diagnostic et la maintenance.",
+      "minimalExample": "Une petite preuve ANGULAR-02 vérifie le cas nominal et expose une sortie stable.",
+      "commonMistake": "Appliquer la technique sans mesurer son effet ni documenter sa frontière.",
+      "masteryQuestion": "Quelle contrainte de signals, computed et effets maîtrisés doit rester vraie lorsque le système évolue ?",
+      "masteryProof": "Exécuter la preuve, expliquer son invariant et proposer un cas d’échec."
+    }
+  ],
+  "exercises": [
+    {
+      "code": "ANGULAR-02-E1",
+      "title": "Valider signals, computed et effets maîtrisés",
+      "statement": "Conserve l'invariant et produis exactement : ANGULAR-02: preuve validée",
+      "starterCode": "type Evidence = Readonly<{ concept: string; validated: boolean }>;\nconst evidence: Evidence = { concept: 'ANGULAR-SIGNALS', validated: true };\nif (!evidence.validated) throw new Error('preuve invalide');\nconsole.log('ANGULAR-02: preuve validée');\n",
+      "expectedOutput": "ANGULAR-02: preuve validée"
+    }
+  ],
+  "quiz": [
+    {
+      "code": "ANGULAR-02-Q1",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Quelle preuve est la plus utile en revue ?",
+      "choices": [
+        "Une exécution déterministe avec invariant explicite",
+        "Une sortie aléatoire",
+        "Une capture sans code"
+      ],
+      "correctChoice": 0,
+      "expectedKeywords": []
+    },
+    {
+      "code": "ANGULAR-02-Q2",
+      "type": "FREE_TEXT",
+      "prompt": "Explique une décision liée à signals, computed et effets maîtrisés.",
+      "choices": [],
+      "correctChoice": null,
+      "expectedKeywords": [
+        "contrat",
+        "preuve",
+        "test"
+      ]
+    }
+  ],
+  "checklist": [
+    "Je peux expliquer le concept sans réciter une définition",
+    "Je sais exécuter et modifier la preuve",
+    "Je peux nommer un risque et son contrôle",
+    "Je relie cette étape à la suivante"
+  ]
+}

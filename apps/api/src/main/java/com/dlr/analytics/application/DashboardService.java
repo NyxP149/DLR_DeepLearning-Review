@@ -24,7 +24,7 @@ public class DashboardService {
 
     public Dashboard dashboard() {
         var javaLabs = catalog.findAll().stream()
-                .filter(lab -> "JAVA".equals(lab.language()))
+                .filter(lab -> lab.code().startsWith("JAVA-"))
                 .toList();
         var completedLabCodes = queries.completedLabCodes();
         int totalLabs = javaLabs.size();

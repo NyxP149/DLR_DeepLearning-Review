@@ -15,7 +15,7 @@
     @case ('loaded') {
       <header class="lab-header">
         <div>
-          <p class="eyebrow">{{ state.lab.language }} · {{ state.lab.activityType === 'PROJECT' ? 'Projet professionnel' : state.lab.activityType === 'CHALLENGE' ? 'Défi final' : 'Laboratoire ' + state.lab.number }}</p>
+          <p class="eyebrow">{{ pathLabel(state.lab.code) }} · {{ state.lab.activityType === 'PROJECT' ? 'Projet professionnel' : state.lab.activityType === 'CHALLENGE' ? 'Défi final' : 'Laboratoire ' + state.lab.number }}</p>
           <h1>{{ state.lab.title }}</h1>
           <p>{{ state.lab.objectives.length }} objectifs · Seuil recommandé {{ state.lab.threshold }} %</p>
         </div>

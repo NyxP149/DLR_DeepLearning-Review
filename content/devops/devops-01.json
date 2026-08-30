@@ -1,0 +1,85 @@
+{
+  "code": "DEVOPS-01",
+  "language": "PYTHON",
+  "number": 1,
+  "slug": "images-docker-dockerfile-et-builds-reproductibles",
+  "title": "Images Docker, Dockerfile et builds reproductibles",
+  "difficulty": "BASE",
+  "threshold": 70,
+  "activityType": "LAB",
+  "prerequisites": [
+    "JAVA-24"
+  ],
+  "objectives": [
+    "Expliquer images docker, dockerfile et builds reproductibles",
+    "Construire une preuve exécutable et déterministe",
+    "Relier le concept à une décision professionnelle"
+  ],
+  "sections": [
+    {
+      "title": "Concept et usage professionnel",
+      "content": "Images Docker, Dockerfile et builds reproductibles répond à un besoin concret de maintenabilité, de sûreté ou de performance. Le laboratoire demande de rendre la décision observable et vérifiable.",
+      "conceptCodes": [
+        "DEVOPS-IMAGES"
+      ]
+    },
+    {
+      "title": "Mise en pratique",
+      "content": "La preuve minimale est locale, déterministe et peut être enrichie sans changer le contrat attendu."
+    }
+  ],
+  "keyConcepts": [
+    {
+      "code": "DEVOPS-IMAGES",
+      "name": "Images Docker, Dockerfile et builds reproductibles",
+      "definition": "Images Docker, Dockerfile et builds reproductibles est traité comme un contrat explicite dont le comportement peut être vérifié.",
+      "whyExists": "Il réduit les hypothèses implicites et rend le système plus simple à faire évoluer.",
+      "whyImportant": "En contexte professionnel, la preuve reproductible facilite la revue, le diagnostic et la maintenance.",
+      "minimalExample": "Une petite preuve DEVOPS-01 vérifie le cas nominal et expose une sortie stable.",
+      "commonMistake": "Appliquer la technique sans mesurer son effet ni documenter sa frontière.",
+      "masteryQuestion": "Quelle contrainte de images docker, dockerfile et builds reproductibles doit rester vraie lorsque le système évolue ?",
+      "masteryProof": "Exécuter la preuve, expliquer son invariant et proposer un cas d’échec."
+    }
+  ],
+  "exercises": [
+    {
+      "code": "DEVOPS-01-E1",
+      "title": "Valider images docker, dockerfile et builds reproductibles",
+      "statement": "Conserve l'invariant et produis exactement : DEVOPS-01: preuve validée",
+      "starterCode": "from dataclasses import dataclass\n\n@dataclass(frozen=True)\nclass DeliveryCheck:\n    control: str\n    passed: bool\n\ncheck = DeliveryCheck(\"DEVOPS-IMAGES\", True)\nassert check.passed\nprint(\"DEVOPS-01: preuve validée\")\n",
+      "expectedOutput": "DEVOPS-01: preuve validée"
+    }
+  ],
+  "quiz": [
+    {
+      "code": "DEVOPS-01-Q1",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Quelle preuve est la plus utile en revue ?",
+      "choices": [
+        "Une exécution déterministe avec invariant explicite",
+        "Une sortie aléatoire",
+        "Une capture sans code"
+      ],
+      "correctChoice": 0,
+      "expectedKeywords": []
+    },
+    {
+      "code": "DEVOPS-01-Q2",
+      "type": "FREE_TEXT",
+      "prompt": "Explique une décision liée à images docker, dockerfile et builds reproductibles.",
+      "choices": [],
+      "correctChoice": null,
+      "expectedKeywords": [
+        "contrat",
+        "preuve",
+        "test"
+      ]
+    }
+  ],
+  "checklist": [
+    "Je peux expliquer le concept sans réciter une définition",
+    "Je sais exécuter et modifier la preuve",
+    "Je peux nommer un risque et son contrôle",
+    "Je relie cette étape à la suivante"
+  ]
+}

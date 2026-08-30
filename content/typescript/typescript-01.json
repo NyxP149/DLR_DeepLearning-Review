@@ -1,6 +1,7 @@
 {
   "code": "TYPESCRIPT-01", "language": "TYPESCRIPT", "number": 1, "slug": "typescript-depuis-java",
   "title": "TypeScript depuis Java : types et compilation", "difficulty": "BASE", "threshold": 70,
+  "activityType": "LAB", "prerequisites": [],
   "objectives": ["Compiler TypeScript en JavaScript", "Comparer les types structurels aux types nominaux Java", "Écrire une fonction strictement typée"],
   "sections": [
     {"title":"TypeScript avant JavaScript","content":"TypeScript vérifie le programme puis produit du JavaScript. Les types sont effacés : le navigateur ou Node.js exécute le JavaScript généré.","conceptCodes":["TYPESCRIPT-STRUCTURAL-TYPING"]},

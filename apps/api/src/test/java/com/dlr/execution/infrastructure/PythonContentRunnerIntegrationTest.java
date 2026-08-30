@@ -28,7 +28,7 @@ class PythonContentRunnerIntegrationTest {
                 .filter(lab -> lab.code().startsWith("PYTHON-"))
                 .toList();
 
-        assertThat(pythonLabs).hasSize(6);
+        assertThat(pythonLabs).hasSize(24);
         for (var lab : pythonLabs) {
             var exercise = lab.exercises().getFirst();
             var submission = new Submission(
