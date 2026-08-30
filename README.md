@@ -13,8 +13,12 @@ DLR est une application locale d'apprentissage de la programmation, avec évalua
 - tableau de bord, concepts clés, révisions espacées et planning ;
 - profil local modifiable et professeur Ollama en mode explication, indice et correction qualitative ;
 - PWA installable avec cache du shell et brouillons locaux IndexedDB ;
-- journal de développement dans `DLR_CodeReview.md`.
+- documentation de conception et d'implémentation dans [`docs/`](docs/) ;
+- journal de développement dans [`docs/DLR_CodeReview.md`](docs/DLR_CodeReview.md).
 - synchronisation V2 par appareils appairés, journal idempotent et conflits sans perte.
+- recommandations adaptatives expliquées, analytics d'autonomie et professeur Ollama à cinq rôles ;
+- portfolio privé avec aperçu Markdown, export ZIP GitHub-ready et filtrage des secrets ;
+- catalogue V2 extensible avec Java disponible et parcours Spring Boot, Angular, SQL et DevOps planifiés.
 
 ## Structure
 
@@ -23,6 +27,7 @@ apps/api/       API Spring Boot
 apps/web/       application Angular
 content/        contenu pédagogique versionné
 infrastructure/ configuration locale
+docs/           conception, implémentation et journal de développement
 ```
 
 ## Démarrage du backend
@@ -105,3 +110,17 @@ $env:DLR_ALLOWED_ORIGINS="http://localhost:4200,http://192.168.1.20:4200"
 ```
 
 Chaque appareil reçoit un jeton affiché une seule fois et stocké uniquement dans son navigateur. Les envois sont idempotents ; deux modifications concurrentes d’une même version sont conservées comme variantes conflictuelles.
+
+## Coach et portfolio V2
+
+L'écran **Coach V2** explique la prochaine activité recommandée et laisse accepter, reporter, remplacer ou ignorer la proposition. Les indicateurs d'autonomie sont des estimations locales accompagnées de leurs facteurs. Le tuteur propose cinq rôles : professeur, coach, reviewer, client et Tech Lead. Aucun rôle recruteur n'est implémenté.
+
+L'écran **Portfolio** crée des projets privés depuis des preuves sélectionnées. Il génère un README et une archive ZIP locale ; il ne lit ni scores, ni profil, ni conversations IA. Un motif ressemblant à un secret bloque l'opération avant persistance.
+
+Les routes principales ajoutées sont :
+
+- `GET /api/adaptation/recommendation` et `POST /api/adaptation/recommendations/{id}/decision` ;
+- `GET /api/adaptation/insights` ;
+- `POST /api/tutor/consult` ;
+- `GET|POST /api/portfolio/projects`, aperçu README et export ZIP ;
+- `GET /api/paths/catalog`.

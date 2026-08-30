@@ -622,3 +622,91 @@ Ce fichier conserve l'historique des modifications, décisions techniques, bugs 
 - Deux tests d’intégration réussis couvrent appairage local, refus distant sans code, authentification, doublon, conflit, curseur, lecture et révocation.
 - Les neuf migrations Flyway sont appliquées avec succès sur H2 en mode PostgreSQL.
 - Build Angular réussi ; bundle initial stable à 266,91 kB brut.
+
+## 2026-08-30 — V2.2 : adaptation expliquée et tuteur multi-rôle
+
+### Modifications
+
+- Migration Flyway V10 et module `adaptation` pour conserver les recommandations et les décisions de l'apprenant.
+- Recommandation issue de la carte de maîtrise, avec raison, concepts ciblés, activité, difficulté, bénéfice, facteurs et expiration.
+- Confirmation explicite : accepter, reporter trois jours, remplacer ou ignorer ; remplacer conserve toutes les compétences obligatoires.
+- Analytics locaux : autonomie, dépendance aux indices, transfert confirmé et durée restante estimée, toujours accompagnés de facteurs et d'un avertissement d'incertitude.
+- Écran `Coach V2` cohérent avec la maquette : carte principale, facteurs dépliables, actions et métriques lisibles.
+- Prompts Ollama versionnés V2 et cinq postures fermées : `TEACHER`, `COACH`, `REVIEWER`, `CLIENT`, `TECH_LEAD`.
+- Le rôle `RECRUITER` reste explicitement absent et est rejeté par l'API.
+- Chaque posture définit ses limites ; aucune ne connaît les tests privés ni ne peut modifier un score.
+
+### Bugs et incidents
+
+#### Cache Maven inaccessible depuis le bac à sable
+
+- **Symptôme :** la compilation échoue sur un JAR Flyway pourtant présent dans le cache local.
+- **Cause :** restriction de lecture Windows du processus isolé, sans défaut du code ou de la dépendance.
+- **Résolution :** relance de Maven avec l'autorisation ciblée d'accès au cache local ; compilation puis tests réussis.
+
+#### La virgule Maven est interprétée par PowerShell
+
+- **Symptôme :** le lancement de deux classes de test produit `Missing argument in parameter list` avant Maven.
+- **Cause :** la valeur de `-Dtest` contenant une virgule n'était pas entièrement protégée.
+- **Résolution :** guillemets autour de l'argument complet `-Dtest=TutorControllerTest,AdaptationControllerTest`.
+
+#### Angular ne peut pas remonter l'arborescence dans le bac à sable
+
+- **Symptôme :** le builder signale des fichiers locaux introuvables et `Access is denied`.
+- **Cause :** le résolveur Angular inspecte les dossiers parents pendant la résolution des styles et dépendances.
+- **Résolution :** build relancé avec une autorisation de lecture ciblée ; aucune erreur TypeScript ou de template.
+
+#### Les facteurs exposent des valeurs techniques
+
+- **Symptôme :** le contrôle navigateur affiche `CONSOLIDATING` et une étape de révision `-1` dans une carte destinée à l'apprenant.
+- **Cause :** les valeurs du domaine étaient concaténées directement dans le texte explicatif.
+- **Résolution :** traduction explicite des statuts et remplacement de la sentinelle négative par « aucune révision différée validée ».
+
+### Validations
+
+- Deux tests d'intégration couvrent recommandation, explication, remplacement et métriques bornées.
+- Trois tests du tuteur couvrent les cinq rôles autorisés et le rejet du rôle recruteur.
+- Build Angular réussi ; le chargement différé maintient le bundle initial à 267,40 kB après le Coach.
+
+## 2026-08-30 — V2.3 : portfolio privé et catalogue extensible
+
+### Modifications
+
+- Migration Flyway V11 pour les projets portfolio privés, décisions techniques et historique d'exports.
+- Création d'une fiche depuis une sélection explicite de laboratoires et de décisions publiques.
+- README Markdown généré depuis les concepts et preuves pédagogiques publiques uniquement.
+- Archive ZIP GitHub-ready contenant `README.md`, `.gitignore` protecteur et `docs/PRIVACY.md`.
+- Contrôle de secrets avant persistance et avant export : clés privées et affectations sensibles sont bloquées.
+- Les scores, le profil, les conversations IA et le journal de synchronisation ne sont jamais interrogés par le module portfolio.
+- Écran Portfolio privé avec sélection des preuves, aperçu Markdown et téléchargement ZIP ; aucune publication automatique.
+- Catalogue piloté par `content/catalog/paths.json`, sans branche conditionnelle par langage dans le cœur.
+- Descripteurs complets pour Java, Spring Boot, Angular, SQL et DevOps : objectifs, prérequis, concepts, types d'activités, runner, évaluation, projet, défi et compétences portfolio.
+- Les parcours sans activités finalisées sont honnêtement marqués `PLANNED` dans l'interface.
+- Les documents de conception, d'implémentation et de revue sont regroupés sous `docs/` et les liens ont été corrigés.
+
+### Décisions
+
+- Un export est une action locale explicite et ne change jamais le statut privé du projet.
+- Le contenu exportable est construit par liste blanche plutôt que nettoyé après agrégation de données privées.
+- Le ZIP minimal constitue le format V2 initial ; une publication Netlify reste facultative et hors du chemin critique.
+- Les parcours planifiés n'exposent pas de faux laboratoires : leur contrat existe, leurs activités seront ajoutées comme contenu versionné.
+
+### Bugs et incidents
+
+#### Le cache JavaScript Angular optionnel est absent
+
+- **Symptôme :** le build avertit que le module optionnel `lmdb` ne peut pas initialiser le cache.
+- **Impact :** aucun sur le contenu produit ; seulement un build potentiellement plus lent.
+- **Gestion :** avertissement conservé et documenté, car le build de production termine correctement et ajouter une dépendance native n'améliorerait pas l'application livrée.
+
+### Validations
+
+- Deux tests portfolio couvrent création privée, Markdown, contenu ZIP exact et blocage d'un secret avant écriture.
+- Le test catalogue vérifie les cinq descripteurs et les champs nécessaires à l'extension.
+- Suite backend rapide : 35 tests, 0 échec, 3 tests Docker conditionnels exclus.
+- Build Angular final réussi ; bundle initial 267,59 kB brut, Coach et Portfolio restant chargés à la demande.
+- Contrôle navigateur desktop des écrans Coach, Portfolio et Parcours ; contrôle mobile du Coach à 390 px sans débordement horizontal.
+- PostgreSQL 17.11 réel migré de Flyway V8 à V11 ; appels réels des recommandations, analytics, catalogue et liste portfolio réussis.
+- Suite finale avec Docker Desktop : 35 tests, 0 échec, 0 ignoré, dont les 3 scénarios réels du runner.
+- Audit npm des dépendances de production : 0 vulnérabilité.
+- Correctif des facteurs revalidé sur l'API PostgreSQL et dans le navigateur ; aucune erreur console sur le Coach.

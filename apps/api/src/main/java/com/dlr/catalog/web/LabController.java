@@ -2,6 +2,7 @@ package com.dlr.catalog.web;
 
 import com.dlr.catalog.application.LabCatalog;
 import com.dlr.catalog.domain.LabContent;
+import com.dlr.catalog.domain.PathDescriptor;
 import com.dlr.shared.web.ResourceNotFoundException;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -24,6 +25,9 @@ public class LabController {
     public List<LabSummaryResponse> listLabs() {
         return labCatalog.findAll().stream().map(LabSummaryResponse::from).toList();
     }
+
+    @GetMapping("/paths/catalog")
+    public List<PathDescriptor> listPaths() { return labCatalog.findPaths(); }
 
     @GetMapping("/labs/{code}")
     public LabDetailResponse getLab(@PathVariable String code) {

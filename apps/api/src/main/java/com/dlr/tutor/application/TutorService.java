@@ -17,7 +17,7 @@ import java.util.stream.Collectors;
 @Service
 public class TutorService {
 
-    private static final String PROMPT_VERSION = "V1";
+    private static final String PROMPT_VERSION = "V2";
     private static final String SYSTEM = """
             Tu es le professeur local de DLR. Réponds en français, avec bienveillance et précision.
             Guide l'apprenant par le raisonnement. Ne prétends jamais modifier le score déterministe.
@@ -118,6 +118,36 @@ public class TutorService {
         return respond("FREE_TEXT_REVIEW", prompt);
     }
 
+    public TutorResponse consult(Role role, String labCode, String context, String question) {
+        LabContent lab = lab(labCode);
+        String safeContext = bounded(context, 6_000, "Aucun contexte supplémentaire.");
+        String safeQuestion = bounded(question, 2_000, "Aide-moi à progresser sur ce laboratoire.");
+        String posture = switch (role) {
+            case TEACHER -> "Explique les mécanismes et vérifie la compréhension par une question. Ne donne pas directement la solution complète.";
+            case COACH -> "Aide à choisir la prochaine petite action, fais verbaliser le blocage et encourage l'autonomie.";
+            case REVIEWER -> "Fais une revue constructive : correction, lisibilité, conception et tests publics. Ne prétends pas connaître les assertions privées.";
+            case CLIENT -> "Joue le client métier : clarifie la valeur, les cas limites et les critères d'acceptation observables, sans imposer l'implémentation.";
+            case TECH_LEAD -> "Challenge les compromis d'architecture, la maintenabilité, la sécurité et l'exploitation. Demande de justifier une décision.";
+        };
+        String prompt = """
+                Rôle demandé : %s
+                Posture obligatoire : %s
+                Laboratoire public : %s
+                Objectifs publics : %s
+                Consigne publique : %s
+
+                Contexte fourni par l'apprenant :
+                %s
+
+                Question : %s
+
+                Reste dans ce rôle. Distingue les faits du laboratoire de tes suggestions.
+                N'invente ni test privé, ni score, ni contrainte absente. Termine par une action concrète ou une question utile.
+                """.formatted(role, posture, lab.title(), String.join(" ; ", lab.objectives()),
+                lab.exercises().getFirst().statement(), safeContext, safeQuestion);
+        return respond("ROLE_" + role, prompt);
+    }
+
     private TutorResponse respond(String purpose, String prompt) {
         String response = tutor.complete(SYSTEM, prompt);
         String model = tutor.status().selectedModel();
@@ -147,5 +177,11 @@ public class TutorService {
         return value == null || value.isBlank() ? fallback : value.strip();
     }
 
+    private String bounded(String value, int maximum, String fallback) {
+        String normalized = blankDefault(value, fallback);
+        return normalized.substring(0, Math.min(normalized.length(), maximum));
+    }
+
+    public enum Role { TEACHER, COACH, REVIEWER, CLIENT, TECH_LEAD }
     public record TutorResponse(String purpose, String model, String content) {}
 }

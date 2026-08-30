@@ -6,6 +6,7 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -43,6 +44,11 @@ public class TutorController {
         return tutorService.reviewAnswer(request.labCode(), request.questionCode(), request.answer());
     }
 
+    @PostMapping("/consult")
+    public TutorService.TutorResponse consult(@Valid @RequestBody ConsultRequest request) {
+        return tutorService.consult(request.role(), request.labCode(), request.context(), request.question());
+    }
+
     public record ExplainRequest(
             @NotBlank String labCode,
             @NotBlank String conceptCode,
@@ -59,5 +65,12 @@ public class TutorController {
             @NotBlank String labCode,
             @NotBlank String questionCode,
             @NotBlank @Size(max = 4_000) String answer
+    ) {}
+
+    public record ConsultRequest(
+            @NotNull TutorService.Role role,
+            @NotBlank String labCode,
+            @Size(max = 6_000) String context,
+            @NotBlank @Size(max = 2_000) String question
     ) {}
 }

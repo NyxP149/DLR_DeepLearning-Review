@@ -2,6 +2,7 @@ package com.dlr.catalog.infrastructure;
 
 import com.dlr.catalog.application.LabCatalog;
 import com.dlr.catalog.domain.LabContent;
+import com.dlr.catalog.domain.PathDescriptor;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.support.PathMatchingResourcePatternResolver;
@@ -20,9 +21,11 @@ public class JsonLabCatalog implements LabCatalog {
     private static final String CONTENT_PATTERN = "classpath*:content/**/*.json";
 
     private final List<LabContent> labs;
+    private final List<PathDescriptor> paths;
 
     public JsonLabCatalog(ObjectMapper objectMapper) {
         this.labs = loadLabs(objectMapper);
+        this.paths = loadPaths(objectMapper);
     }
 
     @Override
@@ -37,6 +40,9 @@ public class JsonLabCatalog implements LabCatalog {
                 .findFirst();
     }
 
+    @Override
+    public List<PathDescriptor> findPaths() { return paths; }
+
     private List<LabContent> loadLabs(ObjectMapper objectMapper) {
         try {
             Resource[] resources = new PathMatchingResourcePatternResolver().getResources(CONTENT_PATTERN);
@@ -45,11 +51,21 @@ public class JsonLabCatalog implements LabCatalog {
             }
 
             return Arrays.stream(resources)
+                    .filter(resource -> !"paths.json".equals(resource.getFilename()))
                     .map(resource -> readLab(objectMapper, resource))
                     .sorted(Comparator.comparing(LabContent::language).thenComparingInt(LabContent::number))
                     .toList();
         } catch (IOException exception) {
             throw new IllegalStateException("Impossible de parcourir le contenu pédagogique", exception);
+        }
+    }
+
+    private List<PathDescriptor> loadPaths(ObjectMapper objectMapper) {
+        Resource resource = new PathMatchingResourcePatternResolver().getResource("classpath:content/catalog/paths.json");
+        try (InputStream input = resource.getInputStream()) {
+            return List.of(objectMapper.readValue(input, PathDescriptor[].class));
+        } catch (IOException exception) {
+            throw new IllegalStateException("Catalogue des parcours invalide", exception);
         }
     }
 
@@ -61,4 +77,3 @@ public class JsonLabCatalog implements LabCatalog {
         }
     }
 }
-

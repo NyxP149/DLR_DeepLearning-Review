@@ -48,4 +48,15 @@ class LabControllerTest {
                 .andExpect(jsonPath("$[0].code").value("JAVA-01"))
                 .andExpect(jsonPath("$[5].code").value("JAVA-06"));
     }
+
+    @Test
+    void exposesExtensibleProfessionalPathDescriptors() throws Exception {
+        mockMvc.perform(get("/api/paths/catalog"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(5))
+                .andExpect(jsonPath("$[0].code").value("JAVA"))
+                .andExpect(jsonPath("$[1].code").value("SPRING_BOOT"))
+                .andExpect(jsonPath("$[1].executionEnvironment").isNotEmpty())
+                .andExpect(jsonPath("$[1].portfolioSkills.length()").isNotEmpty());
+    }
 }

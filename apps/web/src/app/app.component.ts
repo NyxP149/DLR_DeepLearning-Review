@@ -26,14 +26,16 @@ import { DashboardApiService } from './core/api/dashboard-api.service';
           <a routerLink="/concepts" routerLinkActive="active">Concepts clés</a>
           <a routerLink="/reviews" routerLinkActive="active">Révisions</a>
           <a routerLink="/planning" routerLinkActive="active">Planning</a>
+          <a routerLink="/coach" routerLinkActive="active">Coach V2</a>
+          <a routerLink="/portfolio" routerLinkActive="active">Portfolio</a>
           <a routerLink="/settings" routerLinkActive="active">Paramètres</a>
         </nav>
           <div class="side-goal">
-            <small>Objectif V1</small>
+            <small>Objectif V2</small>
             <strong>6 laboratoires Java</strong>
             <span><i [style.width.%]="goalProgress()"></i></span>
           </div>
-          <p class="build-label">DLR V1 · local-first</p>
+          <p class="build-label">DLR V2 · local-first</p>
         </aside>
         <main>
           <router-outlet />

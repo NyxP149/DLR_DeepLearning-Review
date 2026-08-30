@@ -12,6 +12,11 @@ export interface LabSummary {
   difficulty: string;
   threshold: number;
 }
+export interface PathDescriptor {
+  code: string; title: string; status: 'AVAILABLE' | 'PLANNED'; professionalObjectives: string[];
+  prerequisites: string[]; keyConcepts: string[]; activityTypes: string[]; executionEnvironment: string;
+  assessmentStrategy: string; project: string; challenge: string; portfolioSkills: string[]; expectedActivityCount: number;
+}
 
 @Injectable({ providedIn: 'root' })
 export class LabApiService {
@@ -25,4 +30,5 @@ export class LabApiService {
   listLabs(): Observable<LabSummary[]> {
     return this.http.get<LabSummary[]>(`${this.apiUrl}/labs`);
   }
+  listPaths(): Observable<PathDescriptor[]> { return this.http.get<PathDescriptor[]>(`${this.apiUrl}/paths/catalog`); }
 }

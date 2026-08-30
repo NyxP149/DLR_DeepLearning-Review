@@ -1,0 +1,39 @@
+[
+  {
+    "code": "JAVA", "title": "Fondamentaux Java", "status": "AVAILABLE",
+    "professionalObjectives": ["Écrire, tester et diagnostiquer des programmes Java maintenables"],
+    "prerequisites": [], "keyConcepts": ["JVM", "types", "contrôle", "méthodes", "objets", "exceptions"],
+    "activityTypes": ["LAB", "QUIZ", "REVIEW"], "executionEnvironment": "docker-java-21",
+    "assessmentStrategy": "Tests déterministes, quiz et preuves de maîtrise", "project": "Application Java locale",
+    "challenge": "Transférer les fondamentaux dans un programme inédit", "portfolioSkills": ["Java 21", "tests", "debugging"],
+    "expectedActivityCount": 6
+  },
+  {
+    "code": "SPRING_BOOT", "title": "Spring Boot professionnel", "status": "PLANNED",
+    "professionalObjectives": ["Concevoir une API REST robuste et observable"], "prerequisites": ["JAVA"],
+    "keyConcepts": ["HTTP", "injection", "validation", "persistance"], "activityTypes": ["LAB", "PROJECT", "ARCHITECTURE_REVIEW"],
+    "executionEnvironment": "docker-java-21", "assessmentStrategy": "Tests d'intégration et contrats HTTP",
+    "project": "API métier PostgreSQL", "challenge": "Durcir et exploiter l'API", "portfolioSkills": ["Spring Boot", "REST", "PostgreSQL"], "expectedActivityCount": 12
+  },
+  {
+    "code": "ANGULAR", "title": "Angular avancé", "status": "PLANNED",
+    "professionalObjectives": ["Construire une interface accessible, réactive et testable"], "prerequisites": ["TYPESCRIPT"],
+    "keyConcepts": ["signals", "RxJS", "routing", "accessibilité"], "activityTypes": ["LAB", "PROJECT", "UI_REVIEW"],
+    "executionEnvironment": "node-browser", "assessmentStrategy": "Tests composants, accessibilité et budgets bundle",
+    "project": "Dashboard métier", "challenge": "Optimiser une application complexe", "portfolioSkills": ["Angular", "RxJS", "accessibilité"], "expectedActivityCount": 10
+  },
+  {
+    "code": "SQL", "title": "SQL et optimisation", "status": "PLANNED",
+    "professionalObjectives": ["Modéliser et optimiser des données relationnelles"], "prerequisites": [],
+    "keyConcepts": ["modélisation", "jointures", "index", "transactions"], "activityTypes": ["LAB", "QUERY_CHALLENGE", "PROJECT"],
+    "executionEnvironment": "postgresql-sandbox", "assessmentStrategy": "Résultats déterministes et plans d'exécution",
+    "project": "Schéma analytique", "challenge": "Réduire le coût de requêtes réelles", "portfolioSkills": ["SQL", "PostgreSQL", "performance"], "expectedActivityCount": 10
+  },
+  {
+    "code": "DEVOPS", "title": "Docker et CI/CD", "status": "PLANNED",
+    "professionalObjectives": ["Livrer une application reproductible et observable"], "prerequisites": ["JAVA"],
+    "keyConcepts": ["conteneurs", "réseaux", "pipelines", "sécurité"], "activityTypes": ["LAB", "INCIDENT", "PROJECT"],
+    "executionEnvironment": "docker-isolated", "assessmentStrategy": "Contrôles de configuration et scénarios d'incident",
+    "project": "Pipeline de livraison", "challenge": "Diagnostiquer une panne de production simulée", "portfolioSkills": ["Docker", "CI/CD", "exploitation"], "expectedActivityCount": 8
+  }
+]

@@ -27,6 +27,16 @@ export const routes: Routes = [
       import('./features/planning/planning.component').then((module) => module.PlanningComponent)
   },
   {
+    path: 'coach',
+    loadComponent: () =>
+      import('./features/coach/coach.component').then((module) => module.CoachComponent)
+  },
+  {
+    path: 'portfolio',
+    loadComponent: () =>
+      import('./features/portfolio/portfolio.component').then((module) => module.PortfolioComponent)
+  },
+  {
     path: 'settings',
     loadComponent: () =>
       import('./features/settings/settings.component').then((module) => module.SettingsComponent)

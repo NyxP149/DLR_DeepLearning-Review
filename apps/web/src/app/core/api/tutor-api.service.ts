@@ -3,6 +3,7 @@ import { inject, Injectable } from '@angular/core';
 
 export interface TutorStatus { available: boolean; selectedModel: string; installedModels: string[]; }
 export interface TutorResponse { purpose: string; model: string; content: string; }
+export type TutorRole = 'TEACHER' | 'COACH' | 'REVIEWER' | 'CLIENT' | 'TECH_LEAD';
 
 @Injectable({ providedIn: 'root' })
 export class TutorApiService {
@@ -17,5 +18,8 @@ export class TutorApiService {
   }
   reviewAnswer(labCode: string, questionCode: string, answer: string) {
     return this.http.post<TutorResponse>(`${this.url}/review-answer`, { labCode, questionCode, answer });
+  }
+  consult(role: TutorRole, labCode: string, context: string, question: string) {
+    return this.http.post<TutorResponse>(`${this.url}/consult`, { role, labCode, context, question });
   }
 }
