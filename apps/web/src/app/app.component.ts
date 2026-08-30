@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/cor
 import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 
 import { DashboardApiService } from './core/api/dashboard-api.service';
+import { ThemeService } from './core/theme/theme.service';
 
 @Component({
   selector: 'dlr-root',
@@ -47,11 +48,13 @@ import { DashboardApiService } from './core/api/dashboard-api.service';
 })
 export class AppComponent {
   private readonly dashboard = inject(DashboardApiService);
+  private readonly theme = inject(ThemeService);
   readonly goalProgress = signal(0);
   readonly dailyMinutes = signal(90);
   readonly displayName = signal('Apprenant DLR');
 
   constructor() {
+    void this.theme.current();
     this.dashboard.get().subscribe({
       next: (data) => {
         this.goalProgress.set(data.progressPercent);

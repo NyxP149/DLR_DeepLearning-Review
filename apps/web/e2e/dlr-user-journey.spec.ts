@@ -42,3 +42,47 @@ test('le planning ne date que la prochaine activité disponible', async ({ page 
   await page.getByLabel('Parcours').selectOption('SQL');
   await expect(page.getByLabel('Planning glissant SQL')).toBeVisible();
 });
+
+test('les six thèmes restent lisibles et persistent', async ({ page }) => {
+  await page.goto('/settings');
+  const themes = ['obsidian', 'monochrome', 'boreal', 'emerald', 'royal', 'solar'];
+  await expect(page.getByRole('radio')).toHaveCount(6);
+
+  for (const theme of themes) {
+    await page.locator(`[data-preview="${theme}"]`).click();
+    await expect(page.locator('html')).toHaveAttribute('data-theme', theme);
+    const ratios = await page.evaluate(() => {
+      const style = getComputedStyle(document.documentElement);
+      const parse = (value: string) => {
+        const context = document.createElement('canvas').getContext('2d')!;
+        context.fillStyle = value.trim();
+        const normalized = context.fillStyle;
+        const hex = normalized.startsWith('#') ? normalized.slice(1) : '000000';
+        const full = hex.length === 3 ? [...hex].map(char => char + char).join('') : hex;
+        return [0, 2, 4].map(index => parseInt(full.slice(index, index + 2), 16));
+      };
+      const luminance = (value: string) => {
+        const channels = parse(value).map(channel => channel / 255).map(channel => channel <= .04045 ? channel / 12.92 : ((channel + .055) / 1.055) ** 2.4);
+        return .2126 * channels[0] + .7152 * channels[1] + .0722 * channels[2];
+      };
+      const contrast = (first: string, second: string) => {
+        const [high, low] = [luminance(first), luminance(second)].sort((a, b) => b - a);
+        return (high + .05) / (low + .05);
+      };
+      const variable = (name: string) => style.getPropertyValue(name);
+      return {
+        body: contrast(variable('--text'), variable('--background')),
+        muted: contrast(variable('--text-muted'), variable('--surface')),
+        input: contrast(variable('--text'), variable('--input-background')),
+        button: contrast(variable('--on-accent'), variable('--accent'))
+      };
+    });
+    expect(ratios.body, `${theme}: texte principal`).toBeGreaterThanOrEqual(4.5);
+    expect(ratios.muted, `${theme}: texte secondaire`).toBeGreaterThanOrEqual(4.5);
+    expect(ratios.input, `${theme}: champs`).toBeGreaterThanOrEqual(4.5);
+    expect(ratios.button, `${theme}: boutons`).toBeGreaterThanOrEqual(4.5);
+  }
+
+  await page.reload();
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'solar');
+});

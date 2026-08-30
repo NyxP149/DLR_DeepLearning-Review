@@ -1007,4 +1007,14 @@ Le calendrier ne prédate plus tous les laboratoires. Pour chacun des huit parco
 
 Le recalcul est effectué à chaque lecture de `GET /api/calendar?path=...`. Il n'écrit donc aucune date spéculative et réagit immédiatement à la validation ou à la réinitialisation d'un laboratoire.
 
+## V3.3 — Système de thèmes accessible
+
+L'interface propose six thèmes depuis Paramètres : Obsidienne, Noir & Blanc, Océan Boréal, Forêt Émeraude, Aubergine Royale et Atelier Solaire. Le choix est enregistré sous la clé locale `dlr-interface-theme`, appliqué à l'élément racine et restauré au prochain chargement.
+
+Chaque thème définit des variables sémantiques séparées pour arrière-plan, surfaces, textes principaux et secondaires, bordures, accent, texte sur accent, succès, danger, champs, liens, barres de progression et éditeur. Cette séparation évite de supposer qu'un texte blanc reste lisible sur toutes les couleurs de bouton.
+
+Monaco observe le changement de thème et reconstruit sa palette avec une base `vs` ou `vs-dark`. Les zones de texte de secours, les champs et les blocs de code utilisent les mêmes variables que le reste de l'application.
+
+Un scénario Playwright parcourt les six thèmes, vérifie leur sélection et leur persistance, puis calcule les ratios WCAG du texte principal, du texte secondaire, des champs et des boutons. Le minimum exigé est `4.5:1`.
+
 Le générateur `infrastructure/scripts/generate-expanded-curriculum.mjs` conserve la source structurée des 81 contenus et de la migration. Les JSON générés restent les artefacts versionnés et chargés par l'application.

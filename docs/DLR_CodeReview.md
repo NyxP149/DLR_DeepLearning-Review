@@ -997,6 +997,30 @@ Ce fichier conserve l'historique des modifications, décisions techniques, bugs 
 - Suite backend complète : 51 tests, 0 échec, 9 contrôles Docker optionnels ignorés dans la passe standard.
 - Build Angular de production réussi.
 - E2E Chromium : contrôle qu'une seule prochaine activité est datée et que le changement de parcours recalcule la chronologie.
+
+## 2026-08-30 — V3.3 : six thèmes professionnels
+
+### Modifications
+
+- Ajout des thèmes Obsidienne, Noir & Blanc, Océan Boréal, Forêt Émeraude, Aubergine Royale et Atelier Solaire.
+- Sélecteur visuel accessible dans Paramètres, utilisable au clavier et annoncé comme groupe radio.
+- Persistance du choix dans le navigateur et application immédiate sans rechargement.
+- Variables dédiées aux boutons, champs, textes secondaires, liens, états et éditeur de code.
+- Adaptation dynamique de Monaco entre les bases claires et sombres.
+
+### Risque corrigé : texte invisible après changement de palette
+
+- **Risque :** une couleur de texte codée pour le thème sombre pouvait devenir peu lisible sur une surface claire ou un nouvel accent.
+- **Résolution :** remplacement des couleurs structurantes par des variables sémantiques `--text`, `--text-muted`, `--on-accent`, `--on-success`, `--input-background` et `--editor-text`.
+- **Contrôle :** test automatisé des ratios texte/fond pour les six palettes avec seuil WCAG AA de `4.5:1`.
+
+### Validation
+
+- Build Angular de production réussi.
+- Playwright : 5 scénarios réussis, dont sélection, contraste et persistance des six thèmes.
+- Inspection visuelle des thèmes Obsidienne, Noir & Blanc et Atelier Solaire.
+- Champs, boutons, cartes et navigation vérifiés en clair et en sombre.
+- Aucune erreur ni alerte dans la console du navigateur.
 - Migration V15 validée sur H2 puis appliquée de V14 à V15 sur PostgreSQL 17.11 réel.
 - Tests ciblés catalogue/progression/tableau de bord : 9 réussis.
 - Tests Docker des 64 contenus TypeScript, Spring, Angular, SQL et DevOps : 0 échec en 264,5 s.
