@@ -75,14 +75,38 @@ class DockerJavaRunnerIntegrationTest {
         assertThat(result.errorOutput()).contains("Temps maximal");
     }
 
+    @Test
+    void executesPythonInItsIsolatedRunner() {
+        DockerJavaRunner runner = multiRunner();
+        var result = runner.run(submission("PYTHON", "print('DLR Python Lab 1')"));
+        assertThat(result.status()).isEqualTo(ExecutionStatus.SUCCESS);
+        assertThat(result.standardOutput()).contains("DLR Python Lab 1");
+    }
+
+    @Test
+    void compilesAndExecutesTypescriptInItsIsolatedRunner() {
+        DockerJavaRunner runner = multiRunner();
+        var result = runner.run(submission("TYPESCRIPT", "const message: string = 'DLR TypeScript Lab 1'; console.log(message);"));
+        assertThat(result.status()).isEqualTo(ExecutionStatus.SUCCESS);
+        assertThat(result.standardOutput()).contains("DLR TypeScript Lab 1");
+    }
+
     private Submission submission(String sourceCode) {
+        return submission("JAVA", sourceCode);
+    }
+
+    private Submission submission(String language, String sourceCode) {
         return new Submission(
                 UUID.randomUUID(),
                 UUID.randomUUID(),
-                "JAVA",
+                language,
                 sourceCode,
                 SubmissionOrigin.EDITOR,
                 Instant.now());
+    }
+
+    private DockerJavaRunner multiRunner() {
+        return new DockerJavaRunner(dockerCli(), IMAGE, "dlr/python-runner:3.13", "dlr/typescript-runner:22", Duration.ofSeconds(10), Clock.systemUTC());
     }
 
     private String dockerCli() {
@@ -91,4 +115,3 @@ class DockerJavaRunnerIntegrationTest {
                 + "/Programs/DockerDesktop/resources/bin/docker.exe";
     }
 }
-

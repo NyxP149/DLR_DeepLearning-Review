@@ -12,7 +12,7 @@ import {
 import { LabApiService } from '../../core/api/lab-api.service';
 import { TutorApiService } from '../../core/api/tutor-api.service';
 import { DraftStoreService } from '../../core/storage/draft-store.service';
-import { LabContent } from './lab.model';
+import { KeyConcept, LabContent } from './lab.model';
 import { CodeEditorComponent } from '../../shared/code-editor/code-editor.component';
 
 type LabViewState =
@@ -54,6 +54,7 @@ export class LabWorkspaceComponent {
 
   private attemptId: string | null = null;
   private activeLabCode = 'JAVA-01';
+  private activeLanguage = 'JAVA';
   private draftTimer: ReturnType<typeof setTimeout> | null = null;
 
   constructor() {
@@ -70,6 +71,7 @@ export class LabWorkspaceComponent {
         switchMap((lab) => this.executionApi.currentWorkspace(lab.code).pipe(
           tap((workspace) => {
           this.activeLabCode = lab.code;
+          this.activeLanguage = lab.language;
           this.attemptId = workspace?.attempt.id ?? null;
           this.execution.set(null);
           this.executionError.set(null);
@@ -116,8 +118,9 @@ export class LabWorkspaceComponent {
     const file = input.files?.[0];
     input.value = '';
     if (!file) return;
-    if (!file.name.toLowerCase().endsWith('.java')) {
-      this.executionError.set('Seuls les fichiers source .java sont acceptés.');
+    const extension = this.fileExtension(this.activeLanguage);
+    if (!file.name.toLowerCase().endsWith(extension)) {
+      this.executionError.set(`Seuls les fichiers source ${extension} sont acceptés.`);
       return;
     }
     if (file.size > 65_536) {
@@ -141,14 +144,12 @@ export class LabWorkspaceComponent {
     try {
       const attemptId = await this.ensureAttempt();
       const submission = await firstValueFrom(
-        this.executionApi.submit(attemptId, this.code(), this.sourceOrigin())
+        this.executionApi.submit(attemptId, this.code(), this.activeLanguage, this.sourceOrigin())
       );
       const result = await firstValueFrom(this.executionApi.run(submission.id));
       this.execution.set(result);
     } catch {
-      this.executionError.set(
-        "L'exécution a échoué. Vérifie l'API, PostgreSQL, Docker Desktop et l'image du runner Java."
-      );
+      this.executionError.set(`L'exécution a échoué. Vérifie l'API, PostgreSQL, Docker Desktop et l'image du runner ${this.activeLanguage}.`);
     } finally {
       this.running.set(false);
     }
@@ -280,5 +281,24 @@ export class LabWorkspaceComponent {
       return error.error.detail;
     }
     return "Impossible de terminer le laboratoire. Vérifie les réponses, l'exécution et la connexion à l'API.";
+  }
+
+  conceptsFor(codes: string[], concepts: KeyConcept[], sectionIndex: number): KeyConcept[] {
+    if (codes.length === 0 && sectionIndex === 0) return concepts;
+    return concepts.filter((concept) => codes.includes(concept.code));
+  }
+
+  unassignedConcepts(lab: LabContent): KeyConcept[] {
+    const assigned = new Set(lab.sections.flatMap((section) => section.conceptCodes));
+    if (assigned.size === 0 && lab.sections.length > 0) return [];
+    return lab.keyConcepts.filter((concept) => !assigned.has(concept.code));
+  }
+
+  fileExtension(language: string): string {
+    return ({ JAVA: '.java', PYTHON: '.py', TYPESCRIPT: '.ts' } as Record<string, string>)[language.toUpperCase()] ?? '.txt';
+  }
+
+  fileAccept(language: string): string {
+    return ({ JAVA: '.java,text/x-java-source', PYTHON: '.py,text/x-python', TYPESCRIPT: '.ts,text/typescript' } as Record<string, string>)[language.toUpperCase()] ?? 'text/plain';
   }
 }

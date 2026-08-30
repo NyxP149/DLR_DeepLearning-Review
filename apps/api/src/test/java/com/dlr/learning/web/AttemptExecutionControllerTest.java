@@ -78,6 +78,25 @@ class AttemptExecutionControllerTest {
     }
 
     @Test
+    void acceptsTheLabLanguageAndRejectsAMismatchedSubmission() throws Exception {
+        String attemptBody = mockMvc.perform(post("/api/labs/PYTHON-01/attempts"))
+                .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+        String attemptId = objectMapper.readTree(attemptBody).get("id").asText();
+
+        mockMvc.perform(post("/api/attempts/{id}/submissions", attemptId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"language\":\"PYTHON\",\"sourceCode\":\"print('ok')\",\"origin\":\"EDITOR\"}"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.language").value("PYTHON"));
+
+        mockMvc.perform(post("/api/attempts/{id}/submissions", attemptId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"language\":\"JAVA\",\"sourceCode\":\"class Main {}\",\"origin\":\"EDITOR\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.detail").value(org.hamcrest.Matchers.containsString("PYTHON")));
+    }
+
+    @Test
     void refusesASubmissionForAnUnknownAttempt() throws Exception {
         JsonNode request = objectMapper.createObjectNode()
                 .put("language", "JAVA")

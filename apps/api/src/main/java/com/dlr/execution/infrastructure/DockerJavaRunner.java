@@ -31,6 +31,8 @@ public class DockerJavaRunner implements CodeRunner {
 
     private final String dockerCli;
     private final String image;
+    private final String pythonImage;
+    private final String typescriptImage;
     private final Duration timeout;
     private final Clock clock;
 
@@ -38,14 +40,22 @@ public class DockerJavaRunner implements CodeRunner {
     public DockerJavaRunner(
             @Value("${dlr.execution.docker-cli:docker}") String dockerCli,
             @Value("${dlr.execution.java-image:dlr/java-runner:21}") String image,
+            @Value("${dlr.execution.python-image:dlr/python-runner:3.13}") String pythonImage,
+            @Value("${dlr.execution.typescript-image:dlr/typescript-runner:22}") String typescriptImage,
             @Value("${dlr.execution.timeout-seconds:10}") long timeoutSeconds
     ) {
-        this(resolveDockerCli(dockerCli), image, Duration.ofSeconds(timeoutSeconds), Clock.systemUTC());
+        this(resolveDockerCli(dockerCli), image, pythonImage, typescriptImage, Duration.ofSeconds(timeoutSeconds), Clock.systemUTC());
     }
 
     DockerJavaRunner(String dockerCli, String image, Duration timeout, Clock clock) {
+        this(dockerCli, image, "dlr/python-runner:3.13", "dlr/typescript-runner:22", timeout, clock);
+    }
+
+    DockerJavaRunner(String dockerCli, String image, String pythonImage, String typescriptImage, Duration timeout, Clock clock) {
         this.dockerCli = dockerCli;
         this.image = image;
+        this.pythonImage = pythonImage;
+        this.typescriptImage = typescriptImage;
         this.timeout = timeout;
         this.clock = clock;
     }
@@ -54,16 +64,17 @@ public class DockerJavaRunner implements CodeRunner {
     public ExecutionResult run(Submission submission) {
         Instant startedAt = Instant.now(clock);
         Path workspace = null;
-        String containerName = "dlr-java-" + UUID.randomUUID();
+        RunnerSpec spec = spec(submission.language());
+        String containerName = "dlr-" + spec.language().toLowerCase() + "-" + UUID.randomUUID();
 
         try {
             workspace = Files.createTempDirectory("dlr-java-");
             Files.writeString(
-                    workspace.resolve("Main.java"),
+                    workspace.resolve(spec.sourceFile()),
                     submission.sourceCode(),
                     StandardCharsets.UTF_8);
 
-            Process process = new ProcessBuilder(buildCommand(workspace, containerName))
+            Process process = new ProcessBuilder(buildCommand(workspace, containerName, spec))
                     .redirectInput(ProcessBuilder.Redirect.PIPE)
                     .start();
             process.getOutputStream().close();
@@ -120,6 +131,10 @@ public class DockerJavaRunner implements CodeRunner {
     }
 
     List<String> buildCommand(Path workspace, String containerName) {
+        return buildCommand(workspace, containerName, spec("JAVA"));
+    }
+
+    List<String> buildCommand(Path workspace, String containerName, RunnerSpec spec) {
         List<String> command = new ArrayList<>();
         command.add(dockerCli);
         command.addAll(List.of(
@@ -138,10 +153,10 @@ public class DockerJavaRunner implements CodeRunner {
                 "--security-opt", "no-new-privileges",
                 "--user", "10001:10001",
                 "--mount", "type=bind,source=" + workspace.toAbsolutePath() + ",target=/workspace,readonly",
-                image,
+                spec.image(),
                 "sh",
                 "-c",
-                "javac -encoding UTF-8 -d /work /workspace/Main.java || exit 20; java -cp /work Main"
+                spec.command()
         ));
         return List.copyOf(command);
     }
@@ -215,6 +230,8 @@ public class DockerJavaRunner implements CodeRunner {
         }
         try {
             Files.deleteIfExists(workspace.resolve("Main.java"));
+            Files.deleteIfExists(workspace.resolve("main.py"));
+            Files.deleteIfExists(workspace.resolve("main.ts"));
             Files.deleteIfExists(workspace);
         } catch (IOException exception) {
             workspace.toFile().deleteOnExit();
@@ -248,4 +265,18 @@ public class DockerJavaRunner implements CodeRunner {
         }
         return configuredCli;
     }
+
+    RunnerSpec spec(String language) {
+        return switch (language.toUpperCase()) {
+            case "JAVA" -> new RunnerSpec("JAVA", "Main.java", image,
+                    "javac -encoding UTF-8 -d /work /workspace/Main.java || exit 20; java -cp /work Main");
+            case "PYTHON" -> new RunnerSpec("PYTHON", "main.py", pythonImage,
+                    "cp /workspace/main.py /work/main.py; python -m py_compile /work/main.py || exit 20; python -B /work/main.py");
+            case "TYPESCRIPT" -> new RunnerSpec("TYPESCRIPT", "main.ts", typescriptImage,
+                    "tsc --strict --skipLibCheck --target ES2022 --module commonjs --outDir /work /workspace/main.ts || exit 20; node /work/main.js");
+            default -> throw new IllegalArgumentException("Runner indisponible pour le langage : " + language);
+        };
+    }
+
+    record RunnerSpec(String language, String sourceFile, String image, String command) {}
 }

@@ -1,0 +1,16 @@
+{
+  "code": "LLM-01", "language": "PYTHON", "number": 1, "slug": "premier-prompt-mesurable",
+  "title": "Learn LLMs : prompt, tokens et sortie contrôlée", "difficulty": "BASE", "threshold": 70,
+  "objectives": ["Décomposer une interaction avec un LLM", "Distinguer token et mot", "Construire une expérience locale reproductible en Python"],
+  "sections": [
+    {"title":"Entrée, modèle, sortie","content":"Un LLM reçoit une séquence de tokens et prédit la suite. Un prompt utile fournit un objectif, un contexte, des contraintes et un format de sortie vérifiable.","conceptCodes":["LLM-PROMPT-TOKENS"]},
+    {"title":"Mesurer avant d'automatiser","content":"Le nombre de mots n'est pas le nombre exact de tokens. Dans ce premier laboratoire hors réseau, une approximation rend le coût visible sans prétendre reproduire le tokenizer d'un modèle réel."}
+  ],
+  "keyConcepts": [{"code":"LLM-PROMPT-TOKENS","name":"Prompt et tokens","definition":"Le prompt est l'entrée structurée du modèle ; les tokens sont les unités traitées par son tokenizer.","whyExists":"Le modèle ne lit pas directement des intentions : il conditionne ses prédictions sur une séquence encodée.","whyImportant":"La structure et la taille de l'entrée influencent qualité, latence et coût.","minimalExample":"prompt = 'Résume ce texte en trois points vérifiables.'","commonMistake":"Confondre une estimation par mots avec le comptage exact du tokenizer.","masteryQuestion":"Quels éléments rendent une consigne LLM plus vérifiable ?","masteryProof":"Construire une consigne avec objectif, contexte, contraintes et format attendu."}],
+  "exercises": [{"code":"LLM-01-E1","title":"Rendre un prompt mesurable","statement":"Conserve le prompt fourni et produis exactement les deux lignes attendues.","starterCode":"def approximate_tokens(text: str) -> int:\n    return len(text.split())\n\nprompt = \"Explique la JVM simplement\"\nprint(f\"Prompt: {prompt}\")\nprint(f\"Tokens approx: {approximate_tokens(prompt)}\")\n","expectedOutput":"Prompt: Explique la JVM simplement\nTokens approx: 4"}],
+  "quiz": [
+    {"code":"LLM-01-Q1","type":"SINGLE_CHOICE","prompt":"Une séparation par espaces donne-t-elle le nombre exact de tokens d'un LLM ?","choices":["Non, le tokenizer du modèle décide","Oui, toujours","Seulement pour Java"],"correctChoice":0,"expectedKeywords":[]},
+    {"code":"LLM-01-Q2","type":"FREE_TEXT","prompt":"Donne quatre éléments d'un prompt vérifiable.","choices":[],"correctChoice":null,"expectedKeywords":["objectif","contexte","contraintes","format"]}
+  ],
+  "checklist": ["Je distingue mot et token", "Je structure une consigne vérifiable", "Je sais que cette approximation n'est pas un tokenizer réel"]
+}

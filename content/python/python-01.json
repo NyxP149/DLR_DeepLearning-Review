@@ -1,0 +1,16 @@
+{
+  "code": "PYTHON-01", "language": "PYTHON", "number": 1, "slug": "python-depuis-java",
+  "title": "Python depuis Java : syntaxe, types et collections", "difficulty": "BASE", "threshold": 70,
+  "objectives": ["Exécuter un programme Python isolé", "Comparer le typage dynamique au typage statique Java", "Écrire une fonction annotée et manipuler une liste"],
+  "sections": [
+    {"title": "Du script au résultat", "content": "Python exécute directement le module source. Les annotations de type documentent les intentions mais ne transforment pas Python en langage statiquement vérifié à l'exécution.", "conceptCodes": ["PYTHON-DYNAMIC-TYPING"]},
+    {"title": "Comparer avec Java", "content": "Une liste Python peut évoluer dynamiquement. Dans un code professionnel, des annotations, des tests et des outils comme mypy rendent les contrats plus explicites."}
+  ],
+  "keyConcepts": [{"code":"PYTHON-DYNAMIC-TYPING","name":"Typage dynamique documenté","definition":"Le type appartient à la valeur au moment de l'exécution ; une annotation exprime un contrat destiné aux humains et aux outils.","whyExists":"Il permet une écriture concise tout en laissant la possibilité d'ajouter des contrats progressifs.","whyImportant":"Comprendre cette différence avec Java évite de croire qu'une annotation Python bloque toutes les erreurs de type à l'exécution.","minimalExample":"def total(values: list[int]) -> int: return sum(values)","commonMistake":"Confondre annotation de type et contrôle obligatoire par l'interpréteur.","masteryQuestion":"Que garantit réellement l'annotation -> str dans une fonction Python ?","masteryProof":"Exécuter la fonction puis expliquer le rôle de l'annotation et celui des tests."}],
+  "exercises": [{"code":"PYTHON-01-E1","title":"Présenter Python","statement":"Complète la fonction pour produire exactement : Python: dynamique et lisible","starterCode":"def describe_language(name: str) -> str:\n    return f\"{name}: dynamique et lisible\"\n\nprint(describe_language(\"Python\"))\n","expectedOutput":"Python: dynamique et lisible"}],
+  "quiz": [
+    {"code":"PYTHON-01-Q1","type":"SINGLE_CHOICE","prompt":"À quoi sert principalement une annotation de type Python ?","choices":["À documenter et aider les outils d'analyse","À compiler automatiquement en Java","À interdire toute valeur différente à l'exécution"],"correctChoice":0,"expectedKeywords":[]},
+    {"code":"PYTHON-01-Q2","type":"FREE_TEXT","prompt":"Compare brièvement le typage Python et Java.","choices":[],"correctChoice":null,"expectedKeywords":["dynamique","statique","exécution"]}
+  ],
+  "checklist": ["Je sais lancer un script Python", "Je distingue annotation et vérification d'exécution", "Je peux comparer une liste Python à une collection Java"]
+}

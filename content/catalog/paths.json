@@ -9,6 +9,33 @@
     "expectedActivityCount": 6
   },
   {
+    "code": "PYTHON", "title": "Python depuis Java", "status": "BETA",
+    "professionalObjectives": ["Développer des programmes Python testables en transférant les acquis Java"],
+    "prerequisites": ["JAVA"], "keyConcepts": ["typage dynamique", "collections", "fonctions", "environnements"],
+    "activityTypes": ["LAB", "QUIZ", "REVIEW", "PROJECT"], "executionEnvironment": "docker-python-3.13",
+    "assessmentStrategy": "Sorties déterministes, quiz comparatifs et preuves de maîtrise", "project": "Service Python local",
+    "challenge": "Réécrire une solution Java de façon idiomatique", "portfolioSkills": ["Python 3.13", "tests", "typage progressif"],
+    "expectedActivityCount": 24
+  },
+  {
+    "code": "TYPESCRIPT", "title": "TypeScript depuis Java", "status": "BETA",
+    "professionalObjectives": ["Construire des programmes TypeScript stricts pour Node.js et Angular"],
+    "prerequisites": ["PYTHON"], "keyConcepts": ["types structurels", "unions", "génériques", "asynchronisme"],
+    "activityTypes": ["LAB", "QUIZ", "PROJECT"], "executionEnvironment": "docker-node-22-typescript",
+    "assessmentStrategy": "Compilation stricte, sorties déterministes et explications comparatives", "project": "Application TypeScript/Angular",
+    "challenge": "Concevoir un module asynchrone fortement typé", "portfolioSkills": ["TypeScript 5.9", "Node.js", "Angular"],
+    "expectedActivityCount": 24
+  },
+  {
+    "code": "LEARN_LLM", "title": "Learn LLMs", "status": "BETA",
+    "professionalObjectives": ["Comprendre, mesurer et intégrer les LLMs avec Python sans masquer leurs limites"],
+    "prerequisites": ["PYTHON"], "keyConcepts": ["tokens", "prompts", "embeddings", "RAG", "évaluation"],
+    "activityTypes": ["LAB", "EXPERIMENT", "PROJECT"], "executionEnvironment": "docker-python-3.13",
+    "assessmentStrategy": "Expériences reproductibles, assertions et analyse critique", "project": "Assistant RAG local évalué",
+    "challenge": "Comparer plusieurs stratégies de contexte", "portfolioSkills": ["Python", "LLMs", "évaluation IA"],
+    "expectedActivityCount": 12
+  },
+  {
     "code": "SPRING_BOOT", "title": "Spring Boot professionnel", "status": "PLANNED",
     "professionalObjectives": ["Concevoir une API REST robuste et observable"], "prerequisites": ["JAVA"],
     "keyConcepts": ["HTTP", "injection", "validation", "persistance"], "activityTypes": ["LAB", "PROJECT", "ARCHITECTURE_REVIEW"],

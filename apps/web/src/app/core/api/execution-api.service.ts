@@ -78,11 +78,12 @@ export class ExecutionApiService {
   submit(
     attemptId: string,
     sourceCode: string,
+    language: string,
     origin: 'EDITOR' | 'PASTE' | 'IMPORT' = 'EDITOR'
   ): Observable<SubmissionResponse> {
     return this.http.post<SubmissionResponse>(
       `${this.apiUrl}/attempts/${encodeURIComponent(attemptId)}/submissions`,
-      { language: 'JAVA', sourceCode, origin }
+      { language, sourceCode, origin }
     );
   }
 

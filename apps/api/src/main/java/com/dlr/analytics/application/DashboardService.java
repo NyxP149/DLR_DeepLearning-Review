@@ -23,16 +23,22 @@ public class DashboardService {
     }
 
     public Dashboard dashboard() {
-        int totalLabs = catalog.findAll().size();
-        int completed = Math.min(queries.completedLabs(), totalLabs);
+        var javaLabs = catalog.findAll().stream()
+                .filter(lab -> "JAVA".equals(lab.language()))
+                .toList();
+        var completedLabCodes = queries.completedLabCodes();
+        int totalLabs = javaLabs.size();
+        int completed = (int) javaLabs.stream()
+                .filter(lab -> completedLabCodes.contains(lab.code()))
+                .count();
+        int completedAcrossCatalog = queries.completedLabs();
         int completedReviews = queries.completedReviews();
         int completedSessions = queries.completedSessions();
         int studyMinutes = queries.totalStudyMinutes();
         var streak = streakCalculator.calculate(queries.completedSessionDates(), LocalDate.now());
-        int xp = completed * 100 + completedReviews * 25 + completedSessions * 20;
+        int xp = completedAcrossCatalog * 100 + completedReviews * 25 + completedSessions * 20;
         int level = xp / 250 + 1;
-        var completedLabCodes = queries.completedLabCodes();
-        String nextLab = catalog.findAll().stream()
+        String nextLab = javaLabs.stream()
                 .filter(lab -> !completedLabCodes.contains(lab.code()))
                 .findFirst()
                 .map(lab -> lab.code())

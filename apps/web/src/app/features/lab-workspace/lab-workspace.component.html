@@ -36,14 +36,22 @@
             </ul>
           </article>
 
-          @for (section of state.lab.sections; track section.title) {
+          @for (section of state.lab.sections; track section.title; let sectionIndex = $index) {
             <article class="panel">
+              @for (concept of conceptsFor(section.conceptCodes, state.lab.keyConcepts, sectionIndex); track concept.code) {
+                <section class="embedded-concept">
+                  <p class="concept-label">Concept clé · {{ concept.code }}</p>
+                  <h2>{{ concept.name }}</h2>
+                  <p>{{ concept.definition }}</p>
+                  <details><summary>Comprendre ce concept</summary><h3>Pourquoi il existe</h3><p>{{ concept.whyExists }}</p><h3>Erreur fréquente</h3><p>{{ concept.commonMistake }}</p><div class="mastery-question"><strong>Question de maîtrise</strong><p>{{ concept.masteryQuestion }}</p></div><button class="tutor-trigger" type="button" [disabled]="tutorLoading()" (click)="explainConcept(concept.code)">Demander une explication à Ollama</button></details>
+                </section>
+              }
               <h2>{{ section.title }}</h2>
               <p>{{ section.content }}</p>
             </article>
           }
 
-          @for (concept of state.lab.keyConcepts; track concept.code) {
+          @for (concept of unassignedConcepts(state.lab); track concept.code) {
             <article class="panel concept-card">
               <p class="concept-label">Concept clé</p>
               <h2>{{ concept.name }}</h2>
@@ -69,17 +77,18 @@
               <p class="eyebrow">Exercice guidé</p>
               <h2>{{ exercise.title }}</h2>
               <p>{{ exercise.statement }}</p>
-              <label class="editor-label" for="java-source">Code Java</label>
+              <label class="editor-label" for="lab-source">Code {{ state.lab.language }}</label>
               <div class="import-row">
                 <span>Origine : {{ sourceOrigin() }}</span>
                 <label class="import-button">
-                  Importer un fichier .java
-                  <input type="file" accept=".java,text/x-java-source" (change)="onFileSelected($event)" />
+                  Importer un fichier {{ fileExtension(state.lab.language) }}
+                  <input type="file" [attr.accept]="fileAccept(state.lab.language)" (change)="onFileSelected($event)" />
                 </label>
               </div>
               <dlr-code-editor
-                id="java-source"
+                id="lab-source"
                 [value]="code()"
+                [language]="state.lab.language"
                 (valueChange)="onCodeChange($event)"
                 aria-describedby="runner-description"
               />
@@ -87,7 +96,7 @@
                 <button type="button" [disabled]="running()" (click)="runCode()">
                   {{ running() ? 'Exécution…' : 'Compiler et exécuter' }}
                 </button>
-                <span id="runner-description">Runner Java isolé par Docker</span>
+                <span id="runner-description">Runner {{ state.lab.language }} isolé par Docker</span>
               </div>
               <button class="hint-button" type="button" [disabled]="tutorLoading() || hintLevel() >= 3" (click)="requestHint()">
                 {{ hintLevel() === 0 ? 'Obtenir un indice' : 'Indice suivant (' + hintLevel() + '/3)' }}

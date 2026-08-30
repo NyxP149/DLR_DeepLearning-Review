@@ -26,7 +26,8 @@ public record LabContent(
         checklist = List.copyOf(checklist);
     }
 
-    public record LessonSection(String title, String content) {
+    public record LessonSection(String title, String content, List<String> conceptCodes) {
+        public LessonSection { conceptCodes = conceptCodes == null ? List.of() : List.copyOf(conceptCodes); }
     }
 
     public record KeyConcept(

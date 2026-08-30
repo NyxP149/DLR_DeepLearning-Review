@@ -710,3 +710,53 @@ Ce fichier conserve l'historique des modifications, décisions techniques, bugs 
 - Suite finale avec Docker Desktop : 35 tests, 0 échec, 0 ignoré, dont les 3 scénarios réels du runner.
 - Audit npm des dépendances de production : 0 vulnérabilité.
 - Correctif des facteurs revalidé sur l'API PostgreSQL et dans le navigateur ; aucune erreur console sur le Coach.
+
+## 2026-08-30 — V2.5 : concepts contextualisés et runners multilangages
+
+### Modifications
+
+- Association optionnelle `conceptCodes` sur chaque section pédagogique et affichage du concept clé avant le texte auquel il se rapporte.
+- Compatibilité préservée pour les six contenus Java : sans association explicite, leurs concepts apparaissent au début de la première section.
+- Généralisation du service d'exécution : le langage attendu est dérivé du laboratoire et une soumission incohérente est rejetée avant Docker.
+- Images isolées `dlr/python-runner:3.13` et `dlr/typescript-runner:22`, ajoutées au script de construction avec l'image Java.
+- Éditeur Monaco multilangage, import `.py` et `.ts`, libellés dynamiques et changement de modèle lors d'une navigation entre laboratoires.
+- Première tranche exécutable `PYTHON-01`, `TYPESCRIPT-01` et `LLM-01`, avec quiz, checklist, sortie visible et concepts dédiés.
+- Learn LLMs relié à Python par son prérequis de parcours et par l'utilisation du runner Python.
+- Migration Flyway V12 : Python et TypeScript passent en bêta, Learn LLMs est ajouté, puis les trois laboratoires sont référencés.
+- Portfolio étendu aux neuf laboratoires et recommandations non commencées ordonnées Java → Python → TypeScript → Learn LLMs.
+- Route racine `GET /` ajoutée afin que `localhost:8081` expose une page JSON utile au lieu de la Whitelabel 404.
+
+### Bugs et incidents
+
+#### Les nouveaux laboratoires faussent « Progression Java »
+
+- **Symptôme :** le test du tableau de bord attend 6 laboratoires Java mais l'API en annonce 9.
+- **Cause :** le compteur utilisait la taille entière du catalogue après son extension multilangage.
+- **Résolution :** calcul du total, des laboratoires terminés, du badge Java et du prochain lab sur le sous-ensemble `language = JAVA`. L'XP reste global et valorise tous les parcours.
+
+#### Le runner TypeScript dépasse le timeout
+
+- **Symptôme :** le test Docker réel retourne `TIMEOUT` après 10 secondes, tandis que Java et Python réussissent.
+- **Cause :** `tsc` vérifiait les déclarations de toutes ses bibliothèques standard sous les limites de 128 Mo et 0,5 CPU du conteneur.
+- **Résolution :** ajout de `--skipLibCheck`. Le code de l'apprenant reste compilé avec `--strict`, mais les bibliothèques déjà livrées avec TypeScript ne sont plus revérifiées. L'exécution réelle réussit ensuite en environ 5,17 secondes.
+
+#### Le catalogue affiche Learn LLMs avant son prérequis
+
+- **Symptôme :** le tri alphabétique des contenus place `LLM-01` avant `PYTHON-01` dans la tranche V2.5.
+- **Résolution :** ordre visuel explicite Python → TypeScript → Learn LLMs, cohérent avec les prérequis affichés.
+
+#### Le cache Angular optionnel reste absent
+
+- **Symptôme :** avertissement `Cannot find module 'lmdb'` pendant le build.
+- **Impact :** aucun sur le bundle ; seul le cache de compilation peut être plus lent.
+- **Gestion :** avertissement documenté et dépendance native non ajoutée, conformément au choix de ne pas alourdir l'application sans bénéfice d'exécution.
+
+### Validations
+
+- Suite backend rapide : 40 tests, 0 échec, 5 tests Docker conditionnels exclus.
+- Migration Flyway V12 validée sur H2 puis appliquée à PostgreSQL 17.11 réel.
+- Suite finale : 40 tests, 0 échec, 0 ignoré, dont les 5 scénarios Docker réels ; trois images Java, Python et TypeScript construites.
+- Build Angular de production réussi, bundle initial 267,59 kB brut et Monaco toujours chargé à la demande.
+- Contrôle HTTP réel : accueil API, 8 parcours, 9 laboratoires et compteur Java limité à 6.
+- Contrôle navigateur : concepts positionnés avant leur section, imports/langages corrects et exécutions réussies pour Python, TypeScript et Learn LLMs.
+- Temps observés depuis l'interface : Python ~1,05 s, TypeScript ~5,17 s, Learn LLMs ~1,11 s ; aucune erreur console.

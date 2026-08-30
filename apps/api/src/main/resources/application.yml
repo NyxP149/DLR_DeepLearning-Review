@@ -39,6 +39,8 @@ dlr:
   execution:
     docker-cli: ${DLR_DOCKER_CLI:docker}
     java-image: ${DLR_JAVA_RUNNER_IMAGE:dlr/java-runner:21}
+    python-image: ${DLR_PYTHON_RUNNER_IMAGE:dlr/python-runner:3.13}
+    typescript-image: ${DLR_TYPESCRIPT_RUNNER_IMAGE:dlr/typescript-runner:22}
     timeout-seconds: ${DLR_RUNNER_TIMEOUT_SECONDS:10}
   sync:
     pairing-code: ${DLR_SYNC_PAIRING_CODE:}

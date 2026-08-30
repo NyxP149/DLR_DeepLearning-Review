@@ -61,7 +61,9 @@ public class AdaptationService {
                 .flatMap(value -> Arrays.stream(value.split(","))).collect(Collectors.toSet());
         ConceptMastery target = masteryService.list().stream()
                 .filter(concept -> !recentlyDeclined.contains(concept.code()))
-                .min(Comparator.comparingInt(this::priority).thenComparingInt(ConceptMastery::labNumber))
+                .min(Comparator.comparingInt(this::priority)
+                        .thenComparingInt(this::pathPriority)
+                        .thenComparingInt(ConceptMastery::labNumber))
                 .orElseGet(() -> masteryService.list().getFirst());
         Recommendation recommendation = propose(target, now);
         jdbcTemplate.update(
@@ -159,6 +161,14 @@ public class AdaptationService {
             case NOT_STARTED -> 2;
             case MASTERED -> 3;
         };
+    }
+
+    private int pathPriority(ConceptMastery concept) {
+        if (concept.labCode().startsWith("JAVA-")) return 0;
+        if (concept.labCode().startsWith("PYTHON-")) return 1;
+        if (concept.labCode().startsWith("TYPESCRIPT-")) return 2;
+        if (concept.labCode().startsWith("LLM-")) return 3;
+        return 4;
     }
 
     private Recommendation find(UUID id) {

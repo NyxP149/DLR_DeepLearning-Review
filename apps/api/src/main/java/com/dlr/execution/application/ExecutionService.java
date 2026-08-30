@@ -61,9 +61,12 @@ public class ExecutionService {
             String sourceCode,
             SubmissionOrigin origin
     ) {
-        attemptService.get(attemptId);
-        if (!"JAVA".equalsIgnoreCase(language)) {
-            throw new IllegalArgumentException("Seul le langage JAVA est disponible dans cette tranche.");
+        var attempt = attemptService.get(attemptId);
+        var lab = labCatalog.findByCode(attempt.labCode()).orElseThrow(() ->
+                new ResourceNotFoundException("LAB_NOT_FOUND", "Laboratoire introuvable : " + attempt.labCode()));
+        String expectedLanguage = lab.language().toUpperCase();
+        if (!expectedLanguage.equalsIgnoreCase(language)) {
+            throw new IllegalArgumentException("Le langage de la soumission doit être " + expectedLanguage + " pour ce laboratoire.");
         }
         if (sourceCode == null || sourceCode.isBlank()) {
             throw new IllegalArgumentException("Le code source est obligatoire.");
@@ -75,7 +78,7 @@ public class ExecutionService {
         return submissionRepository.save(new Submission(
                 UUID.randomUUID(),
                 attemptId,
-                "JAVA",
+                expectedLanguage,
                 sourceCode,
                 origin,
                 Instant.now(clock)));

@@ -17,6 +17,7 @@ export interface LabContent {
 export interface LessonSection {
   title: string;
   content: string;
+  conceptCodes: string[];
 }
 
 export interface KeyConcept {

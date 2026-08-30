@@ -861,3 +861,17 @@ Le fournisseur de synchronisation, le protocole exact du compagnon local, le mod
 ## Conclusion
 
 DLR sera construit comme une application professionnelle qui sert simultanément de plateforme d'apprentissage et de projet portfolio. Le monolithe modulaire garde la V1 maîtrisable, tandis que les adaptateurs Ollama et runners isolent les parties complexes. La première priorité n'est pas de saisir immédiatement les 72 activités, mais de valider une tranche verticale complète avec le premier laboratoire Java, puis de répliquer le modèle.
+
+## 28. Tranche V2.5 multilangage réalisée
+
+La réplication du moteur est validée par trois activités supplémentaires :
+
+- `PYTHON-01`, exécuté dans `dlr/python-runner:3.13` ;
+- `TYPESCRIPT-01`, compilé strictement puis exécuté dans `dlr/typescript-runner:22` ;
+- `LLM-01`, relié au prérequis Python et exécuté localement hors réseau.
+
+Le même contrat de soumission, d'exécution, de comparaison de sortie, de quiz et de checklist est conservé. Le backend déduit le langage autorisé du contenu du laboratoire et rejette toute soumission incohérente. Les conteneurs gardent les protections du runner Java : réseau coupé, utilisateur non privilégié, racine en lecture seule, espace de travail temporaire et limites de ressources.
+
+Une section pédagogique peut maintenant déclarer `conceptCodes`. L'interface place la carte « Concept clé » au début de la section correspondante ; les contenus Java existants sans association explicite conservent un repli compatible sur la première section.
+
+La migration Flyway V12 active les parcours Python et TypeScript en bêta, ajoute Learn LLMs avec Python comme prérequis et référence les trois premières activités. Les cibles de 24, 24 et 12 activités restent une feuille de route : V2.5 livre volontairement une tranche exécutable par parcours, sans présenter les activités futures comme terminées.

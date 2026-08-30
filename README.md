@@ -7,7 +7,7 @@ DLR est une application locale d'apprentissage de la programmation, avec évalua
 - API Spring Boot Java 21 ;
 - application Angular standalone en thème sombre ;
 - persistance PostgreSQL versionnée par Flyway ;
-- six laboratoires Java fondamentaux versionnés ;
+- six laboratoires Java fondamentaux et trois tranches V2.5 exécutables (Python, TypeScript, Learn LLMs) ;
 - parcours, laboratoire, éditeur Monaco, reprise de brouillon, quiz, checklist et import `.java` ;
 - exécution Docker isolée, assertions privées et score déterministe ;
 - tableau de bord, concepts clés, révisions espacées et planning ;
@@ -18,7 +18,7 @@ DLR est une application locale d'apprentissage de la programmation, avec évalua
 - synchronisation V2 par appareils appairés, journal idempotent et conflits sans perte.
 - recommandations adaptatives expliquées, analytics d'autonomie et professeur Ollama à cinq rôles ;
 - portfolio privé avec aperçu Markdown, export ZIP GitHub-ready et filtrage des secrets ;
-- catalogue V2 extensible avec Java disponible et parcours Spring Boot, Angular, SQL et DevOps planifiés.
+- catalogue V2 extensible avec Java stable, Python/TypeScript/Learn LLMs en bêta et Spring Boot, Angular, SQL et DevOps planifiés.
 
 ## Structure
 
@@ -48,7 +48,7 @@ cd apps/api
 mvn spring-boot:run
 ```
 
-L'API est ensuite disponible sur `http://localhost:8081/api`.
+La page d'accueil de l'API est disponible sur `http://localhost:8081/` et les ressources métier sous `http://localhost:8081/api`.
 Sa spécification OpenAPI est exposée sur `http://localhost:8081/api-docs` et l'interface Swagger sur `http://localhost:8081/swagger-ui.html`.
 
 ## Tests backend
@@ -74,13 +74,19 @@ Le frontend utilise par défaut l'API `http://localhost:8081/api`.
 
 `compose.yaml` prépare PostgreSQL. Docker Desktop doit être démarré. Si la commande `docker` n'est pas dans le `PATH`, le script détecte automatiquement l'installation utilisateur de Docker Desktop.
 
-Construire l'image isolée du runner Java :
+Construire les images isolées des runners Java, Python et TypeScript :
 
 ```powershell
 .\infrastructure\scripts\build-runners.ps1
 ```
 
-Le runner désactive le réseau, utilise un utilisateur non privilégié, un système de fichiers en lecture seule, des limites CPU/mémoire/processus et un timeout côté backend.
+Les runners désactivent le réseau, utilisent un utilisateur non privilégié, un système de fichiers en lecture seule, des limites CPU/mémoire/processus et un timeout côté backend.
+
+## Parcours V2.5
+
+Le catalogue expose une première tranche verticale exécutable pour `PYTHON-01`, `TYPESCRIPT-01` et `LLM-01`. Learn LLMs dépend du parcours Python et réutilise son runner pour les expériences reproductibles hors réseau. Les nombres d'activités affichés dans les cartes sont les cibles finales ; la mention **Bêta** distingue clairement les premières activités déjà disponibles.
+
+Dans chaque laboratoire, un concept clé est associé à une section et apparaît avant le contenu concerné. L'éditeur Monaco adapte la coloration, l'import (`.java`, `.py`, `.ts`) et la requête d'exécution au langage du laboratoire.
 
 ## Sauvegarde locale
 

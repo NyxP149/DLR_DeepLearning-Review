@@ -13,7 +13,7 @@ export interface LabSummary {
   threshold: number;
 }
 export interface PathDescriptor {
-  code: string; title: string; status: 'AVAILABLE' | 'PLANNED'; professionalObjectives: string[];
+  code: string; title: string; status: 'AVAILABLE' | 'BETA' | 'LOCKED' | 'PLANNED'; professionalObjectives: string[];
   prerequisites: string[]; keyConcepts: string[]; activityTypes: string[]; executionEnvironment: string;
   assessmentStrategy: string; project: string; challenge: string; portfolioSkills: string[]; expectedActivityCount: number;
 }

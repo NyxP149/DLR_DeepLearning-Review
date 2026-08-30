@@ -30,5 +30,15 @@ class DockerJavaRunnerTest {
                 .contains("dlr/java-runner:21");
         assertThat(command.getLast()).contains("javac").contains("java -cp");
     }
-}
 
+    @Test
+    void routesPythonAndTypescriptToTheirDedicatedImages() {
+        DockerJavaRunner runner = new DockerJavaRunner("docker", "java-image", "python-image", "typescript-image", Duration.ofSeconds(10), Clock.systemUTC());
+        var python = runner.buildCommand(Path.of("C:/tmp/dlr-python"), "dlr-python", runner.spec("PYTHON"));
+        var typescript = runner.buildCommand(Path.of("C:/tmp/dlr-ts"), "dlr-ts", runner.spec("TYPESCRIPT"));
+        assertThat(python).contains("python-image");
+        assertThat(python.getLast()).contains("py_compile").contains("main.py");
+        assertThat(typescript).contains("typescript-image");
+        assertThat(typescript.getLast()).contains("tsc --strict").contains("node /work/main.js");
+    }
+}

@@ -1,0 +1,16 @@
+{
+  "code": "TYPESCRIPT-01", "language": "TYPESCRIPT", "number": 1, "slug": "typescript-depuis-java",
+  "title": "TypeScript depuis Java : types et compilation", "difficulty": "BASE", "threshold": 70,
+  "objectives": ["Compiler TypeScript en JavaScript", "Comparer les types structurels aux types nominaux Java", "Écrire une fonction strictement typée"],
+  "sections": [
+    {"title":"TypeScript avant JavaScript","content":"TypeScript vérifie le programme puis produit du JavaScript. Les types sont effacés : le navigateur ou Node.js exécute le JavaScript généré.","conceptCodes":["TYPESCRIPT-STRUCTURAL-TYPING"]},
+    {"title":"Comparer avec Java","content":"Java identifie principalement les types par leurs déclarations. TypeScript accepte souvent une valeur dès que sa structure contient les propriétés attendues."}
+  ],
+  "keyConcepts": [{"code":"TYPESCRIPT-STRUCTURAL-TYPING","name":"Typage structurel","definition":"La compatibilité dépend de la forme d'une valeur plutôt que seulement du nom déclaré de son type.","whyExists":"Il s'adapte naturellement aux objets JavaScript et aux API web existantes.","whyImportant":"Il explique pourquoi deux interfaces distinctes peuvent être compatibles sans héritage explicite.","minimalExample":"type Named = { name: string }; const value = { name: 'DLR', version: 2 };","commonMistake":"Supposer que les types TypeScript existent encore pendant l'exécution JavaScript.","masteryQuestion":"Pourquoi un objet avec des propriétés supplémentaires peut-il satisfaire une interface TypeScript ?","masteryProof":"Compiler puis exécuter un exemple et identifier ce qui reste dans le JavaScript."}],
+  "exercises": [{"code":"TYPESCRIPT-01-E1","title":"Présenter TypeScript","statement":"Produis exactement : TypeScript: typage statique progressif","starterCode":"function describeLanguage(name: string): string {\n  return `${name}: typage statique progressif`;\n}\n\nconsole.log(describeLanguage('TypeScript'));\n","expectedOutput":"TypeScript: typage statique progressif"}],
+  "quiz": [
+    {"code":"TYPESCRIPT-01-Q1","type":"SINGLE_CHOICE","prompt":"Que devient généralement une annotation TypeScript après compilation ?","choices":["Elle est effacée du JavaScript produit","Elle devient une classe Java","Elle est stockée dans PostgreSQL"],"correctChoice":0,"expectedKeywords":[]},
+    {"code":"TYPESCRIPT-01-Q2","type":"FREE_TEXT","prompt":"Explique la différence entre typage structurel TypeScript et typage Java.","choices":[],"correctChoice":null,"expectedKeywords":["structure","propriétés","déclaration"]}
+  ],
+  "checklist": ["Je sais compiler puis exécuter TypeScript", "Je comprends l'effacement des types", "Je peux expliquer la compatibilité structurelle"]
+}

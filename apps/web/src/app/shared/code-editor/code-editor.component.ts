@@ -10,10 +10,10 @@ import type { editor as MonacoEditor } from 'monaco-editor/editor';
         spellcheck="false"
         [value]="value"
         (input)="emitFallback($event)"
-        aria-label="Code Java"
+        [attr.aria-label]="'Code ' + language"
       ></textarea>
     } @else {
-      <div #host class="monaco-host" aria-label="Éditeur de code Java"></div>
+      <div #host class="monaco-host" [attr.aria-label]="'Éditeur de code ' + language"></div>
       @if (loading()) { <p class="loading" aria-live="polite">Chargement de Monaco…</p> }
     }
   `,
@@ -41,12 +41,14 @@ import type { editor as MonacoEditor } from 'monaco-editor/editor';
 })
 export class CodeEditorComponent implements AfterViewInit, OnChanges, OnDestroy {
   @Input() value = '';
+  @Input() language = 'JAVA';
   @Output() readonly valueChange = new EventEmitter<string>();
   @ViewChild('host') private host?: ElementRef<HTMLDivElement>;
 
   readonly loading = signal(true);
   readonly fallback = signal(false);
   private editor?: MonacoEditor.IStandaloneCodeEditor;
+  private monaco?: typeof import('monaco-editor/editor');
   private resizeObserver?: ResizeObserver;
   private applyingExternalValue = false;
 
@@ -76,12 +78,15 @@ export class CodeEditorComponent implements AfterViewInit, OnChanges, OnDestroy 
         import('monaco-editor/features/multicursor/register'),
         import('monaco-editor/features/wordOperations/register'),
         import('monaco-editor/features/wordPartOperations/register'),
-        import('monaco-editor/languages/definitions/java/register')
+        import('monaco-editor/languages/definitions/java/register'),
+        import('monaco-editor/languages/definitions/python/register'),
+        import('monaco-editor/languages/definitions/typescript/register')
       ]);
       if (!this.host) return;
+      this.monaco = monaco;
       this.editor = monaco.editor.create(this.host.nativeElement, {
         value: this.value,
-        language: 'java',
+        language: this.monacoLanguage(),
         theme: 'vs-dark',
         automaticLayout: false,
         fontFamily: 'JetBrains Mono, Cascadia Code, Consolas, monospace',
@@ -105,18 +110,28 @@ export class CodeEditorComponent implements AfterViewInit, OnChanges, OnDestroy 
   }
 
   ngOnChanges(changes: SimpleChanges): void {
-    if (!changes['value'] || !this.editor || this.editor.getValue() === this.value) return;
-    this.applyingExternalValue = true;
-    this.editor.setValue(this.value);
-    this.applyingExternalValue = false;
+    if (changes['language'] && this.editor && this.monaco) {
+      const model = this.editor.getModel();
+      if (model) this.monaco.editor.setModelLanguage(model, this.monacoLanguage());
+    }
+    if (changes['value'] && this.editor && this.editor.getValue() !== this.value) {
+      this.applyingExternalValue = true;
+      this.editor.setValue(this.value);
+      this.applyingExternalValue = false;
+    }
   }
 
   emitFallback(event: Event): void {
     this.valueChange.emit((event.target as HTMLTextAreaElement).value);
   }
 
+  private monacoLanguage(): string {
+    return ({ JAVA: 'java', PYTHON: 'python', TYPESCRIPT: 'typescript' } as Record<string, string>)[this.language.toUpperCase()] ?? 'plaintext';
+  }
+
   ngOnDestroy(): void {
     this.resizeObserver?.disconnect();
     this.editor?.dispose();
+    this.monaco = undefined;
   }
 }
