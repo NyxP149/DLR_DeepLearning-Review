@@ -51,6 +51,8 @@ export class LabWorkspaceComponent {
   readonly tutorResponse = signal<string | null>(null);
   readonly tutorError = signal<string | null>(null);
   readonly hintLevel = signal(0);
+  readonly resetting = signal(false);
+  readonly resetNotice = signal<string | null>(null);
 
   private attemptId: string | null = null;
   private activeLabCode = 'JAVA-01';
@@ -84,6 +86,7 @@ export class LabWorkspaceComponent {
             : lab.checklist.map(() => false));
           this.completion.set(null);
           this.completionError.set(null);
+          this.resetNotice.set(null);
           this.code.set(workspace?.sourceCode ?? lab.exercises[0]?.starterCode ?? '');
           this.sourceOrigin.set(workspace?.sourceOrigin ?? 'EDITOR');
           this.resumed.set(workspace !== null);
@@ -212,6 +215,43 @@ export class LabWorkspaceComponent {
       this.completionError.set(this.errorMessage(error));
     } finally {
       this.completing.set(false);
+    }
+  }
+
+  async resetLab(lab: LabContent): Promise<void> {
+    if (this.resetting()) return;
+    const confirmed = globalThis.confirm(
+      `Réinitialiser ${lab.code} ?\n\nLes tentatives, scores, exécutions, réponses, révisions et brouillons de ce laboratoire seront supprimés. Cette action est irréversible.`
+    );
+    if (!confirmed) return;
+
+    this.resetting.set(true);
+    this.resetNotice.set(null);
+    this.completionError.set(null);
+    try {
+      await firstValueFrom(this.executionApi.resetLab(lab.code));
+      if (this.draftTimer !== null) {
+        clearTimeout(this.draftTimer);
+        this.draftTimer = null;
+      }
+      await this.drafts.remove(lab.code);
+      this.attemptId = null;
+      this.code.set(lab.exercises[0]?.starterCode ?? '');
+      this.sourceOrigin.set('EDITOR');
+      this.execution.set(null);
+      this.executionError.set(null);
+      this.quizValues.set({});
+      this.checklist.set(lab.checklist.map(() => false));
+      this.completion.set(null);
+      this.resumed.set(false);
+      this.hintLevel.set(0);
+      this.tutorResponse.set(null);
+      this.tutorError.set(null);
+      this.resetNotice.set(`${lab.code} a été remis à zéro. Une nouvelle tentative sera créée à la prochaine exécution.`);
+    } catch (error) {
+      this.completionError.set(this.errorMessage(error));
+    } finally {
+      this.resetting.set(false);
     }
   }
 

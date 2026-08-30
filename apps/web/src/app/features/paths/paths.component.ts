@@ -22,7 +22,7 @@ import { LabApiService, LabProgressState, LabSummary } from '../../core/api/lab-
       } @else {
         <section class="catalog" aria-label="Catalogue des parcours">
           @for (path of state.paths; track path.code) {
-            <article [class.available]="path.status === 'AVAILABLE'" [class.beta]="path.status === 'BETA'"><div><span>{{ statusLabel(path.status) }}</span><small>{{ path.expectedActivityCount }} activités prévues</small></div><h2>{{ path.title }}</h2><p>{{ path.professionalObjectives[0] }}</p><small>{{ path.prerequisites.length ? 'Après ' + path.prerequisites.join(', ') + ' · ' : '' }}{{ path.portfolioSkills.join(' · ') }}</small></article>
+            <article [class.available]="path.status === 'AVAILABLE'" [class.beta]="path.status === 'BETA'"><div><span>{{ statusLabel(path.status) }}</span><small>{{ activityCountLabel(path.code, path.expectedActivityCount, state.labs) }}</small></div><h2>{{ path.title }}</h2><p>{{ path.professionalObjectives[0] }}</p><small>{{ path.prerequisites.length ? 'Après ' + path.prerequisites.join(', ') + ' · ' : '' }}{{ path.portfolioSkills.join(' · ') }}</small></article>
           }
         </section>
         <div class="lab-title"><div><p>Parcours actif</p><h2>Fondamentaux Java</h2></div><span>6 laboratoires</span></div>
@@ -104,4 +104,9 @@ export class PathsComponent {
   }
   progressLabel(state: LabProgressState): string { return ({ AVAILABLE: 'DISPONIBLE', IN_PROGRESS: 'EN COURS', ACTION_REQUIRED: 'DÉCISION REQUISE', COMPLETED: 'VALIDÉ', LOCKED: 'VERROUILLÉ' } as Record<LabProgressState, string>)[state]; }
   statusLabel(status: string): string { return ({ AVAILABLE: 'Disponible', BETA: 'Bêta exécutable', LOCKED: 'Verrouillé', PLANNED: 'Planifié' } as Record<string, string>)[status] ?? status; }
+  activityCountLabel(pathCode: string, expected: number, labs: LabSummary[]): string {
+    const prefix = pathCode === 'LEARN_LLM' ? 'LLM-' : `${pathCode}-`;
+    const available = labs.filter((lab) => lab.code.startsWith(prefix)).length;
+    return `${available} disponible${available === 1 ? '' : 's'} / ${expected} prévue${expected === 1 ? '' : 's'}`;
+  }
 }

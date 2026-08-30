@@ -19,10 +19,18 @@
           <h1>{{ state.lab.title }}</h1>
           <p>{{ state.lab.objectives.length }} objectifs · Seuil recommandé {{ state.lab.threshold }} %</p>
         </div>
-        <span class="status">{{ state.lab.activityType === 'PROJECT' ? 'Projet portfolio' : 'En cours' }}</span>
+        <div class="lab-header-actions">
+          <span class="status">{{ state.lab.activityType === 'PROJECT' ? 'Projet portfolio' : 'Laboratoire' }}</span>
+          <button class="reset-button" type="button" [disabled]="resetting()" (click)="resetLab(state.lab)">
+            {{ resetting() ? 'Réinitialisation…' : 'Réinitialiser ce laboratoire' }}
+          </button>
+        </div>
       </header>
       @if (resumed()) {
         <p class="resume-banner" role="status">Brouillon précédent restauré depuis PostgreSQL.</p>
+      }
+      @if (resetNotice(); as message) {
+        <p class="reset-notice" role="status">{{ message }}</p>
       }
 
       <div class="workspace-grid">

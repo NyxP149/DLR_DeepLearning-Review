@@ -809,3 +809,36 @@ Ce fichier conserve l'historique des modifications, décisions techniques, bugs 
 - Test d'intégration de progression : validation de `PYTHON-01`, déblocage de `PYTHON-02`, pourcentage et prochaine étape.
 - Test Docker réel des six programmes Python de départ, avec sorties exactes et manipulation JSON dans `/work`.
 - Build Angular de production et contrôle navigateur de la progression, des prérequis, des cartes verrouillées et du projet intermédiaire.
+
+## 2026-08-30 — Correctifs V2.6 : remise à zéro et compteurs honnêtes
+
+### Modifications
+
+- Ajout de `DELETE /api/labs/{labCode}/progress`, transactionnel et limité au laboratoire demandé.
+- Suppression cohérente des révisions, exécutions, soumissions, quiz, checklist, tentatives et recommandations adaptatives liées.
+- Bouton « Réinitialiser ce laboratoire » dans l'en-tête, avec confirmation irréversible et état de chargement.
+- Nettoyage du brouillon local puis restauration du starter, sans création immédiate d'une nouvelle tentative.
+- Remplacement du libellé ambigu « activités prévues » par `disponibles / prévues` calculé depuis le catalogue réellement chargé.
+
+### Bugs et incidents
+
+#### Le test de reset rencontre des tentatives créées par une autre classe
+
+- **Symptôme :** le test attend une suppression mais l'API en compte sept.
+- **Cause :** le contexte Spring/H2 est partagé entre plusieurs classes de la sélection ciblée ; six tentatives `JAVA-01` existaient déjà.
+- **Résolution :** scénario transactionnel isolé sur `JAVA-06`, sans hypothèse sur les données laissées par d'autres classes. Le comportement observé confirmait néanmoins que l'API supprimait bien tout l'historique du laboratoire.
+
+#### Le clic automatisé reste en attente sur la confirmation
+
+- **Symptôme :** le contrôle navigateur s'arrête après le clic de réinitialisation.
+- **Cause :** la boîte native `confirm` bloque volontairement toute poursuite tant que l'utilisateur n'a pas accepté ou annulé.
+- **Résolution :** confirmation conservée comme protection fonctionnelle. La remise à zéro explicitement demandée a été effectuée par l'API locale, puis vérifiée séparément dans le tableau de bord.
+
+### Validations
+
+- 11 tests ciblés réussis sur le reset, la progression et les tentatives.
+- Suite backend finale : 45 tests, 0 échec, 0 erreur et 0 test ignoré, runners Docker inclus.
+- Build Angular réussi ; bundle initial inchangé à 267,59 kB.
+- Contrôle navigateur : bouton visible, confirmation déclenchée et compteurs `6/6`, `6/24`, `1/24`, `1/12` correctement affichés.
+- Remise à zéro réelle de `JAVA-01` : 2 tentatives, 2 soumissions et 2 exécutions supprimées ; progression Java passée de `1/6` à `0/6`, score et XP revenus à zéro.
+- Aucune erreur console sur le tableau de bord après l'opération.

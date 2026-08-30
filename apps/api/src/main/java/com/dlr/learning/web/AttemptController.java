@@ -1,7 +1,9 @@
 package com.dlr.learning.web;
 
 import com.dlr.learning.application.AttemptService;
+import com.dlr.learning.application.LabResetService;
 import com.dlr.learning.domain.Attempt;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -17,9 +19,11 @@ import java.util.UUID;
 public class AttemptController {
 
     private final AttemptService attemptService;
+    private final LabResetService labResetService;
 
-    public AttemptController(AttemptService attemptService) {
+    public AttemptController(AttemptService attemptService, LabResetService labResetService) {
         this.attemptService = attemptService;
+        this.labResetService = labResetService;
     }
 
     @PostMapping("/labs/{labCode}/attempts")
@@ -36,5 +40,10 @@ public class AttemptController {
     @PostMapping("/attempts/{id}/continue")
     public Attempt continueBelowThreshold(@PathVariable UUID id) {
         return attemptService.continueBelowThreshold(id);
+    }
+
+    @DeleteMapping("/labs/{labCode}/progress")
+    public LabResetService.ResetResult reset(@PathVariable String labCode) {
+        return labResetService.reset(labCode);
     }
 }

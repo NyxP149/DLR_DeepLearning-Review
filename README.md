@@ -94,6 +94,8 @@ Le parcours Python livre maintenant six étapes exécutables : `PYTHON-01` à `P
 
 La route `GET /api/paths/PYTHON/progress` calcule une progression dédiée et le prochain laboratoire. Chaque étape dépend de la précédente ; une tentative ne peut être créée que lorsque ses prérequis sont validés. Un résultat sous le seuil ne débloque la suite que si l'apprenant confirme explicitement qu'il continue. L'interface expose les états disponible, en cours, action requise, terminé et verrouillé, avec le prérequis manquant.
 
+Chaque laboratoire propose aussi **Réinitialiser ce laboratoire**. Après confirmation, cette action efface uniquement ses tentatives, scores, exécutions, réponses, checklist, révisions et brouillon local. Le catalogue distingue désormais le contenu réellement disponible de la cible finale, par exemple `6 disponibles / 24 prévues` pour Python.
+
 Le prérequis de parcours Java reste recommandé dans le catalogue. La séquence exécutable Python commence à `PYTHON-01` afin de préserver les données et usages déjà créés avec la V2.5.
 
 ## Sauvegarde locale
