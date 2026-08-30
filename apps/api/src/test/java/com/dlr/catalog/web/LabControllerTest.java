@@ -41,16 +41,30 @@ class LabControllerTest {
     }
 
     @Test
-    void exposesTheSixJavaMvpLabsInOrder() throws Exception {
+    void exposesTheCompleteJavaProfessionalPathInOrder() throws Exception {
         mockMvc.perform(get("/api/labs"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.length()").value(14))
+                .andExpect(jsonPath("$.length()").value(32))
                 .andExpect(jsonPath("$[0].code").value("JAVA-01"))
                 .andExpect(jsonPath("$[5].code").value("JAVA-06"))
+                .andExpect(jsonPath("$[22].code").value("JAVA-23"))
+                .andExpect(jsonPath("$[22].activityType").value("PROJECT"))
+                .andExpect(jsonPath("$[23].code").value("JAVA-24"))
+                .andExpect(jsonPath("$[23].activityType").value("CHALLENGE"))
                 .andExpect(jsonPath("$[?(@.code == 'PYTHON-01')]").exists())
                 .andExpect(jsonPath("$[?(@.code == 'PYTHON-06' && @.activityType == 'PROJECT')]").exists())
                 .andExpect(jsonPath("$[?(@.code == 'TYPESCRIPT-01')]").exists())
                 .andExpect(jsonPath("$[?(@.code == 'LLM-01')]").exists());
+    }
+
+    @Test
+    void exposesDedicatedJavaProgressAndSequentialPrerequisites() throws Exception {
+        mockMvc.perform(get("/api/paths/JAVA/progress"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalLabs").value(24))
+                .andExpect(jsonPath("$.labs[6].prerequisites[0]").value("JAVA-06"))
+                .andExpect(jsonPath("$.labs[22].activityType").value("PROJECT"))
+                .andExpect(jsonPath("$.labs[23].activityType").value("CHALLENGE"));
     }
 
     @Test

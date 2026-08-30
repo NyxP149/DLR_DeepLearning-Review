@@ -32,7 +32,7 @@ import { DashboardApiService } from './core/api/dashboard-api.service';
         </nav>
           <div class="side-goal">
             <small>Objectif V2</small>
-            <strong>6 laboratoires Java</strong>
+            <strong>24 activités Java</strong>
             <span><i [style.width.%]="goalProgress()"></i></span>
           </div>
           <p class="build-label">DLR V2 · local-first</p>

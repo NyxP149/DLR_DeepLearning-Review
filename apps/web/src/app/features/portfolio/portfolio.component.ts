@@ -40,7 +40,7 @@ import { PortfolioApiService, PortfolioProject } from '../../core/api/portfolio-
 export class PortfolioComponent {
   private readonly api = inject(PortfolioApiService);
   readonly labs = [
-    'JAVA-01', 'JAVA-02', 'JAVA-03', 'JAVA-04', 'JAVA-05', 'JAVA-06',
+    ...Array.from({ length: 24 }, (_, index) => `JAVA-${String(index + 1).padStart(2, '0')}`),
     'PYTHON-01', 'PYTHON-02', 'PYTHON-03', 'PYTHON-04', 'PYTHON-05', 'PYTHON-06',
     'TYPESCRIPT-01', 'LLM-01'
   ];

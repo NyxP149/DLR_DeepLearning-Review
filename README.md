@@ -7,7 +7,7 @@ DLR est une application locale d'apprentissage de la programmation, avec évalua
 - API Spring Boot Java 21 ;
 - application Angular standalone en thème sombre ;
 - persistance PostgreSQL versionnée par Flyway ;
-- six laboratoires Java fondamentaux, six étapes Python professionnelles et deux tranches V2.5 exécutables (TypeScript, Learn LLMs) ;
+- parcours Java professionnel complet de 24 activités, six étapes Python professionnelles et deux tranches V2.5 exécutables (TypeScript, Learn LLMs) ;
 - parcours, laboratoire, éditeur Monaco, reprise de brouillon, quiz, checklist et import `.java` ;
 - exécution Docker isolée, assertions privées et score déterministe ;
 - tableau de bord, concepts clés, révisions espacées et planning ;
@@ -97,6 +97,14 @@ La route `GET /api/paths/PYTHON/progress` calcule une progression dédiée et le
 Chaque laboratoire propose aussi **Réinitialiser ce laboratoire**. Après confirmation, cette action efface uniquement ses tentatives, scores, exécutions, réponses, checklist, révisions et brouillon local. Le catalogue distingue désormais le contenu réellement disponible de la cible finale, par exemple `6 disponibles / 24 prévues` pour Python.
 
 Le prérequis de parcours Java reste recommandé dans le catalogue. La séquence exécutable Python commence à `PYTHON-01` afin de préserver les données et usages déjà créés avec la V2.5.
+
+## Parcours V2.7 — Java professionnel
+
+Le parcours Java livre maintenant 24 activités séquentielles : 22 laboratoires, le projet portfolio `JAVA-23` et le défi final `JAVA-24`. Il couvre les fondations, l'objet, les collections, les génériques, les Streams, les fichiers, les tests, SOLID, les patterns, la concurrence, JDBC, Spring Boot, les API REST, la persistance, la sécurité, la performance, l'observabilité et Docker.
+
+La route `GET /api/paths/JAVA/progress` expose les 24 états et le prérequis de chaque étape. Le catalogue affiche `24 disponibles / 24 prévues`, tandis que Python reste honnêtement indiqué à `6 / 24`. Les preuves Java sont également disponibles dans le portfolio et le tableau de bord débloque un badge professionnel après les 24 validations.
+
+Les programmes Java s'exécutent dans `/work`, un espace temporaire inscriptible du conteneur isolé. Cela permet les exercices sur les fichiers tout en conservant le réseau coupé, la racine en lecture seule et les limites de ressources.
 
 ## Sauvegarde locale
 

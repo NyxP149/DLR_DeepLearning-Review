@@ -18,16 +18,17 @@ class DashboardControllerTest {
     private MockMvc mockMvc;
 
     @Test
-    void exposesTheLocalProfileAndJavaMvpProgress() throws Exception {
+    void exposesTheLocalProfileAndCompleteJavaProgress() throws Exception {
         mockMvc.perform(get("/api/dashboard"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.profile.displayName").value("Apprenant DLR"))
-                .andExpect(jsonPath("$.totalLabs").value(6))
+                .andExpect(jsonPath("$.totalLabs").value(24))
                 .andExpect(jsonPath("$.completedLabs").isNumber())
                 .andExpect(jsonPath("$.averageScore").isNumber())
                 .andExpect(jsonPath("$.level").isNumber())
                 .andExpect(jsonPath("$.currentStreak").isNumber())
                 .andExpect(jsonPath("$.studyMinutes").isNumber())
-                .andExpect(jsonPath("$.badges.length()").value(5));
+                .andExpect(jsonPath("$.badges.length()").value(6))
+                .andExpect(jsonPath("$.badges[5].code").value("JAVA_PRO"));
     }
 }

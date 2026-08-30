@@ -1,5 +1,5 @@
 {
-  "code":"JAVA-02","language":"JAVA","number":2,"slug":"variables-types-operateurs","title":"Variables, types primitifs, opérateurs et conversions","difficulty":"BASE","threshold":70,
+  "code":"JAVA-02","language":"JAVA","number":2,"slug":"variables-types-operateurs","title":"Variables, types primitifs, opérateurs et conversions","difficulty":"BASE","threshold":70,"activityType":"LAB","prerequisites":["JAVA-01"],
   "objectives":["Choisir un type primitif adapté","Déclarer des variables lisibles","Utiliser les opérateurs sans conversion involontaire"],
   "sections":[
     {"title":"Nommer et typer une valeur","content":"Une variable associe un nom, un type et une valeur. Java vérifie à la compilation que les opérations respectent le type déclaré."},

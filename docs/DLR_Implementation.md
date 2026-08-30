@@ -915,4 +915,35 @@ Flyway V13 ajoute `PYTHON-02` à `PYTHON-05` comme laboratoires et `PYTHON-06` c
 
 L'interface demande une confirmation explicite, appelle cette route, efface le brouillon IndexedDB/localStorage et restaure le starter pédagogique. Une nouvelle tentative n'est créée qu'à la prochaine exécution ou validation.
 
-Les compteurs de parcours présentent deux informations séparées : le nombre de contenus JSON actuellement exécutables et `expectedActivityCount`, qui reste l'objectif final du parcours. Les valeurs actuelles sont Java `6/6`, Python `6/24`, TypeScript `1/24`, Learn LLMs `1/12`, et `0` disponible pour les parcours encore planifiés.
+Les compteurs de parcours présentent deux informations séparées : le nombre de contenus JSON actuellement exécutables et `expectedActivityCount`, qui reste l'objectif final du parcours. Depuis V2.7, les valeurs sont Java `24/24`, Python `6/24`, TypeScript `1/24`, Learn LLMs `1/12`, et `0` disponible pour les parcours encore planifiés.
+
+## 30. V2.7 — Java professionnel complet
+
+### 30.1 Séquence pédagogique
+
+Le parcours Java contient 24 activités reliées par prérequis :
+
+- `JAVA-01` à `JAVA-06` conservent la tranche fondamentale et deviennent une séquence explicite ;
+- `JAVA-07` à `JAVA-14` couvrent objet avancé, contrats, exceptions, collections, génériques, Streams, fichiers et modèles immuables ;
+- `JAVA-15` à `JAVA-18` couvrent tests, SOLID, design patterns et concurrence ;
+- `JAVA-19` à `JAVA-22` introduisent transactions, architecture Spring, REST/JPA/sécurité, performance, observabilité et livraison Docker ;
+- `JAVA-23` est un projet professionnel de moteur de commandes exportable au portfolio ;
+- `JAVA-24` est un défi final adaptatif avec un seuil renforcé à 85 %.
+
+Chaque activité conserve le contrat de contenu versionné : objectifs, sections, concept clé contextualisé, exercice, sortie attendue, quiz de connexion et checklist. Les thèmes qui nécessitent normalement un framework externe utilisent une preuve Java standard déterministe dans le runner, tandis que le cours décrit la mise en œuvre Spring/JPA réelle. Le laboratoire reste ainsi exécutable hors réseau sans prétendre embarquer un projet Maven complet dans un exercice unifichier.
+
+### 30.2 Progression et données
+
+Flyway V14 référence `JAVA-07` à `JAVA-22` comme laboratoires, `JAVA-23` comme projet et `JAVA-24` comme défi. La migration ajoute les nouvelles lignes sans modifier les tentatives existantes. Une ancienne tentative déjà en cours reste visible ; toute nouvelle tentative respecte la chaîne de prérequis.
+
+Le tableau de bord calcule désormais la progression sur 24 activités et ajoute le badge `JAVA_PRO`, distinct du badge des six fondations. Le catalogue, le portfolio, la navigation et la page Parcours utilisent tous la même cible de 24.
+
+### 30.3 Interface
+
+La page Parcours affiche une progression Java dédiée et une grille de 24 cartes. Une carte verrouillée indique exactement l'étape précédente à terminer. Le projet utilise le marqueur `P` et une couleur portfolio ; le défi utilise le marqueur `D` et un traitement visuel distinct. Dans le laboratoire, les en-têtes deviennent respectivement « Projet professionnel » et « Défi final ».
+
+### 30.4 Runner et validation
+
+Le runner Java copie maintenant `Main.java` dans `/work`, compile et exécute depuis ce volume temporaire. Les écritures relatives, notamment celles de `JAVA-13`, fonctionnent sans rendre la racine du conteneur modifiable. Le montage source reste en lecture seule, le réseau est désactivé et les limites CPU, mémoire et processus sont conservées.
+
+Un test d'intégration parcourt les 24 contenus dans Docker : les six starters historiques doivent compiler, puis les 18 nouvelles preuves doivent en plus produire leur sortie exacte. Les tests de contrôleur vérifient le total, les types projet/défi, la progression, les prérequis et les six badges du tableau de bord.

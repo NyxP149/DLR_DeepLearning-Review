@@ -11,13 +11,13 @@ export interface LabSummary {
   title: string;
   difficulty: string;
   threshold: number;
-  activityType: 'LAB' | 'PROJECT';
+  activityType: 'LAB' | 'PROJECT' | 'CHALLENGE';
   prerequisites: string[];
 }
 export type LabProgressState = 'LOCKED' | 'AVAILABLE' | 'IN_PROGRESS' | 'ACTION_REQUIRED' | 'COMPLETED';
 export interface PathProgress {
   pathCode: string; totalLabs: number; completedLabs: number; progressPercent: number; nextLabCode: string | null;
-  labs: { code: string; title: string; activityType: 'LAB' | 'PROJECT'; prerequisites: string[]; state: LabProgressState; bestScore: number | null }[];
+  labs: { code: string; title: string; activityType: 'LAB' | 'PROJECT' | 'CHALLENGE'; prerequisites: string[]; state: LabProgressState; bestScore: number | null }[];
 }
 export interface PathDescriptor {
   code: string; title: string; status: 'AVAILABLE' | 'BETA' | 'LOCKED' | 'PLANNED'; professionalObjectives: string[];

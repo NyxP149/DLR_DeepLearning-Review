@@ -842,3 +842,51 @@ Ce fichier conserve l'historique des modifications, décisions techniques, bugs 
 - Contrôle navigateur : bouton visible, confirmation déclenchée et compteurs `6/6`, `6/24`, `1/24`, `1/12` correctement affichés.
 - Remise à zéro réelle de `JAVA-01` : 2 tentatives, 2 soumissions et 2 exécutions supprimées ; progression Java passée de `1/6` à `0/6`, score et XP revenus à zéro.
 - Aucune erreur console sur le tableau de bord après l'opération.
+
+## 2026-08-30 — V2.7 : parcours Java professionnel 24 activités
+
+### Modifications
+
+- Ajout des contenus complets `JAVA-07` à `JAVA-22`, du projet professionnel `JAVA-23` et du défi final `JAVA-24`.
+- Ajout de `activityType` et de prérequis séquentiels aux six laboratoires Java historiques.
+- Migration Flyway V14 ajoutant les 18 nouvelles activités sans réécrire les données d'apprentissage existantes.
+- Catalogue Java passé à `24 disponibles / 24 prévues`.
+- Progression Java dédiée sur 24 étapes, avec verrouillage serveur et prérequis exacts.
+- Grille de 24 cartes dans l'interface, marqueurs distincts pour le projet et le défi.
+- Tableau de bord et portfolio étendus aux 24 preuves ; ajout du badge `JAVA_PRO`.
+- Runner Java déplacé vers le volume temporaire `/work` pour autoriser les exercices de fichiers sous les protections Docker existantes.
+- Test d'intégration Docker parcourant les 24 starters Java.
+
+### Bugs et incidents
+
+#### Le catalogue Java est resté limité à six activités
+
+- **Symptôme :** l'interface affichait `6 disponibles / 6 prévues`, sans projet professionnel ni défi final, alors que la conception prévoyait 24 activités.
+- **Cause :** la tranche V1 de six laboratoires avait été conservée comme cible finale dans `paths.json` et aucune migration n'avait encore matérialisé `JAVA-07` à `JAVA-24`.
+- **Résolution :** ajout des 18 contenus, passage de la cible à 24, migration V14, progression séquentielle et composants d'interface correspondants.
+
+#### Le nombre de badges attendu devient obsolète
+
+- **Symptôme :** le test du tableau de bord attend cinq badges après l'ajout de `JAVA_PRO`.
+- **Cause :** l'assertion historique n'avait pas été mise à jour avec le nouveau badge de fin de parcours.
+- **Résolution :** contrat de test porté à six badges et vérification explicite du badge professionnel à 24/24.
+
+#### Le premier test des 24 starters attend une solution dans un squelette
+
+- **Symptôme :** `JAVA-01` réussit la compilation mais produit une sortie vide au lieu de `DLR Java Lab 1`.
+- **Cause :** `JAVA-01` à `JAVA-06` sont volontairement des squelettes guidés à compléter, contrairement aux 18 nouvelles preuves immédiatement exécutables.
+- **Résolution :** le test exige la compilation des 24 starters et la sortie exacte uniquement pour `JAVA-07` à `JAVA-24`. La comparaison de sortie des six premiers reste testée par les scénarios de soumission complétés.
+
+#### Un exercice de fichiers ne peut pas écrire depuis le répertoire source
+
+- **Risque détecté :** le montage `/workspace` est volontairement en lecture seule ; une écriture relative de `JAVA-13` aurait échoué si Java avait continué à s'exécuter depuis ce répertoire.
+- **Résolution :** copie de `Main.java`, compilation et exécution depuis `/work`, volume temporaire inscriptible, sans affaiblir l'isolation du conteneur.
+
+### Validations
+
+- Migration Flyway V14 validée sur H2 puis appliquée à PostgreSQL 17.11 réel, de V13 vers V14.
+- API réelle : 32 contenus au total, 24 Java, `JAVA-23` de type `PROJECT`, `JAVA-24` de type `CHALLENGE` et progression Java `0/24` après la remise à zéro précédente.
+- Test Docker ciblé : compilation des 24 starters et sorties exactes des 18 nouveaux contenus, 0 échec.
+- Suite backend finale : 47 tests, 0 échec, 0 erreur et 0 test ignoré, runners Docker inclus.
+- Build Angular de production réussi ; bundle initial 267,59 kB, avec seulement l'avertissement connu du cache optionnel `lmdb`.
+- Contrôle navigateur : `24 disponibles / 24 prévues`, grille séquentielle complète, projet et défi distincts, concept clé en haut de la section et aucune erreur console.

@@ -28,7 +28,11 @@ class DockerJavaRunnerTest {
                 .containsSubsequence("--security-opt", "no-new-privileges")
                 .containsSubsequence("--user", "10001:10001")
                 .contains("dlr/java-runner:21");
-        assertThat(command.getLast()).contains("javac").contains("java -cp");
+        assertThat(command.getLast())
+                .contains("cp /workspace/Main.java /work/Main.java")
+                .contains("cd /work")
+                .contains("javac")
+                .contains("java -cp");
     }
 
     @Test

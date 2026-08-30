@@ -28,7 +28,7 @@ import { DashboardApiService } from '../../core/api/dashboard-api.service';
           <article><span>Temps d’étude</span><strong>{{ formatMinutes(state.data.studyMinutes) }}</strong><small>Temps réel enregistré</small></article>
         </section>
         <section class="progress-panel">
-          <div><h2>Parcours V1</h2><a routerLink="/paths">Voir les six laboratoires</a></div>
+          <div><h2>Parcours Java professionnel</h2><a routerLink="/paths">Voir les 24 activités</a></div>
           <div class="track"><span [style.width.%]="state.data.progressPercent"></span></div>
         </section>
         <section class="achievements">

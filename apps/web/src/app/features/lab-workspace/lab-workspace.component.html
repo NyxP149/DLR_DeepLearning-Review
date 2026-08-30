@@ -15,12 +15,12 @@
     @case ('loaded') {
       <header class="lab-header">
         <div>
-          <p class="eyebrow">{{ state.lab.language }} · {{ state.lab.activityType === 'PROJECT' ? 'Projet intermédiaire' : 'Laboratoire ' + state.lab.number }}</p>
+          <p class="eyebrow">{{ state.lab.language }} · {{ state.lab.activityType === 'PROJECT' ? 'Projet professionnel' : state.lab.activityType === 'CHALLENGE' ? 'Défi final' : 'Laboratoire ' + state.lab.number }}</p>
           <h1>{{ state.lab.title }}</h1>
           <p>{{ state.lab.objectives.length }} objectifs · Seuil recommandé {{ state.lab.threshold }} %</p>
         </div>
         <div class="lab-header-actions">
-          <span class="status">{{ state.lab.activityType === 'PROJECT' ? 'Projet portfolio' : 'Laboratoire' }}</span>
+          <span class="status">{{ state.lab.activityType === 'PROJECT' ? 'Projet portfolio' : state.lab.activityType === 'CHALLENGE' ? 'Défi adaptatif' : 'Laboratoire' }}</span>
           <button class="reset-button" type="button" [disabled]="resetting()" (click)="resetLab(state.lab)">
             {{ resetting() ? 'Réinitialisation…' : 'Réinitialiser ce laboratoire' }}
           </button>
