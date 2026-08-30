@@ -1,0 +1,17 @@
+{
+  "code": "PYTHON-06", "language": "PYTHON", "number": 6, "slug": "projet-pipeline-commandes",
+  "title": "Projet intermédiaire : pipeline de commandes", "difficulty": "PROJET", "threshold": 75,
+  "activityType": "PROJECT", "prerequisites": ["PYTHON-05"],
+  "objectives": ["Combiner JSON, fonctions, collections et objets", "Écarter les données non exploitables", "Produire un rapport déterministe testable"],
+  "sections": [
+    {"title":"Du transport au domaine","content":"Un pipeline professionnel sépare le décodage, la validation, la transformation et la présentation. Chaque étape possède un contrat court et peut être vérifiée isolément.","conceptCodes":["PYTHON-DATA-PIPELINE"]},
+    {"title":"Projet portfolio intermédiaire","content":"Ce projet constitue une première preuve Python exportable. Le résultat reste volontairement déterministe : un recruteur ou un reviewer peut relancer le programme et obtenir la même synthèse."}
+  ],
+  "keyConcepts": [{"code":"PYTHON-DATA-PIPELINE","name":"Pipeline de données","definition":"Un pipeline transforme des données brutes en résultat métier à travers des étapes explicites.","whyExists":"Il réduit le couplage entre format d'entrée, règles métier et format de sortie.","whyImportant":"Des étapes séparées facilitent le diagnostic, les tests et le remplacement d'une source de données.","minimalExample":"raw -> decode -> validate -> aggregate -> report","commonMistake":"Mélanger lecture, validation et affichage dans une seule boucle impossible à tester séparément.","masteryQuestion":"Quelles frontières choisirais-tu pour tester ce pipeline ?","masteryProof":"Nommer les étapes, leurs entrées, leurs sorties et au moins un cas invalide."}],
+  "exercises": [{"code":"PYTHON-06-E1","title":"Synthétiser les commandes payées","statement":"Complète et conserve les assertions. La sortie doit être exactement les deux lignes demandées.","starterCode":"import json\nfrom dataclasses import dataclass\n\n@dataclass(frozen=True, slots=True)\nclass Order:\n    customer: str\n    amount: float\n\ndef paid_orders(payload: str) -> list[Order]:\n    rows = json.loads(payload)\n    return [\n        Order(row[\"customer\"], float(row[\"amount\"]))\n        for row in rows\n        if row.get(\"status\") == \"PAID\" and float(row.get(\"amount\", 0)) > 0\n    ]\n\npayload = '[{\"customer\":\"Ada\",\"amount\":120,\"status\":\"PAID\"},{\"customer\":\"Linus\",\"amount\":80,\"status\":\"PENDING\"},{\"customer\":\"Grace\",\"amount\":30,\"status\":\"PAID\"}]'\norders = paid_orders(payload)\ntotal = sum(order.amount for order in orders)\nassert len(orders) == 2\nassert total == 150\nprint(f\"Commandes payées: {len(orders)}\")\nprint(f\"Revenu: {total:.2f} EUR\")\n","expectedOutput":"Commandes payées: 2\nRevenu: 150.00 EUR"}],
+  "quiz": [
+    {"code":"PYTHON-06-Q1","type":"SINGLE_CHOICE","prompt":"Pourquoi séparer décodage, validation et agrégation ?","choices":["Pour tester et faire évoluer chaque responsabilité","Pour rendre le résultat aléatoire","Pour éviter toute fonction"],"correctChoice":0,"expectedKeywords":[]},
+    {"code":"PYTHON-06-Q2","type":"FREE_TEXT","prompt":"Décris un cas invalide et l'étape qui devrait le rejeter.","choices":[],"correctChoice":null,"expectedKeywords":["invalide","validation","rejeter","étape"]}
+  ],
+  "checklist": ["Je sépare les étapes du pipeline", "Je valide les données avant l'agrégation", "Je fournis des assertions et une sortie reproductible", "Je peux présenter ce projet dans mon portfolio"]
+}

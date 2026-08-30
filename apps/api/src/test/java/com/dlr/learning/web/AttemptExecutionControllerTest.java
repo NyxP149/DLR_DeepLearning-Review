@@ -97,6 +97,14 @@ class AttemptExecutionControllerTest {
     }
 
     @Test
+    void blocksASequencedPythonLabUntilItsPrerequisiteIsValidated() throws Exception {
+        mockMvc.perform(post("/api/labs/PYTHON-06/attempts"))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.title").value("LAB_LOCKED"))
+                .andExpect(jsonPath("$.missingPrerequisites[0]").value("PYTHON-05"));
+    }
+
+    @Test
     void refusesASubmissionForAnUnknownAttempt() throws Exception {
         JsonNode request = objectMapper.createObjectNode()
                 .put("language", "JAVA")

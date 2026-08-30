@@ -760,3 +760,52 @@ Ce fichier conserve l'historique des modifications, décisions techniques, bugs 
 - Contrôle HTTP réel : accueil API, 8 parcours, 9 laboratoires et compteur Java limité à 6.
 - Contrôle navigateur : concepts positionnés avant leur section, imports/langages corrects et exécutions réussies pour Python, TypeScript et Learn LLMs.
 - Temps observés depuis l'interface : Python ~1,05 s, TypeScript ~5,17 s, Learn LLMs ~1,11 s ; aucune erreur console.
+
+## 2026-08-30 — V2.6 : Python professionnel et progression à prérequis
+
+### Modifications
+
+- Ajout des contenus complets `PYTHON-02` à `PYTHON-05` et du projet intermédiaire `PYTHON-06`.
+- Métadonnées `activityType` et `prerequisites` ajoutées au contrat de contenu, avec valeurs de repli compatibles pour les laboratoires existants.
+- Migration Flyway V13 ajoutant les cinq nouvelles activités Python.
+- Service de progression par parcours avec états verrouillé, disponible, en cours, action requise et terminé.
+- Route `GET /api/paths/{code}/progress` et contrôle serveur des prérequis lors de la création d'une tentative.
+- Réponse HTTP 409 structurée `LAB_LOCKED`, incluant les prérequis manquants et l'action suggérée.
+- Runner Python adapté aux exercices de fichiers : copie et exécution dans le volume temporaire `/work`, sans rendre la racine du conteneur modifiable.
+- Écran Parcours enrichi avec progression Python, prochaine étape, six cartes séquentielles et identification visuelle du projet portfolio.
+- Portfolio étendu aux six preuves Python.
+
+### Bugs et incidents
+
+#### Surcharge ambiguë de `JdbcTemplate.query`
+
+- **Symptôme :** la compilation Java ne sait pas choisir entre deux surcharges acceptant une expression lambda.
+- **Cause :** le callback sans valeur de retour est compatible avec plusieurs interfaces fonctionnelles de `JdbcTemplate`.
+- **Résolution :** type explicite `RowCallbackHandler` sur le callback de lecture des tentatives.
+
+#### Les cartes TypeScript et Learn LLMs deviennent trop étroites
+
+- **Symptôme :** après l'ajout de la grille Python à six colonnes, les deux cartes de la tranche suivante n'occupent chacune qu'une colonne étroite.
+- **Cause :** elles héritaient de la règle générique de la grille des laboratoires Python.
+- **Résolution :** grille `beta-labs` dédiée à deux colonnes, avec règles responsive spécifiques.
+
+#### L'API et PostgreSQL ne répondent plus pendant le contrôle navigateur
+
+- **Symptôme :** l'interface affiche temporairement « Connexion impossible ».
+- **Cause :** les processus locaux du backend et du conteneur PostgreSQL s'étaient arrêtés ; il ne s'agissait pas d'une erreur de verrouillage métier.
+- **Résolution :** redémarrage de PostgreSQL, vérification de son état `healthy`, redémarrage de Spring Boot et rechargement du contrôle. La progression et les contenus se chargent ensuite normalement.
+
+#### Le cache Angular optionnel reste absent
+
+- **Symptôme :** avertissement `Cannot find module 'lmdb'` pendant le build.
+- **Impact :** aucun sur le bundle généré ; le cache de compilation est seulement moins performant.
+- **Gestion :** avertissement conservé afin de ne pas ajouter une dépendance native sans bénéfice pour l'application exécutée.
+
+### Validations
+
+- Migration Flyway V13 validée sur H2 et appliquée à PostgreSQL 17.11 réel.
+- Suite backend finale : 44 tests, 0 échec, 0 erreur et 0 test ignoré, runners Docker inclus.
+- Tests de contrôleur sur le catalogue, les métadonnées du projet, la progression et le refus HTTP 409 d'une activité verrouillée.
+- Test d'intégration de progression : validation de `PYTHON-01`, déblocage de `PYTHON-02`, pourcentage et prochaine étape.
+- Test Docker réel des six programmes Python de départ, avec sorties exactes et manipulation JSON dans `/work`.
+- Build Angular de production et contrôle navigateur de la progression, des prérequis, des cartes verrouillées et du projet intermédiaire.

@@ -1,0 +1,17 @@
+{
+  "code": "PYTHON-05", "language": "PYTHON", "number": 5, "slug": "objets-dataclasses-tests",
+  "title": "Objets, dataclasses et invariants testables", "difficulty": "INTERMEDIAIRE", "threshold": 75,
+  "activityType": "LAB", "prerequisites": ["PYTHON-04"],
+  "objectives": ["Modéliser une valeur avec dataclass", "Protéger un invariant métier", "Vérifier un comportement avec assert"],
+  "sections": [
+    {"title":"Un objet porte des règles","content":"Une dataclass réduit le code répétitif mais ne remplace pas la conception. Une valeur immuable est utile lorsque chaque transformation doit produire un nouvel état valide.","conceptCodes":["PYTHON-DATACLASS-INVARIANT"]},
+    {"title":"Tester le comportement","content":"Un test utile observe une règle publique et couvre aussi ses limites. Un simple assert suffit pour découvrir la mécanique avant l'introduction d'un framework de tests."}
+  ],
+  "keyConcepts": [{"code":"PYTHON-DATACLASS-INVARIANT","name":"Invariant d'objet","definition":"Un invariant est une condition qui doit rester vraie pendant toute la vie d'un objet valide.","whyExists":"Il empêche la circulation d'états impossibles dans le reste du programme.","whyImportant":"Une règle centralisée est plus facile à tester et à faire évoluer qu'une validation dispersée.","minimalExample":"@dataclass(frozen=True) class Level: value: int","commonMistake":"Créer une dataclass qui accepte n'importe quel état puis valider tardivement dans l'interface.","masteryQuestion":"Pourquoi une instance immuable peut-elle simplifier le raisonnement ?","masteryProof":"Créer une transformation qui renvoie une nouvelle instance et tester l'ancienne et la nouvelle."}],
+  "exercises": [{"code":"PYTHON-05-E1","title":"Faire progresser une compétence","statement":"Conserve l'immutabilité, vérifie le résultat et affiche exactement : Python: niveau 2","starterCode":"from dataclasses import dataclass\n\n@dataclass(frozen=True, slots=True)\nclass Skill:\n    name: str\n    level: int\n\n    def level_up(self) -> \"Skill\":\n        return Skill(self.name, self.level + 1)\n\ninitial = Skill(\"Python\", 1)\nadvanced = initial.level_up()\nassert initial.level == 1\nassert advanced.level == 2\nprint(f\"{advanced.name}: niveau {advanced.level}\")\n","expectedOutput":"Python: niveau 2"}],
+  "quiz": [
+    {"code":"PYTHON-05-Q1","type":"SINGLE_CHOICE","prompt":"Que fait frozen=True dans cette dataclass ?","choices":["Il empêche la réaffectation normale des champs","Il chiffre l'objet","Il remplace tous les tests"],"correctChoice":0,"expectedKeywords":[]},
+    {"code":"PYTHON-05-Q2","type":"FREE_TEXT","prompt":"Explique ce qu'est un invariant et comment le tester.","choices":[],"correctChoice":null,"expectedKeywords":["condition","valide","test","état"]}
+  ],
+  "checklist": ["Je distingue objet de données et règle métier", "Je sais produire une nouvelle valeur immuable", "Je teste le comportement et ses limites"]
+}

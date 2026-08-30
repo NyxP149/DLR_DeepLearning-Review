@@ -15,11 +15,11 @@
     @case ('loaded') {
       <header class="lab-header">
         <div>
-          <p class="eyebrow">{{ state.lab.language }} · Laboratoire {{ state.lab.number }}</p>
+          <p class="eyebrow">{{ state.lab.language }} · {{ state.lab.activityType === 'PROJECT' ? 'Projet intermédiaire' : 'Laboratoire ' + state.lab.number }}</p>
           <h1>{{ state.lab.title }}</h1>
           <p>{{ state.lab.objectives.length }} objectifs · Seuil recommandé {{ state.lab.threshold }} %</p>
         </div>
-        <span class="status">En cours</span>
+        <span class="status">{{ state.lab.activityType === 'PROJECT' ? 'Projet portfolio' : 'En cours' }}</span>
       </header>
       @if (resumed()) {
         <p class="resume-banner" role="status">Brouillon précédent restauré depuis PostgreSQL.</p>

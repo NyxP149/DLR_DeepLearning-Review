@@ -11,10 +11,10 @@
   {
     "code": "PYTHON", "title": "Python depuis Java", "status": "BETA",
     "professionalObjectives": ["Développer des programmes Python testables en transférant les acquis Java"],
-    "prerequisites": ["JAVA"], "keyConcepts": ["typage dynamique", "collections", "fonctions", "environnements"],
+    "prerequisites": ["JAVA"], "keyConcepts": ["typage dynamique", "fonctions", "contrats", "collections", "JSON", "dataclasses", "pipelines"],
     "activityTypes": ["LAB", "QUIZ", "REVIEW", "PROJECT"], "executionEnvironment": "docker-python-3.13",
-    "assessmentStrategy": "Sorties déterministes, quiz comparatifs et preuves de maîtrise", "project": "Service Python local",
-    "challenge": "Réécrire une solution Java de façon idiomatique", "portfolioSkills": ["Python 3.13", "tests", "typage progressif"],
+    "assessmentStrategy": "Sorties déterministes, quiz comparatifs et preuves de maîtrise", "project": "Pipeline local de commandes",
+    "challenge": "Transformer, valider et agréger des données de façon idiomatique", "portfolioSkills": ["Python 3.13", "tests", "JSON", "modélisation de données"],
     "expectedActivityCount": 24
   },
   {
