@@ -17,6 +17,7 @@ DLR est une application locale d'apprentissage de la programmation, avec évalua
 - PWA installable avec cache du shell et brouillons locaux IndexedDB ;
 - documentation de conception et d'implémentation dans [`docs/`](docs/) ;
 - journal de développement dans [`docs/DLR_CodeReview.md`](docs/DLR_CodeReview.md).
+- guide de déploiement actuel et futur avec Neon et Render dans [`docs/DLR_Deploye.md`](docs/DLR_Deploye.md) ;
 - synchronisation V2 par appareils appairés, journal idempotent et conflits sans perte.
 - recommandations adaptatives expliquées, analytics d'autonomie et professeur Ollama à cinq rôles ;
 - portfolio privé avec aperçu Markdown, export ZIP GitHub-ready et filtrage des secrets ;

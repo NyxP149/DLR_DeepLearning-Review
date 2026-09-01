@@ -1030,3 +1030,27 @@ Ce fichier conserve l'historique des modifications, décisions techniques, bugs 
 - Build Angular réussi, bundle initial 267,60 kB ; seul l'avertissement optionnel `lmdb` subsiste.
 - Contrôle API réel : totaux 24/24/24/12/10/10/8 et dernier type `CHALLENGE` pour chaque parcours.
 - Contrôle navigateur : sélection SQL fonctionnelle, concept clé contextualisé, compteurs complets et aucune erreur console.
+
+## 2026-09-02 — Guide de déploiement Neon et Render
+
+### Modifications
+
+- Création de `docs/DLR_Deploye.md`, relié depuis le README.
+- Documentation pas à pas de la création de PostgreSQL sur Neon, du Web Service Spring Boot et du Static Site Angular sur Render.
+- Ajout de la matrice des variables d'environnement, du routage Angular, de CORS, des contrôles de santé et de la recette fonctionnelle.
+- Séparation explicite entre le déploiement hébergé actuel et l'architecture future avec file de travaux et runners isolés.
+- Ajout des limites des offres gratuites, des procédures de diagnostic, de retour arrière et des règles de protection des secrets.
+
+### Risque identifié : guide inexécutable avec le dépôt actuel
+
+- **Risque :** présenter les seules manipulations Neon et Render aurait laissé croire que le dépôt pouvait être déployé sans adaptation.
+- **Constat :** le frontend contient encore des URL `localhost`, Spring Boot lit `DLR_API_PORT` plutôt que `PORT`, aucun Dockerfile API de production n'est présent et l'API appelle directement le moteur Docker local pour les runners.
+- **Traitement :** le guide commence par une étape de préparation obligatoire et interdit d'annoncer les exécutions distantes comme disponibles avant la livraison d'un service Runner réellement isolé.
+
+### Validation
+
+- Chemins du monorepo vérifiés : racine frontend `apps/web`, commande `npm ci && npm run build` et publication `dist/dlr-web/browser`.
+- Variables vérifiées contre `application.yml` : `DLR_DB_URL`, `DLR_DB_USER`, `DLR_DB_PASSWORD`, `DLR_ALLOWED_ORIGINS`, `DLR_SYNC_PAIRING_CODE` et configuration d'exécution.
+- Port PostgreSQL local distingué du port Neon : `5434` local via Compose, `5432` côté Neon.
+- Documentation officielle Neon et Render utilisée pour les régions, connexions, Static Sites, Web Services, réécritures et mises en veille.
+- `git diff --check` sans erreur de formatage.
