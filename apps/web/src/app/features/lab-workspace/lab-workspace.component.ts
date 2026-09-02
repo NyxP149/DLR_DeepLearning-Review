@@ -14,6 +14,7 @@ import { TutorApiService } from '../../core/api/tutor-api.service';
 import { DraftStoreService } from '../../core/storage/draft-store.service';
 import { KeyConcept, LabContent } from './lab.model';
 import { CodeEditorComponent } from '../../shared/code-editor/code-editor.component';
+import { EXECUTION_AVAILABLE } from '../../core/api/api-config';
 
 type LabViewState =
   | { status: 'loading' }
@@ -28,6 +29,7 @@ type LabViewState =
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class LabWorkspaceComponent {
+  readonly executionAvailable = EXECUTION_AVAILABLE;
   private readonly route = inject(ActivatedRoute);
   private readonly labApi = inject(LabApiService);
   private readonly executionApi = inject(ExecutionApiService);
@@ -148,7 +150,7 @@ export class LabWorkspaceComponent {
   }
 
   async runCode(): Promise<void> {
-    if (this.running() || this.code().trim().length === 0) {
+    if (!this.executionAvailable || this.running() || this.code().trim().length === 0) {
       return;
     }
 
@@ -162,8 +164,8 @@ export class LabWorkspaceComponent {
       );
       const result = await firstValueFrom(this.executionApi.run(submission.id));
       this.execution.set(result);
-    } catch {
-      this.executionError.set(`L'exécution a échoué. Vérifie l'API, PostgreSQL, Docker Desktop et l'image du runner ${this.activeLanguage}.`);
+    } catch (error) {
+      this.executionError.set(this.errorMessage(error));
     } finally {
       this.running.set(false);
     }

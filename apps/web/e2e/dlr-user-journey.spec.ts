@@ -86,3 +86,20 @@ test('les six thèmes restent lisibles et persistent', async ({ page }) => {
   await page.reload();
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'solar');
 });
+
+test('le déploiement cloud conserve le brouillon sans simuler un runner', async ({ page }) => {
+  await page.route('**/runtime-config.js', (route) => route.fulfill({
+    contentType: 'application/javascript',
+    body: `window.__DLR_CONFIG__ = {
+      apiBaseUrl: 'http://localhost:8081/api',
+      executionAvailable: false,
+      environment: 'render-test'
+    };`
+  }));
+
+  await page.goto('/labs/JAVA-01');
+  await expect(page.getByText('Exécution distante en préparation')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Runner bientôt disponible' })).toBeDisabled();
+  await expect(page.getByRole('button', { name: 'Validation disponible avec le Runner' })).toBeDisabled();
+  await expect(page.getByText('Brouillon actif · exécution distante désactivée')).toBeVisible();
+});

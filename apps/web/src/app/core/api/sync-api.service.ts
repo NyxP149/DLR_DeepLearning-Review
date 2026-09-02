@@ -1,5 +1,6 @@
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
+import { API_ORIGIN } from './api-config';
 
 export interface SyncDevice {
   id: string;
@@ -24,7 +25,7 @@ export class SyncApiService {
   private readonly serverKey = 'dlr.sync.server-url';
 
   serverUrl(): string {
-    return localStorage.getItem(this.serverKey) ?? 'http://localhost:8081';
+    return localStorage.getItem(this.serverKey) ?? API_ORIGIN;
   }
 
   configureServer(value: string): void {

@@ -1,5 +1,6 @@
 import { HttpClient } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
+import { API_BASE_URL } from './api-config';
 
 export interface PortfolioProject {
   id: string;
@@ -16,7 +17,7 @@ export interface PortfolioProject {
 @Injectable({ providedIn: 'root' })
 export class PortfolioApiService {
   private readonly http = inject(HttpClient);
-  private readonly url = 'http://localhost:8081/api/portfolio/projects';
+  private readonly url = `${API_BASE_URL}/portfolio/projects`;
   list() { return this.http.get<PortfolioProject[]>(this.url); }
   create(title: string, summary: string, labCodes: string[], decisions: string[]) {
     return this.http.post<PortfolioProject>(this.url, { title, summary, labCodes, decisions });

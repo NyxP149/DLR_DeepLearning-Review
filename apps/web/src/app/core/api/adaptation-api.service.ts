@@ -1,5 +1,6 @@
 import { HttpClient } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
+import { API_BASE_URL } from './api-config';
 
 export type AdaptationDecision = 'ACCEPT' | 'IGNORE' | 'POSTPONE' | 'REPLACE';
 
@@ -30,7 +31,7 @@ export interface AdaptationInsights {
 @Injectable({ providedIn: 'root' })
 export class AdaptationApiService {
   private readonly http = inject(HttpClient);
-  private readonly url = 'http://localhost:8081/api/adaptation';
+  private readonly url = `${API_BASE_URL}/adaptation`;
 
   recommendation() {
     return this.http.get<AdaptationRecommendation>(`${this.url}/recommendation`);

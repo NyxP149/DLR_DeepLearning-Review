@@ -1,0 +1,79 @@
+services:
+  - type: web
+    runtime: docker
+    name: dlr-api
+    plan: free
+    region: frankfurt
+    branch: main
+    dockerfilePath: ./apps/api/Dockerfile
+    dockerContext: .
+    healthCheckPath: /actuator/health
+    autoDeployTrigger: commit
+    envVars:
+      - key: DLR_DB_URL
+        sync: false
+      - key: DLR_DB_USER
+        sync: false
+      - key: DLR_DB_PASSWORD
+        sync: false
+      - key: DLR_ALLOWED_ORIGINS
+        fromService:
+          name: dlr-web
+          type: web
+          envVarKey: RENDER_EXTERNAL_URL
+      - key: DLR_FRONTEND_URL
+        fromService:
+          name: dlr-web
+          type: web
+          envVarKey: RENDER_EXTERNAL_URL
+      - key: DLR_PUBLIC_API_URL
+        fromService:
+          name: dlr-api
+          type: web
+          envVarKey: RENDER_EXTERNAL_URL
+      - key: DLR_SYNC_PAIRING_CODE
+        generateValue: true
+      - key: DLR_EXECUTION_ENABLED
+        value: "false"
+      - key: JAVA_TOOL_OPTIONS
+        value: -XX:MaxRAMPercentage=75.0 -XX:+UseSerialGC
+
+  - type: web
+    runtime: static
+    name: dlr-web
+    branch: main
+    rootDir: apps/web
+    buildCommand: npm ci && npm run build:render
+    staticPublishPath: ./dist/dlr-web/browser
+    autoDeployTrigger: commit
+    envVars:
+      - key: DLR_API_BASE_URL
+        fromService:
+          name: dlr-api
+          type: web
+          envVarKey: RENDER_EXTERNAL_URL
+      - key: DLR_EXECUTION_AVAILABLE
+        value: "false"
+      - key: DLR_DEPLOYMENT_ENVIRONMENT
+        value: render
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    headers:
+      - path: /runtime-config.js
+        name: Cache-Control
+        value: no-store
+      - path: /*
+        name: X-Content-Type-Options
+        value: nosniff
+      - path: /*
+        name: X-Frame-Options
+        value: DENY
+      - path: /*
+        name: Referrer-Policy
+        value: strict-origin-when-cross-origin
+      - path: /*
+        name: Permissions-Policy
+        value: camera=(), microphone=(), geolocation=()
+

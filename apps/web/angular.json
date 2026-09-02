@@ -20,6 +20,7 @@
             "assets": [
               "src/manifest.webmanifest",
               "src/sw.js",
+              "src/runtime-config.js",
               { "glob": "**/*", "input": "src/icons", "output": "icons" }
             ]
           },

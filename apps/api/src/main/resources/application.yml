@@ -9,7 +9,8 @@ spring:
     enabled: true
 
 server:
-  port: ${DLR_API_PORT:8081}
+  port: ${PORT:${DLR_API_PORT:8081}}
+  forward-headers-strategy: framework
   error:
     include-message: never
 
@@ -30,6 +31,8 @@ springdoc:
 dlr:
   web:
     allowed-origins: ${DLR_ALLOWED_ORIGINS:http://localhost:4200,http://127.0.0.1:4200}
+    frontend-url: ${DLR_FRONTEND_URL:http://localhost:4200}
+    public-api-url: ${DLR_PUBLIC_API_URL:http://localhost:8081}
   content:
     root: classpath:content
   ollama:
@@ -37,6 +40,7 @@ dlr:
     model: ${DLR_OLLAMA_MODEL:llama3.1:latest}
     timeout-seconds: ${DLR_OLLAMA_TIMEOUT_SECONDS:180}
   execution:
+    enabled: ${DLR_EXECUTION_ENABLED:true}
     docker-cli: ${DLR_DOCKER_CLI:docker}
     java-image: ${DLR_JAVA_RUNNER_IMAGE:dlr/java-runner:21}
     python-image: ${DLR_PYTHON_RUNNER_IMAGE:dlr/python-runner:3.13}

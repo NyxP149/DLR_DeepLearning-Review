@@ -1054,3 +1054,45 @@ Ce fichier conserve l'historique des modifications, décisions techniques, bugs 
 - Port PostgreSQL local distingué du port Neon : `5434` local via Compose, `5432` côté Neon.
 - Documentation officielle Neon et Render utilisée pour les régions, connexions, Static Sites, Web Services, réécritures et mises en veille.
 - `git diff --check` sans erreur de formatage.
+
+## 2026-09-02 — V3.4 : socle de déploiement Render + Neon
+
+### Modifications
+
+- Ajout du Blueprint racine `render.yaml` créant automatiquement le Web Service `dlr-api` et le Static Site `dlr-web`.
+- Ajout d'un Dockerfile Java 21 multi-étapes ; l'image finale exécute Spring Boot sous l'utilisateur non privilégié `10001`.
+- Lecture directe du port Render `PORT`, avec conservation de `DLR_API_PORT=8081` en local.
+- Injection au build de l'URL publique Render dans `runtime-config.js`, utilisée par tous les services Angular.
+- Remplacement des onze URL API codées en dur par une configuration centrale.
+- Liaison automatique des URL externes Render pour CORS, la page d'accueil de l'API et la synchronisation.
+- Ajout d'en-têtes de sécurité, de la réécriture SPA et d'une politique sans cache pour la configuration runtime.
+- Ajout du mode `DLR_EXECUTION_ENABLED=false` : aucune tentative trompeuse d'exécution Docker n'est effectuée sur Render.
+- Dans le laboratoire distant, le code et les brouillons restent modifiables tandis que compilation et validation affichent clairement l'attente du futur Runner isolé.
+
+### Bugs rencontrés et résolution
+
+#### Le Blueprint était introuvable sur Render
+
+- **Symptôme :** l'écran New Blueprint indiquait `Blueprint file render.yaml not found on main branch`.
+- **Cause :** le guide avait été livré avant le socle technique et aucun fichier `render.yaml` n'existait encore sur `main`.
+- **Résolution :** ajout du Blueprint racine, de ses deux services et des références automatiques entre leurs URL publiques.
+
+#### Les URL locales auraient été intégrées au frontend de production
+
+- **Risque :** chaque service Angular utilisait directement `http://localhost:8081`, qui désigne l'appareil de l'utilisateur une fois le site publié.
+- **Résolution :** configuration unique chargée avant Angular et générée par `build:render` depuis `DLR_API_BASE_URL`.
+- **Protection PWA :** `runtime-config.js` utilise une stratégie réseau prioritaire et un en-tête `Cache-Control: no-store` afin d'éviter une ancienne URL conservée en cache.
+
+#### Render ne fournit pas de moteur Docker imbriqué aux laboratoires
+
+- **Risque :** l'API aurait tenté d'appeler `docker` puis enregistré des `RUNNER_ERROR` comme si le code de l'apprenant avait échoué.
+- **Résolution :** implémentation conditionnelle `DisabledCodeRunner`, réponse HTTP 503 explicite et interface désactivant compilation et calcul du score sans bloquer le brouillon.
+
+### Validation
+
+- Suite backend : 53 tests détectés, 44 réussis, 9 scénarios Docker optionnels ignorés, 0 échec.
+- Build Angular avec URL Render simulée : réussi, bundle initial 273,36 kB.
+- Vérification du bundle : `runtime-config.js` contient l'URL de test Render et est chargé avant le module Angular.
+- Image `dlr/api-render:test` construite réellement par Docker Desktop.
+- Conteneur vérifié sous `uid=10001(dlr)` avec JAR lisible.
+- Playwright Chromium : 6 scénarios réussis, y compris routes, planning, contrastes des six thèmes et mode cloud sans Runner.

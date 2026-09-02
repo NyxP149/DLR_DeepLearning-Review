@@ -82,6 +82,24 @@
   padding: .7rem 1rem;
 }
 
+.runner-unavailable {
+  background: color-mix(in srgb, var(--accent-soft) 72%, var(--surface));
+  border: 1px solid color-mix(in srgb, var(--accent) 45%, var(--border));
+  border-radius: var(--radius);
+  margin-bottom: 1rem;
+  padding: 1rem;
+}
+
+.runner-unavailable strong {
+  color: var(--link);
+}
+
+.runner-unavailable p {
+  color: var(--text-muted);
+  line-height: 1.55;
+  margin: .45rem 0 0;
+}
+
 .import-row {
   align-items: center;
   display: flex;

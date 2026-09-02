@@ -11,9 +11,18 @@ import java.net.URI;
 import com.dlr.tutor.application.TutorUnavailableException;
 import com.dlr.sync.application.SyncAuthenticationException;
 import com.dlr.catalog.application.LabPrerequisiteException;
+import com.dlr.execution.application.ExecutionUnavailableException;
 
 @RestControllerAdvice
 public class ApiExceptionHandler {
+
+    @ExceptionHandler(ExecutionUnavailableException.class)
+    ProblemDetail handleExecutionUnavailable(ExecutionUnavailableException exception, HttpServletRequest request) {
+        ProblemDetail detail = ProblemDetail.forStatusAndDetail(HttpStatus.SERVICE_UNAVAILABLE, exception.getMessage());
+        detail.setTitle("EXECUTION_UNAVAILABLE");
+        detail.setType(URI.create("urn:dlr:error:execution-unavailable"));
+        return enrich(detail, request, "Conserve ton brouillon et réessaie lorsque le service Runner distant sera disponible.");
+    }
 
     @ExceptionHandler(LabPrerequisiteException.class)
     ProblemDetail handleLabPrerequisite(LabPrerequisiteException exception, HttpServletRequest request) {

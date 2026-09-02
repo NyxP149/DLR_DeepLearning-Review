@@ -5,6 +5,7 @@
   "scripts": {
     "start": "node ./node_modules/@angular/cli/bin/ng.js serve",
     "build": "node ./node_modules/@angular/cli/bin/ng.js build",
+    "build:render": "node ./scripts/write-runtime-config.mjs && node ./node_modules/@angular/cli/bin/ng.js build",
     "e2e": "node ./node_modules/@playwright/test/cli.js test"
   },
   "dependencies": {

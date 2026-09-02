@@ -1,5 +1,6 @@
 import { HttpClient } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
+import { API_BASE_URL } from './api-config';
 
 export interface Dashboard {
   profile: { displayName: string; targetMonths: number; weekdayMinutes: number; weekendMinutes: number };
@@ -23,6 +24,6 @@ export interface Dashboard {
 export class DashboardApiService {
   private readonly http = inject(HttpClient);
   get() {
-    return this.http.get<Dashboard>('http://localhost:8081/api/dashboard');
+    return this.http.get<Dashboard>(`${API_BASE_URL}/dashboard`);
   }
 }

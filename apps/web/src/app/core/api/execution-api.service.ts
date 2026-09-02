@@ -1,6 +1,7 @@
 import { HttpClient } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
+import { API_BASE_URL } from './api-config';
 
 export interface Attempt {
   id: string;
@@ -68,7 +69,7 @@ export interface LabResetResult {
 @Injectable({ providedIn: 'root' })
 export class ExecutionApiService {
   private readonly http = inject(HttpClient);
-  private readonly apiUrl = 'http://localhost:8081/api';
+  private readonly apiUrl = API_BASE_URL;
 
   startAttempt(labCode: string): Observable<Attempt> {
     return this.http.post<Attempt>(

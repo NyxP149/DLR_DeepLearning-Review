@@ -6,6 +6,7 @@ import com.dlr.execution.domain.ExecutionStatus;
 import com.dlr.execution.domain.Submission;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
@@ -24,6 +25,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 
 @Component
+@ConditionalOnProperty(name = "dlr.execution.enabled", havingValue = "true", matchIfMissing = true)
 public class DockerJavaRunner implements CodeRunner {
 
     private static final int MAX_OUTPUT_BYTES = 64 * 1024;

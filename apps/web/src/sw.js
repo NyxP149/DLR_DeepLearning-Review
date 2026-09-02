@@ -1,5 +1,5 @@
-const CACHE_NAME = 'dlr-v1-shell';
-const SHELL = ['/', '/index.html', '/manifest.webmanifest', '/icons/dlr-192.svg', '/icons/dlr-512.svg'];
+const CACHE_NAME = 'dlr-v2-shell';
+const SHELL = ['/', '/index.html', '/runtime-config.js', '/manifest.webmanifest', '/icons/dlr-192.svg', '/icons/dlr-512.svg'];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(SHELL)).then(() => self.skipWaiting()));
@@ -24,6 +24,16 @@ self.addEventListener('fetch', (event) => {
         return response;
       })
       .catch(() => caches.match('/index.html')));
+    return;
+  }
+
+  if (url.pathname === '/runtime-config.js') {
+    event.respondWith(fetch(request)
+      .then((response) => {
+        if (response.ok) caches.open(CACHE_NAME).then((cache) => cache.put(request, response.clone()));
+        return response;
+      })
+      .catch(() => caches.match(request)));
     return;
   }
 

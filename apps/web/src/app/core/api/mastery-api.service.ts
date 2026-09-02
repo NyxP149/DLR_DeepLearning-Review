@@ -1,5 +1,6 @@
 import { HttpClient } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
+import { API_BASE_URL } from './api-config';
 
 export type MasteryStatus = 'NOT_STARTED' | 'TO_REVIEW' | 'CONSOLIDATING' | 'MASTERED';
 
@@ -24,7 +25,7 @@ export interface ConceptMastery {
 @Injectable({ providedIn: 'root' })
 export class MasteryApiService {
   private readonly http = inject(HttpClient);
-  private readonly url = 'http://localhost:8081/api/mastery/concepts';
+  private readonly url = `${API_BASE_URL}/mastery/concepts`;
 
   listConcepts() {
     return this.http.get<ConceptMastery[]>(this.url);

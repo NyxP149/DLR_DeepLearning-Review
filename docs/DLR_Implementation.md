@@ -1018,3 +1018,13 @@ Monaco observe le changement de thème et reconstruit sa palette avec une base `
 Un scénario Playwright parcourt les six thèmes, vérifie leur sélection et leur persistance, puis calcule les ratios WCAG du texte principal, du texte secondaire, des champs et des boutons. Le minimum exigé est `4.5:1`.
 
 Le générateur `infrastructure/scripts/generate-expanded-curriculum.mjs` conserve la source structurée des 81 contenus et de la migration. Les JSON générés restent les artefacts versionnés et chargés par l'application.
+
+## V3.4 — Déploiement Render et Neon
+
+Le dépôt fournit désormais un Blueprint `render.yaml` à sa racine. Il déclare deux services Render dans la région de Francfort : une API Spring Boot construite depuis `apps/api/Dockerfile` et une interface Angular statique construite avec `npm run build:render`. Les deux services échangent automatiquement leurs URL publiques afin de configurer l'API, CORS et la navigation sans valeur `localhost` en production.
+
+Les trois secrets Neon (`DLR_DB_URL`, `DLR_DB_USER` et `DLR_DB_PASSWORD`) restent volontairement absents du dépôt et sont demandés par Render lors de la création du Blueprint. L'API respecte le port dynamique `PORT`, applique les migrations Flyway au démarrage et publie son contrôle de santé sous `/actuator/health`.
+
+Angular charge `runtime-config.js` avant le bundle principal. Ce fichier fournit l'URL de l'API, l'environnement et la disponibilité du runner au moment du déploiement, sans reconstruire le code source. Le service worker récupère cette configuration en priorité sur le réseau pour éviter de conserver une ancienne URL après une mise à jour.
+
+L'image API utilise une construction Maven/Java 21 multi-étapes et un utilisateur final non privilégié. Le runner Docker local reste actif en développement. Sur le premier déploiement Render, il est remplacé par un runner désactivé explicite : l'API répond `503 EXECUTION_UNAVAILABLE` et le laboratoire affiche un bandeau clair tout en conservant la lecture et les brouillons. Le futur runner isolé et ses options d'hébergement sont décrits dans `DLR_Deploye.md`.

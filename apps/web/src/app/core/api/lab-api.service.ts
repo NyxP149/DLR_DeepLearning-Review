@@ -3,6 +3,7 @@ import { inject, Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 
 import { LabContent } from '../../features/lab-workspace/lab.model';
+import { API_BASE_URL } from './api-config';
 
 export interface LabSummary {
   code: string;
@@ -28,7 +29,7 @@ export interface PathDescriptor {
 @Injectable({ providedIn: 'root' })
 export class LabApiService {
   private readonly http = inject(HttpClient);
-  private readonly apiUrl = 'http://localhost:8081/api';
+  private readonly apiUrl = API_BASE_URL;
 
   getLab(code: string): Observable<LabContent> {
     return this.http.get<LabContent>(`${this.apiUrl}/labs/${encodeURIComponent(code)}`);

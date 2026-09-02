@@ -1,5 +1,6 @@
 import { HttpClient } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
+import { API_BASE_URL } from './api-config';
 
 export interface StudySession {
   date: string;
@@ -33,7 +34,7 @@ export interface CalendarView {
 @Injectable({ providedIn: 'root' })
 export class PlanningApiService {
   private readonly http = inject(HttpClient);
-  private readonly url = 'http://localhost:8081/api/calendar';
+  private readonly url = `${API_BASE_URL}/calendar`;
   get(days = 14, path = 'JAVA') { return this.http.get<CalendarView>(this.url, { params: { days, path } }); }
   record(date: string, actualMinutes: number, reward: string) {
     return this.http.post<StudySession>(`${this.url}/${encodeURIComponent(date)}`, { actualMinutes, reward });

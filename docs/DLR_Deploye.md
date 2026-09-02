@@ -31,7 +31,7 @@ PostgreSQL — Neon
 
 Les données sont conservées par Neon et les nouveaux commits de la branche `main` peuvent être redéployés automatiquement par Render.
 
-> Important : le dépôt n'est pas encore directement déployable tel quel. Le frontend contient encore des URL `localhost`, l'API ne lit pas encore directement la variable `PORT` de Render et aucun Dockerfile de production n'existe pour l'API. Ces adaptations doivent être livrées avant de suivre la partie Render.
+> Le socle Render est maintenant versionné dans le dépôt : `render.yaml`, Dockerfile Java 21, port cloud, CORS, configuration Angular injectée et mode Runner désactivé sont prêts. Il reste à créer Neon, saisir les trois secrets demandés par Render et lancer le Blueprint.
 
 ## Ce que tu dois préparer
 
@@ -58,19 +58,42 @@ Ne place jamais un mot de passe Neon, un jeton Render ou une clé d'API dans Git
 
 # Partie A — Déploiement hébergé actuel
 
-## Étape 0 — Préparation du code avant les consoles
+## Étape 0 — Préparation du code livrée
 
-Le commit de préparation au déploiement devra fournir les éléments suivants :
+Le dépôt fournit maintenant les éléments suivants :
 
-- une seule configuration d'URL d'API pour Angular, locale en développement et Render en production ;
-- la lecture de `PORT` par Spring Boot, avec `8081` comme valeur locale par défaut ;
-- un Dockerfile de production Java 21 pour `apps/api` ;
-- un fichier `render.yaml` ou des paramètres Render documentés et reproductibles ;
-- un contrôle de santé sur `/actuator/health` ;
-- la configuration CORS par `DLR_ALLOWED_ORIGINS` ;
-- un mode explicite indiquant que l'exécution de code distante n'est pas encore disponible.
+- [x] une configuration unique d'URL d'API pour Angular, locale en développement et injectée par Render en production ;
+- [x] la lecture de `PORT` par Spring Boot, avec `8081` comme valeur locale par défaut ;
+- [x] un Dockerfile de production Java 21 dans `apps/api/Dockerfile` ;
+- [x] un Blueprint reproductible à la racine dans `render.yaml` ;
+- [x] un contrôle de santé sur `/actuator/health` ;
+- [x] la configuration CORS automatique depuis l'URL du Static Site ;
+- [x] un mode explicite indiquant que l'exécution de code distante n'est pas encore disponible ;
+- [x] un build Angular qui génère `runtime-config.js` sans inscrire l'URL Render dans le code source ;
+- [x] des en-têtes de sécurité et la réécriture des routes Angular.
 
-Ne lance pas le déploiement public avant que le build frontend, les tests backend et les tests end-to-end passent avec cette configuration.
+Le build frontend, les tests backend, l'image Docker et les tests end-to-end ont été validés avant publication.
+
+### Reprendre l'écran Blueprint affiché dans Render
+
+Après la publication du commit de préparation :
+
+1. garde la branche `main` ;
+2. laisse **Blueprint Path** vide ou saisis exactement `render.yaml` ;
+3. garde un nom lisible comme `DLR-DeepLearning-Review` ;
+4. clique sur **Retry** ;
+5. vérifie que Render détecte deux services : `dlr-api` et `dlr-web` ;
+6. saisis les trois valeurs Neon lorsqu'elles sont demandées.
+
+Render demandera exactement :
+
+| Variable | Valeur à copier depuis Neon |
+|---|---|
+| `DLR_DB_URL` | URL JDBC sans mot de passe, avec `jdbc:postgresql://` et `sslmode=require` |
+| `DLR_DB_USER` | nom du rôle Neon |
+| `DLR_DB_PASSWORD` | mot de passe du rôle Neon |
+
+Les autres valeurs sont générées ou reliées automatiquement par le Blueprint : URL publique de l'API, origine CORS, URL du frontend et code d'appairage.
 
 ## Étape 1 — Créer PostgreSQL sur Neon
 
@@ -125,7 +148,7 @@ Les tentatives et progressions présentes dans PostgreSQL local ne sont pas tran
 
 ## Étape 2 — Créer l'API Spring Boot sur Render
 
-Cette étape suppose que le Dockerfile de production a été ajouté au dépôt.
+Le Dockerfile de production est disponible dans `apps/api/Dockerfile` et utilise Java 21 sous un utilisateur non privilégié.
 
 1. Ouvre <https://dashboard.render.com/>.
 2. Choisis **New**, puis **Web Service**.
@@ -139,7 +162,7 @@ Cette étape suppose que le Dockerfile de production a été ajouté au dépôt.
 | Region | `Frankfurt` |
 | Branch | `main` |
 | Runtime / Language | `Docker` |
-| Dockerfile Path | chemin du Dockerfile API ajouté au dépôt |
+| Dockerfile Path | `./apps/api/Dockerfile` |
 | Health Check Path | `/actuator/health` |
 | Auto-Deploy | activé après succès de la CI |
 
@@ -159,13 +182,7 @@ Dans **Environment**, ajoute les variables suivantes :
 | `DLR_RUNNER_TIMEOUT_SECONDS` | `10` |
 | `DLR_OLLAMA_URL` | laisser absent tant qu'aucun service IA distant n'est prévu |
 
-Si l'adaptation Spring Boot n'utilise pas directement `PORT`, ajoute temporairement :
-
-```text
-DLR_API_PORT=10000
-```
-
-La solution durable reste de faire lire `${PORT:8081}` par Spring Boot. Render attend qu'un Web Service écoute sur `0.0.0.0` et sur le port fourni par la plateforme.
+Spring Boot lit directement la variable `PORT` fournie par Render. `DLR_API_PORT=8081` reste uniquement le réglage local de secours.
 
 Ne définis pas `DLR_DOCKER_CLI` sur ce premier service distant : le moteur actuel des laboratoires ne peut pas lancer de sous-conteneurs Docker de manière sûre dans le Web Service API.
 
@@ -197,7 +214,7 @@ Le catalogue doit répondre avant de créer le frontend public.
 
 ## Étape 3 — Créer le frontend Angular sur Render
 
-Cette étape suppose que la configuration Angular de production contient l'URL publique de l'API ou utilise une configuration injectée au déploiement.
+Angular reçoit automatiquement l'URL publique de `dlr-api` au build et l'écrit dans `runtime-config.js`. La version locale conserve `http://localhost:8081/api`.
 
 1. Dans Render, choisis **New**, puis **Static Site**.
 2. Sélectionne le même dépôt GitHub.
@@ -208,19 +225,21 @@ Cette étape suppose que la configuration Angular de production contient l'URL p
 | Name | `dlr-web` |
 | Branch | `main` |
 | Root Directory | `apps/web` |
-| Build Command | `npm ci && npm run build` |
+| Build Command | `npm ci && npm run build:render` |
 | Publish Directory | `dist/dlr-web/browser` |
 | Auto-Deploy | activé après succès de la CI |
 
 Le Static Site est distribué par le CDN de Render ; aucune région n'est à choisir.
 
-Si le patch de production utilise une variable de build, ajoute dans **Environment** la variable documentée par ce patch, avec la valeur :
+Pour une création manuelle hors Blueprint, ajoute dans **Environment** :
 
 ```text
-https://dlr-api.onrender.com/api
+DLR_API_BASE_URL=https://dlr-api.onrender.com
+DLR_EXECUTION_AVAILABLE=false
+DLR_DEPLOYMENT_ENVIRONMENT=render
 ```
 
-N'invente pas un nom de variable dans Render : utilise exactement celui défini dans la configuration Angular livrée avec le patch de déploiement.
+Avec le Blueprint, `DLR_API_BASE_URL` est reliée automatiquement à l'URL externe réelle du service API.
 
 ### Routage Angular
 
@@ -241,7 +260,7 @@ Cette règle permet d'ouvrir directement `/paths`, `/planning`, `/settings` ou `
 
 ## Étape 4 — Finaliser CORS
 
-Retourne dans le Web Service `dlr-api`, puis définis :
+Le Blueprint relie automatiquement `DLR_ALLOWED_ORIGINS` à l'URL externe de `dlr-web`. Pour une création manuelle, retourne dans le Web Service `dlr-api`, puis définis :
 
 ```text
 DLR_ALLOWED_ORIGINS=https://dlr-web.onrender.com
@@ -505,4 +524,3 @@ La mise en ligne doit progresser sans masquer les limites :
 - Render — régions : <https://render.com/docs/regions>
 - Render — limites du plan gratuit : <https://render.com/docs/free>
 - Render — variables d'environnement : <https://render.com/docs/environment-variables>
-

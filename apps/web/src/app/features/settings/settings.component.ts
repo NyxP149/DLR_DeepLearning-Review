@@ -51,7 +51,7 @@ import { ThemeId, ThemeService } from '../../core/theme/theme.service';
       <section class="sync-panel">
         <div class="section-heading"><div><p>Synchronisation personnelle</p><h2>Appareils V2</h2></div><span [class.online]="paired()">{{ paired() ? 'Appairé' : 'Local uniquement' }}</span></div>
         <div class="pairing-form">
-          <label>Serveur DLR <input [value]="syncServer" (input)="syncServer = inputValue($event)" placeholder="http://localhost:8081"></label>
+          <label>Serveur DLR <input [value]="syncServer" (input)="syncServer = inputValue($event)" [placeholder]="syncServer"></label>
           <label>Nom de cet appareil <input [value]="deviceName" (input)="deviceName = inputValue($event)" maxlength="80"></label>
           <label>Code d’appairage <input type="password" [value]="pairingCode" (input)="pairingCode = inputValue($event)" autocomplete="one-time-code" placeholder="Optionnel sur le PC principal"></label>
           <button type="button" [disabled]="syncBusy() || paired()" (click)="pairDevice()">{{ syncBusy() ? 'Appairage…' : 'Appairer cet appareil' }}</button>

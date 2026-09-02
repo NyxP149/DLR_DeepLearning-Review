@@ -13,6 +13,7 @@ DLR est une application locale d'apprentissage de la programmation, avec évalua
 - tableau de bord, concepts clés, révisions espacées et planning ;
 - planning glissant : seule la prochaine activité est datée, après la fin effective de son prérequis ;
 - six thèmes professionnels persistants, avec palettes complètes et contraste contrôlé ;
+- déploiement Render reproductible par Blueprint, API Java 21 conteneurisée et configuration Angular injectée au build ;
 - profil local modifiable et professeur Ollama en mode explication, indice et correction qualitative ;
 - PWA installable avec cache du shell et brouillons locaux IndexedDB ;
 - documentation de conception et d'implémentation dans [`docs/`](docs/) ;
@@ -72,6 +73,8 @@ npm start
 ```
 
 Le frontend utilise par défaut l'API `http://localhost:8081/api`.
+
+La mise en ligne utilise [`render.yaml`](render.yaml) : Render crée `dlr-api` et `dlr-web`, puis demande les trois paramètres Neon sans les stocker dans Git. Le guide complet est disponible dans [`docs/DLR_Deploye.md`](docs/DLR_Deploye.md).
 
 ## Infrastructure locale
 

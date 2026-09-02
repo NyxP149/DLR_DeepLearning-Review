@@ -1,0 +1,14 @@
+.git
+.github
+.idea
+.vscode
+**/node_modules
+**/dist
+**/target
+backups
+docs
+projects
+runners
+apps/web
+*.log
+
