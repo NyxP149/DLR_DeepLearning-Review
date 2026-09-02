@@ -269,9 +269,9 @@ public class DockerJavaRunner implements CodeRunner {
     RunnerSpec spec(String language) {
         return switch (language.toUpperCase()) {
             case "JAVA" -> new RunnerSpec("JAVA", "Main.java", image,
-                    "javac -encoding UTF-8 -d /work /workspace/Main.java || exit 20; java -cp /work Main");
+                    "cp /workspace/Main.java /work/Main.java; cd /work; javac -encoding UTF-8 Main.java || exit 20; java -cp /work Main");
             case "PYTHON" -> new RunnerSpec("PYTHON", "main.py", pythonImage,
-                    "cp /workspace/main.py /work/main.py; python -m py_compile /work/main.py || exit 20; python -B /work/main.py");
+                    "cp /workspace/main.py /work/main.py; cd /work; python -m py_compile main.py || exit 20; python -B main.py");
             case "TYPESCRIPT" -> new RunnerSpec("TYPESCRIPT", "main.ts", typescriptImage,
                     "tsc --strict --skipLibCheck --target ES2022 --module commonjs --outDir /work /workspace/main.ts || exit 20; node /work/main.js");
             default -> throw new IllegalArgumentException("Runner indisponible pour le langage : " + language);

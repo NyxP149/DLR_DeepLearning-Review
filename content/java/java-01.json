@@ -6,6 +6,8 @@
   "title": "Syntaxe, compilation, JVM et premier programme",
   "difficulty": "BASE",
   "threshold": 70,
+  "activityType": "LAB",
+  "prerequisites": [],
   "objectives": [
     "Expliquer le rôle du compilateur Java et de la JVM",
     "Compiler et exécuter un programme Java minimal",

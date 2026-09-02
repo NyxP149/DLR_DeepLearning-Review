@@ -10,9 +10,19 @@ import jakarta.servlet.http.HttpServletRequest;
 import java.net.URI;
 import com.dlr.tutor.application.TutorUnavailableException;
 import com.dlr.sync.application.SyncAuthenticationException;
+import com.dlr.catalog.application.LabPrerequisiteException;
 
 @RestControllerAdvice
 public class ApiExceptionHandler {
+
+    @ExceptionHandler(LabPrerequisiteException.class)
+    ProblemDetail handleLabPrerequisite(LabPrerequisiteException exception, HttpServletRequest request) {
+        ProblemDetail detail = ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, exception.getMessage());
+        detail.setTitle("LAB_LOCKED");
+        detail.setType(URI.create("urn:dlr:error:lab-locked"));
+        detail.setProperty("missingPrerequisites", exception.missingPrerequisites());
+        return enrich(detail, request, "Termine le laboratoire prérequis ou confirme explicitement la poursuite sous le seuil.");
+    }
 
     @ExceptionHandler(SyncAuthenticationException.class)
     ProblemDetail handleSyncAuthentication(SyncAuthenticationException exception, HttpServletRequest request) {

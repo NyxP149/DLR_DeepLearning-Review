@@ -40,8 +40,14 @@ import { PortfolioApiService, PortfolioProject } from '../../core/api/portfolio-
 export class PortfolioComponent {
   private readonly api = inject(PortfolioApiService);
   readonly labs = [
-    'JAVA-01', 'JAVA-02', 'JAVA-03', 'JAVA-04', 'JAVA-05', 'JAVA-06',
-    'PYTHON-01', 'TYPESCRIPT-01', 'LLM-01'
+    ...Array.from({ length: 24 }, (_, index) => `JAVA-${String(index + 1).padStart(2, '0')}`),
+    ...Array.from({ length: 24 }, (_, index) => `PYTHON-${String(index + 1).padStart(2, '0')}`),
+    ...Array.from({ length: 24 }, (_, index) => `TYPESCRIPT-${String(index + 1).padStart(2, '0')}`),
+    ...Array.from({ length: 12 }, (_, index) => `SPRING_BOOT-${String(index + 1).padStart(2, '0')}`),
+    ...Array.from({ length: 10 }, (_, index) => `ANGULAR-${String(index + 1).padStart(2, '0')}`),
+    ...Array.from({ length: 10 }, (_, index) => `SQL-${String(index + 1).padStart(2, '0')}`),
+    ...Array.from({ length: 8 }, (_, index) => `DEVOPS-${String(index + 1).padStart(2, '0')}`),
+    'LLM-01'
   ];
   readonly title = signal('Fondamentaux Java');
   readonly summary = signal('Un parcours pratique démontrant les bases de Java, de la JVM et du code maintenable.');

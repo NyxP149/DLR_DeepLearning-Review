@@ -6,6 +6,8 @@ export interface LabContent {
   title: string;
   difficulty: string;
   threshold: number;
+  activityType: 'LAB' | 'PROJECT' | 'CHALLENGE';
+  prerequisites: string[];
   objectives: string[];
   sections: LessonSection[];
   keyConcepts: KeyConcept[];

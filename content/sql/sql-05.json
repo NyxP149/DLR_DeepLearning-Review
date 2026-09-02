@@ -1,0 +1,85 @@
+{
+  "code": "SQL-05",
+  "language": "PYTHON",
+  "number": 5,
+  "slug": "contraintes-normalisation-et-integrite",
+  "title": "Contraintes, normalisation et intégrité",
+  "difficulty": "INTERMEDIAIRE",
+  "threshold": 70,
+  "activityType": "LAB",
+  "prerequisites": [
+    "SQL-04"
+  ],
+  "objectives": [
+    "Expliquer contraintes, normalisation et intégrité",
+    "Construire une preuve exécutable et déterministe",
+    "Relier le concept à une décision professionnelle"
+  ],
+  "sections": [
+    {
+      "title": "Concept et usage professionnel",
+      "content": "Contraintes, normalisation et intégrité répond à un besoin concret de maintenabilité, de sûreté ou de performance. Le laboratoire demande de rendre la décision observable et vérifiable.",
+      "conceptCodes": [
+        "SQL-INTEGRITY"
+      ]
+    },
+    {
+      "title": "Mise en pratique",
+      "content": "La requête est exécutée sur SQLite en mémoire pour rester locale et reproductible ; les différences PostgreSQL et l'analyse EXPLAIN sont signalées dans le cours."
+    }
+  ],
+  "keyConcepts": [
+    {
+      "code": "SQL-INTEGRITY",
+      "name": "Contraintes, normalisation et intégrité",
+      "definition": "Contraintes, normalisation et intégrité est traité comme un contrat explicite dont le comportement peut être vérifié.",
+      "whyExists": "Il réduit les hypothèses implicites et rend le système plus simple à faire évoluer.",
+      "whyImportant": "En contexte professionnel, la preuve reproductible facilite la revue, le diagnostic et la maintenance.",
+      "minimalExample": "Une petite preuve SQL-05 vérifie le cas nominal et expose une sortie stable.",
+      "commonMistake": "Appliquer la technique sans mesurer son effet ni documenter sa frontière.",
+      "masteryQuestion": "Quelle contrainte de contraintes, normalisation et intégrité doit rester vraie lorsque le système évolue ?",
+      "masteryProof": "Exécuter la preuve, expliquer son invariant et proposer un cas d’échec."
+    }
+  ],
+  "exercises": [
+    {
+      "code": "SQL-05-E1",
+      "title": "Valider contraintes, normalisation et intégrité",
+      "statement": "Conserve l'invariant et produis exactement : SQL-05: preuve validée",
+      "starterCode": "import sqlite3\n\nconnection = sqlite3.connect(\":memory:\")\nconnection.executescript(\"\"\"\ncreate table evidence(id integer primary key, concept text not null, validated integer not null check(validated in (0, 1)));\ninsert into evidence(concept, validated) values ('SQL-INTEGRITY', 1), ('contrôle', 0);\n\"\"\")\nvalidated = connection.execute(\"select count(*) from evidence where validated = 1\").fetchone()[0]\nassert validated == 1\nprint(\"SQL-05: preuve validée\")\nconnection.close()\n",
+      "expectedOutput": "SQL-05: preuve validée"
+    }
+  ],
+  "quiz": [
+    {
+      "code": "SQL-05-Q1",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Quelle preuve est la plus utile en revue ?",
+      "choices": [
+        "Une exécution déterministe avec invariant explicite",
+        "Une sortie aléatoire",
+        "Une capture sans code"
+      ],
+      "correctChoice": 0,
+      "expectedKeywords": []
+    },
+    {
+      "code": "SQL-05-Q2",
+      "type": "FREE_TEXT",
+      "prompt": "Explique une décision liée à contraintes, normalisation et intégrité.",
+      "choices": [],
+      "correctChoice": null,
+      "expectedKeywords": [
+        "contrat",
+        "preuve",
+        "test"
+      ]
+    }
+  ],
+  "checklist": [
+    "Je peux expliquer le concept sans réciter une définition",
+    "Je sais exécuter et modifier la preuve",
+    "Je peux nommer un risque et son contrôle",
+    "Je relie cette étape à la suivante"
+  ]
+}

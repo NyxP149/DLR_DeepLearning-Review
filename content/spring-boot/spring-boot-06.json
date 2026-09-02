@@ -1,0 +1,85 @@
+{
+  "code": "SPRING_BOOT-06",
+  "language": "JAVA",
+  "number": 6,
+  "slug": "jpa-entites-repositories-et-pagination",
+  "title": "JPA, entités, repositories et pagination",
+  "difficulty": "INTERMEDIAIRE",
+  "threshold": 70,
+  "activityType": "LAB",
+  "prerequisites": [
+    "SPRING_BOOT-05"
+  ],
+  "objectives": [
+    "Expliquer jpa, entités, repositories et pagination",
+    "Construire une preuve exécutable et déterministe",
+    "Relier le concept à une décision professionnelle"
+  ],
+  "sections": [
+    {
+      "title": "Concept et usage professionnel",
+      "content": "JPA, entités, repositories et pagination répond à un besoin concret de maintenabilité, de sûreté ou de performance. Le laboratoire demande de rendre la décision observable et vérifiable.",
+      "conceptCodes": [
+        "SPRING-JPA"
+      ]
+    },
+    {
+      "title": "Mise en pratique",
+      "content": "La preuve unifichier valide ici la frontière d'architecture hors réseau ; le laboratoire explique ensuite son branchement aux annotations et dépendances Spring Boot réelles."
+    }
+  ],
+  "keyConcepts": [
+    {
+      "code": "SPRING-JPA",
+      "name": "JPA, entités, repositories et pagination",
+      "definition": "JPA, entités, repositories et pagination est traité comme un contrat explicite dont le comportement peut être vérifié.",
+      "whyExists": "Il réduit les hypothèses implicites et rend le système plus simple à faire évoluer.",
+      "whyImportant": "En contexte professionnel, la preuve reproductible facilite la revue, le diagnostic et la maintenance.",
+      "minimalExample": "Une petite preuve SPRING_BOOT-06 vérifie le cas nominal et expose une sortie stable.",
+      "commonMistake": "Appliquer la technique sans mesurer son effet ni documenter sa frontière.",
+      "masteryQuestion": "Quelle contrainte de jpa, entités, repositories et pagination doit rester vraie lorsque le système évolue ?",
+      "masteryProof": "Exécuter la preuve, expliquer son invariant et proposer un cas d’échec."
+    }
+  ],
+  "exercises": [
+    {
+      "code": "SPRING_BOOT-06-E1",
+      "title": "Valider jpa, entités, repositories et pagination",
+      "statement": "Conserve l'invariant et produis exactement : SPRING_BOOT-06: preuve validée",
+      "starterCode": "record Evidence(String concept, boolean validated) {}\npublic class Main {\n    public static void main(String[] args) {\n        var evidence = new Evidence(\"SPRING-JPA\", true);\n        if (!evidence.validated()) throw new IllegalStateException(\"preuve invalide\");\n        System.out.println(\"SPRING_BOOT-06: preuve validée\");\n    }\n}\n",
+      "expectedOutput": "SPRING_BOOT-06: preuve validée"
+    }
+  ],
+  "quiz": [
+    {
+      "code": "SPRING_BOOT-06-Q1",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Quelle preuve est la plus utile en revue ?",
+      "choices": [
+        "Une exécution déterministe avec invariant explicite",
+        "Une sortie aléatoire",
+        "Une capture sans code"
+      ],
+      "correctChoice": 0,
+      "expectedKeywords": []
+    },
+    {
+      "code": "SPRING_BOOT-06-Q2",
+      "type": "FREE_TEXT",
+      "prompt": "Explique une décision liée à jpa, entités, repositories et pagination.",
+      "choices": [],
+      "correctChoice": null,
+      "expectedKeywords": [
+        "contrat",
+        "preuve",
+        "test"
+      ]
+    }
+  ],
+  "checklist": [
+    "Je peux expliquer le concept sans réciter une définition",
+    "Je sais exécuter et modifier la preuve",
+    "Je peux nommer un risque et son contrôle",
+    "Je relie cette étape à la suivante"
+  ]
+}

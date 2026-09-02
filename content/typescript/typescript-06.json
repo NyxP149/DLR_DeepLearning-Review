@@ -1,0 +1,85 @@
+{
+  "code": "TYPESCRIPT-06",
+  "language": "TYPESCRIPT",
+  "number": 6,
+  "slug": "tableaux-tuples-et-donnees-readonly",
+  "title": "Tableaux, tuples et données readonly",
+  "difficulty": "BASE",
+  "threshold": 70,
+  "activityType": "LAB",
+  "prerequisites": [
+    "TYPESCRIPT-05"
+  ],
+  "objectives": [
+    "Expliquer tableaux, tuples et données readonly",
+    "Construire une preuve exécutable et déterministe",
+    "Relier le concept à une décision professionnelle"
+  ],
+  "sections": [
+    {
+      "title": "Concept et usage professionnel",
+      "content": "Tableaux, tuples et données readonly répond à un besoin concret de maintenabilité, de sûreté ou de performance. Le laboratoire demande de rendre la décision observable et vérifiable.",
+      "conceptCodes": [
+        "TYPESCRIPT-READONLY"
+      ]
+    },
+    {
+      "title": "Mise en pratique",
+      "content": "La preuve minimale est locale, déterministe et peut être enrichie sans changer le contrat attendu."
+    }
+  ],
+  "keyConcepts": [
+    {
+      "code": "TYPESCRIPT-READONLY",
+      "name": "Tableaux, tuples et données readonly",
+      "definition": "Tableaux, tuples et données readonly est traité comme un contrat explicite dont le comportement peut être vérifié.",
+      "whyExists": "Il réduit les hypothèses implicites et rend le système plus simple à faire évoluer.",
+      "whyImportant": "En contexte professionnel, la preuve reproductible facilite la revue, le diagnostic et la maintenance.",
+      "minimalExample": "Une petite preuve TYPESCRIPT-06 vérifie le cas nominal et expose une sortie stable.",
+      "commonMistake": "Appliquer la technique sans mesurer son effet ni documenter sa frontière.",
+      "masteryQuestion": "Quelle contrainte de tableaux, tuples et données readonly doit rester vraie lorsque le système évolue ?",
+      "masteryProof": "Exécuter la preuve, expliquer son invariant et proposer un cas d’échec."
+    }
+  ],
+  "exercises": [
+    {
+      "code": "TYPESCRIPT-06-E1",
+      "title": "Valider tableaux, tuples et données readonly",
+      "statement": "Conserve l'invariant et produis exactement : TYPESCRIPT-06: preuve validée",
+      "starterCode": "type Evidence = Readonly<{ concept: string; validated: boolean }>;\nconst evidence: Evidence = { concept: 'TYPESCRIPT-READONLY', validated: true };\nif (!evidence.validated) throw new Error('preuve invalide');\nconsole.log('TYPESCRIPT-06: preuve validée');\n",
+      "expectedOutput": "TYPESCRIPT-06: preuve validée"
+    }
+  ],
+  "quiz": [
+    {
+      "code": "TYPESCRIPT-06-Q1",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Quelle preuve est la plus utile en revue ?",
+      "choices": [
+        "Une exécution déterministe avec invariant explicite",
+        "Une sortie aléatoire",
+        "Une capture sans code"
+      ],
+      "correctChoice": 0,
+      "expectedKeywords": []
+    },
+    {
+      "code": "TYPESCRIPT-06-Q2",
+      "type": "FREE_TEXT",
+      "prompt": "Explique une décision liée à tableaux, tuples et données readonly.",
+      "choices": [],
+      "correctChoice": null,
+      "expectedKeywords": [
+        "contrat",
+        "preuve",
+        "test"
+      ]
+    }
+  ],
+  "checklist": [
+    "Je peux expliquer le concept sans réciter une définition",
+    "Je sais exécuter et modifier la preuve",
+    "Je peux nommer un risque et son contrôle",
+    "Je relie cette étape à la suivante"
+  ]
+}

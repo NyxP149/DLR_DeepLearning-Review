@@ -1,0 +1,85 @@
+{
+  "code": "DEVOPS-03",
+  "language": "PYTHON",
+  "number": 3,
+  "slug": "securite-secrets-et-moindre-privilege",
+  "title": "Sécurité, secrets et moindre privilège",
+  "difficulty": "INTERMEDIAIRE",
+  "threshold": 70,
+  "activityType": "LAB",
+  "prerequisites": [
+    "DEVOPS-02"
+  ],
+  "objectives": [
+    "Expliquer sécurité, secrets et moindre privilège",
+    "Construire une preuve exécutable et déterministe",
+    "Relier le concept à une décision professionnelle"
+  ],
+  "sections": [
+    {
+      "title": "Concept et usage professionnel",
+      "content": "Sécurité, secrets et moindre privilège répond à un besoin concret de maintenabilité, de sûreté ou de performance. Le laboratoire demande de rendre la décision observable et vérifiable.",
+      "conceptCodes": [
+        "DEVOPS-SECURITY"
+      ]
+    },
+    {
+      "title": "Mise en pratique",
+      "content": "La preuve minimale est locale, déterministe et peut être enrichie sans changer le contrat attendu."
+    }
+  ],
+  "keyConcepts": [
+    {
+      "code": "DEVOPS-SECURITY",
+      "name": "Sécurité, secrets et moindre privilège",
+      "definition": "Sécurité, secrets et moindre privilège est traité comme un contrat explicite dont le comportement peut être vérifié.",
+      "whyExists": "Il réduit les hypothèses implicites et rend le système plus simple à faire évoluer.",
+      "whyImportant": "En contexte professionnel, la preuve reproductible facilite la revue, le diagnostic et la maintenance.",
+      "minimalExample": "Une petite preuve DEVOPS-03 vérifie le cas nominal et expose une sortie stable.",
+      "commonMistake": "Appliquer la technique sans mesurer son effet ni documenter sa frontière.",
+      "masteryQuestion": "Quelle contrainte de sécurité, secrets et moindre privilège doit rester vraie lorsque le système évolue ?",
+      "masteryProof": "Exécuter la preuve, expliquer son invariant et proposer un cas d’échec."
+    }
+  ],
+  "exercises": [
+    {
+      "code": "DEVOPS-03-E1",
+      "title": "Valider sécurité, secrets et moindre privilège",
+      "statement": "Conserve l'invariant et produis exactement : DEVOPS-03: preuve validée",
+      "starterCode": "from dataclasses import dataclass\n\n@dataclass(frozen=True)\nclass DeliveryCheck:\n    control: str\n    passed: bool\n\ncheck = DeliveryCheck(\"DEVOPS-SECURITY\", True)\nassert check.passed\nprint(\"DEVOPS-03: preuve validée\")\n",
+      "expectedOutput": "DEVOPS-03: preuve validée"
+    }
+  ],
+  "quiz": [
+    {
+      "code": "DEVOPS-03-Q1",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Quelle preuve est la plus utile en revue ?",
+      "choices": [
+        "Une exécution déterministe avec invariant explicite",
+        "Une sortie aléatoire",
+        "Une capture sans code"
+      ],
+      "correctChoice": 0,
+      "expectedKeywords": []
+    },
+    {
+      "code": "DEVOPS-03-Q2",
+      "type": "FREE_TEXT",
+      "prompt": "Explique une décision liée à sécurité, secrets et moindre privilège.",
+      "choices": [],
+      "correctChoice": null,
+      "expectedKeywords": [
+        "contrat",
+        "preuve",
+        "test"
+      ]
+    }
+  ],
+  "checklist": [
+    "Je peux expliquer le concept sans réciter une définition",
+    "Je sais exécuter et modifier la preuve",
+    "Je peux nommer un risque et son contrôle",
+    "Je relie cette étape à la suivante"
+  ]
+}

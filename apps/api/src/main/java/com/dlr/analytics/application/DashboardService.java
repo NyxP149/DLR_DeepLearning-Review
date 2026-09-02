@@ -24,7 +24,7 @@ public class DashboardService {
 
     public Dashboard dashboard() {
         var javaLabs = catalog.findAll().stream()
-                .filter(lab -> "JAVA".equals(lab.language()))
+                .filter(lab -> lab.code().startsWith("JAVA-"))
                 .toList();
         var completedLabCodes = queries.completedLabCodes();
         int totalLabs = javaLabs.size();
@@ -57,7 +57,8 @@ public class DashboardService {
                 new Badge("RHYTHM_3", "Rythme durable", "Étudier trois jours consécutifs", bestStreak >= 3),
                 new Badge("REVIEWER", "Mémoire active", "Valider cinq révisions", completedReviews >= 5),
                 new Badge("FOCUS_10H", "Concentration", "Cumuler dix heures d'étude", studyMinutes >= 600),
-                new Badge("JAVA_V1", "Fondations Java", "Terminer les six laboratoires Java V1", completedLabs >= 6));
+                new Badge("JAVA_FOUNDATIONS", "Fondations Java", "Terminer les six laboratoires fondamentaux", completedLabs >= 6),
+                new Badge("JAVA_PRO", "Java professionnel", "Terminer les 22 laboratoires, le projet et le défi", completedLabs >= 24));
     }
 
     public record Dashboard(

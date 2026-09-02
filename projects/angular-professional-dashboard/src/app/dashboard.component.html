@@ -1,0 +1,1 @@
+<main><p class="eyebrow">Projet Angular multi-fichiers</p><h1>Tableau de livraison</h1><p>{{ completed() }} / {{ store.tickets().length }} objectifs terminés</p><ul>@for (ticket of store.tickets(); track ticket.id) { <li [class.done]="ticket.done">{{ ticket.title }}</li> }</ul></main>

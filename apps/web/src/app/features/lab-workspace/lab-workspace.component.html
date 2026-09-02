@@ -15,14 +15,22 @@
     @case ('loaded') {
       <header class="lab-header">
         <div>
-          <p class="eyebrow">{{ state.lab.language }} · Laboratoire {{ state.lab.number }}</p>
+          <p class="eyebrow">{{ pathLabel(state.lab.code) }} · {{ state.lab.activityType === 'PROJECT' ? 'Projet professionnel' : state.lab.activityType === 'CHALLENGE' ? 'Défi final' : 'Laboratoire ' + state.lab.number }}</p>
           <h1>{{ state.lab.title }}</h1>
           <p>{{ state.lab.objectives.length }} objectifs · Seuil recommandé {{ state.lab.threshold }} %</p>
         </div>
-        <span class="status">En cours</span>
+        <div class="lab-header-actions">
+          <span class="status">{{ state.lab.activityType === 'PROJECT' ? 'Projet portfolio' : state.lab.activityType === 'CHALLENGE' ? 'Défi adaptatif' : 'Laboratoire' }}</span>
+          <button class="reset-button" type="button" [disabled]="resetting()" (click)="resetLab(state.lab)">
+            {{ resetting() ? 'Réinitialisation…' : 'Réinitialiser ce laboratoire' }}
+          </button>
+        </div>
       </header>
       @if (resumed()) {
         <p class="resume-banner" role="status">Brouillon précédent restauré depuis PostgreSQL.</p>
+      }
+      @if (resetNotice(); as message) {
+        <p class="reset-notice" role="status">{{ message }}</p>
       }
 
       <div class="workspace-grid">

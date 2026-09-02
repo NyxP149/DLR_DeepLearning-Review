@@ -875,3 +875,146 @@ Le même contrat de soumission, d'exécution, de comparaison de sortie, de quiz 
 Une section pédagogique peut maintenant déclarer `conceptCodes`. L'interface place la carte « Concept clé » au début de la section correspondante ; les contenus Java existants sans association explicite conservent un repli compatible sur la première section.
 
 La migration Flyway V12 active les parcours Python et TypeScript en bêta, ajoute Learn LLMs avec Python comme prérequis et référence les trois premières activités. Les cibles de 24, 24 et 12 activités restent une feuille de route : V2.5 livre volontairement une tranche exécutable par parcours, sans présenter les activités futures comme terminées.
+
+## 29. V2.6 — Python professionnel
+
+### 29.1 Contenu livré
+
+La première séquence Python professionnelle contient désormais six étapes :
+
+- `PYTHON-01` : transfert des bases Java vers Python ;
+- `PYTHON-02` : fonctions, contrats et erreurs ;
+- `PYTHON-03` : collections, compréhensions et transformations ;
+- `PYTHON-04` : fichiers, JSON et gestionnaires de contexte ;
+- `PYTHON-05` : dataclasses, objets et invariants testables ;
+- `PYTHON-06` : projet intermédiaire de pipeline de commandes.
+
+Chaque contenu déclare son type d'activité et ses prérequis. Le projet `PYTHON-06` combine décodage JSON, validation, transformation, agrégation et assertions dans une preuve exportable vers le portfolio.
+
+### 29.2 Progression et prérequis
+
+`PathProgressService` agrège les tentatives par parcours et expose `GET /api/paths/{code}/progress`. Les états calculés sont `LOCKED`, `AVAILABLE`, `IN_PROGRESS`, `ACTION_REQUIRED` et `COMPLETED`. Une étape sous le seuil ne satisfait son prérequis qu'après confirmation explicite de poursuite.
+
+La création d'une tentative vérifie les prérequis côté serveur. Une étape verrouillée retourne HTTP 409, le code `LAB_LOCKED` et la liste exacte des activités manquantes. Le contrôle backend empêche donc le contournement par appel direct, indépendamment de l'interface.
+
+Les anciennes tentatives créées avant V2.6 restent consultables afin de ne pas perdre le travail local. La règle de verrouillage s'applique à toute nouvelle tentative.
+
+### 29.3 Exécution Python et interface
+
+Le runner copie le programme dans `/work`, puis compile et exécute depuis ce répertoire temporaire. Les exercices peuvent ainsi manipuler un fichier local tout en conservant une racine Docker en lecture seule, le réseau coupé et les limites de ressources.
+
+La page Parcours affiche une progression Python indépendante, le prochain laboratoire, les six cartes séquentielles et le prérequis exact de chaque carte verrouillée. Le projet intermédiaire dispose d'un marquage distinct dans le catalogue et dans le laboratoire. TypeScript et Learn LLMs restent visibles comme tranches exécutables suivantes.
+
+### 29.4 Migration
+
+Flyway V13 ajoute `PYTHON-02` à `PYTHON-05` comme laboratoires et `PYTHON-06` comme projet. Les descripteurs du catalogue conservent 24 activités comme cible finale ; V2.6 en livre six de façon exécutable et vérifiée.
+
+### 29.5 Réinitialisation d'un laboratoire
+
+`DELETE /api/labs/{labCode}/progress` remet uniquement le laboratoire demandé à zéro. Dans une transaction unique, le service supprime ses révisions, résultats d'exécution, soumissions, réponses au quiz, checklist, tentatives et recommandations adaptatives. Les projets portfolio et les données des autres laboratoires sont conservés.
+
+L'interface demande une confirmation explicite, appelle cette route, efface le brouillon IndexedDB/localStorage et restaure le starter pédagogique. Une nouvelle tentative n'est créée qu'à la prochaine exécution ou validation.
+
+Les compteurs de parcours présentent deux informations séparées : le nombre de contenus JSON actuellement exécutables et `expectedActivityCount`, qui reste l'objectif final du parcours. Depuis V2.7, les valeurs sont Java `24/24`, Python `6/24`, TypeScript `1/24`, Learn LLMs `1/12`, et `0` disponible pour les parcours encore planifiés.
+
+## 30. V2.7 — Java professionnel complet
+
+### 30.1 Séquence pédagogique
+
+Le parcours Java contient 24 activités reliées par prérequis :
+
+- `JAVA-01` à `JAVA-06` conservent la tranche fondamentale et deviennent une séquence explicite ;
+- `JAVA-07` à `JAVA-14` couvrent objet avancé, contrats, exceptions, collections, génériques, Streams, fichiers et modèles immuables ;
+- `JAVA-15` à `JAVA-18` couvrent tests, SOLID, design patterns et concurrence ;
+- `JAVA-19` à `JAVA-22` introduisent transactions, architecture Spring, REST/JPA/sécurité, performance, observabilité et livraison Docker ;
+- `JAVA-23` est un projet professionnel de moteur de commandes exportable au portfolio ;
+- `JAVA-24` est un défi final adaptatif avec un seuil renforcé à 85 %.
+
+Chaque activité conserve le contrat de contenu versionné : objectifs, sections, concept clé contextualisé, exercice, sortie attendue, quiz de connexion et checklist. Les thèmes qui nécessitent normalement un framework externe utilisent une preuve Java standard déterministe dans le runner, tandis que le cours décrit la mise en œuvre Spring/JPA réelle. Le laboratoire reste ainsi exécutable hors réseau sans prétendre embarquer un projet Maven complet dans un exercice unifichier.
+
+### 30.2 Progression et données
+
+Flyway V14 référence `JAVA-07` à `JAVA-22` comme laboratoires, `JAVA-23` comme projet et `JAVA-24` comme défi. La migration ajoute les nouvelles lignes sans modifier les tentatives existantes. Une ancienne tentative déjà en cours reste visible ; toute nouvelle tentative respecte la chaîne de prérequis.
+
+Le tableau de bord calcule désormais la progression sur 24 activités et ajoute le badge `JAVA_PRO`, distinct du badge des six fondations. Le catalogue, le portfolio, la navigation et la page Parcours utilisent tous la même cible de 24.
+
+### 30.3 Interface
+
+La page Parcours affiche une progression Java dédiée et une grille de 24 cartes. Une carte verrouillée indique exactement l'étape précédente à terminer. Le projet utilise le marqueur `P` et une couleur portfolio ; le défi utilise le marqueur `D` et un traitement visuel distinct. Dans le laboratoire, les en-têtes deviennent respectivement « Projet professionnel » et « Défi final ».
+
+### 30.4 Runner et validation
+
+Le runner Java copie maintenant `Main.java` dans `/work`, compile et exécute depuis ce volume temporaire. Les écritures relatives, notamment celles de `JAVA-13`, fonctionnent sans rendre la racine du conteneur modifiable. Le montage source reste en lecture seule, le réseau est désactivé et les limites CPU, mémoire et processus sont conservées.
+
+Un test d'intégration parcourt les 24 contenus dans Docker : les six starters historiques doivent compiler, puis les 18 nouvelles preuves doivent en plus produire leur sortie exacte. Les tests de contrôleur vérifient le total, les types projet/défi, la progression, les prérequis et les six badges du tableau de bord.
+
+## 31. V3 — extension des parcours professionnels
+
+### 31.1 Catalogue livré
+
+Le catalogue contient 113 contenus versionnés :
+
+- Java : 24/24 ;
+- Python : 24/24 ;
+- TypeScript : 24/24 ;
+- Spring Boot professionnel : 12/12 ;
+- Angular avancé : 10/10 ;
+- SQL et optimisation : 10/10 ;
+- Docker et CI/CD : 8/8 ;
+- Learn LLMs : 1/12, inchangé dans cette livraison.
+
+Les six séquences ajoutées sont strictement ordonnées. Leur avant-dernière activité est un projet portfolio et leur dernière activité un défi à seuil renforcé. Spring Boot et Docker/CI-CD requièrent `JAVA-24`, Angular requiert `TYPESCRIPT-24`, tandis que SQL reste un parcours autonome. Les tentatives Python et TypeScript existantes sont conservées.
+
+### 31.2 Preuves exécutables
+
+Le contrat unifichier existant est réutilisé pour garder chaque laboratoire local, rapide et déterministe :
+
+- Python et Docker/CI-CD s'exécutent dans le runner Python 3.13 ;
+- TypeScript et Angular passent par la compilation TypeScript stricte puis Node.js ;
+- Spring Boot utilise une preuve Java 21 qui isole le contrat architectural avant son intégration à un projet Spring multi-fichiers ;
+- SQL exécute réellement DDL, données et requête dans une base SQLite en mémoire, et le cours distingue les fonctions ou plans PostgreSQL spécifiques.
+
+Cette couche n'est pas présentée comme un remplacement de Maven, d'un navigateur Angular ou d'un serveur PostgreSQL dédié. Elle constitue la preuve déterministe évaluée par DLR ; les projets professionnels portent l'intégration complète.
+
+### 31.3 Migration et interface
+
+Flyway V15 crée les quatre chemins de base absents de PostgreSQL, active les six parcours et ajoute les 81 laboratoires manquants. La migration est additive et n'efface aucune tentative.
+
+La page Parcours charge les progressions `JAVA`, `PYTHON`, `TYPESCRIPT`, `SPRING_BOOT`, `ANGULAR`, `SQL` et `DEVOPS`. Un sélecteur rend seulement le parcours actif afin d'éviter plus de cent cartes simultanées dans le DOM. Le portfolio accepte les 113 codes de preuve. L'en-tête du laboratoire affiche le parcours pédagogique, tandis que l'éditeur continue d'indiquer honnêtement le langage du runner.
+
+## V3.1 — Learn LLMs, projets framework et E2E
+
+Le parcours Learn LLMs est complet sur douze activités séquentielles. `LLM-02` à `LLM-10` couvrent échantillonnage, templates, JSON structuré, évaluation, embeddings, chunking, recherche, RAG et sécurité. `LLM-11` est le projet d'assistant RAG local évalué et `LLM-12` le défi de comparaison de stratégies de contexte. Les expériences utilisent Python sans réseau et annoncent explicitement qu'elles simulent les mécanismes plutôt qu'un modèle distant.
+
+Flyway V16 ajoute les onze activités relationnelles et passe `LEARN_LLM` à `AVAILABLE`. Le catalogue expose désormais 124 contenus et huit progressions sélectionnables.
+
+Les preuves rapides Spring Boot et Angular restent exécutables dans les runners historiques. Elles sont complétées par deux projets réellement multi-fichiers sous `projects/` :
+
+- `spring-professional-api` : Maven, Spring Boot 3.5, contrôleur, service, modèle et test d'intégration MockMvc ;
+- `angular-professional-dashboard` : Angular standalone strict, composant, template, styles, service injectable et signals.
+
+Les tests end-to-end Playwright couvrent la santé de l'API, le catalogue Learn LLMs, l'ouverture d'un laboratoire, la présence du concept clé, du runner et de la réinitialisation, ainsi que la navigation Dashboard → Parcours. Chromium est installé séparément par `node ./node_modules/@playwright/test/cli.js install chromium`, puis la suite s'exécute avec `npm run e2e` depuis `apps/web`.
+
+## V3.2 — Planning glissant sur fin effective
+
+Le calendrier ne prédate plus tous les laboratoires. Pour chacun des huit parcours, la chronologie applique les règles suivantes :
+
+- une activité terminée conserve la date réelle de `attempt.completed_at` ;
+- seule la prochaine activité disponible reçoit une date effective ;
+- cette date est au plus tôt le lendemain de la dernière fin effective, ou aujourd'hui si cette fin est plus ancienne ;
+- un jour configuré à zéro minute est ignoré au profit du prochain jour d'étude ;
+- toutes les activités suivantes restent sans date et indiquent le laboratoire dont elles attendent la validation.
+
+Le recalcul est effectué à chaque lecture de `GET /api/calendar?path=...`. Il n'écrit donc aucune date spéculative et réagit immédiatement à la validation ou à la réinitialisation d'un laboratoire.
+
+## V3.3 — Système de thèmes accessible
+
+L'interface propose six thèmes depuis Paramètres : Obsidienne, Noir & Blanc, Océan Boréal, Forêt Émeraude, Aubergine Royale et Atelier Solaire. Le choix est enregistré sous la clé locale `dlr-interface-theme`, appliqué à l'élément racine et restauré au prochain chargement.
+
+Chaque thème définit des variables sémantiques séparées pour arrière-plan, surfaces, textes principaux et secondaires, bordures, accent, texte sur accent, succès, danger, champs, liens, barres de progression et éditeur. Cette séparation évite de supposer qu'un texte blanc reste lisible sur toutes les couleurs de bouton.
+
+Monaco observe le changement de thème et reconstruit sa palette avec une base `vs` ou `vs-dark`. Les zones de texte de secours, les champs et les blocs de code utilisent les mêmes variables que le reste de l'application.
+
+Un scénario Playwright parcourt les six thèmes, vérifie leur sélection et leur persistance, puis calcule les ratios WCAG du texte principal, du texte secondaire, des champs et des boutons. Le minimum exigé est `4.5:1`.
+
+Le générateur `infrastructure/scripts/generate-expanded-curriculum.mjs` conserve la source structurée des 81 contenus et de la migration. Les JSON générés restent les artefacts versionnés et chargés par l'application.

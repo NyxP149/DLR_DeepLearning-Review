@@ -11,6 +11,13 @@ export interface LabSummary {
   title: string;
   difficulty: string;
   threshold: number;
+  activityType: 'LAB' | 'PROJECT' | 'CHALLENGE';
+  prerequisites: string[];
+}
+export type LabProgressState = 'LOCKED' | 'AVAILABLE' | 'IN_PROGRESS' | 'ACTION_REQUIRED' | 'COMPLETED';
+export interface PathProgress {
+  pathCode: string; totalLabs: number; completedLabs: number; progressPercent: number; nextLabCode: string | null;
+  labs: { code: string; title: string; activityType: 'LAB' | 'PROJECT' | 'CHALLENGE'; prerequisites: string[]; state: LabProgressState; bestScore: number | null }[];
 }
 export interface PathDescriptor {
   code: string; title: string; status: 'AVAILABLE' | 'BETA' | 'LOCKED' | 'PLANNED'; professionalObjectives: string[];
@@ -31,4 +38,7 @@ export class LabApiService {
     return this.http.get<LabSummary[]>(`${this.apiUrl}/labs`);
   }
   listPaths(): Observable<PathDescriptor[]> { return this.http.get<PathDescriptor[]>(`${this.apiUrl}/paths/catalog`); }
+  pathProgress(code: string): Observable<PathProgress> {
+    return this.http.get<PathProgress>(`${this.apiUrl}/paths/${encodeURIComponent(code)}/progress`);
+  }
 }

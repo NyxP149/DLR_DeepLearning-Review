@@ -1,0 +1,17 @@
+{
+  "code": "PYTHON-02", "language": "PYTHON", "number": 2, "slug": "fonctions-contrats-erreurs",
+  "title": "Fonctions, contrats et gestion des erreurs", "difficulty": "BASE", "threshold": 70,
+  "activityType": "LAB", "prerequisites": ["PYTHON-01"],
+  "objectives": ["Définir un contrat de fonction lisible", "Lever et traiter une exception précise", "Éviter les valeurs sentinelles ambiguës"],
+  "sections": [
+    {"title":"Un contrat explicite","content":"Une fonction professionnelle rend visibles ses entrées, sa sortie et ses cas d'échec. Les annotations facilitent la lecture ; les validations protègent réellement l'exécution.","conceptCodes":["PYTHON-EXPLICIT-CONTRACT"]},
+    {"title":"Échouer utilement","content":"Une exception précise sépare le chemin nominal du traitement d'erreur. Le bloc try doit rester court et intercepter uniquement les erreurs qu'il sait gérer."}
+  ],
+  "keyConcepts": [{"code":"PYTHON-EXPLICIT-CONTRACT","name":"Contrat de fonction","definition":"Un contrat décrit les données acceptées, le résultat produit et les erreurs possibles.","whyExists":"Il permet d'utiliser et de tester une fonction sans dépendre de son implémentation interne.","whyImportant":"Des contrats explicites réduisent les erreurs silencieuses et rendent les refactorings plus sûrs.","minimalExample":"def divide(a: float, b: float) -> float: ...","commonMistake":"Retourner None pour toutes les erreurs sans expliquer leur cause.","masteryQuestion":"Quelle différence existe entre une annotation et une validation exécutée ?","masteryProof":"Écrire une fonction annotée qui rejette explicitement une entrée vide."}],
+  "exercises": [{"code":"PYTHON-02-E1","title":"Calculer une moyenne sûre","statement":"Conserve le contrat et affiche exactement : Moyenne: 15.0","starterCode":"def safe_average(values: list[float]) -> float:\n    if not values:\n        raise ValueError(\"La liste ne peut pas être vide\")\n    return sum(values) / len(values)\n\ntry:\n    print(f\"Moyenne: {safe_average([10, 15, 20])}\")\nexcept ValueError as error:\n    print(f\"Erreur: {error}\")\n","expectedOutput":"Moyenne: 15.0"}],
+  "quiz": [
+    {"code":"PYTHON-02-Q1","type":"SINGLE_CHOICE","prompt":"Pourquoi lever ValueError pour une liste vide ?","choices":["Pour signaler une valeur invalide avec une cause précise","Pour arrêter Docker définitivement","Pour remplacer les annotations"],"correctChoice":0,"expectedKeywords":[]},
+    {"code":"PYTHON-02-Q2","type":"FREE_TEXT","prompt":"Explique le rôle complémentaire des annotations et des validations.","choices":[],"correctChoice":null,"expectedKeywords":["annotation","contrat","exécution","validation"]}
+  ],
+  "checklist": ["Je sais définir un contrat de fonction", "Je choisis une exception précise", "Je limite la portée du bloc try"]
+}

@@ -1,0 +1,85 @@
+{
+  "code": "SPRING_BOOT-11",
+  "language": "JAVA",
+  "number": 11,
+  "slug": "projet-professionnel-api-metier-postgresql",
+  "title": "Projet professionnel : API métier PostgreSQL",
+  "difficulty": "PROJET",
+  "threshold": 80,
+  "activityType": "PROJECT",
+  "prerequisites": [
+    "SPRING_BOOT-10"
+  ],
+  "objectives": [
+    "Expliquer projet professionnel : api métier postgresql",
+    "Construire une preuve exécutable et déterministe",
+    "Relier le concept à une décision professionnelle"
+  ],
+  "sections": [
+    {
+      "title": "Concept et usage professionnel",
+      "content": "Projet professionnel : API métier PostgreSQL répond à un besoin concret de maintenabilité, de sûreté ou de performance. Le laboratoire demande de rendre la décision observable et vérifiable.",
+      "conceptCodes": [
+        "SPRING-PROJECT"
+      ]
+    },
+    {
+      "title": "Projet portfolio",
+      "content": "La preuve rapide valide l’invariant dans le runner. Le workspace réel projects/spring-professional-api fournit ensuite un pom.xml, une application Spring Boot, un contrôleur, un service, un modèle et un test d’intégration MockMvc exécutables avec mvn test."
+    }
+  ],
+  "keyConcepts": [
+    {
+      "code": "SPRING-PROJECT",
+      "name": "Projet professionnel : API métier PostgreSQL",
+      "definition": "Projet professionnel : API métier PostgreSQL est traité comme un contrat explicite dont le comportement peut être vérifié.",
+      "whyExists": "Il réduit les hypothèses implicites et rend le système plus simple à faire évoluer.",
+      "whyImportant": "En contexte professionnel, la preuve reproductible facilite la revue, le diagnostic et la maintenance.",
+      "minimalExample": "Une petite preuve SPRING_BOOT-11 vérifie le cas nominal et expose une sortie stable.",
+      "commonMistake": "Appliquer la technique sans mesurer son effet ni documenter sa frontière.",
+      "masteryQuestion": "Quelle contrainte de projet professionnel : api métier postgresql doit rester vraie lorsque le système évolue ?",
+      "masteryProof": "Exécuter la preuve, expliquer son invariant et proposer un cas d’échec."
+    }
+  ],
+  "exercises": [
+    {
+      "code": "SPRING_BOOT-11-E1",
+      "title": "Valider projet professionnel : api métier postgresql",
+      "statement": "Conserve l'invariant et produis exactement : SPRING_BOOT-11: preuve validée",
+      "starterCode": "record Evidence(String concept, boolean validated) {}\npublic class Main {\n    public static void main(String[] args) {\n        var evidence = new Evidence(\"SPRING-PROJECT\", true);\n        if (!evidence.validated()) throw new IllegalStateException(\"preuve invalide\");\n        System.out.println(\"SPRING_BOOT-11: preuve validée\");\n    }\n}\n",
+      "expectedOutput": "SPRING_BOOT-11: preuve validée"
+    }
+  ],
+  "quiz": [
+    {
+      "code": "SPRING_BOOT-11-Q1",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Quelle preuve est la plus utile en revue ?",
+      "choices": [
+        "Une exécution déterministe avec invariant explicite",
+        "Une sortie aléatoire",
+        "Une capture sans code"
+      ],
+      "correctChoice": 0,
+      "expectedKeywords": []
+    },
+    {
+      "code": "SPRING_BOOT-11-Q2",
+      "type": "FREE_TEXT",
+      "prompt": "Explique une décision liée à projet professionnel : api métier postgresql.",
+      "choices": [],
+      "correctChoice": null,
+      "expectedKeywords": [
+        "contrat",
+        "preuve",
+        "test"
+      ]
+    }
+  ],
+  "checklist": [
+    "Je peux expliquer le concept sans réciter une définition",
+    "Je sais exécuter et modifier la preuve",
+    "Je peux nommer un risque et son contrôle",
+    "Je peux présenter cette preuve dans mon portfolio"
+  ]
+}

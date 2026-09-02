@@ -1,0 +1,85 @@
+{
+  "code": "SPRING_BOOT-12",
+  "language": "JAVA",
+  "number": 12,
+  "slug": "revue-d-architecture-et-durcissement-final",
+  "title": "Revue d’architecture et durcissement final",
+  "difficulty": "DEFI",
+  "threshold": 85,
+  "activityType": "CHALLENGE",
+  "prerequisites": [
+    "SPRING_BOOT-11"
+  ],
+  "objectives": [
+    "Expliquer revue d’architecture et durcissement final",
+    "Construire une preuve exécutable et déterministe",
+    "Relier le concept à une décision professionnelle"
+  ],
+  "sections": [
+    {
+      "title": "Concept et usage professionnel",
+      "content": "Revue d’architecture et durcissement final répond à un besoin concret de maintenabilité, de sûreté ou de performance. Le laboratoire demande de rendre la décision observable et vérifiable.",
+      "conceptCodes": [
+        "SPRING-CHALLENGE"
+      ]
+    },
+    {
+      "title": "Défi de synthèse",
+      "content": "Le défi s’appuie sur projects/spring-professional-api : inspecte les frontières Controller/Service, exécute mvn test, puis ajoute un cas d’erreur HTTP sans casser le contrat nominal."
+    }
+  ],
+  "keyConcepts": [
+    {
+      "code": "SPRING-CHALLENGE",
+      "name": "Revue d’architecture et durcissement final",
+      "definition": "Revue d’architecture et durcissement final est traité comme un contrat explicite dont le comportement peut être vérifié.",
+      "whyExists": "Il réduit les hypothèses implicites et rend le système plus simple à faire évoluer.",
+      "whyImportant": "En contexte professionnel, la preuve reproductible facilite la revue, le diagnostic et la maintenance.",
+      "minimalExample": "Une petite preuve SPRING_BOOT-12 vérifie le cas nominal et expose une sortie stable.",
+      "commonMistake": "Appliquer la technique sans mesurer son effet ni documenter sa frontière.",
+      "masteryQuestion": "Quelle contrainte de revue d’architecture et durcissement final doit rester vraie lorsque le système évolue ?",
+      "masteryProof": "Exécuter la preuve, expliquer son invariant et proposer un cas d’échec."
+    }
+  ],
+  "exercises": [
+    {
+      "code": "SPRING_BOOT-12-E1",
+      "title": "Valider revue d’architecture et durcissement final",
+      "statement": "Conserve l'invariant et produis exactement : SPRING_BOOT-12: preuve validée",
+      "starterCode": "record Evidence(String concept, boolean validated) {}\npublic class Main {\n    public static void main(String[] args) {\n        var evidence = new Evidence(\"SPRING-CHALLENGE\", true);\n        if (!evidence.validated()) throw new IllegalStateException(\"preuve invalide\");\n        System.out.println(\"SPRING_BOOT-12: preuve validée\");\n    }\n}\n",
+      "expectedOutput": "SPRING_BOOT-12: preuve validée"
+    }
+  ],
+  "quiz": [
+    {
+      "code": "SPRING_BOOT-12-Q1",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Quelle preuve est la plus utile en revue ?",
+      "choices": [
+        "Une exécution déterministe avec invariant explicite",
+        "Une sortie aléatoire",
+        "Une capture sans code"
+      ],
+      "correctChoice": 0,
+      "expectedKeywords": []
+    },
+    {
+      "code": "SPRING_BOOT-12-Q2",
+      "type": "FREE_TEXT",
+      "prompt": "Explique une décision liée à revue d’architecture et durcissement final.",
+      "choices": [],
+      "correctChoice": null,
+      "expectedKeywords": [
+        "contrat",
+        "preuve",
+        "test"
+      ]
+    }
+  ],
+  "checklist": [
+    "Je peux expliquer le concept sans réciter une définition",
+    "Je sais exécuter et modifier la preuve",
+    "Je peux nommer un risque et son contrôle",
+    "Je peux présenter cette preuve dans mon portfolio"
+  ]
+}

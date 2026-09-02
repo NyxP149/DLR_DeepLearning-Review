@@ -20,15 +20,15 @@ import type { editor as MonacoEditor } from 'monaco-editor/editor';
   styles: [`
     :host { display: block; margin: .5rem 0 1rem; }
     .monaco-host, .fallback-editor {
-      background: #0a0f1c;
-      border: 1px solid #2b3b55;
+      background: var(--editor-background);
+      border: 1px solid var(--border);
       border-radius: .75rem;
       min-height: 320px;
       overflow: hidden;
       width: 100%;
     }
     .fallback-editor {
-      color: #d9e7ff;
+      color: var(--editor-text);
       font: .86rem/1.6 ui-monospace, SFMono-Regular, Consolas, monospace;
       padding: 1rem;
       resize: vertical;
@@ -50,6 +50,7 @@ export class CodeEditorComponent implements AfterViewInit, OnChanges, OnDestroy 
   private editor?: MonacoEditor.IStandaloneCodeEditor;
   private monaco?: typeof import('monaco-editor/editor');
   private resizeObserver?: ResizeObserver;
+  private themeObserver?: MutationObserver;
   private applyingExternalValue = false;
 
   async ngAfterViewInit(): Promise<void> {
@@ -84,10 +85,11 @@ export class CodeEditorComponent implements AfterViewInit, OnChanges, OnDestroy 
       ]);
       if (!this.host) return;
       this.monaco = monaco;
+      this.applyMonacoTheme();
       this.editor = monaco.editor.create(this.host.nativeElement, {
         value: this.value,
         language: this.monacoLanguage(),
-        theme: 'vs-dark',
+        theme: 'dlr-adaptive',
         automaticLayout: false,
         fontFamily: 'JetBrains Mono, Cascadia Code, Consolas, monospace',
         fontSize: 14,
@@ -102,6 +104,8 @@ export class CodeEditorComponent implements AfterViewInit, OnChanges, OnDestroy 
       });
       this.resizeObserver = new ResizeObserver(() => this.editor?.layout());
       this.resizeObserver.observe(this.host.nativeElement);
+      this.themeObserver = new MutationObserver(() => this.applyMonacoTheme());
+      this.themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme', 'data-theme-mode'] });
       this.loading.set(false);
     } catch {
       this.fallback.set(true);
@@ -129,8 +133,29 @@ export class CodeEditorComponent implements AfterViewInit, OnChanges, OnDestroy 
     return ({ JAVA: 'java', PYTHON: 'python', TYPESCRIPT: 'typescript' } as Record<string, string>)[this.language.toUpperCase()] ?? 'plaintext';
   }
 
+  private applyMonacoTheme(): void {
+    if (!this.monaco) return;
+    const styles = getComputedStyle(document.documentElement);
+    const color = (name: string) => styles.getPropertyValue(name).trim();
+    this.monaco.editor.defineTheme('dlr-adaptive', {
+      base: document.documentElement.dataset['themeMode'] === 'light' ? 'vs' : 'vs-dark',
+      inherit: true,
+      rules: [],
+      colors: {
+        'editor.background': color('--editor-background'),
+        'editor.foreground': color('--editor-text'),
+        'editorLineNumber.foreground': color('--text-muted'),
+        'editorCursor.foreground': color('--accent'),
+        'editor.selectionBackground': color('--accent-soft'),
+        'editor.inactiveSelectionBackground': color('--surface-raised')
+      }
+    });
+    this.monaco.editor.setTheme('dlr-adaptive');
+  }
+
   ngOnDestroy(): void {
     this.resizeObserver?.disconnect();
+    this.themeObserver?.disconnect();
     this.editor?.dispose();
     this.monaco = undefined;
   }

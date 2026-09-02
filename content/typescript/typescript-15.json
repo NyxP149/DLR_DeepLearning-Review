@@ -1,0 +1,85 @@
+{
+  "code": "TYPESCRIPT-15",
+  "language": "TYPESCRIPT",
+  "number": 15,
+  "slug": "node-js-fichiers-et-flux",
+  "title": "Node.js, fichiers et flux",
+  "difficulty": "INTERMEDIAIRE",
+  "threshold": 70,
+  "activityType": "LAB",
+  "prerequisites": [
+    "TYPESCRIPT-14"
+  ],
+  "objectives": [
+    "Expliquer node.js, fichiers et flux",
+    "Construire une preuve exécutable et déterministe",
+    "Relier le concept à une décision professionnelle"
+  ],
+  "sections": [
+    {
+      "title": "Concept et usage professionnel",
+      "content": "Node.js, fichiers et flux répond à un besoin concret de maintenabilité, de sûreté ou de performance. Le laboratoire demande de rendre la décision observable et vérifiable.",
+      "conceptCodes": [
+        "TYPESCRIPT-NODE"
+      ]
+    },
+    {
+      "title": "Mise en pratique",
+      "content": "La preuve minimale est locale, déterministe et peut être enrichie sans changer le contrat attendu."
+    }
+  ],
+  "keyConcepts": [
+    {
+      "code": "TYPESCRIPT-NODE",
+      "name": "Node.js, fichiers et flux",
+      "definition": "Node.js, fichiers et flux est traité comme un contrat explicite dont le comportement peut être vérifié.",
+      "whyExists": "Il réduit les hypothèses implicites et rend le système plus simple à faire évoluer.",
+      "whyImportant": "En contexte professionnel, la preuve reproductible facilite la revue, le diagnostic et la maintenance.",
+      "minimalExample": "Une petite preuve TYPESCRIPT-15 vérifie le cas nominal et expose une sortie stable.",
+      "commonMistake": "Appliquer la technique sans mesurer son effet ni documenter sa frontière.",
+      "masteryQuestion": "Quelle contrainte de node.js, fichiers et flux doit rester vraie lorsque le système évolue ?",
+      "masteryProof": "Exécuter la preuve, expliquer son invariant et proposer un cas d’échec."
+    }
+  ],
+  "exercises": [
+    {
+      "code": "TYPESCRIPT-15-E1",
+      "title": "Valider node.js, fichiers et flux",
+      "statement": "Conserve l'invariant et produis exactement : TYPESCRIPT-15: preuve validée",
+      "starterCode": "type Evidence = Readonly<{ concept: string; validated: boolean }>;\nconst evidence: Evidence = { concept: 'TYPESCRIPT-NODE', validated: true };\nif (!evidence.validated) throw new Error('preuve invalide');\nconsole.log('TYPESCRIPT-15: preuve validée');\n",
+      "expectedOutput": "TYPESCRIPT-15: preuve validée"
+    }
+  ],
+  "quiz": [
+    {
+      "code": "TYPESCRIPT-15-Q1",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Quelle preuve est la plus utile en revue ?",
+      "choices": [
+        "Une exécution déterministe avec invariant explicite",
+        "Une sortie aléatoire",
+        "Une capture sans code"
+      ],
+      "correctChoice": 0,
+      "expectedKeywords": []
+    },
+    {
+      "code": "TYPESCRIPT-15-Q2",
+      "type": "FREE_TEXT",
+      "prompt": "Explique une décision liée à node.js, fichiers et flux.",
+      "choices": [],
+      "correctChoice": null,
+      "expectedKeywords": [
+        "contrat",
+        "preuve",
+        "test"
+      ]
+    }
+  ],
+  "checklist": [
+    "Je peux expliquer le concept sans réciter une définition",
+    "Je sais exécuter et modifier la preuve",
+    "Je peux nommer un risque et son contrôle",
+    "Je relie cette étape à la suivante"
+  ]
+}

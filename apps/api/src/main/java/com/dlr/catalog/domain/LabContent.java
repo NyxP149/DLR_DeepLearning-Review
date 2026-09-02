@@ -10,6 +10,8 @@ public record LabContent(
         String title,
         String difficulty,
         int threshold,
+        String activityType,
+        List<String> prerequisites,
         List<String> objectives,
         List<LessonSection> sections,
         List<KeyConcept> keyConcepts,
@@ -18,6 +20,8 @@ public record LabContent(
         List<String> checklist
 ) {
     public LabContent {
+        activityType = activityType == null || activityType.isBlank() ? "LAB" : activityType;
+        prerequisites = prerequisites == null ? List.of() : List.copyOf(prerequisites);
         objectives = List.copyOf(objectives);
         sections = List.copyOf(sections);
         keyConcepts = List.copyOf(keyConcepts);

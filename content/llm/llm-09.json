@@ -1,0 +1,85 @@
+{
+  "code": "LLM-09",
+  "language": "PYTHON",
+  "number": 9,
+  "slug": "pipeline-rag-local-et-citations",
+  "title": "Pipeline RAG local et citations",
+  "difficulty": "PROFESSIONNEL",
+  "threshold": 75,
+  "activityType": "LAB",
+  "prerequisites": [
+    "LLM-08"
+  ],
+  "objectives": [
+    "Assembler recherche, contexte et réponse avec provenance",
+    "Produire une expérience hors réseau reproductible",
+    "Documenter une limite et une métrique de contrôle"
+  ],
+  "sections": [
+    {
+      "title": "Concept et décision",
+      "content": "Pipeline RAG local et citations doit être évalué comme un composant logiciel : entrées explicites, sorties contrôlées, métriques et cas d’échec. Aucun appel à un service distant n’est nécessaire pour apprendre le mécanisme.",
+      "conceptCodes": [
+        "LLM-RAG"
+      ]
+    },
+    {
+      "title": "Expérience locale",
+      "content": "L’expérience isole le mécanisme LLM-RAG. Elle reste volontairement déterministe afin de distinguer un défaut de pipeline d’une variation propre aux modèles génératifs."
+    }
+  ],
+  "keyConcepts": [
+    {
+      "code": "LLM-RAG",
+      "name": "Pipeline RAG local et citations",
+      "definition": "Pipeline RAG local et citations est ici un contrat mesurable entre une entrée, une transformation et une preuve de sortie.",
+      "whyExists": "Les résultats d’un LLM sont probabilistes ; le système qui l’entoure doit rendre les hypothèses et contrôles explicites.",
+      "whyImportant": "Sans mesure, provenance et cas d’échec, une démonstration convaincante ne garantit pas un produit fiable.",
+      "minimalExample": "Le programme LLM-09 reproduit localement le mécanisme essentiel et affiche une preuve stable.",
+      "commonMistake": "Évaluer un seul exemple favorable ou confondre plausibilité et exactitude.",
+      "masteryQuestion": "Quelle métrique et quel cas d’échec utiliserais-tu pour pipeline rag local et citations ?",
+      "masteryProof": "Exécuter la preuve, modifier une entrée et expliquer le résultat ainsi que la limite du modèle local."
+    }
+  ],
+  "exercises": [
+    {
+      "code": "LLM-09-E1",
+      "title": "Assembler recherche, contexte et réponse avec provenance",
+      "statement": "Exécute l’expérience et conserve exactement la sortie attendue. Explique ensuite quelle partie serait remplacée par un modèle réel.",
+      "starterCode": "documents = {\"JVM\": \"La JVM exécute le bytecode.\", \"JDK\": \"Le JDK contient les outils de développement.\"}\nquestion = \"Qui exécute le bytecode ?\"\nsource = next(key for key, text in documents.items() if \"bytecode\" in text)\nanswer = f\"{documents[source]} [source:{source}]\"\nprint(question)\nprint(answer)\n",
+      "expectedOutput": "Qui exécute le bytecode ?\nLa JVM exécute le bytecode. [source:JVM]"
+    }
+  ],
+  "quiz": [
+    {
+      "code": "LLM-09-Q1",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Quelle validation est la plus solide ?",
+      "choices": [
+        "Plusieurs cas reproductibles avec métriques et provenance",
+        "Une réponse qui semble correcte",
+        "Une démonstration sans jeu de test"
+      ],
+      "correctChoice": 0,
+      "expectedKeywords": []
+    },
+    {
+      "code": "LLM-09-Q2",
+      "type": "FREE_TEXT",
+      "prompt": "Nomme une limite et le contrôle associé.",
+      "choices": [],
+      "correctChoice": null,
+      "expectedKeywords": [
+        "limite",
+        "test",
+        "mesure"
+      ]
+    }
+  ],
+  "checklist": [
+    "Je sais expliquer le mécanisme",
+    "Je peux reproduire la preuve hors réseau",
+    "Je distingue simulation locale et modèle réel",
+    "Je peux nommer une métrique et un risque"
+  ]
+}

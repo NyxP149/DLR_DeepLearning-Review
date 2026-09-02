@@ -57,6 +57,14 @@ export interface AttemptWorkspace {
   checklist: boolean[];
 }
 
+export interface LabResetResult {
+  labCode: string;
+  attemptsDeleted: number;
+  submissionsDeleted: number;
+  executionsDeleted: number;
+  reviewsDeleted: number;
+}
+
 @Injectable({ providedIn: 'root' })
 export class ExecutionApiService {
   private readonly http = inject(HttpClient);
@@ -123,6 +131,12 @@ export class ExecutionApiService {
     return this.http.post<Attempt>(
       `${this.apiUrl}/attempts/${encodeURIComponent(attemptId)}/continue`,
       {}
+    );
+  }
+
+  resetLab(labCode: string): Observable<LabResetResult> {
+    return this.http.delete<LabResetResult>(
+      `${this.apiUrl}/labs/${encodeURIComponent(labCode)}/progress`
     );
   }
 }

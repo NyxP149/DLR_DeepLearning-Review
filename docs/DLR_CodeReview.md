@@ -760,3 +760,297 @@ Ce fichier conserve l'historique des modifications, décisions techniques, bugs 
 - Contrôle HTTP réel : accueil API, 8 parcours, 9 laboratoires et compteur Java limité à 6.
 - Contrôle navigateur : concepts positionnés avant leur section, imports/langages corrects et exécutions réussies pour Python, TypeScript et Learn LLMs.
 - Temps observés depuis l'interface : Python ~1,05 s, TypeScript ~5,17 s, Learn LLMs ~1,11 s ; aucune erreur console.
+
+## 2026-08-30 — V2.6 : Python professionnel et progression à prérequis
+
+### Modifications
+
+- Ajout des contenus complets `PYTHON-02` à `PYTHON-05` et du projet intermédiaire `PYTHON-06`.
+- Métadonnées `activityType` et `prerequisites` ajoutées au contrat de contenu, avec valeurs de repli compatibles pour les laboratoires existants.
+- Migration Flyway V13 ajoutant les cinq nouvelles activités Python.
+- Service de progression par parcours avec états verrouillé, disponible, en cours, action requise et terminé.
+- Route `GET /api/paths/{code}/progress` et contrôle serveur des prérequis lors de la création d'une tentative.
+- Réponse HTTP 409 structurée `LAB_LOCKED`, incluant les prérequis manquants et l'action suggérée.
+- Runner Python adapté aux exercices de fichiers : copie et exécution dans le volume temporaire `/work`, sans rendre la racine du conteneur modifiable.
+- Écran Parcours enrichi avec progression Python, prochaine étape, six cartes séquentielles et identification visuelle du projet portfolio.
+- Portfolio étendu aux six preuves Python.
+
+### Bugs et incidents
+
+#### Surcharge ambiguë de `JdbcTemplate.query`
+
+- **Symptôme :** la compilation Java ne sait pas choisir entre deux surcharges acceptant une expression lambda.
+- **Cause :** le callback sans valeur de retour est compatible avec plusieurs interfaces fonctionnelles de `JdbcTemplate`.
+- **Résolution :** type explicite `RowCallbackHandler` sur le callback de lecture des tentatives.
+
+#### Les cartes TypeScript et Learn LLMs deviennent trop étroites
+
+- **Symptôme :** après l'ajout de la grille Python à six colonnes, les deux cartes de la tranche suivante n'occupent chacune qu'une colonne étroite.
+- **Cause :** elles héritaient de la règle générique de la grille des laboratoires Python.
+- **Résolution :** grille `beta-labs` dédiée à deux colonnes, avec règles responsive spécifiques.
+
+#### L'API et PostgreSQL ne répondent plus pendant le contrôle navigateur
+
+- **Symptôme :** l'interface affiche temporairement « Connexion impossible ».
+- **Cause :** les processus locaux du backend et du conteneur PostgreSQL s'étaient arrêtés ; il ne s'agissait pas d'une erreur de verrouillage métier.
+- **Résolution :** redémarrage de PostgreSQL, vérification de son état `healthy`, redémarrage de Spring Boot et rechargement du contrôle. La progression et les contenus se chargent ensuite normalement.
+
+#### Le cache Angular optionnel reste absent
+
+- **Symptôme :** avertissement `Cannot find module 'lmdb'` pendant le build.
+- **Impact :** aucun sur le bundle généré ; le cache de compilation est seulement moins performant.
+- **Gestion :** avertissement conservé afin de ne pas ajouter une dépendance native sans bénéfice pour l'application exécutée.
+
+### Validations
+
+- Migration Flyway V13 validée sur H2 et appliquée à PostgreSQL 17.11 réel.
+- Suite backend finale : 44 tests, 0 échec, 0 erreur et 0 test ignoré, runners Docker inclus.
+- Tests de contrôleur sur le catalogue, les métadonnées du projet, la progression et le refus HTTP 409 d'une activité verrouillée.
+- Test d'intégration de progression : validation de `PYTHON-01`, déblocage de `PYTHON-02`, pourcentage et prochaine étape.
+- Test Docker réel des six programmes Python de départ, avec sorties exactes et manipulation JSON dans `/work`.
+- Build Angular de production et contrôle navigateur de la progression, des prérequis, des cartes verrouillées et du projet intermédiaire.
+
+## 2026-08-30 — Correctifs V2.6 : remise à zéro et compteurs honnêtes
+
+### Modifications
+
+- Ajout de `DELETE /api/labs/{labCode}/progress`, transactionnel et limité au laboratoire demandé.
+- Suppression cohérente des révisions, exécutions, soumissions, quiz, checklist, tentatives et recommandations adaptatives liées.
+- Bouton « Réinitialiser ce laboratoire » dans l'en-tête, avec confirmation irréversible et état de chargement.
+- Nettoyage du brouillon local puis restauration du starter, sans création immédiate d'une nouvelle tentative.
+- Remplacement du libellé ambigu « activités prévues » par `disponibles / prévues` calculé depuis le catalogue réellement chargé.
+
+### Bugs et incidents
+
+#### Le test de reset rencontre des tentatives créées par une autre classe
+
+- **Symptôme :** le test attend une suppression mais l'API en compte sept.
+- **Cause :** le contexte Spring/H2 est partagé entre plusieurs classes de la sélection ciblée ; six tentatives `JAVA-01` existaient déjà.
+- **Résolution :** scénario transactionnel isolé sur `JAVA-06`, sans hypothèse sur les données laissées par d'autres classes. Le comportement observé confirmait néanmoins que l'API supprimait bien tout l'historique du laboratoire.
+
+#### Le clic automatisé reste en attente sur la confirmation
+
+- **Symptôme :** le contrôle navigateur s'arrête après le clic de réinitialisation.
+- **Cause :** la boîte native `confirm` bloque volontairement toute poursuite tant que l'utilisateur n'a pas accepté ou annulé.
+- **Résolution :** confirmation conservée comme protection fonctionnelle. La remise à zéro explicitement demandée a été effectuée par l'API locale, puis vérifiée séparément dans le tableau de bord.
+
+### Validations
+
+- 11 tests ciblés réussis sur le reset, la progression et les tentatives.
+- Suite backend finale : 45 tests, 0 échec, 0 erreur et 0 test ignoré, runners Docker inclus.
+- Build Angular réussi ; bundle initial inchangé à 267,59 kB.
+- Contrôle navigateur : bouton visible, confirmation déclenchée et compteurs `6/6`, `6/24`, `1/24`, `1/12` correctement affichés.
+- Remise à zéro réelle de `JAVA-01` : 2 tentatives, 2 soumissions et 2 exécutions supprimées ; progression Java passée de `1/6` à `0/6`, score et XP revenus à zéro.
+- Aucune erreur console sur le tableau de bord après l'opération.
+
+## 2026-08-30 — V2.7 : parcours Java professionnel 24 activités
+
+### Modifications
+
+- Ajout des contenus complets `JAVA-07` à `JAVA-22`, du projet professionnel `JAVA-23` et du défi final `JAVA-24`.
+- Ajout de `activityType` et de prérequis séquentiels aux six laboratoires Java historiques.
+- Migration Flyway V14 ajoutant les 18 nouvelles activités sans réécrire les données d'apprentissage existantes.
+- Catalogue Java passé à `24 disponibles / 24 prévues`.
+- Progression Java dédiée sur 24 étapes, avec verrouillage serveur et prérequis exacts.
+- Grille de 24 cartes dans l'interface, marqueurs distincts pour le projet et le défi.
+- Tableau de bord et portfolio étendus aux 24 preuves ; ajout du badge `JAVA_PRO`.
+- Runner Java déplacé vers le volume temporaire `/work` pour autoriser les exercices de fichiers sous les protections Docker existantes.
+- Test d'intégration Docker parcourant les 24 starters Java.
+
+### Bugs et incidents
+
+#### Le catalogue Java est resté limité à six activités
+
+- **Symptôme :** l'interface affichait `6 disponibles / 6 prévues`, sans projet professionnel ni défi final, alors que la conception prévoyait 24 activités.
+- **Cause :** la tranche V1 de six laboratoires avait été conservée comme cible finale dans `paths.json` et aucune migration n'avait encore matérialisé `JAVA-07` à `JAVA-24`.
+- **Résolution :** ajout des 18 contenus, passage de la cible à 24, migration V14, progression séquentielle et composants d'interface correspondants.
+
+#### Le nombre de badges attendu devient obsolète
+
+- **Symptôme :** le test du tableau de bord attend cinq badges après l'ajout de `JAVA_PRO`.
+- **Cause :** l'assertion historique n'avait pas été mise à jour avec le nouveau badge de fin de parcours.
+- **Résolution :** contrat de test porté à six badges et vérification explicite du badge professionnel à 24/24.
+
+#### Le premier test des 24 starters attend une solution dans un squelette
+
+- **Symptôme :** `JAVA-01` réussit la compilation mais produit une sortie vide au lieu de `DLR Java Lab 1`.
+- **Cause :** `JAVA-01` à `JAVA-06` sont volontairement des squelettes guidés à compléter, contrairement aux 18 nouvelles preuves immédiatement exécutables.
+- **Résolution :** le test exige la compilation des 24 starters et la sortie exacte uniquement pour `JAVA-07` à `JAVA-24`. La comparaison de sortie des six premiers reste testée par les scénarios de soumission complétés.
+
+#### Un exercice de fichiers ne peut pas écrire depuis le répertoire source
+
+- **Risque détecté :** le montage `/workspace` est volontairement en lecture seule ; une écriture relative de `JAVA-13` aurait échoué si Java avait continué à s'exécuter depuis ce répertoire.
+- **Résolution :** copie de `Main.java`, compilation et exécution depuis `/work`, volume temporaire inscriptible, sans affaiblir l'isolation du conteneur.
+
+### Validations
+
+- Migration Flyway V14 validée sur H2 puis appliquée à PostgreSQL 17.11 réel, de V13 vers V14.
+- API réelle : 32 contenus au total, 24 Java, `JAVA-23` de type `PROJECT`, `JAVA-24` de type `CHALLENGE` et progression Java `0/24` après la remise à zéro précédente.
+- Test Docker ciblé : compilation des 24 starters et sorties exactes des 18 nouveaux contenus, 0 échec.
+- Suite backend finale : 47 tests, 0 échec, 0 erreur et 0 test ignoré, runners Docker inclus.
+- Build Angular de production réussi ; bundle initial 267,59 kB, avec seulement l'avertissement connu du cache optionnel `lmdb`.
+- Contrôle navigateur : `24 disponibles / 24 prévues`, grille séquentielle complète, projet et défi distincts, concept clé en haut de la section et aucune erreur console.
+
+## 2026-08-30 — V3 : six parcours professionnels complétés
+
+### Modifications
+
+- Ajout de 81 contenus : Python 07–24, TypeScript 02–24, Spring Boot 01–12, Angular 01–10, SQL 01–10 et DevOps 01–08.
+- Chaque parcours possède prérequis, concepts contextualisés, exercice exécutable, quiz, checklist, projet et défi.
+- Migration Flyway V15 créant les chemins PostgreSQL manquants et ajoutant les 81 activités.
+- Catalogue porté à 113 contenus, avec six parcours nouvellement complets et Learn LLMs conservé à 1/12.
+- Page Parcours refondue en sélecteur : sept progressions chargées, une seule grille rendue.
+- Portfolio étendu à tous les codes de preuve.
+- Tests Docker exhaustifs sur 88 contenus Python, TypeScript, Spring, Angular, SQL et DevOps.
+- Générateur de curriculum versionné pour rendre la production des JSON et de la migration reproductible.
+
+### Bugs et incidents
+
+#### Les activités Spring gonflent le compteur Java
+
+- **Symptôme :** le tableau de bord annonce 36 laboratoires Java au lieu de 24.
+- **Cause :** les preuves Spring Boot utilisent correctement le runner `JAVA`, mais le tableau de bord assimilait le langage d'exécution au parcours pédagogique.
+- **Résolution :** sélection du parcours Java par le préfixe de contenu `JAVA-`. Spring reste exécuté en Java sans contaminer la progression Java.
+
+#### Le pourcentage Python historique devient faux
+
+- **Symptôme :** après une activité validée, le test attend 16 %.
+- **Cause :** 16 % représentait 1/6 ; le parcours contient désormais 24 activités.
+- **Résolution :** contrat mis à jour à 4 %, valeur entière produite par 1/24.
+
+#### Le navigateur sert encore le bundle V2.7
+
+- **Symptôme :** l'API expose 113 contenus mais la page conserve les anciennes sections Java/Python.
+- **Cause :** un ancien processus Angular occupait toujours le port 4200 et n'avait pas rechargé le nouveau fichier.
+- **Résolution :** identification du PID lié à 127.0.0.1:4200, arrêt limité à ce processus et redémarrage du serveur depuis le dépôt courant.
+
+#### Le langage du runner masque le nom du parcours
+
+- **Symptôme :** un laboratoire SQL aurait été présenté comme « PYTHON · Laboratoire », et Spring comme « JAVA ».
+- **Cause :** l'en-tête réutilisait `language`, qui décrit le runner et non le domaine pédagogique.
+- **Résolution :** libellé de parcours dérivé du code (`SQL`, `SPRING BOOT`, `ANGULAR`, `DOCKER & CI/CD`) ; l'éditeur continue d'afficher le vrai langage exécuté.
+
+### Validations
+
+- 114 ressources de contenu chargées : 113 laboratoires et le catalogue des parcours.
+
+## 2026-08-30 — V3.1 : Learn LLMs complet, projets framework et E2E
+
+### Modifications
+
+- Ajout de `LLM-02` à `LLM-12`, avec prérequis séquentiels, projet RAG `LLM-11` et défi final `LLM-12`.
+- Migration Flyway V16 et passage de Learn LLMs au statut `AVAILABLE`.
+- Catalogue porté à 124 laboratoires et page Parcours étendue à huit progressions.
+- Ajout d'un vrai projet Spring Boot multi-fichiers avec test MockMvc dans `projects/spring-professional-api`.
+- Ajout d'un vrai projet Angular standalone multi-fichiers dans `projects/angular-professional-dashboard`.
+- Ajout de Playwright, Chromium et trois scénarios end-to-end du parcours utilisateur.
+
+### Bugs rencontrés et résolution
+
+#### Les commandes npm échouent lorsque le chemin contient `&`
+
+- **Symptôme :** les shims Windows `ng`, `npx` et `playwright` découpaient le chemin `DLR_DeepLearning&Review 2`, puis cherchaient les modules dans `C:\\Users\\sanyx\\Documents\\ChatGPT`.
+- **Cause :** le shim `.cmd` réinterprétait l'esperluette comme séparateur de commande.
+- **Résolution :** les scripts invoquent directement Node et le fichier JavaScript de l'outil (`node ./node_modules/.../ng.js` et `node ./node_modules/@playwright/test/cli.js`).
+
+#### Le premier E2E utilisait des sélecteurs ambigus
+
+- **Symptôme :** Playwright trouvait deux titres `Learn LLMs` et deux compteurs `12 disponibles / 12 prévues`.
+- **Cause :** la carte catalogue et la région de progression exposent volontairement le même texte.
+- **Résolution :** le test cible maintenant le bouton du catalogue puis la région accessible `Progression LEARN_LLM`. Le mode strict de Playwright reste activé.
+
+#### Maven et npm ne peuvent pas écrire dans leurs caches depuis le bac à sable
+
+- **Symptôme :** Maven tentait `C:\\.m2` et npm ne retrouvait pas son installation utilisateur.
+- **Résolution :** les validations qui nécessitent les caches utilisateur sont exécutées avec l'autorisation locale dédiée ; aucun chemin système n'est modifié.
+
+### Validation
+
+- Backend DLR : 50 tests réussis, 0 échec, 9 tests Docker optionnels ignorés dans la passe standard ; 16 migrations H2 validées.
+- Projet Spring professionnel : 1 test d'intégration MockMvc réussi.
+- Build Angular DLR et build du dashboard professionnel réussis.
+- Playwright : 3 scénarios Chromium réussis.
+- Un test Docker dédié exécute les 12 expériences Learn LLMs et compare exactement leurs sorties.
+- Audit npm des dépendances de production : 0 vulnérabilité ; les alertes restantes concernent uniquement l'outillage de développement.
+
+## 2026-08-30 — V3.2 : planning basé sur les fins effectives
+
+### Modifications
+
+- Ajout d'une chronologie d'activités à la réponse du calendrier.
+- Sélection des huit parcours directement depuis la page Planning.
+- Conservation de la date réelle des laboratoires terminés.
+- Calcul d'une date uniquement pour la prochaine activité déverrouillée.
+- Affichage `Après LAB-XX` pour les activités qui attendent encore leur prérequis.
+
+### Bug corrigé : dates futures figées avant la progression réelle
+
+- **Symptôme :** le calendrier pouvait suggérer des dates indépendantes du moment où le laboratoire précédent était réellement terminé.
+- **Cause :** le planificateur ne connaissait que les séances quotidiennes et ne reliait pas sa projection aux tentatives de laboratoire.
+- **Résolution :** la projection lit les tentatives qualifiantes et leur `completed_at`. Après chaque validation, la prochaine date est recalculée à partir de cette fin effective et du rythme semaine/week-end du profil.
+- **Garantie :** les étapes ultérieures n'ont aucune date tant que leur prérequis n'est pas validé ; elles ne deviennent donc jamais artificiellement en retard.
+
+### Validation
+
+- Test d'intégration : une fin effective de `SQL-01` date `SQL-02` au jour d'étude suivant et laisse `SQL-03` sans date.
+- Tests Planning : 3 réussis, 0 échec.
+- Suite backend complète : 51 tests, 0 échec, 9 contrôles Docker optionnels ignorés dans la passe standard.
+- Build Angular de production réussi.
+- E2E Chromium : contrôle qu'une seule prochaine activité est datée et que le changement de parcours recalcule la chronologie.
+
+## 2026-08-30 — V3.3 : six thèmes professionnels
+
+### Modifications
+
+- Ajout des thèmes Obsidienne, Noir & Blanc, Océan Boréal, Forêt Émeraude, Aubergine Royale et Atelier Solaire.
+- Sélecteur visuel accessible dans Paramètres, utilisable au clavier et annoncé comme groupe radio.
+- Persistance du choix dans le navigateur et application immédiate sans rechargement.
+- Variables dédiées aux boutons, champs, textes secondaires, liens, états et éditeur de code.
+- Adaptation dynamique de Monaco entre les bases claires et sombres.
+
+### Risque corrigé : texte invisible après changement de palette
+
+- **Risque :** une couleur de texte codée pour le thème sombre pouvait devenir peu lisible sur une surface claire ou un nouvel accent.
+- **Résolution :** remplacement des couleurs structurantes par des variables sémantiques `--text`, `--text-muted`, `--on-accent`, `--on-success`, `--input-background` et `--editor-text`.
+- **Contrôle :** test automatisé des ratios texte/fond pour les six palettes avec seuil WCAG AA de `4.5:1`.
+
+### Validation
+
+- Build Angular de production réussi.
+- Playwright : 5 scénarios réussis, dont sélection, contraste et persistance des six thèmes.
+- Inspection visuelle des thèmes Obsidienne, Noir & Blanc et Atelier Solaire.
+- Champs, boutons, cartes et navigation vérifiés en clair et en sombre.
+- Aucune erreur ni alerte dans la console du navigateur.
+- Migration V15 validée sur H2 puis appliquée de V14 à V15 sur PostgreSQL 17.11 réel.
+- Tests ciblés catalogue/progression/tableau de bord : 9 réussis.
+- Tests Docker des 64 contenus TypeScript, Spring, Angular, SQL et DevOps : 0 échec en 264,5 s.
+- Tests Docker des 24 contenus Python : 0 échec en 43,5 s.
+- Suite backend globale hors runners : 49 tests détectés, 41 réussis et 8 tests Docker conditionnels ignorés, 0 échec.
+- Une tentative de suite globale depuis le bac à sable a confirmé que les seuls échecs étaient huit `RUNNER_ERROR` causés par le refus système de lancer `docker.exe` (`CreateProcess error=5`). Aucun test applicatif n'a échoué ; les mêmes scénarios Docker avaient réussi séparément avec l'autorisation Docker.
+- Build Angular réussi, bundle initial 267,60 kB ; seul l'avertissement optionnel `lmdb` subsiste.
+- Contrôle API réel : totaux 24/24/24/12/10/10/8 et dernier type `CHALLENGE` pour chaque parcours.
+- Contrôle navigateur : sélection SQL fonctionnelle, concept clé contextualisé, compteurs complets et aucune erreur console.
+
+## 2026-09-02 — Guide de déploiement Neon et Render
+
+### Modifications
+
+- Création de `docs/DLR_Deploye.md`, relié depuis le README.
+- Documentation pas à pas de la création de PostgreSQL sur Neon, du Web Service Spring Boot et du Static Site Angular sur Render.
+- Ajout de la matrice des variables d'environnement, du routage Angular, de CORS, des contrôles de santé et de la recette fonctionnelle.
+- Séparation explicite entre le déploiement hébergé actuel et l'architecture future avec file de travaux et runners isolés.
+- Ajout des limites des offres gratuites, des procédures de diagnostic, de retour arrière et des règles de protection des secrets.
+
+### Risque identifié : guide inexécutable avec le dépôt actuel
+
+- **Risque :** présenter les seules manipulations Neon et Render aurait laissé croire que le dépôt pouvait être déployé sans adaptation.
+- **Constat :** le frontend contient encore des URL `localhost`, Spring Boot lit `DLR_API_PORT` plutôt que `PORT`, aucun Dockerfile API de production n'est présent et l'API appelle directement le moteur Docker local pour les runners.
+- **Traitement :** le guide commence par une étape de préparation obligatoire et interdit d'annoncer les exécutions distantes comme disponibles avant la livraison d'un service Runner réellement isolé.
+
+### Validation
+
+- Chemins du monorepo vérifiés : racine frontend `apps/web`, commande `npm ci && npm run build` et publication `dist/dlr-web/browser`.
+- Variables vérifiées contre `application.yml` : `DLR_DB_URL`, `DLR_DB_USER`, `DLR_DB_PASSWORD`, `DLR_ALLOWED_ORIGINS`, `DLR_SYNC_PAIRING_CODE` et configuration d'exécution.
+- Port PostgreSQL local distingué du port Neon : `5434` local via Compose, `5432` côté Neon.
+- Documentation officielle Neon et Render utilisée pour les régions, connexions, Static Sites, Web Services, réécritures et mises en veille.
+- `git diff --check` sans erreur de formatage.

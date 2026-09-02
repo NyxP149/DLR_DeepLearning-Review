@@ -1,0 +1,85 @@
+{
+  "code": "PYTHON-15",
+  "language": "PYTHON",
+  "number": 15,
+  "slug": "packaging-moderne-pyproject-et-dependances",
+  "title": "Packaging moderne, pyproject et dépendances",
+  "difficulty": "INTERMEDIAIRE",
+  "threshold": 70,
+  "activityType": "LAB",
+  "prerequisites": [
+    "PYTHON-14"
+  ],
+  "objectives": [
+    "Expliquer packaging moderne, pyproject et dépendances",
+    "Construire une preuve exécutable et déterministe",
+    "Relier le concept à une décision professionnelle"
+  ],
+  "sections": [
+    {
+      "title": "Concept et usage professionnel",
+      "content": "Packaging moderne, pyproject et dépendances répond à un besoin concret de maintenabilité, de sûreté ou de performance. Le laboratoire demande de rendre la décision observable et vérifiable.",
+      "conceptCodes": [
+        "PYTHON-PACKAGING"
+      ]
+    },
+    {
+      "title": "Mise en pratique",
+      "content": "La preuve minimale est locale, déterministe et peut être enrichie sans changer le contrat attendu."
+    }
+  ],
+  "keyConcepts": [
+    {
+      "code": "PYTHON-PACKAGING",
+      "name": "Packaging moderne, pyproject et dépendances",
+      "definition": "Packaging moderne, pyproject et dépendances est traité comme un contrat explicite dont le comportement peut être vérifié.",
+      "whyExists": "Il réduit les hypothèses implicites et rend le système plus simple à faire évoluer.",
+      "whyImportant": "En contexte professionnel, la preuve reproductible facilite la revue, le diagnostic et la maintenance.",
+      "minimalExample": "Une petite preuve PYTHON-15 vérifie le cas nominal et expose une sortie stable.",
+      "commonMistake": "Appliquer la technique sans mesurer son effet ni documenter sa frontière.",
+      "masteryQuestion": "Quelle contrainte de packaging moderne, pyproject et dépendances doit rester vraie lorsque le système évolue ?",
+      "masteryProof": "Exécuter la preuve, expliquer son invariant et proposer un cas d’échec."
+    }
+  ],
+  "exercises": [
+    {
+      "code": "PYTHON-15-E1",
+      "title": "Valider packaging moderne, pyproject et dépendances",
+      "statement": "Conserve l'invariant et produis exactement : PYTHON-15: preuve validée",
+      "starterCode": "from dataclasses import dataclass\n\n@dataclass(frozen=True, slots=True)\nclass Evidence:\n    concept: str\n    validated: bool\n\nevidence = Evidence(\"PYTHON-PACKAGING\", True)\nassert evidence.validated\nprint(\"PYTHON-15: preuve validée\")\n",
+      "expectedOutput": "PYTHON-15: preuve validée"
+    }
+  ],
+  "quiz": [
+    {
+      "code": "PYTHON-15-Q1",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Quelle preuve est la plus utile en revue ?",
+      "choices": [
+        "Une exécution déterministe avec invariant explicite",
+        "Une sortie aléatoire",
+        "Une capture sans code"
+      ],
+      "correctChoice": 0,
+      "expectedKeywords": []
+    },
+    {
+      "code": "PYTHON-15-Q2",
+      "type": "FREE_TEXT",
+      "prompt": "Explique une décision liée à packaging moderne, pyproject et dépendances.",
+      "choices": [],
+      "correctChoice": null,
+      "expectedKeywords": [
+        "contrat",
+        "preuve",
+        "test"
+      ]
+    }
+  ],
+  "checklist": [
+    "Je peux expliquer le concept sans réciter une définition",
+    "Je sais exécuter et modifier la preuve",
+    "Je peux nommer un risque et son contrôle",
+    "Je relie cette étape à la suivante"
+  ]
+}

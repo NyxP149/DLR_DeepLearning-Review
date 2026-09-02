@@ -1,0 +1,85 @@
+{
+  "code": "TYPESCRIPT-12",
+  "language": "TYPESCRIPT",
+  "number": 12,
+  "slug": "modules-es-npm-et-frontieres-de-paquet",
+  "title": "Modules ES, npm et frontières de paquet",
+  "difficulty": "INTERMEDIAIRE",
+  "threshold": 70,
+  "activityType": "LAB",
+  "prerequisites": [
+    "TYPESCRIPT-11"
+  ],
+  "objectives": [
+    "Expliquer modules es, npm et frontières de paquet",
+    "Construire une preuve exécutable et déterministe",
+    "Relier le concept à une décision professionnelle"
+  ],
+  "sections": [
+    {
+      "title": "Concept et usage professionnel",
+      "content": "Modules ES, npm et frontières de paquet répond à un besoin concret de maintenabilité, de sûreté ou de performance. Le laboratoire demande de rendre la décision observable et vérifiable.",
+      "conceptCodes": [
+        "TYPESCRIPT-MODULES"
+      ]
+    },
+    {
+      "title": "Mise en pratique",
+      "content": "La preuve minimale est locale, déterministe et peut être enrichie sans changer le contrat attendu."
+    }
+  ],
+  "keyConcepts": [
+    {
+      "code": "TYPESCRIPT-MODULES",
+      "name": "Modules ES, npm et frontières de paquet",
+      "definition": "Modules ES, npm et frontières de paquet est traité comme un contrat explicite dont le comportement peut être vérifié.",
+      "whyExists": "Il réduit les hypothèses implicites et rend le système plus simple à faire évoluer.",
+      "whyImportant": "En contexte professionnel, la preuve reproductible facilite la revue, le diagnostic et la maintenance.",
+      "minimalExample": "Une petite preuve TYPESCRIPT-12 vérifie le cas nominal et expose une sortie stable.",
+      "commonMistake": "Appliquer la technique sans mesurer son effet ni documenter sa frontière.",
+      "masteryQuestion": "Quelle contrainte de modules es, npm et frontières de paquet doit rester vraie lorsque le système évolue ?",
+      "masteryProof": "Exécuter la preuve, expliquer son invariant et proposer un cas d’échec."
+    }
+  ],
+  "exercises": [
+    {
+      "code": "TYPESCRIPT-12-E1",
+      "title": "Valider modules es, npm et frontières de paquet",
+      "statement": "Conserve l'invariant et produis exactement : TYPESCRIPT-12: preuve validée",
+      "starterCode": "type Evidence = Readonly<{ concept: string; validated: boolean }>;\nconst evidence: Evidence = { concept: 'TYPESCRIPT-MODULES', validated: true };\nif (!evidence.validated) throw new Error('preuve invalide');\nconsole.log('TYPESCRIPT-12: preuve validée');\n",
+      "expectedOutput": "TYPESCRIPT-12: preuve validée"
+    }
+  ],
+  "quiz": [
+    {
+      "code": "TYPESCRIPT-12-Q1",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Quelle preuve est la plus utile en revue ?",
+      "choices": [
+        "Une exécution déterministe avec invariant explicite",
+        "Une sortie aléatoire",
+        "Une capture sans code"
+      ],
+      "correctChoice": 0,
+      "expectedKeywords": []
+    },
+    {
+      "code": "TYPESCRIPT-12-Q2",
+      "type": "FREE_TEXT",
+      "prompt": "Explique une décision liée à modules es, npm et frontières de paquet.",
+      "choices": [],
+      "correctChoice": null,
+      "expectedKeywords": [
+        "contrat",
+        "preuve",
+        "test"
+      ]
+    }
+  ],
+  "checklist": [
+    "Je peux expliquer le concept sans réciter une définition",
+    "Je sais exécuter et modifier la preuve",
+    "Je peux nommer un risque et son contrôle",
+    "Je relie cette étape à la suivante"
+  ]
+}

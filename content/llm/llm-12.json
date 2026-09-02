@@ -1,0 +1,85 @@
+{
+  "code": "LLM-12",
+  "language": "PYTHON",
+  "number": 12,
+  "slug": "defi-final-comparer-deux-strategies-de-contexte",
+  "title": "Défi final : comparer deux stratégies de contexte",
+  "difficulty": "DEFI",
+  "threshold": 85,
+  "activityType": "CHALLENGE",
+  "prerequisites": [
+    "LLM-11"
+  ],
+  "objectives": [
+    "Choisir une stratégie à partir de qualité, coût et traçabilité",
+    "Produire une expérience hors réseau reproductible",
+    "Documenter une limite et une métrique de contrôle"
+  ],
+  "sections": [
+    {
+      "title": "Concept et décision",
+      "content": "Défi final : comparer deux stratégies de contexte doit être évalué comme un composant logiciel : entrées explicites, sorties contrôlées, métriques et cas d’échec. Aucun appel à un service distant n’est nécessaire pour apprendre le mécanisme.",
+      "conceptCodes": [
+        "LLM-CHALLENGE"
+      ]
+    },
+    {
+      "title": "Défi de synthèse",
+      "content": "L’expérience isole le mécanisme LLM-CHALLENGE. Elle reste volontairement déterministe afin de distinguer un défaut de pipeline d’une variation propre aux modèles génératifs."
+    }
+  ],
+  "keyConcepts": [
+    {
+      "code": "LLM-CHALLENGE",
+      "name": "Défi final : comparer deux stratégies de contexte",
+      "definition": "Défi final : comparer deux stratégies de contexte est ici un contrat mesurable entre une entrée, une transformation et une preuve de sortie.",
+      "whyExists": "Les résultats d’un LLM sont probabilistes ; le système qui l’entoure doit rendre les hypothèses et contrôles explicites.",
+      "whyImportant": "Sans mesure, provenance et cas d’échec, une démonstration convaincante ne garantit pas un produit fiable.",
+      "minimalExample": "Le programme LLM-12 reproduit localement le mécanisme essentiel et affiche une preuve stable.",
+      "commonMistake": "Évaluer un seul exemple favorable ou confondre plausibilité et exactitude.",
+      "masteryQuestion": "Quelle métrique et quel cas d’échec utiliserais-tu pour défi final : comparer deux stratégies de contexte ?",
+      "masteryProof": "Exécuter la preuve, modifier une entrée et expliquer le résultat ainsi que la limite du modèle local."
+    }
+  ],
+  "exercises": [
+    {
+      "code": "LLM-12-E1",
+      "title": "Choisir une stratégie à partir de qualité, coût et traçabilité",
+      "statement": "Exécute l’expérience et conserve exactement la sortie attendue. Explique ensuite quelle partie serait remplacée par un modèle réel.",
+      "starterCode": "strategies = {\n    \"contexte_complet\": {\"quality\": 0.90, \"tokens\": 900, \"citations\": 1},\n    \"rag_ciblé\": {\"quality\": 0.88, \"tokens\": 240, \"citations\": 3},\n}\nfor values in strategies.values():\n    values[\"score\"] = values[\"quality\"] + values[\"citations\"] * 0.05 - values[\"tokens\"] / 5000\nwinner = max(strategies, key=lambda name: strategies[name][\"score\"])\nprint(\"Stratégie retenue:\", winner)\nprint(\"Réduction tokens: 73%\")\n",
+      "expectedOutput": "Stratégie retenue: rag_ciblé\nRéduction tokens: 73%"
+    }
+  ],
+  "quiz": [
+    {
+      "code": "LLM-12-Q1",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Quelle validation est la plus solide ?",
+      "choices": [
+        "Plusieurs cas reproductibles avec métriques et provenance",
+        "Une réponse qui semble correcte",
+        "Une démonstration sans jeu de test"
+      ],
+      "correctChoice": 0,
+      "expectedKeywords": []
+    },
+    {
+      "code": "LLM-12-Q2",
+      "type": "FREE_TEXT",
+      "prompt": "Nomme une limite et le contrôle associé.",
+      "choices": [],
+      "correctChoice": null,
+      "expectedKeywords": [
+        "limite",
+        "test",
+        "mesure"
+      ]
+    }
+  ],
+  "checklist": [
+    "Je sais expliquer le mécanisme",
+    "Je peux reproduire la preuve hors réseau",
+    "Je distingue simulation locale et modèle réel",
+    "Je peux nommer une métrique et un risque"
+  ]
+}

@@ -1,0 +1,85 @@
+{
+  "code": "LLM-04",
+  "language": "PYTHON",
+  "number": 4,
+  "slug": "sorties-structurees-et-validation-de-schema",
+  "title": "Sorties structurées et validation de schéma",
+  "difficulty": "BASE",
+  "threshold": 70,
+  "activityType": "LAB",
+  "prerequisites": [
+    "LLM-03"
+  ],
+  "objectives": [
+    "Valider une réponse JSON avant de la transmettre au métier",
+    "Produire une expérience hors réseau reproductible",
+    "Documenter une limite et une métrique de contrôle"
+  ],
+  "sections": [
+    {
+      "title": "Concept et décision",
+      "content": "Sorties structurées et validation de schéma doit être évalué comme un composant logiciel : entrées explicites, sorties contrôlées, métriques et cas d’échec. Aucun appel à un service distant n’est nécessaire pour apprendre le mécanisme.",
+      "conceptCodes": [
+        "LLM-STRUCTURED-OUTPUT"
+      ]
+    },
+    {
+      "title": "Expérience locale",
+      "content": "L’expérience isole le mécanisme LLM-STRUCTURED-OUTPUT. Elle reste volontairement déterministe afin de distinguer un défaut de pipeline d’une variation propre aux modèles génératifs."
+    }
+  ],
+  "keyConcepts": [
+    {
+      "code": "LLM-STRUCTURED-OUTPUT",
+      "name": "Sorties structurées et validation de schéma",
+      "definition": "Sorties structurées et validation de schéma est ici un contrat mesurable entre une entrée, une transformation et une preuve de sortie.",
+      "whyExists": "Les résultats d’un LLM sont probabilistes ; le système qui l’entoure doit rendre les hypothèses et contrôles explicites.",
+      "whyImportant": "Sans mesure, provenance et cas d’échec, une démonstration convaincante ne garantit pas un produit fiable.",
+      "minimalExample": "Le programme LLM-04 reproduit localement le mécanisme essentiel et affiche une preuve stable.",
+      "commonMistake": "Évaluer un seul exemple favorable ou confondre plausibilité et exactitude.",
+      "masteryQuestion": "Quelle métrique et quel cas d’échec utiliserais-tu pour sorties structurées et validation de schéma ?",
+      "masteryProof": "Exécuter la preuve, modifier une entrée et expliquer le résultat ainsi que la limite du modèle local."
+    }
+  ],
+  "exercises": [
+    {
+      "code": "LLM-04-E1",
+      "title": "Valider une réponse JSON avant de la transmettre au métier",
+      "statement": "Exécute l’expérience et conserve exactement la sortie attendue. Explique ensuite quelle partie serait remplacée par un modèle réel.",
+      "starterCode": "import json\n\ndef validate(raw: str) -> dict:\n    value = json.loads(raw)\n    if set(value) != {\"answer\", \"confidence\"} or not 0 <= value[\"confidence\"] <= 1:\n        raise ValueError(\"réponse invalide\")\n    return value\n\nresult = validate('{\"answer\":\"JVM\",\"confidence\":0.92}')\nprint(f\"{result['answer']} ({result['confidence']:.0%})\")\n",
+      "expectedOutput": "JVM (92%)"
+    }
+  ],
+  "quiz": [
+    {
+      "code": "LLM-04-Q1",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Quelle validation est la plus solide ?",
+      "choices": [
+        "Plusieurs cas reproductibles avec métriques et provenance",
+        "Une réponse qui semble correcte",
+        "Une démonstration sans jeu de test"
+      ],
+      "correctChoice": 0,
+      "expectedKeywords": []
+    },
+    {
+      "code": "LLM-04-Q2",
+      "type": "FREE_TEXT",
+      "prompt": "Nomme une limite et le contrôle associé.",
+      "choices": [],
+      "correctChoice": null,
+      "expectedKeywords": [
+        "limite",
+        "test",
+        "mesure"
+      ]
+    }
+  ],
+  "checklist": [
+    "Je sais expliquer le mécanisme",
+    "Je peux reproduire la preuve hors réseau",
+    "Je distingue simulation locale et modèle réel",
+    "Je peux nommer une métrique et un risque"
+  ]
+}

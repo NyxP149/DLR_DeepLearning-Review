@@ -4,7 +4,8 @@
   "private": true,
   "scripts": {
     "start": "node ./node_modules/@angular/cli/bin/ng.js serve",
-    "build": "node ./node_modules/@angular/cli/bin/ng.js build"
+    "build": "node ./node_modules/@angular/cli/bin/ng.js build",
+    "e2e": "node ./node_modules/@playwright/test/cli.js test"
   },
   "dependencies": {
     "@angular/common": "21.2.22",
@@ -19,6 +20,7 @@
     "@angular/build": "~21.2.0",
     "@angular/cli": "~21.2.0",
     "@angular/compiler-cli": "21.2.22",
+    "@playwright/test": "1.55.0",
     "typescript": "~5.9.3"
   },
   "overrides": {

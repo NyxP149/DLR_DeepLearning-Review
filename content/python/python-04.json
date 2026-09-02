@@ -1,0 +1,17 @@
+{
+  "code": "PYTHON-04", "language": "PYTHON", "number": 4, "slug": "fichiers-json-contextes",
+  "title": "Fichiers, JSON et gestionnaires de contexte", "difficulty": "INTERMEDIAIRE", "threshold": 70,
+  "activityType": "LAB", "prerequisites": ["PYTHON-03"],
+  "objectives": ["Lire et écrire un fichier UTF-8", "Sérialiser des données JSON", "Garantir la fermeture d'une ressource avec with"],
+  "sections": [
+    {"title":"La durée de vie d'une ressource","content":"Un fichier ouvert consomme une ressource du système. Le gestionnaire de contexte ferme cette ressource, même lorsqu'une exception interrompt le traitement.","conceptCodes":["PYTHON-CONTEXT-MANAGER"]},
+    {"title":"JSON n'est pas le domaine","content":"JSON transporte des chaînes, nombres, booléens, listes et objets. Après désérialisation, le programme doit encore valider les champs nécessaires à son métier."}
+  ],
+  "keyConcepts": [{"code":"PYTHON-CONTEXT-MANAGER","name":"Gestionnaire de contexte","definition":"Le bloc with encadre l'acquisition et la libération fiable d'une ressource.","whyExists":"Il centralise le nettoyage et fonctionne aussi lorsque le bloc échoue.","whyImportant":"Il évite les fichiers non fermés et rend la responsabilité de la ressource visible.","minimalExample":"with path.open(encoding='utf-8') as stream: data = stream.read()","commonMistake":"Supposer qu'un JSON valide contient forcément toutes les données métier attendues.","masteryQuestion":"Que garantit with lorsqu'une exception est levée pendant la lecture ?","masteryProof":"Écrire puis relire un fichier dans un gestionnaire de contexte."}],
+  "exercises": [{"code":"PYTHON-04-E1","title":"Persister un profil JSON","statement":"Écris puis relis le profil et affiche exactement : Profil: Nyx | niveau 3","starterCode":"import json\nfrom pathlib import Path\n\npath = Path(\"profile.json\")\nprofile = {\"name\": \"Nyx\", \"level\": 3}\npath.write_text(json.dumps(profile), encoding=\"utf-8\")\n\nwith path.open(encoding=\"utf-8\") as stream:\n    loaded = json.load(stream)\n\nprint(f\"Profil: {loaded['name']} | niveau {loaded['level']}\")\n","expectedOutput":"Profil: Nyx | niveau 3"}],
+  "quiz": [
+    {"code":"PYTHON-04-Q1","type":"SINGLE_CHOICE","prompt":"Quel avantage principal apporte with pour un fichier ?","choices":["La fermeture fiable de la ressource","La conversion automatique en Java","La suppression de toute validation"],"correctChoice":0,"expectedKeywords":[]},
+    {"code":"PYTHON-04-Q2","type":"FREE_TEXT","prompt":"Pourquoi faut-il valider les données après json.load ?","choices":[],"correctChoice":null,"expectedKeywords":["champs","type","métier","validation"]}
+  ],
+  "checklist": ["J'utilise explicitement UTF-8", "Je ferme les ressources avec with", "Je distingue JSON valide et donnée métier valide"]
+}

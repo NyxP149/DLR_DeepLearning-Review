@@ -1,6 +1,7 @@
 package com.dlr.catalog.web;
 
 import com.dlr.catalog.application.LabCatalog;
+import com.dlr.catalog.application.PathProgressService;
 import com.dlr.catalog.domain.LabContent;
 import com.dlr.catalog.domain.PathDescriptor;
 import com.dlr.shared.web.ResourceNotFoundException;
@@ -16,9 +17,11 @@ import java.util.List;
 public class LabController {
 
     private final LabCatalog labCatalog;
+    private final PathProgressService pathProgressService;
 
-    public LabController(LabCatalog labCatalog) {
+    public LabController(LabCatalog labCatalog, PathProgressService pathProgressService) {
         this.labCatalog = labCatalog;
+        this.pathProgressService = pathProgressService;
     }
 
     @GetMapping("/labs")
@@ -28,6 +31,11 @@ public class LabController {
 
     @GetMapping("/paths/catalog")
     public List<PathDescriptor> listPaths() { return labCatalog.findPaths(); }
+
+    @GetMapping("/paths/{code}/progress")
+    public PathProgressService.PathProgress pathProgress(@PathVariable String code) {
+        return pathProgressService.progress(code);
+    }
 
     @GetMapping("/labs/{code}")
     public LabDetailResponse getLab(@PathVariable String code) {
@@ -42,11 +50,14 @@ public class LabController {
             int number,
             String title,
             String difficulty,
-            int threshold
+            int threshold,
+            String activityType,
+            List<String> prerequisites
     ) {
         static LabSummaryResponse from(LabContent lab) {
             return new LabSummaryResponse(
-                    lab.code(), lab.language(), lab.number(), lab.title(), lab.difficulty(), lab.threshold());
+                    lab.code(), lab.language(), lab.number(), lab.title(), lab.difficulty(), lab.threshold(),
+                    lab.activityType(), lab.prerequisites());
         }
     }
 
@@ -58,6 +69,8 @@ public class LabController {
             String title,
             String difficulty,
             int threshold,
+            String activityType,
+            List<String> prerequisites,
             List<String> objectives,
             List<LabContent.LessonSection> sections,
             List<LabContent.KeyConcept> keyConcepts,
@@ -74,6 +87,8 @@ public class LabController {
                     lab.title(),
                     lab.difficulty(),
                     lab.threshold(),
+                    lab.activityType(),
+                    lab.prerequisites(),
                     lab.objectives(),
                     lab.sections(),
                     lab.keyConcepts(),

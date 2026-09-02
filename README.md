@@ -7,14 +7,17 @@ DLR est une application locale d'apprentissage de la programmation, avec évalua
 - API Spring Boot Java 21 ;
 - application Angular standalone en thème sombre ;
 - persistance PostgreSQL versionnée par Flyway ;
-- six laboratoires Java fondamentaux et trois tranches V2.5 exécutables (Python, TypeScript, Learn LLMs) ;
+- 124 activités disponibles : Java 24, Python 24, TypeScript 24, Spring Boot 12, Angular 10, SQL 10, Docker/CI-CD 8 et Learn LLMs 12 ;
 - parcours, laboratoire, éditeur Monaco, reprise de brouillon, quiz, checklist et import `.java` ;
 - exécution Docker isolée, assertions privées et score déterministe ;
 - tableau de bord, concepts clés, révisions espacées et planning ;
+- planning glissant : seule la prochaine activité est datée, après la fin effective de son prérequis ;
+- six thèmes professionnels persistants, avec palettes complètes et contraste contrôlé ;
 - profil local modifiable et professeur Ollama en mode explication, indice et correction qualitative ;
 - PWA installable avec cache du shell et brouillons locaux IndexedDB ;
 - documentation de conception et d'implémentation dans [`docs/`](docs/) ;
 - journal de développement dans [`docs/DLR_CodeReview.md`](docs/DLR_CodeReview.md).
+- guide de déploiement actuel et futur avec Neon et Render dans [`docs/DLR_Deploye.md`](docs/DLR_Deploye.md) ;
 - synchronisation V2 par appareils appairés, journal idempotent et conflits sans perte.
 - recommandations adaptatives expliquées, analytics d'autonomie et professeur Ollama à cinq rôles ;
 - portfolio privé avec aperçu Markdown, export ZIP GitHub-ready et filtrage des secrets ;
@@ -87,6 +90,38 @@ Les runners désactivent le réseau, utilisent un utilisateur non privilégié, 
 Le catalogue expose une première tranche verticale exécutable pour `PYTHON-01`, `TYPESCRIPT-01` et `LLM-01`. Learn LLMs dépend du parcours Python et réutilise son runner pour les expériences reproductibles hors réseau. Les nombres d'activités affichés dans les cartes sont les cibles finales ; la mention **Bêta** distingue clairement les premières activités déjà disponibles.
 
 Dans chaque laboratoire, un concept clé est associé à une section et apparaît avant le contenu concerné. L'éditeur Monaco adapte la coloration, l'import (`.java`, `.py`, `.ts`) et la requête d'exécution au langage du laboratoire.
+
+## Parcours V2.6 — Python professionnel
+
+Le parcours Python livre maintenant six étapes exécutables : `PYTHON-01` à `PYTHON-05`, puis le projet intermédiaire `PYTHON-06`. Les nouvelles activités couvrent fonctions et contrats, collections et compréhensions, fichiers JSON, dataclasses et pipeline de données.
+
+La route `GET /api/paths/PYTHON/progress` calcule une progression dédiée et le prochain laboratoire. Chaque étape dépend de la précédente ; une tentative ne peut être créée que lorsque ses prérequis sont validés. Un résultat sous le seuil ne débloque la suite que si l'apprenant confirme explicitement qu'il continue. L'interface expose les états disponible, en cours, action requise, terminé et verrouillé, avec le prérequis manquant.
+
+Chaque laboratoire propose aussi **Réinitialiser ce laboratoire**. Après confirmation, cette action efface uniquement ses tentatives, scores, exécutions, réponses, checklist, révisions et brouillon local. Le catalogue distingue désormais le contenu réellement disponible de la cible finale, par exemple `6 disponibles / 24 prévues` pour Python.
+
+Le prérequis de parcours Java reste recommandé dans le catalogue. La séquence exécutable Python commence à `PYTHON-01` afin de préserver les données et usages déjà créés avec la V2.5.
+
+## Parcours V2.7 — Java professionnel
+
+Le parcours Java livre maintenant 24 activités séquentielles : 22 laboratoires, le projet portfolio `JAVA-23` et le défi final `JAVA-24`. Il couvre les fondations, l'objet, les collections, les génériques, les Streams, les fichiers, les tests, SOLID, les patterns, la concurrence, JDBC, Spring Boot, les API REST, la persistance, la sécurité, la performance, l'observabilité et Docker.
+
+La route `GET /api/paths/JAVA/progress` expose les 24 états et le prérequis de chaque étape. Le catalogue affiche `24 disponibles / 24 prévues`, tandis que Python reste honnêtement indiqué à `6 / 24`. Les preuves Java sont également disponibles dans le portfolio et le tableau de bord débloque un badge professionnel après les 24 validations.
+
+Les programmes Java s'exécutent dans `/work`, un espace temporaire inscriptible du conteneur isolé. Cela permet les exercices sur les fichiers tout en conservant le réseau coupé, la racine en lecture seule et les limites de ressources.
+
+## Catalogue V3 — parcours professionnels étendus
+
+Les parcours professionnels disposent maintenant de leur progression complète : Python et TypeScript sur 24 activités, Spring Boot et Learn LLMs sur 12, Angular et SQL sur 10, Docker/CI-CD sur 8. Chaque séquence termine par un projet portfolio puis un défi final.
+
+La page **Mon parcours** charge les huit progressions mais n'affiche qu'une grille sélectionnée à la fois. Cette organisation maintient le DOM léger malgré les 124 contenus. Les cartes du catalogue servent de sélecteur et conservent les états disponible, en cours, verrouillé, projet et défi.
+
+### V3.1 — Learn LLMs et projets framework
+
+`LLM-01` à `LLM-12` couvrent prompts, échantillonnage, sorties structurées, évaluation, embeddings, chunking, recherche, RAG, sécurité, projet portfolio et défi final. Toutes les preuves restent reproductibles hors réseau dans le runner Python ; elles distinguent explicitement la simulation pédagogique d'un appel à un modèle réel.
+
+Deux workspaces multi-fichiers sont livrés dans `projects/` : une API Spring Boot testée par MockMvc et un dashboard Angular standalone strict. Ils matérialisent les projets `SPRING_BOOT-11/12` et `ANGULAR-09/10` au-delà de la preuve unifichier rapide présentée dans le laboratoire.
+
+Les preuves Spring Boot utilisent Java 21, les preuves Angular utilisent TypeScript strict, et les contrôles Docker/CI-CD utilisent Python. Les laboratoires SQL exécutent de vraies instructions SQL dans SQLite en mémoire afin de rester reproductibles et hors réseau ; les différences PostgreSQL sont explicitement indiquées dans les cours. Ces preuves unifichier valident les concepts et préparent les projets complets sans prétendre remplacer une application Spring ou Angular multi-fichiers.
 
 ## Sauvegarde locale
 

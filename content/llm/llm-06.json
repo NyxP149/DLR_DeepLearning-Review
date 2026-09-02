@@ -1,0 +1,85 @@
+{
+  "code": "LLM-06",
+  "language": "PYTHON",
+  "number": 6,
+  "slug": "embeddings-et-similarite-vectorielle",
+  "title": "Embeddings et similarité vectorielle",
+  "difficulty": "INTERMEDIAIRE",
+  "threshold": 70,
+  "activityType": "LAB",
+  "prerequisites": [
+    "LLM-05"
+  ],
+  "objectives": [
+    "Calculer une similarité locale et expliquer ses limites",
+    "Produire une expérience hors réseau reproductible",
+    "Documenter une limite et une métrique de contrôle"
+  ],
+  "sections": [
+    {
+      "title": "Concept et décision",
+      "content": "Embeddings et similarité vectorielle doit être évalué comme un composant logiciel : entrées explicites, sorties contrôlées, métriques et cas d’échec. Aucun appel à un service distant n’est nécessaire pour apprendre le mécanisme.",
+      "conceptCodes": [
+        "LLM-EMBEDDINGS"
+      ]
+    },
+    {
+      "title": "Expérience locale",
+      "content": "L’expérience isole le mécanisme LLM-EMBEDDINGS. Elle reste volontairement déterministe afin de distinguer un défaut de pipeline d’une variation propre aux modèles génératifs."
+    }
+  ],
+  "keyConcepts": [
+    {
+      "code": "LLM-EMBEDDINGS",
+      "name": "Embeddings et similarité vectorielle",
+      "definition": "Embeddings et similarité vectorielle est ici un contrat mesurable entre une entrée, une transformation et une preuve de sortie.",
+      "whyExists": "Les résultats d’un LLM sont probabilistes ; le système qui l’entoure doit rendre les hypothèses et contrôles explicites.",
+      "whyImportant": "Sans mesure, provenance et cas d’échec, une démonstration convaincante ne garantit pas un produit fiable.",
+      "minimalExample": "Le programme LLM-06 reproduit localement le mécanisme essentiel et affiche une preuve stable.",
+      "commonMistake": "Évaluer un seul exemple favorable ou confondre plausibilité et exactitude.",
+      "masteryQuestion": "Quelle métrique et quel cas d’échec utiliserais-tu pour embeddings et similarité vectorielle ?",
+      "masteryProof": "Exécuter la preuve, modifier une entrée et expliquer le résultat ainsi que la limite du modèle local."
+    }
+  ],
+  "exercises": [
+    {
+      "code": "LLM-06-E1",
+      "title": "Calculer une similarité locale et expliquer ses limites",
+      "statement": "Exécute l’expérience et conserve exactement la sortie attendue. Explique ensuite quelle partie serait remplacée par un modèle réel.",
+      "starterCode": "from math import sqrt\n\ndef cosine(a: list[float], b: list[float]) -> float:\n    dot = sum(x * y for x, y in zip(a, b))\n    return dot / (sqrt(sum(x*x for x in a)) * sqrt(sum(y*y for y in b)))\n\nprint(f\"Similarité: {cosine([1, 1, 0], [1, 0.5, 0]):.3f}\")\n",
+      "expectedOutput": "Similarité: 0.949"
+    }
+  ],
+  "quiz": [
+    {
+      "code": "LLM-06-Q1",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Quelle validation est la plus solide ?",
+      "choices": [
+        "Plusieurs cas reproductibles avec métriques et provenance",
+        "Une réponse qui semble correcte",
+        "Une démonstration sans jeu de test"
+      ],
+      "correctChoice": 0,
+      "expectedKeywords": []
+    },
+    {
+      "code": "LLM-06-Q2",
+      "type": "FREE_TEXT",
+      "prompt": "Nomme une limite et le contrôle associé.",
+      "choices": [],
+      "correctChoice": null,
+      "expectedKeywords": [
+        "limite",
+        "test",
+        "mesure"
+      ]
+    }
+  ],
+  "checklist": [
+    "Je sais expliquer le mécanisme",
+    "Je peux reproduire la preuve hors réseau",
+    "Je distingue simulation locale et modèle réel",
+    "Je peux nommer une métrique et un risque"
+  ]
+}

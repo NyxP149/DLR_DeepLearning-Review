@@ -1,0 +1,85 @@
+{
+  "code": "DEVOPS-02",
+  "language": "PYTHON",
+  "number": 2,
+  "slug": "compose-reseaux-volumes-et-sante",
+  "title": "Compose, réseaux, volumes et santé",
+  "difficulty": "BASE",
+  "threshold": 70,
+  "activityType": "LAB",
+  "prerequisites": [
+    "DEVOPS-01"
+  ],
+  "objectives": [
+    "Expliquer compose, réseaux, volumes et santé",
+    "Construire une preuve exécutable et déterministe",
+    "Relier le concept à une décision professionnelle"
+  ],
+  "sections": [
+    {
+      "title": "Concept et usage professionnel",
+      "content": "Compose, réseaux, volumes et santé répond à un besoin concret de maintenabilité, de sûreté ou de performance. Le laboratoire demande de rendre la décision observable et vérifiable.",
+      "conceptCodes": [
+        "DEVOPS-COMPOSE"
+      ]
+    },
+    {
+      "title": "Mise en pratique",
+      "content": "La preuve minimale est locale, déterministe et peut être enrichie sans changer le contrat attendu."
+    }
+  ],
+  "keyConcepts": [
+    {
+      "code": "DEVOPS-COMPOSE",
+      "name": "Compose, réseaux, volumes et santé",
+      "definition": "Compose, réseaux, volumes et santé est traité comme un contrat explicite dont le comportement peut être vérifié.",
+      "whyExists": "Il réduit les hypothèses implicites et rend le système plus simple à faire évoluer.",
+      "whyImportant": "En contexte professionnel, la preuve reproductible facilite la revue, le diagnostic et la maintenance.",
+      "minimalExample": "Une petite preuve DEVOPS-02 vérifie le cas nominal et expose une sortie stable.",
+      "commonMistake": "Appliquer la technique sans mesurer son effet ni documenter sa frontière.",
+      "masteryQuestion": "Quelle contrainte de compose, réseaux, volumes et santé doit rester vraie lorsque le système évolue ?",
+      "masteryProof": "Exécuter la preuve, expliquer son invariant et proposer un cas d’échec."
+    }
+  ],
+  "exercises": [
+    {
+      "code": "DEVOPS-02-E1",
+      "title": "Valider compose, réseaux, volumes et santé",
+      "statement": "Conserve l'invariant et produis exactement : DEVOPS-02: preuve validée",
+      "starterCode": "from dataclasses import dataclass\n\n@dataclass(frozen=True)\nclass DeliveryCheck:\n    control: str\n    passed: bool\n\ncheck = DeliveryCheck(\"DEVOPS-COMPOSE\", True)\nassert check.passed\nprint(\"DEVOPS-02: preuve validée\")\n",
+      "expectedOutput": "DEVOPS-02: preuve validée"
+    }
+  ],
+  "quiz": [
+    {
+      "code": "DEVOPS-02-Q1",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Quelle preuve est la plus utile en revue ?",
+      "choices": [
+        "Une exécution déterministe avec invariant explicite",
+        "Une sortie aléatoire",
+        "Une capture sans code"
+      ],
+      "correctChoice": 0,
+      "expectedKeywords": []
+    },
+    {
+      "code": "DEVOPS-02-Q2",
+      "type": "FREE_TEXT",
+      "prompt": "Explique une décision liée à compose, réseaux, volumes et santé.",
+      "choices": [],
+      "correctChoice": null,
+      "expectedKeywords": [
+        "contrat",
+        "preuve",
+        "test"
+      ]
+    }
+  ],
+  "checklist": [
+    "Je peux expliquer le concept sans réciter une définition",
+    "Je sais exécuter et modifier la preuve",
+    "Je peux nommer un risque et son contrôle",
+    "Je relie cette étape à la suivante"
+  ]
+}

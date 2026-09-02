@@ -1,0 +1,85 @@
+{
+  "code": "ANGULAR-09",
+  "language": "TYPESCRIPT",
+  "number": 9,
+  "slug": "projet-professionnel-dashboard-metier",
+  "title": "Projet professionnel : dashboard métier",
+  "difficulty": "PROJET",
+  "threshold": 80,
+  "activityType": "PROJECT",
+  "prerequisites": [
+    "ANGULAR-08"
+  ],
+  "objectives": [
+    "Expliquer projet professionnel : dashboard métier",
+    "Construire une preuve exécutable et déterministe",
+    "Relier le concept à une décision professionnelle"
+  ],
+  "sections": [
+    {
+      "title": "Concept et usage professionnel",
+      "content": "Projet professionnel : dashboard métier répond à un besoin concret de maintenabilité, de sûreté ou de performance. Le laboratoire demande de rendre la décision observable et vérifiable.",
+      "conceptCodes": [
+        "ANGULAR-PROJECT"
+      ]
+    },
+    {
+      "title": "Projet portfolio",
+      "content": "La preuve rapide isole le contrat réactif. Le workspace projects/angular-professional-dashboard fournit une vraie application Angular multi-fichiers : composant standalone, template, styles, service injectable et signals, validés par npm run build."
+    }
+  ],
+  "keyConcepts": [
+    {
+      "code": "ANGULAR-PROJECT",
+      "name": "Projet professionnel : dashboard métier",
+      "definition": "Projet professionnel : dashboard métier est traité comme un contrat explicite dont le comportement peut être vérifié.",
+      "whyExists": "Il réduit les hypothèses implicites et rend le système plus simple à faire évoluer.",
+      "whyImportant": "En contexte professionnel, la preuve reproductible facilite la revue, le diagnostic et la maintenance.",
+      "minimalExample": "Une petite preuve ANGULAR-09 vérifie le cas nominal et expose une sortie stable.",
+      "commonMistake": "Appliquer la technique sans mesurer son effet ni documenter sa frontière.",
+      "masteryQuestion": "Quelle contrainte de projet professionnel : dashboard métier doit rester vraie lorsque le système évolue ?",
+      "masteryProof": "Exécuter la preuve, expliquer son invariant et proposer un cas d’échec."
+    }
+  ],
+  "exercises": [
+    {
+      "code": "ANGULAR-09-E1",
+      "title": "Valider projet professionnel : dashboard métier",
+      "statement": "Conserve l'invariant et produis exactement : ANGULAR-09: preuve validée",
+      "starterCode": "type Evidence = Readonly<{ concept: string; validated: boolean }>;\nconst evidence: Evidence = { concept: 'ANGULAR-PROJECT', validated: true };\nif (!evidence.validated) throw new Error('preuve invalide');\nconsole.log('ANGULAR-09: preuve validée');\n",
+      "expectedOutput": "ANGULAR-09: preuve validée"
+    }
+  ],
+  "quiz": [
+    {
+      "code": "ANGULAR-09-Q1",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Quelle preuve est la plus utile en revue ?",
+      "choices": [
+        "Une exécution déterministe avec invariant explicite",
+        "Une sortie aléatoire",
+        "Une capture sans code"
+      ],
+      "correctChoice": 0,
+      "expectedKeywords": []
+    },
+    {
+      "code": "ANGULAR-09-Q2",
+      "type": "FREE_TEXT",
+      "prompt": "Explique une décision liée à projet professionnel : dashboard métier.",
+      "choices": [],
+      "correctChoice": null,
+      "expectedKeywords": [
+        "contrat",
+        "preuve",
+        "test"
+      ]
+    }
+  ],
+  "checklist": [
+    "Je peux expliquer le concept sans réciter une définition",
+    "Je sais exécuter et modifier la preuve",
+    "Je peux nommer un risque et son contrôle",
+    "Je peux présenter cette preuve dans mon portfolio"
+  ]
+}

@@ -1,0 +1,85 @@
+{
+  "code": "LLM-05",
+  "language": "PYTHON",
+  "number": 5,
+  "slug": "jeux-d-evaluation-et-metriques-utiles",
+  "title": "Jeux d’évaluation et métriques utiles",
+  "difficulty": "INTERMEDIAIRE",
+  "threshold": 70,
+  "activityType": "LAB",
+  "prerequisites": [
+    "LLM-04"
+  ],
+  "objectives": [
+    "Mesurer une stratégie sur plusieurs cas plutôt que sur une démonstration",
+    "Produire une expérience hors réseau reproductible",
+    "Documenter une limite et une métrique de contrôle"
+  ],
+  "sections": [
+    {
+      "title": "Concept et décision",
+      "content": "Jeux d’évaluation et métriques utiles doit être évalué comme un composant logiciel : entrées explicites, sorties contrôlées, métriques et cas d’échec. Aucun appel à un service distant n’est nécessaire pour apprendre le mécanisme.",
+      "conceptCodes": [
+        "LLM-EVALUATION"
+      ]
+    },
+    {
+      "title": "Expérience locale",
+      "content": "L’expérience isole le mécanisme LLM-EVALUATION. Elle reste volontairement déterministe afin de distinguer un défaut de pipeline d’une variation propre aux modèles génératifs."
+    }
+  ],
+  "keyConcepts": [
+    {
+      "code": "LLM-EVALUATION",
+      "name": "Jeux d’évaluation et métriques utiles",
+      "definition": "Jeux d’évaluation et métriques utiles est ici un contrat mesurable entre une entrée, une transformation et une preuve de sortie.",
+      "whyExists": "Les résultats d’un LLM sont probabilistes ; le système qui l’entoure doit rendre les hypothèses et contrôles explicites.",
+      "whyImportant": "Sans mesure, provenance et cas d’échec, une démonstration convaincante ne garantit pas un produit fiable.",
+      "minimalExample": "Le programme LLM-05 reproduit localement le mécanisme essentiel et affiche une preuve stable.",
+      "commonMistake": "Évaluer un seul exemple favorable ou confondre plausibilité et exactitude.",
+      "masteryQuestion": "Quelle métrique et quel cas d’échec utiliserais-tu pour jeux d’évaluation et métriques utiles ?",
+      "masteryProof": "Exécuter la preuve, modifier une entrée et expliquer le résultat ainsi que la limite du modèle local."
+    }
+  ],
+  "exercises": [
+    {
+      "code": "LLM-05-E1",
+      "title": "Mesurer une stratégie sur plusieurs cas plutôt que sur une démonstration",
+      "statement": "Exécute l’expérience et conserve exactement la sortie attendue. Explique ensuite quelle partie serait remplacée par un modèle réel.",
+      "starterCode": "cases = [(\"JVM\", \"JVM\"), (\"bytecode\", \"bytecode\"), (\"JDK\", \"JRE\")]\ncorrect = sum(expected == actual for expected, actual in cases)\nprint(f\"Exactitude: {correct}/{len(cases)}\")\nprint(f\"Taux: {correct / len(cases):.0%}\")\n",
+      "expectedOutput": "Exactitude: 2/3\nTaux: 67%"
+    }
+  ],
+  "quiz": [
+    {
+      "code": "LLM-05-Q1",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Quelle validation est la plus solide ?",
+      "choices": [
+        "Plusieurs cas reproductibles avec métriques et provenance",
+        "Une réponse qui semble correcte",
+        "Une démonstration sans jeu de test"
+      ],
+      "correctChoice": 0,
+      "expectedKeywords": []
+    },
+    {
+      "code": "LLM-05-Q2",
+      "type": "FREE_TEXT",
+      "prompt": "Nomme une limite et le contrôle associé.",
+      "choices": [],
+      "correctChoice": null,
+      "expectedKeywords": [
+        "limite",
+        "test",
+        "mesure"
+      ]
+    }
+  ],
+  "checklist": [
+    "Je sais expliquer le mécanisme",
+    "Je peux reproduire la preuve hors réseau",
+    "Je distingue simulation locale et modèle réel",
+    "Je peux nommer une métrique et un risque"
+  ]
+}

@@ -1,6 +1,6 @@
 {
   "code": "PYTHON-01", "language": "PYTHON", "number": 1, "slug": "python-depuis-java",
-  "title": "Python depuis Java : syntaxe, types et collections", "difficulty": "BASE", "threshold": 70,
+  "title": "Python depuis Java : syntaxe, types et collections", "difficulty": "BASE", "threshold": 70, "activityType": "LAB", "prerequisites": [],
   "objectives": ["Exécuter un programme Python isolé", "Comparer le typage dynamique au typage statique Java", "Écrire une fonction annotée et manipuler une liste"],
   "sections": [
     {"title": "Du script au résultat", "content": "Python exécute directement le module source. Les annotations de type documentent les intentions mais ne transforment pas Python en langage statiquement vérifié à l'exécution.", "conceptCodes": ["PYTHON-DYNAMIC-TYPING"]},

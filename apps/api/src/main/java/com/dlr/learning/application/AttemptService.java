@@ -1,6 +1,7 @@
 package com.dlr.learning.application;
 
 import com.dlr.catalog.application.LabCatalog;
+import com.dlr.catalog.application.PathProgressService;
 import com.dlr.learning.domain.Attempt;
 import com.dlr.learning.domain.AttemptStatus;
 import com.dlr.shared.web.ResourceNotFoundException;
@@ -19,24 +20,27 @@ public class AttemptService {
 
     private final LabCatalog labCatalog;
     private final AttemptRepository attemptRepository;
+    private final PathProgressService pathProgressService;
     private final Clock clock;
 
     @Autowired
-    public AttemptService(LabCatalog labCatalog, AttemptRepository attemptRepository) {
-        this(labCatalog, attemptRepository, Clock.systemUTC());
+    public AttemptService(LabCatalog labCatalog, AttemptRepository attemptRepository, PathProgressService pathProgressService) {
+        this(labCatalog, attemptRepository, pathProgressService, Clock.systemUTC());
     }
 
-    AttemptService(LabCatalog labCatalog, AttemptRepository attemptRepository, Clock clock) {
+    AttemptService(LabCatalog labCatalog, AttemptRepository attemptRepository, PathProgressService pathProgressService, Clock clock) {
         this.labCatalog = labCatalog;
         this.attemptRepository = attemptRepository;
+        this.pathProgressService = pathProgressService;
         this.clock = clock;
     }
 
     @Transactional
     public Attempt start(String labCode) {
-        labCatalog.findByCode(labCode)
+        var lab = labCatalog.findByCode(labCode)
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "LAB_NOT_FOUND", "Laboratoire introuvable : " + labCode));
+        pathProgressService.requireUnlocked(lab);
 
         Attempt attempt = new Attempt(
                 UUID.randomUUID(),

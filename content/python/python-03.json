@@ -1,0 +1,17 @@
+{
+  "code": "PYTHON-03", "language": "PYTHON", "number": 3, "slug": "collections-comprehensions",
+  "title": "Collections, compréhensions et transformations", "difficulty": "BASE", "threshold": 70,
+  "activityType": "LAB", "prerequisites": ["PYTHON-02"],
+  "objectives": ["Choisir entre liste, tuple, ensemble et dictionnaire", "Transformer des données avec une compréhension lisible", "Préserver les données sources"],
+  "sections": [
+    {"title":"Choisir par intention","content":"Une liste conserve un ordre et accepte les doublons ; un ensemble exprime l'unicité ; un dictionnaire associe des clés à des valeurs. Le choix communique une contrainte métier.","conceptCodes":["PYTHON-COLLECTION-SEMANTICS"]},
+    {"title":"Transformer sans masquer","content":"Une compréhension convient à une transformation courte. Lorsque les conditions ou effets deviennent complexes, une boucle nommée reste plus facile à relire et à tester."}
+  ],
+  "keyConcepts": [{"code":"PYTHON-COLLECTION-SEMANTICS","name":"Sémantique des collections","definition":"Chaque collection exprime des garanties différentes sur l'ordre, l'unicité et l'accès aux valeurs.","whyExists":"Les structures spécialisées rendent les intentions et certains algorithmes plus directs.","whyImportant":"Un mauvais choix peut introduire des doublons, perdre l'ordre attendu ou compliquer les recherches.","minimalExample":"unique_tags = {tag.lower() for tag in tags}","commonMistake":"Utiliser une compréhension imbriquée difficile à comprendre seulement pour réduire le nombre de lignes.","masteryQuestion":"Quand un ensemble est-il préférable à une liste ?","masteryProof":"Dédupliquer des valeurs puis expliquer la perte éventuelle d'ordre."}],
+  "exercises": [{"code":"PYTHON-03-E1","title":"Filtrer des membres actifs","statement":"Trie les noms actifs et affiche exactement : Actifs: Ada, Linus","starterCode":"members = [\n    {\"name\": \"Linus\", \"active\": True},\n    {\"name\": \"Grace\", \"active\": False},\n    {\"name\": \"Ada\", \"active\": True},\n]\n\nactive_names = sorted(member[\"name\"] for member in members if member[\"active\"] )\nprint(f\"Actifs: {', '.join(active_names)}\")\n","expectedOutput":"Actifs: Ada, Linus"}],
+  "quiz": [
+    {"code":"PYTHON-03-Q1","type":"SINGLE_CHOICE","prompt":"Quelle collection exprime naturellement l'unicité ?","choices":["set","list","tuple avec doublons"],"correctChoice":0,"expectedKeywords":[]},
+    {"code":"PYTHON-03-Q2","type":"FREE_TEXT","prompt":"Quand faut-il préférer une boucle à une compréhension ?","choices":[],"correctChoice":null,"expectedKeywords":["lisibilité","complexe","conditions"]}
+  ],
+  "checklist": ["Je choisis une collection selon ses garanties", "Je sais filtrer et transformer sans modifier la source", "Je privilégie la lisibilité à la concision"]
+}
