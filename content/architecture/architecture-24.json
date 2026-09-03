@@ -1,0 +1,89 @@
+{
+  "code": "ARCHITECTURE-24",
+  "language": "PYTHON",
+  "number": 24,
+  "slug": "defi-final-architecture-complete-sous-contraintes",
+  "title": "Défi final : architecture complète sous contraintes",
+  "difficulty": "DEFI",
+  "threshold": 90,
+  "activityType": "CHALLENGE",
+  "prerequisites": [
+    "ARCHITECTURE-23"
+  ],
+  "objectives": [
+    "Arbitrer coût, fiabilité, sécurité et délai puis défendre une architecture déployable",
+    "Justifier les compromis et nommer un risque opérationnel",
+    "Produire une preuve reproductible avant d’élargir la solution"
+  ],
+  "sections": [
+    {
+      "title": "Concept clé et décision",
+      "conceptCodes": [
+        "ARCHITECTURE-CHALLENGE"
+      ],
+      "content": "Défi final : architecture complète sous contraintes relie les besoins, le logiciel, les données et l’exploitation. Commence par les contraintes observables, trace les responsabilités, puis choisis la solution la plus simple qui respecte les invariants."
+    },
+    {
+      "title": "Défi de synthèse",
+      "content": "La preuve ARCHITECTURE-24 modélise une décision réelle sous forme déterministe. Elle ne remplace pas un déploiement complet : elle rend l’hypothèse testable avant l’intégration Spring Boot, Angular, PostgreSQL et Docker."
+    },
+    {
+      "title": "Revue professionnelle",
+      "content": "Documente le contexte, la décision, une option rejetée, les conséquences, le signal à surveiller et la condition qui imposerait de revoir le choix."
+    }
+  ],
+  "keyConcepts": [
+    {
+      "code": "ARCHITECTURE-CHALLENGE",
+      "name": "Défi final : architecture complète sous contraintes",
+      "definition": "Défi final : architecture complète sous contraintes est une décision de conception vérifiable qui relie une contrainte à des composants et à leurs responsabilités.",
+      "whyExists": "Une stack verticale échoue lorsque les frontières et les invariants restent implicites entre la base, le serveur, le client et le déploiement.",
+      "whyImportant": "Une décision explicite peut être testée, observée et révisée ; une préférence technique isolée ne le peut pas.",
+      "minimalExample": "Le programme ARCHITECTURE-24 réduit le problème à un modèle exécutable et à une sortie contrôlée.",
+      "commonMistake": "Choisir un outil avant d’identifier le besoin, la charge, le risque et le propriétaire de la donnée.",
+      "masteryQuestion": "Quel compromis, quel signal et quelle condition de réévaluation associes-tu à « Défi final : architecture complète sous contraintes » ?",
+      "masteryProof": "Exécuter la preuve, modifier une contrainte, expliquer le résultat et dessiner la place du composant dans la stack complète."
+    }
+  ],
+  "exercises": [
+    {
+      "code": "ARCHITECTURE-24-E1",
+      "title": "Arbitrer coût, fiabilité, sécurité et délai puis défendre une architecture déployable",
+      "statement": "Exécute la preuve, conserve la sortie attendue, puis explique la décision, une alternative et le signal de production qui validerait ton choix.",
+      "starterCode": "options = {\n    \"monolithe_modulaire\": {\"delivery\": 5, \"reliability\": 4, \"cost\": 5},\n    \"microservices\": {\"delivery\": 2, \"reliability\": 3, \"cost\": 2},\n}\nweights = {\"delivery\": 3, \"reliability\": 2, \"cost\": 2}\nscores = {name: sum(values[key] * weights[key] for key in weights) for name, values in options.items()}\nchoice = max(scores, key=scores.get)\nprint(\"Décision:\", choice)\nprint(\"Score:\", scores[choice])\nprint(\"Condition de réévaluation: limites mesurées\")\n",
+      "expectedOutput": "Décision: monolithe_modulaire\nScore: 33\nCondition de réévaluation: limites mesurées"
+    }
+  ],
+  "quiz": [
+    {
+      "code": "ARCHITECTURE-24-Q1",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Quelle démarche produit la décision la plus robuste ?",
+      "choices": [
+        "Relier contraintes, responsabilités, preuve et observabilité",
+        "Choisir la technologie la plus populaire",
+        "Ajouter des services avant de mesurer"
+      ],
+      "correctChoice": 0,
+      "expectedKeywords": []
+    },
+    {
+      "code": "ARCHITECTURE-24-Q2",
+      "type": "FREE_TEXT",
+      "prompt": "Nomme un compromis et le signal qui permettrait de le réévaluer.",
+      "choices": [],
+      "correctChoice": null,
+      "expectedKeywords": [
+        "compromis",
+        "mesure",
+        "risque"
+      ]
+    }
+  ],
+  "checklist": [
+    "Je peux dessiner la circulation de la donnée",
+    "Je sais nommer les responsabilités de chaque couche",
+    "Je justifie une alternative rejetée",
+    "Je définis une mesure et une condition de réévaluation"
+  ]
+}

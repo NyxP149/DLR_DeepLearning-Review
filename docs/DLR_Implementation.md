@@ -1028,3 +1028,13 @@ Les trois secrets Neon (`DLR_DB_URL`, `DLR_DB_USER` et `DLR_DB_PASSWORD`) resten
 Angular charge `runtime-config.js` avant le bundle principal. Ce fichier fournit l'URL de l'API, l'environnement et la disponibilité du runner au moment du déploiement, sans reconstruire le code source. Le service worker récupère cette configuration en priorité sur le réseau pour éviter de conserver une ancienne URL après une mise à jour.
 
 L'image API utilise une construction Maven/Java 21 multi-étapes et un utilisateur final non privilégié. Le runner Docker local reste actif en développement. Sur le premier déploiement Render, il est remplacé par un runner désactivé explicite : l'API répond `503 EXECUTION_UNAVAILABLE` et le laboratoire affiche un bandeau clair tout en conservant la lecture et les brouillons. Le futur runner isolé et ses options d'hébergement sont décrits dans `DLR_Deploye.md`.
+
+## V3.5 — Parcours Architecture Système
+
+Le neuvième parcours ajoute 24 activités sous le préfixe `ARCHITECTURE-`. Il constitue la synthèse des parcours Spring Boot, Angular, SQL et Docker/CI-CD, affichés comme prérequis recommandés dans le catalogue. La première activité reste accessible pour permettre de commencer la pensée système, puis chaque activité dépend de la précédente. Flyway V17 crée le parcours en position 9 et ses 24 lignes sans modifier les tentatives existantes.
+
+La progression alterne deux directions de conception. Le mouvement top-down transforme besoins, parcours et contraintes en contrats, responsabilités et critères d'acceptation. Le mouvement bottom-up part des invariants de données, puis remonte vers repository, services, API, interface, conteneurs et déploiement. Les sujets avancés couvrent identité, transactions, stratégie de tests, monolithe modulaire, budgets de performance, cache, événements, stockage objet, observabilité, défense en profondeur, reprise et scalabilité.
+
+Les activités 7 et 14 sont des projets intermédiaires ; l'activité 23 est le projet professionnel multi-services et l'activité 24 est un défi à 90 %. Chaque laboratoire contient une décision, une alternative, un risque, un signal de production et une condition de réévaluation. Les preuves Python restent petites et déterministes afin d'évaluer le raisonnement architectural dans le runner existant, tandis que les consignes replacent explicitement chaque preuve dans la stack Spring Boot, Angular, PostgreSQL et Docker.
+
+Le catalogue, la progression, le planning, le laboratoire, le portfolio et le compteur global prennent en charge le nouveau parcours. Le catalogue expose désormais 148 contenus et neuf progressions.

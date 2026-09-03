@@ -1,0 +1,89 @@
+{
+  "code": "ARCHITECTURE-23",
+  "language": "PYTHON",
+  "number": 23,
+  "slug": "projet-professionnel-plateforme-multi-services-observable",
+  "title": "Projet professionnel : plateforme multi-services observable",
+  "difficulty": "PROJET",
+  "threshold": 85,
+  "activityType": "PROJECT",
+  "prerequisites": [
+    "ARCHITECTURE-22"
+  ],
+  "objectives": [
+    "Concevoir une plateforme avec frontières métier, événements, observabilité et déploiement progressif",
+    "Justifier les compromis et nommer un risque opérationnel",
+    "Produire une preuve reproductible avant d’élargir la solution"
+  ],
+  "sections": [
+    {
+      "title": "Concept clé et décision",
+      "conceptCodes": [
+        "DISTRIBUTED-PROJECT"
+      ],
+      "content": "Projet professionnel : plateforme multi-services observable relie les besoins, le logiciel, les données et l’exploitation. Commence par les contraintes observables, trace les responsabilités, puis choisis la solution la plus simple qui respecte les invariants."
+    },
+    {
+      "title": "Projet d’architecture",
+      "content": "La preuve ARCHITECTURE-23 modélise une décision réelle sous forme déterministe. Elle ne remplace pas un déploiement complet : elle rend l’hypothèse testable avant l’intégration Spring Boot, Angular, PostgreSQL et Docker."
+    },
+    {
+      "title": "Revue professionnelle",
+      "content": "Documente le contexte, la décision, une option rejetée, les conséquences, le signal à surveiller et la condition qui imposerait de revoir le choix."
+    }
+  ],
+  "keyConcepts": [
+    {
+      "code": "DISTRIBUTED-PROJECT",
+      "name": "Projet professionnel : plateforme multi-services observable",
+      "definition": "Projet professionnel : plateforme multi-services observable est une décision de conception vérifiable qui relie une contrainte à des composants et à leurs responsabilités.",
+      "whyExists": "Une stack verticale échoue lorsque les frontières et les invariants restent implicites entre la base, le serveur, le client et le déploiement.",
+      "whyImportant": "Une décision explicite peut être testée, observée et révisée ; une préférence technique isolée ne le peut pas.",
+      "minimalExample": "Le programme ARCHITECTURE-23 réduit le problème à un modèle exécutable et à une sortie contrôlée.",
+      "commonMistake": "Choisir un outil avant d’identifier le besoin, la charge, le risque et le propriétaire de la donnée.",
+      "masteryQuestion": "Quel compromis, quel signal et quelle condition de réévaluation associes-tu à « Projet professionnel : plateforme multi-services observable » ?",
+      "masteryProof": "Exécuter la preuve, modifier une contrainte, expliquer le résultat et dessiner la place du composant dans la stack complète."
+    }
+  ],
+  "exercises": [
+    {
+      "code": "ARCHITECTURE-23-E1",
+      "title": "Concevoir une plateforme avec frontières métier, événements, observabilité et déploiement progressif",
+      "statement": "Exécute la preuve, conserve la sortie attendue, puis explique la décision, une alternative et le signal de production qui validerait ton choix.",
+      "starterCode": "services = {\"gateway\": \"healthy\", \"orders\": \"healthy\", \"billing\": \"degraded\"}\nrelease = {\"version\": \"2.0\", \"traffic_percent\": 10}\nready = all(state == \"healthy\" for state in services.values())\nprint(\"Canary:\", release[\"traffic_percent\"], \"%\")\nprint(\"Promotion:\", \"GO\" if ready else \"STOP\")\nprint(\"Service à traiter:\", next(name for name, state in services.items() if state != \"healthy\"))\n",
+      "expectedOutput": "Canary: 10 %\nPromotion: STOP\nService à traiter: billing"
+    }
+  ],
+  "quiz": [
+    {
+      "code": "ARCHITECTURE-23-Q1",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Quelle démarche produit la décision la plus robuste ?",
+      "choices": [
+        "Relier contraintes, responsabilités, preuve et observabilité",
+        "Choisir la technologie la plus populaire",
+        "Ajouter des services avant de mesurer"
+      ],
+      "correctChoice": 0,
+      "expectedKeywords": []
+    },
+    {
+      "code": "ARCHITECTURE-23-Q2",
+      "type": "FREE_TEXT",
+      "prompt": "Nomme un compromis et le signal qui permettrait de le réévaluer.",
+      "choices": [],
+      "correctChoice": null,
+      "expectedKeywords": [
+        "compromis",
+        "mesure",
+        "risque"
+      ]
+    }
+  ],
+  "checklist": [
+    "Je peux dessiner la circulation de la donnée",
+    "Je sais nommer les responsabilités de chaque couche",
+    "Je justifie une alternative rejetée",
+    "Je définis une mesure et une condition de réévaluation"
+  ]
+}

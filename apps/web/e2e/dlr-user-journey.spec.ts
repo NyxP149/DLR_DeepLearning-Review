@@ -15,6 +15,15 @@ test('catalogue complet puis ouverture du parcours Learn LLMs', async ({ page, r
   await expect(page.getByText('LLM-12', { exact: false })).toBeVisible();
 });
 
+test('catalogue Architecture Système avec projets et défi final', async ({ page }) => {
+  await page.goto('/paths');
+  const architectureCard = page.getByRole('button', { name: /Architecture Système/ });
+  await expect(architectureCard.getByText('24 disponibles / 24 prévues')).toBeVisible();
+  await architectureCard.click();
+  await expect(page.getByLabel('Progression ARCHITECTURE').getByRole('heading', { name: 'Architecture Système' })).toBeVisible();
+  await expect(page.getByLabel('Activités du parcours ARCHITECTURE').getByText('ARCHITECTURE-24 · VERROUILLÉ')).toBeVisible();
+});
+
 test('un laboratoire expose concept, runner et réinitialisation', async ({ page }) => {
   await page.goto('/labs/LLM-01');
   await expect(page.getByRole('heading', { name: /prompt, tokens et sortie contrôlée/i })).toBeVisible();

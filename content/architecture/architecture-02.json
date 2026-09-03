@@ -1,0 +1,89 @@
+{
+  "code": "ARCHITECTURE-02",
+  "language": "PYTHON",
+  "number": 2,
+  "slug": "top-down-du-besoin-utilisateur-aux-contrats",
+  "title": "Top-down : du besoin utilisateur aux contrats",
+  "difficulty": "BASE",
+  "threshold": 70,
+  "activityType": "LAB",
+  "prerequisites": [
+    "ARCHITECTURE-01"
+  ],
+  "objectives": [
+    "Transformer un parcours utilisateur en capacités, endpoints et critères vérifiables",
+    "Justifier les compromis et nommer un risque opérationnel",
+    "Produire une preuve reproductible avant d’élargir la solution"
+  ],
+  "sections": [
+    {
+      "title": "Concept clé et décision",
+      "conceptCodes": [
+        "TOP-DOWN-DESIGN"
+      ],
+      "content": "Top-down : du besoin utilisateur aux contrats relie les besoins, le logiciel, les données et l’exploitation. Commence par les contraintes observables, trace les responsabilités, puis choisis la solution la plus simple qui respecte les invariants."
+    },
+    {
+      "title": "Construction verticale",
+      "content": "La preuve ARCHITECTURE-02 modélise une décision réelle sous forme déterministe. Elle ne remplace pas un déploiement complet : elle rend l’hypothèse testable avant l’intégration Spring Boot, Angular, PostgreSQL et Docker."
+    },
+    {
+      "title": "Revue professionnelle",
+      "content": "Documente le contexte, la décision, une option rejetée, les conséquences, le signal à surveiller et la condition qui imposerait de revoir le choix."
+    }
+  ],
+  "keyConcepts": [
+    {
+      "code": "TOP-DOWN-DESIGN",
+      "name": "Top-down : du besoin utilisateur aux contrats",
+      "definition": "Top-down : du besoin utilisateur aux contrats est une décision de conception vérifiable qui relie une contrainte à des composants et à leurs responsabilités.",
+      "whyExists": "Une stack verticale échoue lorsque les frontières et les invariants restent implicites entre la base, le serveur, le client et le déploiement.",
+      "whyImportant": "Une décision explicite peut être testée, observée et révisée ; une préférence technique isolée ne le peut pas.",
+      "minimalExample": "Le programme ARCHITECTURE-02 réduit le problème à un modèle exécutable et à une sortie contrôlée.",
+      "commonMistake": "Choisir un outil avant d’identifier le besoin, la charge, le risque et le propriétaire de la donnée.",
+      "masteryQuestion": "Quel compromis, quel signal et quelle condition de réévaluation associes-tu à « Top-down : du besoin utilisateur aux contrats » ?",
+      "masteryProof": "Exécuter la preuve, modifier une contrainte, expliquer le résultat et dessiner la place du composant dans la stack complète."
+    }
+  ],
+  "exercises": [
+    {
+      "code": "ARCHITECTURE-02-E1",
+      "title": "Transformer un parcours utilisateur en capacités, endpoints et critères vérifiables",
+      "statement": "Exécute la preuve, conserve la sortie attendue, puis explique la décision, une alternative et le signal de production qui validerait ton choix.",
+      "starterCode": "story = \"Créer une commande\"\ncontract = {\"method\": \"POST\", \"path\": \"/orders\", \"success\": 201}\nprint(\"Besoin:\", story)\nprint(f\"Contrat: {contract['method']} {contract['path']} -> {contract['success']}\")\n",
+      "expectedOutput": "Besoin: Créer une commande\nContrat: POST /orders -> 201"
+    }
+  ],
+  "quiz": [
+    {
+      "code": "ARCHITECTURE-02-Q1",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Quelle démarche produit la décision la plus robuste ?",
+      "choices": [
+        "Relier contraintes, responsabilités, preuve et observabilité",
+        "Choisir la technologie la plus populaire",
+        "Ajouter des services avant de mesurer"
+      ],
+      "correctChoice": 0,
+      "expectedKeywords": []
+    },
+    {
+      "code": "ARCHITECTURE-02-Q2",
+      "type": "FREE_TEXT",
+      "prompt": "Nomme un compromis et le signal qui permettrait de le réévaluer.",
+      "choices": [],
+      "correctChoice": null,
+      "expectedKeywords": [
+        "compromis",
+        "mesure",
+        "risque"
+      ]
+    }
+  ],
+  "checklist": [
+    "Je peux dessiner la circulation de la donnée",
+    "Je sais nommer les responsabilités de chaque couche",
+    "Je justifie une alternative rejetée",
+    "Je définis une mesure et une condition de réévaluation"
+  ]
+}

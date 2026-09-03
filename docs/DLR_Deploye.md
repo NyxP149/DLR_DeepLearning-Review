@@ -281,8 +281,8 @@ Après modification, redéploie ou redémarre l'API puis recharge le frontend. D
 Valide les points suivants dans cet ordre :
 
 - [ ] `/actuator/health` répond `UP` ;
-- [ ] le catalogue affiche les huit parcours ;
-- [ ] les 124 activités sont présentes ;
+- [ ] le catalogue affiche les neuf parcours ;
+- [ ] les 148 activités sont présentes ;
 - [ ] une modification du profil persiste après actualisation ;
 - [ ] le planning charge ses données ;
 - [ ] les six thèmes restent sélectionnés après actualisation ;

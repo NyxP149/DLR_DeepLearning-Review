@@ -1096,3 +1096,29 @@ Ce fichier conserve l'historique des modifications, décisions techniques, bugs 
 - Image `dlr/api-render:test` construite réellement par Docker Desktop.
 - Conteneur vérifié sous `uid=10001(dlr)` avec JAR lisible.
 - Playwright Chromium : 6 scénarios réussis, y compris routes, planning, contrastes des six thèmes et mode cloud sans Runner.
+
+## 2026-09-03 — V3.5 : parcours Architecture Système
+
+### Modifications
+
+- Ajout de 24 contenus `ARCHITECTURE-01` à `ARCHITECTURE-24`, générés depuis une source structurée dédiée.
+- Ajout de Flyway V17 et du neuvième parcours `ARCHITECTURE` en position 9.
+- Prérequis de parcours recommandant Spring Boot, Angular, SQL et Docker/CI-CD, puis chaîne séquentielle interne dès la première activité.
+- Deux projets intermédiaires aux étapes 7 et 14, projet professionnel multi-services à l'étape 23 et défi final à 90 % à l'étape 24.
+- Ajout du parcours aux pages Catalogue, Planning, Laboratoire et Portfolio ; compteur global porté à 148.
+- Correction annexe du Portfolio : les preuves `LLM-02` à `LLM-12`, auparavant absentes du sélecteur frontend, sont maintenant disponibles.
+
+### Risques traités
+
+- **Architecture réduite à des mots-clés :** chaque contenu exige une décision, une alternative rejetée, un risque, une mesure et une condition de réévaluation.
+- **Dépendance à une infrastructure cloud pour apprendre :** les preuves Python modélisent localement les arbitrages et produisent des sorties reproductibles ; le texte distingue systématiquement modèle pédagogique et production réelle.
+- **Progression déconnectée des acquis :** le catalogue rend visibles les quatre parcours techniques recommandés et les projets réemploient explicitement la stack verticale complète, sans interdire l'accès au premier cours d'architecture.
+
+### Validation
+
+- 24 fichiers JSON générés et 24 lignes cohérentes dans Flyway V17.
+- API réelle PostgreSQL : 148 contenus, 24 étapes Architecture, `ARCHITECTURE-01` disponible et défi final correctement typé.
+- Suite backend : 54 tests détectés, 45 réussis, 9 scénarios Docker optionnels ignorés, 0 échec.
+- Les 24 starters Architecture ont été exécutés séparément dans le runner Docker Python isolé : 24 sorties exactes, 0 échec.
+- Build Angular de production réussi, bundle initial 273,36 kB ; seul l'avertissement facultatif `lmdb` subsiste.
+- Playwright Chromium : 7 scénarios réussis, dont compteur, sélection, progression et défi final Architecture.

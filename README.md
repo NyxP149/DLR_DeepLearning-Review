@@ -7,7 +7,7 @@ DLR est une application locale d'apprentissage de la programmation, avec évalua
 - API Spring Boot Java 21 ;
 - application Angular standalone en thème sombre ;
 - persistance PostgreSQL versionnée par Flyway ;
-- 124 activités disponibles : Java 24, Python 24, TypeScript 24, Spring Boot 12, Angular 10, SQL 10, Docker/CI-CD 8 et Learn LLMs 12 ;
+- 148 activités disponibles : Java 24, Python 24, TypeScript 24, Spring Boot 12, Angular 10, SQL 10, Docker/CI-CD 8, Learn LLMs 12 et Architecture Système 24 ;
 - parcours, laboratoire, éditeur Monaco, reprise de brouillon, quiz, checklist et import `.java` ;
 - exécution Docker isolée, assertions privées et score déterministe ;
 - tableau de bord, concepts clés, révisions espacées et planning ;
@@ -22,7 +22,7 @@ DLR est une application locale d'apprentissage de la programmation, avec évalua
 - synchronisation V2 par appareils appairés, journal idempotent et conflits sans perte.
 - recommandations adaptatives expliquées, analytics d'autonomie et professeur Ollama à cinq rôles ;
 - portfolio privé avec aperçu Markdown, export ZIP GitHub-ready et filtrage des secrets ;
-- catalogue V2 extensible avec Java stable, Python/TypeScript/Learn LLMs en bêta et Spring Boot, Angular, SQL et DevOps planifiés.
+- catalogue extensible avec neuf parcours complets, projets portfolio et défis de synthèse.
 
 ## Structure
 
@@ -116,7 +116,7 @@ Les programmes Java s'exécutent dans `/work`, un espace temporaire inscriptible
 
 Les parcours professionnels disposent maintenant de leur progression complète : Python et TypeScript sur 24 activités, Spring Boot et Learn LLMs sur 12, Angular et SQL sur 10, Docker/CI-CD sur 8. Chaque séquence termine par un projet portfolio puis un défi final.
 
-La page **Mon parcours** charge les huit progressions mais n'affiche qu'une grille sélectionnée à la fois. Cette organisation maintient le DOM léger malgré les 124 contenus. Les cartes du catalogue servent de sélecteur et conservent les états disponible, en cours, verrouillé, projet et défi.
+La page **Mon parcours** charge les neuf progressions mais n'affiche qu'une grille sélectionnée à la fois. Cette organisation maintient le DOM léger malgré les 148 contenus. Les cartes du catalogue servent de sélecteur et conservent les états disponible, en cours, verrouillé, projet et défi.
 
 ### V3.1 — Learn LLMs et projets framework
 
@@ -125,6 +125,12 @@ La page **Mon parcours** charge les huit progressions mais n'affiche qu'une gril
 Deux workspaces multi-fichiers sont livrés dans `projects/` : une API Spring Boot testée par MockMvc et un dashboard Angular standalone strict. Ils matérialisent les projets `SPRING_BOOT-11/12` et `ANGULAR-09/10` au-delà de la preuve unifichier rapide présentée dans le laboratoire.
 
 Les preuves Spring Boot utilisent Java 21, les preuves Angular utilisent TypeScript strict, et les contrôles Docker/CI-CD utilisent Python. Les laboratoires SQL exécutent de vraies instructions SQL dans SQLite en mémoire afin de rester reproductibles et hors réseau ; les différences PostgreSQL sont explicitement indiquées dans les cours. Ces preuves unifichier valident les concepts et préparent les projets complets sans prétendre remplacer une application Spring ou Angular multi-fichiers.
+
+## Parcours Architecture Système
+
+`ARCHITECTURE-01` à `ARCHITECTURE-24` forment le parcours culminant de DLR. La séquence apprend à construire une application **top-down**, depuis le besoin et les contrats, puis **bottom-up**, depuis les invariants PostgreSQL jusqu'à l'interface et au déploiement. Elle couvre choix de stack, API, sécurité, transactions, tests, Docker, configuration, modularité, cache, événements, fichiers, observabilité, résilience et scalabilité.
+
+Trois projets jalonnent la progression : une tranche CRUD verticale (`ARCHITECTURE-07`), un système modulaire sécurisé (`ARCHITECTURE-14`) et une plateforme multi-services observable (`ARCHITECTURE-23`). `ARCHITECTURE-24` impose un arbitrage final sous contraintes de coût, délai, fiabilité et sécurité. Les modèles exécutables utilisent Python pour rendre les décisions déterministes ; les productions attendues réemploient Spring Boot, Angular, SQL et Docker.
 
 ## Sauvegarde locale
 

@@ -62,5 +62,16 @@
     "keyConcepts": ["conteneurs", "réseaux", "pipelines", "sécurité"], "activityTypes": ["LAB", "PROJECT", "CHALLENGE"],
     "executionEnvironment": "docker-isolated", "assessmentStrategy": "Contrôles de configuration et scénarios d'incident",
     "project": "Pipeline de livraison", "challenge": "Diagnostiquer une panne de production simulée", "portfolioSkills": ["Docker", "CI/CD", "exploitation"], "expectedActivityCount": 8
+  },
+  {
+    "code": "ARCHITECTURE", "title": "Architecture Système", "status": "AVAILABLE",
+    "professionalObjectives": ["Projeter, construire et déployer des applications complètes du besoin à l’infrastructure"],
+    "prerequisites": ["SPRING_BOOT", "ANGULAR", "SQL", "DEVOPS"],
+    "keyConcepts": ["top-down", "bottom-up", "stack verticale", "contrats", "sécurité", "résilience", "scalabilité"],
+    "activityTypes": ["LAB", "PROJECT", "CHALLENGE"], "executionEnvironment": "docker-python-3.13",
+    "assessmentStrategy": "Décisions argumentées, modèles exécutables, projets verticaux et défi sous contraintes",
+    "project": "Plateforme multi-services observable", "challenge": "Concevoir une architecture complète sous contraintes",
+    "portfolioSkills": ["architecture système", "full-stack", "PostgreSQL", "API", "sécurité", "cloud"],
+    "expectedActivityCount": 24
   }
 ]

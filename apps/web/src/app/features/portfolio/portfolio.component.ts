@@ -47,7 +47,8 @@ export class PortfolioComponent {
     ...Array.from({ length: 10 }, (_, index) => `ANGULAR-${String(index + 1).padStart(2, '0')}`),
     ...Array.from({ length: 10 }, (_, index) => `SQL-${String(index + 1).padStart(2, '0')}`),
     ...Array.from({ length: 8 }, (_, index) => `DEVOPS-${String(index + 1).padStart(2, '0')}`),
-    'LLM-01'
+    ...Array.from({ length: 12 }, (_, index) => `LLM-${String(index + 1).padStart(2, '0')}`),
+    ...Array.from({ length: 24 }, (_, index) => `ARCHITECTURE-${String(index + 1).padStart(2, '0')}`)
   ];
   readonly title = signal('Fondamentaux Java');
   readonly summary = signal('Un parcours pratique démontrant les bases de Java, de la JVM et du code maintenable.');

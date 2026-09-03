@@ -44,7 +44,7 @@ class LabControllerTest {
     void exposesAllCompletedProfessionalPaths() throws Exception {
         mockMvc.perform(get("/api/labs"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.length()").value(124))
+                .andExpect(jsonPath("$.length()").value(148))
                 .andExpect(jsonPath("$[?(@.code == 'JAVA-23' && @.activityType == 'PROJECT')]").exists())
                 .andExpect(jsonPath("$[?(@.code == 'JAVA-24' && @.activityType == 'CHALLENGE')]").exists())
                 .andExpect(jsonPath("$[?(@.code == 'PYTHON-01')]").exists())
@@ -54,6 +54,8 @@ class LabControllerTest {
                 .andExpect(jsonPath("$[?(@.code == 'ANGULAR-10' && @.activityType == 'CHALLENGE')]").exists())
                 .andExpect(jsonPath("$[?(@.code == 'SQL-10' && @.activityType == 'CHALLENGE')]").exists())
                 .andExpect(jsonPath("$[?(@.code == 'DEVOPS-08' && @.activityType == 'CHALLENGE')]").exists())
+                .andExpect(jsonPath("$[?(@.code == 'ARCHITECTURE-07' && @.activityType == 'PROJECT')]").exists())
+                .andExpect(jsonPath("$[?(@.code == 'ARCHITECTURE-24' && @.activityType == 'CHALLENGE')]").exists())
                 .andExpect(jsonPath("$[?(@.code == 'LLM-01')]").exists());
     }
 
@@ -86,19 +88,32 @@ class LabControllerTest {
         assertPath("ANGULAR", 10);
         assertPath("SQL", 10);
         assertPath("DEVOPS", 8);
+        assertPath("ARCHITECTURE", 24);
+    }
+
+    @Test
+    void startsArchitectureWithAnAccessibleTopDownBottomUpSequence() throws Exception {
+        mockMvc.perform(get("/api/paths/ARCHITECTURE/progress"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.nextLabCode").value("ARCHITECTURE-01"))
+                .andExpect(jsonPath("$.labs[0].state").value("AVAILABLE"))
+                .andExpect(jsonPath("$.labs[0].prerequisites").isEmpty())
+                .andExpect(jsonPath("$.labs[1].prerequisites[0]").value("ARCHITECTURE-01"));
     }
 
     @Test
     void exposesExtensibleProfessionalPathDescriptors() throws Exception {
         mockMvc.perform(get("/api/paths/catalog"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.length()").value(8))
+                .andExpect(jsonPath("$.length()").value(9))
                 .andExpect(jsonPath("$[0].code").value("JAVA"))
                 .andExpect(jsonPath("$[1].code").value("PYTHON"))
                 .andExpect(jsonPath("$[2].code").value("TYPESCRIPT"))
                 .andExpect(jsonPath("$[3].code").value("LEARN_LLM"))
                 .andExpect(jsonPath("$[3].prerequisites[0]").value("PYTHON"))
-                .andExpect(jsonPath("$[3].portfolioSkills.length()").isNotEmpty());
+                .andExpect(jsonPath("$[3].portfolioSkills.length()").isNotEmpty())
+                .andExpect(jsonPath("$[8].code").value("ARCHITECTURE"))
+                .andExpect(jsonPath("$[8].expectedActivityCount").value(24));
     }
 
     private void assertPath(String code, int total) throws Exception {

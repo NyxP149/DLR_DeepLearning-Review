@@ -26,6 +26,7 @@ class ExpandedContentRunnerIntegrationTest {
             "ANGULAR-", 10,
             "SQL-", 10,
             "DEVOPS-", 8,
+            "ARCHITECTURE-", 24,
             "LLM-", 12);
 
     @Autowired private CodeRunner runner;

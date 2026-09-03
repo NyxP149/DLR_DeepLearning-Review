@@ -73,6 +73,7 @@ export class LabWorkspaceComponent {
     if (code.startsWith('TYPESCRIPT-')) return 'TYPESCRIPT';
     if (code.startsWith('ANGULAR-')) return 'ANGULAR';
     if (code.startsWith('DEVOPS-')) return 'DOCKER & CI/CD';
+    if (code.startsWith('ARCHITECTURE-')) return 'ARCHITECTURE SYSTÈME';
     if (code.startsWith('SQL-')) return 'SQL';
     if (code.startsWith('PYTHON-')) return 'PYTHON';
     if (code.startsWith('LLM-')) return 'LEARN LLMS';
