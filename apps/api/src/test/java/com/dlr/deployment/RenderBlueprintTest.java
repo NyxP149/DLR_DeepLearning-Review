@@ -35,6 +35,16 @@ class RenderBlueprintTest {
         Map<String, Object> web = services.get(1);
         assertThat(web.get("runtime")).isEqualTo("static");
         assertThat(web.get("staticPublishPath")).isEqualTo("./dist/dlr-web/browser");
+
+        List<Map<String, Object>> webVariables = (List<Map<String, Object>>) web.get("envVars");
+        assertThat(webVariables).anySatisfy(variable -> {
+            assertThat(variable.get("key")).isEqualTo("DLR_HYBRID_API_BASE_URL");
+            assertThat(variable.get("sync")).isEqualTo(false);
+        });
+        assertThat(webVariables).anySatisfy(variable -> {
+            assertThat(variable.get("key")).isEqualTo("DLR_EXECUTION_AVAILABLE");
+            assertThat(variable.get("value")).isEqualTo("true");
+        });
     }
 }
 

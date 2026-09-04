@@ -247,7 +247,7 @@ public class DockerJavaRunner implements CodeRunner {
         return current + System.lineSeparator() + extra;
     }
 
-    private static String resolveDockerCli(String configuredCli) {
+    static String resolveDockerCli(String configuredCli) {
         if (!"docker".equalsIgnoreCase(configuredCli)) {
             return configuredCli;
         }

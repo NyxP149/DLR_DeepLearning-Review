@@ -150,6 +150,18 @@ Restaurer explicitement une sauvegarde (cette opération remplace les données a
 
 Ollama est optionnel : DLR reste utilisable si le serveur est arrêté. Le modèle V1 par défaut est `llama3.1:latest` et se configure avec `DLR_OLLAMA_MODEL`. Les prompts bruts ne sont pas persistés ; seules leur empreinte et la réponse locale le sont.
 
+## Mode hybride gratuit
+
+Le site Angular peut rester sur Render tandis que l'API, Docker et Ollama tournent sur le PC et restent privés via Tailscale Serve :
+
+```powershell
+.\infrastructure\scripts\start-hybrid.ps1 -FrontendOrigin "https://dlr-web.onrender.com"
+```
+
+Reporter ensuite l'URL HTTPS affichée par `tailscale serve status` dans `DLR_HYBRID_API_BASE_URL` sur le service statique Render, puis redéployer celui-ci. Le navigateur doit être connecté au même tailnet. Le bouton Runner s'active seulement lorsque `GET /api/execution/status` confirme que Docker et les trois images sont prêts. Le guide complet se trouve dans `docs/DLR_Deploye.md`.
+
+Pour réutiliser Neon au lieu de PostgreSQL local, ajouter `-DatabaseUrl` (au format JDBC) et `-DatabaseUser` ; le mot de passe est alors demandé de façon masquée.
+
 ## Synchronisation V2
 
 Le PC principal peut appairer son navigateur sans code depuis l’écran Paramètres. Pour autoriser un autre appareil, définis un code privé et les origines frontend exactes avant de démarrer l’API :

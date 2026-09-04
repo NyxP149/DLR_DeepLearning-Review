@@ -29,7 +29,11 @@ type LabViewState =
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class LabWorkspaceComponent {
-  readonly executionAvailable = EXECUTION_AVAILABLE;
+  readonly executionAvailable = signal(false);
+  readonly executionChecking = signal(EXECUTION_AVAILABLE);
+  readonly executionMessage = signal(
+    EXECUTION_AVAILABLE ? 'Vérification du Runner local…' : "L'exécution est désactivée pour ce déploiement."
+  );
   private readonly route = inject(ActivatedRoute);
   private readonly labApi = inject(LabApiService);
   private readonly executionApi = inject(ExecutionApiService);
@@ -62,9 +66,31 @@ export class LabWorkspaceComponent {
   private draftTimer: ReturnType<typeof setTimeout> | null = null;
 
   constructor() {
+    this.refreshRunnerStatus();
     this.tutorApi.status().subscribe({
       next: (status) => { this.tutorAvailable.set(status.available); this.tutorModel.set(status.selectedModel); },
       error: () => this.tutorAvailable.set(false)
+    });
+  }
+
+  refreshRunnerStatus(): void {
+    if (!EXECUTION_AVAILABLE) {
+      this.executionAvailable.set(false);
+      this.executionChecking.set(false);
+      return;
+    }
+    this.executionChecking.set(true);
+    this.executionApi.status().subscribe({
+      next: (status) => {
+        this.executionAvailable.set(status.available);
+        this.executionMessage.set(status.message);
+        this.executionChecking.set(false);
+      },
+      error: () => {
+        this.executionAvailable.set(false);
+        this.executionMessage.set("L'API locale est hors ligne ou inaccessible depuis cet appareil.");
+        this.executionChecking.set(false);
+      }
     });
   }
 
@@ -151,7 +177,7 @@ export class LabWorkspaceComponent {
   }
 
   async runCode(): Promise<void> {
-    if (!this.executionAvailable || this.running() || this.code().trim().length === 0) {
+    if (!this.executionAvailable() || this.running() || this.code().trim().length === 0) {
       return;
     }
 

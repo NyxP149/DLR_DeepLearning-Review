@@ -1038,3 +1038,10 @@ La progression alterne deux directions de conception. Le mouvement top-down tran
 Les activités 7 et 14 sont des projets intermédiaires ; l'activité 23 est le projet professionnel multi-services et l'activité 24 est un défi à 90 %. Chaque laboratoire contient une décision, une alternative, un risque, un signal de production et une condition de réévaluation. Les preuves Python restent petites et déterministes afin d'évaluer le raisonnement architectural dans le runner existant, tandis que les consignes replacent explicitement chaque preuve dans la stack Spring Boot, Angular, PostgreSQL et Docker.
 
 Le catalogue, la progression, le planning, le laboratoire, le portfolio et le compteur global prennent en charge le nouveau parcours. Le catalogue expose désormais 148 contenus et neuf progressions.
+# V3.6 — Exécution hybride privée et gratuite
+
+- Le frontend Render accepte `DLR_HYBRID_API_BASE_URL`, prioritaire sur l'API Render de repli.
+- `GET /api/execution/status` vérifie réellement le moteur Docker et les images Java, Python et TypeScript, avec un cache court de 15 secondes.
+- L'espace laboratoire ne débloque l'exécution et la validation qu'après une réponse positive de ce contrôle.
+- `infrastructure/scripts/start-hybrid.ps1` prépare PostgreSQL, les runners, CORS, Tailscale Serve et l'API locale depuis une commande.
+- Ollama reste local et facultatif ; son absence n'empêche ni les cours ni les runners.

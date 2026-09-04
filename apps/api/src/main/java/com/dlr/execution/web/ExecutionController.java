@@ -1,6 +1,7 @@
 package com.dlr.execution.web;
 
 import com.dlr.execution.application.ExecutionService;
+import com.dlr.execution.application.RunnerAvailability;
 import com.dlr.execution.domain.ExecutionResult;
 import com.dlr.execution.domain.Submission;
 import com.dlr.execution.domain.SubmissionOrigin;
@@ -10,6 +11,7 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -24,9 +26,16 @@ import java.util.UUID;
 public class ExecutionController {
 
     private final ExecutionService executionService;
+    private final RunnerAvailability runnerAvailability;
 
-    public ExecutionController(ExecutionService executionService) {
+    public ExecutionController(ExecutionService executionService, RunnerAvailability runnerAvailability) {
         this.executionService = executionService;
+        this.runnerAvailability = runnerAvailability;
+    }
+
+    @GetMapping("/execution/status")
+    public RunnerAvailability.Status status() {
+        return runnerAvailability.status();
     }
 
     @PostMapping("/attempts/{attemptId}/submissions")
@@ -69,4 +78,3 @@ public class ExecutionController {
         }
     }
 }
-

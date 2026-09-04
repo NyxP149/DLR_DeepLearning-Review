@@ -1122,3 +1122,28 @@ Ce fichier conserve l'historique des modifications, décisions techniques, bugs 
 - Les 24 starters Architecture ont été exécutés séparément dans le runner Docker Python isolé : 24 sorties exactes, 0 échec.
 - Build Angular de production réussi, bundle initial 273,36 kB ; seul l'avertissement facultatif `lmdb` subsiste.
 - Playwright Chromium : 7 scénarios réussis, dont compteur, sélection, progression et défi final Architecture.
+# Revue V3.6 — Runner hybride Tailscale
+
+## Modifications
+
+- Ajout d'un état de disponibilité du Runner côté API et d'une sonde Docker réelle.
+- Activation dynamique des actions d'exécution dans Angular, avec message de diagnostic et bouton de nouvelle vérification.
+- Ajout d'une URL d'API hybride configurable au build Render.
+- Ajout d'un script PowerShell de démarrage local et de la procédure Render/Tailscale.
+
+## Bugs observés et traitement
+
+- **Runner affiché comme indisponible en permanence :** `DLR_EXECUTION_AVAILABLE=false` était figé dans le Blueprint Render. La configuration autorise désormais la découverte, puis l'API décide selon l'état réel de Docker.
+- **Faux positif possible si l'API répond mais pas Docker :** l'état ne dépend plus seulement d'une variable ; l'API exécute `docker image inspect` sur les trois images requises avec timeout.
+- **Ollama dégradé sur Render :** `localhost:11434` désignait le conteneur Render, pas le PC. En mode hybride, l'API et Ollama partagent de nouveau la même machine.
+- **Risque CORS trop large :** le script exige l'origine HTTPS exacte du frontend et n'ajoute que celle-ci ainsi que les origines locales de développement.
+- **Réseau local exposé directement :** Tailscale Serve fournit l'accès HTTPS uniquement au tailnet ; aucun port du routeur n'est ouvert.
+
+## Validation
+
+- Suite backend : 55 tests, 0 échec, 9 tests Docker optionnels ignorés dans la suite standard.
+- Runner réel : 5 tests Docker supplémentaires réussis, couvrant exécution, erreur de compilation, timeout et isolation.
+- Frontend : build Angular de production réussi.
+- Parcours navigateur : 7 tests Playwright réussis, dont disponibilité réelle et mode Runner hors ligne.
+- Sonde locale : réponse `LOCAL_DOCKER` disponible avec les trois images installées.
+- Script hybride : analyse syntaxique PowerShell réussie. Tailscale n'est pas encore installé sur la machine de développement ; le script s'arrête donc avec un diagnostic explicite tant que ce prérequis manque.

@@ -30,6 +30,12 @@ export interface ExecutionResult {
   createdAt: string;
 }
 
+export interface ExecutionAvailability {
+  available: boolean;
+  mode: 'LOCAL_DOCKER' | 'DISABLED' | 'UNAVAILABLE';
+  message: string;
+}
+
 export interface QuizAnswerResponse {
   questionId: string;
   score: number;
@@ -70,6 +76,10 @@ export interface LabResetResult {
 export class ExecutionApiService {
   private readonly http = inject(HttpClient);
   private readonly apiUrl = API_BASE_URL;
+
+  status(): Observable<ExecutionAvailability> {
+    return this.http.get<ExecutionAvailability>(`${this.apiUrl}/execution/status`);
+  }
 
   startAttempt(labCode: string): Observable<Attempt> {
     return this.http.post<Attempt>(

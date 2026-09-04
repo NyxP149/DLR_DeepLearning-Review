@@ -52,10 +52,12 @@ services:
           name: dlr-api
           type: web
           envVarKey: RENDER_EXTERNAL_URL
+      - key: DLR_HYBRID_API_BASE_URL
+        sync: false
       - key: DLR_EXECUTION_AVAILABLE
-        value: "false"
+        value: "true"
       - key: DLR_DEPLOYMENT_ENVIRONMENT
-        value: render
+        value: render-hybrid
     routes:
       - type: rewrite
         source: /*

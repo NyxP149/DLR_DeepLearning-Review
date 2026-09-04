@@ -470,6 +470,101 @@ La mise en ligne doit progresser sans masquer les limites :
 7. activer progressivement Java, puis Python, TypeScript et Learn LLMs ;
 8. surveiller les quotas et les erreurs avant l'ouverture à davantage d'utilisateurs.
 
+# Déploiement hybride gratuit — Render + Tailscale + PC local
+
+Ce mode évite un service Render payant pour l'exécution. Render héberge uniquement l'interface statique ; l'API, PostgreSQL local, les runners Docker et Ollama tournent sur le PC. **Tailscale Serve** donne au navigateur une URL HTTPS privée. Seuls les appareils connectés au même tailnet peuvent joindre l'API.
+
+## 1. Installer et connecter Tailscale
+
+1. Installer Tailscale sur le PC qui exécute DLR.
+2. Se connecter au compte Tailscale.
+3. Installer Tailscale et utiliser le même tailnet sur chaque appareil qui ouvrira DLR.
+4. Dans la console DNS Tailscale, conserver MagicDNS actif.
+
+L'API ne devient pas publique sur Internet. Le PC, Docker Desktop, Tailscale et l'API doivent rester démarrés pendant l'utilisation.
+
+## 2. Démarrer le backend hybride
+
+Depuis PowerShell à la racine du dépôt, remplacer l'URL par celle du site statique Render :
+
+```powershell
+.\infrastructure\scripts\start-hybrid.ps1 -FrontendOrigin "https://dlr-web.onrender.com"
+```
+
+Cette commande utilise PostgreSQL local. Pour conserver la progression dans Neon, utiliser plutôt la connexion JDBC et le rôle exacts affichés par Neon :
+
+```powershell
+.\infrastructure\scripts\start-hybrid.ps1 `
+  -FrontendOrigin "https://dlr-web.onrender.com" `
+  -DatabaseUrl "jdbc:postgresql://ep-exemple-pooler.eu-west-2.aws.neon.tech/neondb?sslmode=require" `
+  -DatabaseUser "neondb_owner"
+```
+
+Le script demande ensuite le mot de passe Neon dans une saisie masquée. Ne jamais écrire ce mot de passe dans le dépôt ni dans la commande. Utiliser l'hôte complet fourni par Neon, y compris le préfixe propre au projet (`ep-...`) ; ne pas le raccourcir en `pooler...`.
+
+Le script :
+
+- vérifie Docker Desktop et Tailscale ;
+- utilise Neon si ses paramètres sont fournis, sinon démarre PostgreSQL local ;
+- construit les images Runner manquantes ;
+- vérifie Ollama sans bloquer le reste de l'application ;
+- limite CORS au site Render et aux deux origines locales ;
+- active Tailscale Serve devant `127.0.0.1:8081` ;
+- démarre l'API Spring Boot au premier plan.
+
+À la fin du précontrôle, la sortie de `tailscale serve status` affiche une URL ressemblant à :
+
+```text
+https://nom-du-pc.nom-du-tailnet.ts.net
+```
+
+Garder cette fenêtre PowerShell ouverte. Pour vérifier ultérieurement :
+
+```powershell
+tailscale serve status
+```
+
+## 3. Relier le site Render à l'API privée
+
+Dans Render, ouvrir le service statique `dlr-web`, puis **Environment** et renseigner :
+
+```text
+DLR_HYBRID_API_BASE_URL=https://nom-du-pc.nom-du-tailnet.ts.net
+DLR_EXECUTION_AVAILABLE=true
+DLR_DEPLOYMENT_ENVIRONMENT=render-hybrid
+```
+
+Ne pas ajouter `/api` : le build l'ajoute automatiquement. Enregistrer puis déclencher un nouveau déploiement du site statique. `DLR_API_BASE_URL` reste une solution de repli vers l'API Render ; lorsqu'elle est renseignée, `DLR_HYBRID_API_BASE_URL` est prioritaire.
+
+## 4. Vérifier le Runner et Ollama
+
+Sur un appareil connecté au tailnet, ouvrir :
+
+```text
+https://nom-du-pc.nom-du-tailnet.ts.net/api/execution/status
+```
+
+Le Runner est prêt lorsque la réponse contient `"available":true`. Le bouton **Compiler et exécuter** reste volontairement désactivé tant que cette confirmation n'est pas reçue.
+
+Pour Ollama :
+
+```powershell
+ollama list
+ollama pull llama3.1:latest
+ollama serve
+```
+
+Si Ollama tourne déjà en arrière-plan, `ollama serve` peut signaler que le port est utilisé : ce n'est pas une panne. L'URL locale attendue est `http://127.0.0.1:11434`.
+
+## 5. Arrêt et reprise
+
+- Fermer la fenêtre de l'API arrête Spring Boot, mais ne supprime aucune donnée.
+- Relancer le même script pour reprendre.
+- Pour retirer complètement le proxy privé : `tailscale serve reset`.
+- Pour arrêter PostgreSQL : `docker compose stop postgres`.
+
+Cette architecture est adaptée à un usage personnel et gratuit. Pour une application publique disponible 24 h/24, il faudra ensuite déplacer l'API, le stockage d'exécution et le professeur IA vers des services permanents et sécurisés.
+
 # Checklist finale du propriétaire
 
 ## Avant le déploiement

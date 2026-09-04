@@ -80,10 +80,13 @@
         </section>
 
         <aside class="practice-column">
-          @if (!executionAvailable) {
+          @if (!executionAvailable()) {
             <section class="runner-unavailable" role="status">
-              <strong>Exécution distante en préparation</strong>
-              <p>Tu peux étudier, modifier le code et conserver ton brouillon. La compilation et la validation seront réactivées après le déploiement du service Runner isolé.</p>
+              <strong>{{ executionChecking() ? 'Vérification du Runner…' : 'Runner local non connecté' }}</strong>
+              <p>{{ executionMessage() }}</p>
+              @if (!executionChecking()) {
+                <button class="runner-refresh" type="button" (click)="refreshRunnerStatus()">Revérifier la connexion</button>
+              }
             </section>
           }
           @for (exercise of state.lab.exercises; track exercise.code) {
@@ -107,10 +110,10 @@
                 aria-describedby="runner-description"
               />
               <div class="actions">
-                <button type="button" [disabled]="running() || !executionAvailable" (click)="runCode()">
-                  {{ !executionAvailable ? 'Runner bientôt disponible' : running() ? 'Exécution…' : 'Compiler et exécuter' }}
+                <button type="button" [disabled]="running() || !executionAvailable()" (click)="runCode()">
+                  {{ executionChecking() ? 'Vérification du Runner…' : !executionAvailable() ? 'Runner hors ligne' : running() ? 'Exécution…' : 'Compiler et exécuter' }}
                 </button>
-                <span id="runner-description">{{ executionAvailable ? 'Runner ' + state.lab.language + ' isolé par Docker' : 'Brouillon actif · exécution distante désactivée' }}</span>
+                <span id="runner-description">{{ executionAvailable() ? 'Runner ' + state.lab.language + ' isolé par Docker' : 'Brouillon actif · démarre le service hybride pour exécuter' }}</span>
               </div>
               <button class="hint-button" type="button" [disabled]="tutorLoading() || hintLevel() >= 3" (click)="requestHint()">
                 {{ hintLevel() === 0 ? 'Obtenir un indice' : 'Indice suivant (' + hintLevel() + '/3)' }}
@@ -199,8 +202,8 @@
                 </label>
               }
             </div>
-            <button class="complete-button" type="button" [disabled]="completing() || !executionAvailable" (click)="completeLab(state.lab)">
-              {{ !executionAvailable ? 'Validation disponible avec le Runner' : completing() ? 'Calcul du bilan…' : 'Terminer et calculer mon score' }}
+            <button class="complete-button" type="button" [disabled]="completing() || !executionAvailable()" (click)="completeLab(state.lab)">
+              {{ !executionAvailable() ? 'Validation disponible avec le Runner' : completing() ? 'Calcul du bilan…' : 'Terminer et calculer mon score' }}
             </button>
 
             @if (completion(); as result) {

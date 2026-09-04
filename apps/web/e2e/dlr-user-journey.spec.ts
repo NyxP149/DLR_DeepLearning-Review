@@ -28,7 +28,7 @@ test('un laboratoire expose concept, runner et réinitialisation', async ({ page
   await page.goto('/labs/LLM-01');
   await expect(page.getByRole('heading', { name: /prompt, tokens et sortie contrôlée/i })).toBeVisible();
   await expect(page.getByText('Concept clé · LLM-PROMPT-TOKENS')).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Compiler et exécuter' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Compiler et exécuter' })).toBeEnabled();
   await expect(page.getByRole('button', { name: 'Réinitialiser ce laboratoire' })).toBeVisible();
 });
 
@@ -107,8 +107,8 @@ test('le déploiement cloud conserve le brouillon sans simuler un runner', async
   }));
 
   await page.goto('/labs/JAVA-01');
-  await expect(page.getByText('Exécution distante en préparation')).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Runner bientôt disponible' })).toBeDisabled();
+  await expect(page.getByText('Runner local non connecté')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Runner hors ligne' })).toBeDisabled();
   await expect(page.getByRole('button', { name: 'Validation disponible avec le Runner' })).toBeDisabled();
-  await expect(page.getByText('Brouillon actif · exécution distante désactivée')).toBeVisible();
+  await expect(page.getByText('Brouillon actif · démarre le service hybride pour exécuter')).toBeVisible();
 });
