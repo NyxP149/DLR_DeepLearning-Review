@@ -384,6 +384,98 @@ pre {
   width: 100%;
 }
 
+.personal-note-panel {
+  display: grid;
+  gap: .8rem;
+}
+
+.personal-note-heading,
+.personal-note-footer {
+  align-items: center;
+  display: flex;
+  gap: 1rem;
+  justify-content: space-between;
+}
+
+.personal-note-heading h2 {
+  margin: .2rem 0 0;
+}
+
+.personal-note-heading a {
+  color: var(--link);
+  font-size: .76rem;
+  font-weight: 750;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.personal-note-panel > p,
+.personal-note-footer,
+.reflection-status {
+  color: var(--text-muted);
+  font-size: .76rem;
+  margin: 0;
+}
+
+.reflection-analysis {
+  background: var(--success-soft);
+  border: 1px solid color-mix(in srgb, var(--success) 38%, var(--border));
+  border-radius: .7rem;
+  margin-top: .75rem;
+  padding: .85rem;
+}
+
+.reflection-analysis > div {
+  align-items: center;
+  display: flex;
+  gap: 1rem;
+  justify-content: space-between;
+}
+
+.reflection-analysis strong {
+  color: var(--success);
+  font-size: .78rem;
+}
+
+.reflection-analysis button {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  font-size: .7rem;
+  padding: .35rem .55rem;
+}
+
+.reflection-analysis p {
+  line-height: 1.6;
+  margin: .65rem 0 0;
+  white-space: pre-wrap;
+}
+
+.personal-note-editor {
+  background: var(--input-background);
+  border: 1px solid var(--border);
+  border-radius: .7rem;
+  color: var(--text);
+  font: inherit;
+  line-height: 1.6;
+  min-height: 170px;
+  padding: .9rem;
+  resize: vertical;
+  width: 100%;
+}
+
+.personal-note-editor:focus {
+  border-color: var(--accent) !important;
+  outline: 2px solid color-mix(in srgb, var(--accent) 25%, transparent);
+}
+
+.reflection-status {
+  background: var(--accent-soft);
+  border-radius: .5rem;
+  color: var(--link);
+  padding: .55rem .7rem;
+}
+
 .complete-button {
   margin-top: 0.4rem;
   width: 100%;
@@ -490,6 +582,14 @@ pre {
 
   .practice-column {
     position: static;
+  }
+}
+
+@media (max-width: 600px) {
+  .personal-note-heading,
+  .personal-note-footer {
+    align-items: flex-start;
+    flex-direction: column;
   }
 }
 

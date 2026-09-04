@@ -48,6 +48,62 @@ test('le curseur Monaco reste éditable sans textarea parasite', async ({ page }
   await expect(editor.locator('.view-lines')).toContainText('ABXC');
 });
 
+test('une note personnelle est sauvegardée puis regroupée dans Mes notes', async ({ page }) => {
+  let savedNote = '';
+  await page.route('**/api/labs/JAVA-01/note', async (route) => {
+    if (route.request().method() === 'PUT') savedNote = (await route.request().postDataJSON()).content;
+    await route.fulfill({ json: {
+      labCode: 'JAVA-01', language: 'JAVA', labTitle: 'Syntaxe, compilation, JVM et premier programme',
+      content: savedNote, updatedAt: savedNote ? new Date().toISOString() : null, completed: false
+    } });
+  });
+  await page.route('**/api/notes', (route) => route.fulfill({ json: savedNote ? [{
+    labCode: 'JAVA-01', language: 'JAVA', labTitle: 'Syntaxe, compilation, JVM et premier programme',
+    content: savedNote, updatedAt: new Date().toISOString(), completed: false
+  }] : [] }));
+
+  await page.goto('/labs/JAVA-01');
+  const noteEditor = page.getByPlaceholder('Ce que j’ai compris, ce que je veux retenir, mes questions…');
+  await noteEditor.fill('La JVM exécute le bytecode produit par javac.');
+  await expect(page.getByText('Sauvegardée dans Neon et sur cet appareil')).toBeVisible();
+  await page.reload();
+  await expect(noteEditor).toHaveValue('La JVM exécute le bytecode produit par javac.');
+
+  await page.getByRole('link', { name: 'Voir toutes mes notes →' }).click();
+  await expect(page.getByRole('heading', { name: 'Mes notes personnelles' })).toBeVisible();
+  await expect(page.getByText('La JVM exécute le bytecode produit par javac.')).toBeVisible();
+});
+
+test('l’analyse Ollama d’une réflexion persiste et peut être effacée', async ({ page }) => {
+  let savedAnalysis = '';
+  await page.route('**/api/tutor/review-answer', (route) => route.fulfill({ json: {
+    purpose: 'FREE_TEXT_REVIEW', model: 'test-model', content: 'Bonne réponse. Précise le rôle de la portabilité.'
+  } }));
+  await page.route('**/api/labs/JAVA-01/reflection-analyses', (route) => route.fulfill({ json: savedAnalysis ? [{
+    labCode: 'JAVA-01', questionId: 'JAVA-01-Q2', content: savedAnalysis, updatedAt: new Date().toISOString()
+  }] : [] }));
+  await page.route('**/api/labs/JAVA-01/reflection-analyses/JAVA-01-Q2', async (route) => {
+    if (route.request().method() === 'PUT') {
+      savedAnalysis = (await route.request().postDataJSON()).content;
+      await route.fulfill({ json: {
+        labCode: 'JAVA-01', questionId: 'JAVA-01-Q2', content: savedAnalysis, updatedAt: new Date().toISOString()
+      } });
+    } else {
+      savedAnalysis = '';
+      await route.fulfill({ status: 200, body: '' });
+    }
+  });
+
+  await page.goto('/labs/JAVA-01');
+  await page.locator('.answer-editor').first().fill('Le bytecode rend Java portable entre plusieurs systèmes.');
+  await page.getByRole('button', { name: 'Analyser ma réponse avec Ollama' }).click();
+  await expect(page.locator('.reflection-analysis').getByText('Bonne réponse. Précise le rôle de la portabilité.')).toBeVisible();
+  await page.reload();
+  await expect(page.getByText('Analyse persistante d’Ollama')).toBeVisible();
+  await page.getByRole('button', { name: 'Effacer' }).click();
+  await expect(page.getByText('Analyse persistante d’Ollama')).toHaveCount(0);
+});
+
 test('navigation principale sans page introuvable', async ({ page }) => {
   await page.goto('/dashboard');
   await expect(page.getByRole('heading', { name: /prochaine étape/i })).toBeVisible();

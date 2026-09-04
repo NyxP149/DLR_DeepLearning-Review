@@ -138,6 +138,27 @@
             </article>
           }
 
+          <article class="panel personal-note-panel">
+            <div class="personal-note-heading">
+              <div><p class="eyebrow">Carnet personnel</p><h2>Ma note sur {{ state.lab.code }}</h2></div>
+              <a routerLink="/notes">Voir toutes mes notes →</a>
+            </div>
+            <p>Écris librement tes réflexions, difficultés, solutions ou points à revoir. Cette note n’entre pas dans le calcul du score.</p>
+            <textarea
+              class="personal-note-editor"
+              rows="8"
+              maxlength="20000"
+              placeholder="Ce que j’ai compris, ce que je veux retenir, mes questions…"
+              [value]="personalNote()"
+              (input)="onPersonalNoteChange($event)"
+              aria-describedby="personal-note-status"
+            ></textarea>
+            <div class="personal-note-footer">
+              <span id="personal-note-status" aria-live="polite">{{ noteSaving() ? 'Sauvegarde…' : noteStatus() }}</span>
+              <span>{{ personalNote().length }} / 20 000</span>
+            </div>
+          </article>
+
           <article class="panel tutor-panel">
             <div class="tutor-heading"><div><p class="eyebrow">Professeur IA local</p><h2>{{ tutorModel() }}</h2></div><span [class.online]="tutorAvailable()">{{ tutorAvailable() ? 'Connecté' : 'Mode dégradé' }}</span></div>
             @if (tutorLoading()) { <p aria-live="polite">Ollama prépare une réponse…</p> }
@@ -149,6 +170,7 @@
           <article class="panel assessment-panel">
             <p class="eyebrow">Validation des acquis</p>
             <h2>Quiz et explication</h2>
+            <p class="reflection-status" aria-live="polite">{{ reflectionStatus() }}</p>
             <div class="quiz-list">
               @for (question of state.lab.quiz; track question.code; let questionIndex = $index) {
                 <fieldset class="quiz-question">
@@ -181,6 +203,19 @@
                       [disabled]="tutorLoading()"
                       (click)="reviewFreeText(question.code)"
                     >Analyser ma réponse avec Ollama</button>
+                    @if (reflectionAnalyses()[question.code]; as analysis) {
+                      <section class="reflection-analysis" aria-live="polite">
+                        <div>
+                          <strong>Analyse persistante d’Ollama</strong>
+                          <button
+                            type="button"
+                            [disabled]="deletingAnalysis() === question.code"
+                            (click)="deleteReflectionAnalysis(question.code)"
+                          >{{ deletingAnalysis() === question.code ? 'Suppression…' : 'Effacer' }}</button>
+                        </div>
+                        <p>{{ analysis }}</p>
+                      </section>
+                    }
                   }
                 </fieldset>
               }

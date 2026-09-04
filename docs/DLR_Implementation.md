@@ -1045,3 +1045,11 @@ Le catalogue, la progression, le planning, le laboratoire, le portfolio et le co
 - L'espace laboratoire ne débloque l'exécution et la validation qu'après une réponse positive de ce contrôle.
 - `infrastructure/scripts/start-hybrid.ps1` prépare PostgreSQL, les runners, CORS, Tailscale Serve et l'API locale depuis une commande.
 - Ollama reste local et facultatif ; son absence n'empêche ni les cours ni les runners.
+
+## V3.7 — Carnet personnel et mémoire des réflexions
+
+Chaque laboratoire propose un carnet libre limité à 20 000 caractères. La saisie est enregistrée immédiatement dans le navigateur puis, après un court délai, dans PostgreSQL/Neon via `PUT /api/labs/{labCode}/note`. La page `/notes` charge les notes non vides, les regroupe par langage et indique si le laboratoire correspondant est terminé ou encore en cours.
+
+Les choix et réponses de réflexion sont eux aussi sauvegardés pendant la saisie. Le navigateur conserve une copie locale et l'API les associe à la tentative en cours ; effacer une réponse supprime sa version persistée afin qu'une ancienne valeur ne réapparaisse pas.
+
+Une correction qualitative demandée à Ollama est conservée séparément de la réponse et du score. Elle apparaît sous la question concernée, est restaurée au retour dans le laboratoire et peut être supprimée explicitement. Flyway V18 crée `lab_note` et `reflection_analysis`, toutes deux rattachées au profil local et au laboratoire.

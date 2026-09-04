@@ -12,6 +12,8 @@ public interface AssessmentRepository {
 
     List<QuizAnswer> findAnswers(UUID attemptId);
 
+    void deleteAnswer(UUID attemptId, String questionId);
+
     Checklist saveChecklist(Checklist checklist);
 
     Optional<Checklist> findChecklist(UUID attemptId);

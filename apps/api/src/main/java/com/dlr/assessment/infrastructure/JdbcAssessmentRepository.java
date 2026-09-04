@@ -49,6 +49,11 @@ public class JdbcAssessmentRepository implements AssessmentRepository {
     }
 
     @Override
+    public void deleteAnswer(UUID attemptId, String questionId) {
+        jdbcTemplate.update("delete from quiz_answer where attempt_id = ? and question_id = ?", attemptId, questionId);
+    }
+
+    @Override
     public Checklist saveChecklist(Checklist checklist) {
         jdbcTemplate.update("delete from attempt_checklist where attempt_id = ?", checklist.attemptId());
         jdbcTemplate.update(

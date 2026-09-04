@@ -1152,5 +1152,29 @@ Ce fichier conserve l'historique des modifications, décisions techniques, bugs 
 
 - **Symptôme :** une petite zone rectangulaire apparaissait au-dessus du code, le curseur semblait bloqué et les clics devenaient imprévisibles.
 - **Cause :** les règles globales des six thèmes ciblaient toutes les `textarea` avec `!important`, y compris la zone de saisie technique invisible de Monaco.
-- **Résolution :** exclusion explicite de `.inputarea` des styles de formulaires, restauration des propriétés invisibles de la zone technique et recalcul de la mise en page après le premier rendu.
+- **Résolution :** exclusion explicite des zones internes `.inputarea` et `.ime-text-area` des styles de formulaires, restauration des propriétés invisibles de la zone technique et recalcul de la mise en page après le premier rendu.
 - **Non-régression :** ajout d'un test Playwright qui clique dans Monaco, remplace le contenu au clavier et vérifie le focus ainsi que le texte rendu.
+
+## 2026-09-05 — V3.7 : notes et réflexions persistantes
+
+### Modifications
+
+- Ajout d'une note personnelle autosauvegardée dans chaque laboratoire, indépendante du score et conservée lors d'une remise à zéro.
+- Ajout de la page **Mes notes**, regroupée par langage puis laboratoire, avec état terminé/en cours.
+- Persistance locale et serveur des choix et textes de réflexion pendant la saisie.
+- Persistance des analyses Ollama sous la réponse concernée, avec bouton **Effacer**.
+- Ajout de Flyway V18 et des tables `lab_note` et `reflection_analysis` rattachées au profil.
+
+### Risques et traitement
+
+- **Perte lors d'une coupure API :** la note, les réponses et les analyses sont écrites dans le navigateur avant la synchronisation Neon.
+- **Création simultanée de plusieurs tentatives :** les autosauvegardes concurrentes partagent désormais la même promesse de création de tentative.
+- **Ancienne réponse restaurée après effacement :** une route DELETE retire la réponse de la tentative dès que son champ est vidé.
+- **Analyse confondue avec le score :** l'analyse Ollama est stockée séparément et ne modifie jamais l'évaluation déterministe.
+
+### Validation
+
+- Flyway : 18 migrations appliquées avec succès sur la base de test.
+- Backend : 57 tests, 0 échec, dont sauvegarde/suppression des notes et analyses ; 9 scénarios Docker optionnels ignorés dans cette suite standard.
+- Frontend : build Angular de production réussi.
+- Navigateur : 10 tests Playwright réussis, dont restauration d'une note après rechargement, regroupement dans **Mes notes**, restauration d'une analyse Ollama et suppression explicite.

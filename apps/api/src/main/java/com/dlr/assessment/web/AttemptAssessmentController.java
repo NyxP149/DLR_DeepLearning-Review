@@ -5,6 +5,7 @@ import com.dlr.assessment.application.AssessmentService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotEmpty;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -32,6 +33,11 @@ public class AttemptAssessmentController {
     ) {
         return QuizAnswerResponse.from(assessmentService.answer(
                 attemptId, questionId, request.selectedChoice(), request.answerText()));
+    }
+
+    @DeleteMapping("/quiz/{questionId}")
+    public void removeAnswer(@PathVariable UUID attemptId, @PathVariable String questionId) {
+        assessmentService.removeAnswer(attemptId, questionId);
     }
 
     @PutMapping("/checklist")

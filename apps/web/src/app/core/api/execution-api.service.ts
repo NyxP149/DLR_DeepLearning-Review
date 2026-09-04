@@ -124,6 +124,12 @@ export class ExecutionApiService {
     );
   }
 
+  deleteQuizAnswer(attemptId: string, questionId: string): Observable<void> {
+    return this.http.delete<void>(
+      `${this.apiUrl}/attempts/${encodeURIComponent(attemptId)}/quiz/${encodeURIComponent(questionId)}`
+    );
+  }
+
   saveChecklist(attemptId: string, completed: boolean[]): Observable<void> {
     return this.http.put<void>(
       `${this.apiUrl}/attempts/${encodeURIComponent(attemptId)}/checklist`,

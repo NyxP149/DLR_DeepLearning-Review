@@ -115,6 +115,12 @@ public class AssessmentService {
     }
 
     @Transactional
+    public void removeAnswer(UUID attemptId, String questionId) {
+        requireInProgress(attemptId);
+        assessmentRepository.deleteAnswer(attemptId, questionId);
+    }
+
+    @Transactional
     public AssessmentRepository.Checklist saveChecklist(UUID attemptId, List<Boolean> completed) {
         Attempt attempt = requireInProgress(attemptId);
         LabContent lab = requireLab(attempt.labCode());

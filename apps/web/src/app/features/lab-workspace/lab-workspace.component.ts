@@ -1,6 +1,7 @@
 import { AsyncPipe } from '@angular/common';
-import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, OnDestroy, signal } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
+import { RouterLink } from '@angular/router';
 import { HttpErrorResponse } from '@angular/common/http';
 import { catchError, firstValueFrom, map, Observable, of, startWith, switchMap, tap } from 'rxjs';
 
@@ -12,6 +13,8 @@ import {
 import { LabApiService } from '../../core/api/lab-api.service';
 import { TutorApiService } from '../../core/api/tutor-api.service';
 import { DraftStoreService } from '../../core/storage/draft-store.service';
+import { LabMemoryStoreService } from '../../core/storage/lab-memory-store.service';
+import { NotesApiService } from '../../core/api/notes-api.service';
 import { KeyConcept, LabContent } from './lab.model';
 import { CodeEditorComponent } from '../../shared/code-editor/code-editor.component';
 import { EXECUTION_AVAILABLE } from '../../core/api/api-config';
@@ -23,12 +26,12 @@ type LabViewState =
 
 @Component({
   selector: 'dlr-lab-workspace',
-  imports: [AsyncPipe, CodeEditorComponent],
+  imports: [AsyncPipe, CodeEditorComponent, RouterLink],
   templateUrl: './lab-workspace.component.html',
   styleUrl: './lab-workspace.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class LabWorkspaceComponent {
+export class LabWorkspaceComponent implements OnDestroy {
   readonly executionAvailable = signal(false);
   readonly executionChecking = signal(EXECUTION_AVAILABLE);
   readonly executionMessage = signal(
@@ -39,6 +42,8 @@ export class LabWorkspaceComponent {
   private readonly executionApi = inject(ExecutionApiService);
   private readonly tutorApi = inject(TutorApiService);
   private readonly drafts = inject(DraftStoreService);
+  private readonly memory = inject(LabMemoryStoreService);
+  private readonly notesApi = inject(NotesApiService);
 
   readonly code = signal('');
   readonly running = signal(false);
@@ -59,11 +64,20 @@ export class LabWorkspaceComponent {
   readonly hintLevel = signal(0);
   readonly resetting = signal(false);
   readonly resetNotice = signal<string | null>(null);
+  readonly personalNote = signal('');
+  readonly noteSaving = signal(false);
+  readonly noteStatus = signal('Prête à écrire');
+  readonly reflectionStatus = signal('Les réponses sont sauvegardées pendant la saisie.');
+  readonly reflectionAnalyses = signal<Record<string, string>>({});
+  readonly deletingAnalysis = signal<string | null>(null);
 
   private attemptId: string | null = null;
+  private attemptPromise: Promise<string> | null = null;
   private activeLabCode = 'JAVA-01';
   private activeLanguage = 'JAVA';
   private draftTimer: ReturnType<typeof setTimeout> | null = null;
+  private noteTimer: ReturnType<typeof setTimeout> | null = null;
+  private readonly reflectionTimers = new Map<string, ReturnType<typeof setTimeout>>();
 
   constructor() {
     this.refreshRunnerStatus();
@@ -112,15 +126,18 @@ export class LabWorkspaceComponent {
       this.labApi.getLab(code).pipe(
         switchMap((lab) => this.executionApi.currentWorkspace(lab.code).pipe(
           tap((workspace) => {
+          this.clearReflectionTimers();
           this.activeLabCode = lab.code;
           this.activeLanguage = lab.language;
           this.attemptId = workspace?.attempt.id ?? null;
+          this.attemptPromise = null;
           this.execution.set(null);
           this.executionError.set(null);
-          this.quizValues.set(Object.fromEntries((workspace?.quizAnswers ?? []).map((answer) => [
+          const serverAnswers = Object.fromEntries((workspace?.quizAnswers ?? []).map((answer) => [
             answer.questionId,
             answer.selectedChoice ?? answer.answerText ?? ''
-          ])));
+          ]));
+          this.quizValues.set({ ...serverAnswers, ...this.memory.loadReflections(lab.code) });
           this.checklist.set(workspace?.checklist.length === lab.checklist.length
             ? workspace.checklist
             : lab.checklist.map(() => false));
@@ -130,6 +147,8 @@ export class LabWorkspaceComponent {
           this.code.set(workspace?.sourceCode ?? lab.exercises[0]?.starterCode ?? '');
           this.sourceOrigin.set(workspace?.sourceOrigin ?? 'EDITOR');
           this.resumed.set(workspace !== null);
+          this.loadPersonalNote(lab.code);
+          this.loadReflectionAnalyses(lab.code);
           if (workspace === null) {
             void this.restoreLocalDraft(lab.code);
           } else {
@@ -200,11 +219,24 @@ export class LabWorkspaceComponent {
 
   onQuizChoice(questionId: string, choice: number): void {
     this.quizValues.update((values) => ({ ...values, [questionId]: choice }));
+    this.scheduleReflection(questionId, choice);
   }
 
   onQuizText(questionId: string, event: Event): void {
     const value = (event.target as HTMLTextAreaElement).value;
     this.quizValues.update((values) => ({ ...values, [questionId]: value }));
+    this.scheduleReflection(questionId, value);
+  }
+
+  onPersonalNoteChange(event: Event): void {
+    const content = (event.target as HTMLTextAreaElement).value;
+    const labCode = this.activeLabCode;
+    this.personalNote.set(content);
+    this.memory.saveNote(labCode, content);
+    this.noteStatus.set('Sauvegardée sur cet appareil');
+    if (this.noteTimer !== null) clearTimeout(this.noteTimer);
+    this.noteSaving.set(true);
+    this.noteTimer = setTimeout(() => this.persistPersonalNote(labCode, content), 650);
   }
 
   onChecklistChange(index: number, event: Event): void {
@@ -261,7 +293,7 @@ export class LabWorkspaceComponent {
   async resetLab(lab: LabContent): Promise<void> {
     if (this.resetting()) return;
     const confirmed = globalThis.confirm(
-      `Réinitialiser ${lab.code} ?\n\nLes tentatives, scores, exécutions, réponses, révisions et brouillons de ce laboratoire seront supprimés. Cette action est irréversible.`
+      `Réinitialiser ${lab.code} ?\n\nLes tentatives, scores, exécutions, réponses, révisions et brouillons de ce laboratoire seront supprimés. Tes notes personnelles et les analyses Ollama seront conservées. Cette action est irréversible.`
     );
     if (!confirmed) return;
 
@@ -281,6 +313,7 @@ export class LabWorkspaceComponent {
       this.execution.set(null);
       this.executionError.set(null);
       this.quizValues.set({});
+      this.memory.removeReflections(lab.code);
       this.checklist.set(lab.checklist.map(() => false));
       this.completion.set(null);
       this.resumed.set(false);
@@ -311,7 +344,45 @@ export class LabWorkspaceComponent {
       this.tutorError.set('Rédige d’abord une réponse avant de demander une correction.');
       return;
     }
-    await this.askTutor(() => firstValueFrom(this.tutorApi.reviewAnswer(this.activeLabCode, questionCode, answer)));
+    if (this.tutorLoading()) return;
+    const labCode = this.activeLabCode;
+    this.tutorLoading.set(true);
+    this.tutorError.set(null);
+    try {
+      const response = await firstValueFrom(this.tutorApi.reviewAnswer(labCode, questionCode, answer));
+      this.tutorResponse.set(response.content);
+      this.tutorAvailable.set(true);
+      this.reflectionAnalyses.update((analyses) => ({ ...analyses, [questionCode]: response.content }));
+      this.memory.saveAnalysis(labCode, questionCode, response.content);
+      try {
+        await firstValueFrom(this.notesApi.saveAnalysis(labCode, questionCode, response.content));
+      } catch {
+        this.tutorError.set("L'analyse reste conservée sur cet appareil ; sa synchronisation avec Neon est en attente.");
+      }
+    } catch (error) {
+      this.tutorError.set(this.errorMessage(error));
+      this.tutorAvailable.set(false);
+    } finally {
+      this.tutorLoading.set(false);
+    }
+  }
+
+  async deleteReflectionAnalysis(questionCode: string): Promise<void> {
+    const labCode = this.activeLabCode;
+    this.deletingAnalysis.set(questionCode);
+    this.memory.deleteAnalysis(labCode, questionCode);
+    this.reflectionAnalyses.update((analyses) => {
+      const updated = { ...analyses };
+      delete updated[questionCode];
+      return updated;
+    });
+    try {
+      await firstValueFrom(this.notesApi.deleteAnalysis(labCode, questionCode));
+    } catch {
+      this.tutorError.set("L'analyse est effacée sur cet appareil, mais sa suppression dans Neon devra être réessayée.");
+    } finally {
+      this.deletingAnalysis.set(null);
+    }
   }
 
   private async askTutor(request: () => Promise<{ content: string }>): Promise<void> {
@@ -330,11 +401,16 @@ export class LabWorkspaceComponent {
   }
 
   private async ensureAttempt(): Promise<string> {
-    if (this.attemptId === null) {
-      const attempt = await firstValueFrom(this.executionApi.startAttempt(this.activeLabCode));
-      this.attemptId = attempt.id;
+    if (this.attemptId !== null) return this.attemptId;
+    if (this.attemptPromise === null) {
+      this.attemptPromise = firstValueFrom(this.executionApi.startAttempt(this.activeLabCode))
+        .then((attempt) => {
+          this.attemptId = attempt.id;
+          return attempt.id;
+        })
+        .finally(() => { this.attemptPromise = null; });
     }
-    return this.attemptId;
+    return this.attemptPromise;
   }
 
   private scheduleDraft(): void {
@@ -343,6 +419,105 @@ export class LabWorkspaceComponent {
       this.draftTimer = null;
       void this.drafts.save(this.activeLabCode, this.code());
     }, 400);
+  }
+
+  private scheduleReflection(questionId: string, value: number | string): void {
+    const labCode = this.activeLabCode;
+    this.memory.saveReflection(labCode, questionId, value);
+    const previous = this.reflectionTimers.get(questionId);
+    if (previous !== undefined) clearTimeout(previous);
+    this.reflectionStatus.set('Sauvegarde de la réponse…');
+    this.reflectionTimers.set(questionId, setTimeout(async () => {
+      this.reflectionTimers.delete(questionId);
+      try {
+        if (typeof value === 'string' && value.trim().length === 0) {
+          if (this.attemptId !== null) {
+            await firstValueFrom(this.executionApi.deleteQuizAnswer(this.attemptId, questionId));
+          }
+        } else {
+          const attemptId = await this.ensureAttempt();
+          await firstValueFrom(this.executionApi.answerQuiz(
+            attemptId,
+            questionId,
+            typeof value === 'number' ? { selectedChoice: value } : { answerText: value }
+          ));
+        }
+        if (this.activeLabCode === labCode) this.reflectionStatus.set('Réponse sauvegardée dans Neon et sur cet appareil.');
+      } catch {
+        if (this.activeLabCode === labCode) this.reflectionStatus.set('Réponse conservée sur cet appareil · synchronisation en attente.');
+      }
+    }, 700));
+  }
+
+  private loadPersonalNote(labCode: string): void {
+    const localNote = this.memory.loadNote(labCode);
+    const localUpdatedAt = this.memory.noteUpdatedAt(labCode);
+    this.personalNote.set(localNote);
+    this.noteStatus.set(localNote ? 'Note locale restaurée' : 'Prête à écrire');
+    this.notesApi.get(labCode).subscribe({
+      next: (note) => {
+        if (this.activeLabCode !== labCode) return;
+        const localIsNewer = Boolean(localNote.trim() && localUpdatedAt
+          && (!note.updatedAt || new Date(localUpdatedAt).getTime() > new Date(note.updatedAt).getTime()));
+        if (localIsNewer) {
+          this.persistPersonalNote(labCode, localNote);
+        } else if (note.content) {
+          this.personalNote.set(note.content);
+          this.memory.saveNote(labCode, note.content, note.updatedAt ?? undefined);
+          this.noteStatus.set('Synchronisée avec Neon');
+        } else if (localNote.trim()) {
+          this.persistPersonalNote(labCode, localNote);
+        }
+      },
+      error: () => {
+        if (this.activeLabCode === labCode) this.noteStatus.set('Note locale · synchronisation en attente');
+      }
+    });
+  }
+
+  private loadReflectionAnalyses(labCode: string): void {
+    const localAnalyses = this.memory.loadAnalyses(labCode);
+    this.reflectionAnalyses.set(localAnalyses);
+    this.notesApi.analyses(labCode).subscribe({
+      next: (analyses) => {
+        if (this.activeLabCode !== labCode) return;
+        const serverAnalyses = Object.fromEntries(analyses.map((analysis) => [analysis.questionId, analysis.content]));
+        const merged = { ...localAnalyses, ...serverAnalyses };
+        this.reflectionAnalyses.set(merged);
+        for (const [questionId, content] of Object.entries(merged)) {
+          this.memory.saveAnalysis(labCode, questionId, content);
+        }
+      }
+    });
+  }
+
+  private persistPersonalNote(labCode: string, content: string): void {
+    this.noteTimer = null;
+    this.notesApi.save(labCode, content).subscribe({
+      next: () => {
+        if (this.activeLabCode === labCode && this.personalNote() === content) {
+          this.noteSaving.set(false);
+          this.noteStatus.set('Sauvegardée dans Neon et sur cet appareil');
+        }
+      },
+      error: () => {
+        if (this.activeLabCode === labCode && this.personalNote() === content) {
+          this.noteSaving.set(false);
+          this.noteStatus.set('Sauvegardée sur cet appareil · synchronisation en attente');
+        }
+      }
+    });
+  }
+
+  ngOnDestroy(): void {
+    if (this.draftTimer !== null) clearTimeout(this.draftTimer);
+    if (this.noteTimer !== null) clearTimeout(this.noteTimer);
+    this.clearReflectionTimers();
+  }
+
+  private clearReflectionTimers(): void {
+    for (const timer of this.reflectionTimers.values()) clearTimeout(timer);
+    this.reflectionTimers.clear();
   }
 
   private async restoreLocalDraft(labCode: string): Promise<void> {

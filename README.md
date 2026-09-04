@@ -23,6 +23,8 @@ DLR est une application locale d'apprentissage de la programmation, avec évalua
 - recommandations adaptatives expliquées, analytics d'autonomie et professeur Ollama à cinq rôles ;
 - portfolio privé avec aperçu Markdown, export ZIP GitHub-ready et filtrage des secrets ;
 - catalogue extensible avec neuf parcours complets, projets portfolio et défis de synthèse.
+- carnet personnel par laboratoire, page de notes groupée par langage et autosauvegarde des réponses de réflexion ;
+- analyses Ollama persistantes sous chaque réponse, avec suppression explicite.
 
 ## Structure
 

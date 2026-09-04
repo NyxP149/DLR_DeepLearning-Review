@@ -22,6 +22,11 @@ export const routes: Routes = [
       import('./features/concepts/concepts.component').then((module) => module.ConceptsComponent)
   },
   {
+    path: 'notes',
+    loadComponent: () =>
+      import('./features/notes/notes.component').then((module) => module.NotesComponent)
+  },
+  {
     path: 'planning',
     loadComponent: () =>
       import('./features/planning/planning.component').then((module) => module.PlanningComponent)

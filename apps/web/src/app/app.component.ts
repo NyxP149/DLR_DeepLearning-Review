@@ -25,6 +25,7 @@ import { ThemeService } from './core/theme/theme.service';
           <a routerLink="/paths" routerLinkActive="active">Mon parcours</a>
           <a routerLink="/labs/JAVA-01" routerLinkActive="active">Laboratoire</a>
           <a routerLink="/concepts" routerLinkActive="active">Concepts clés</a>
+          <a routerLink="/notes" routerLinkActive="active">Mes notes</a>
           <a routerLink="/reviews" routerLinkActive="active">Révisions</a>
           <a routerLink="/planning" routerLinkActive="active">Planning</a>
           <a routerLink="/coach" routerLinkActive="active">Coach V2</a>
