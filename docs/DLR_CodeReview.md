@@ -1147,3 +1147,10 @@ Ce fichier conserve l'historique des modifications, décisions techniques, bugs 
 - Parcours navigateur : 7 tests Playwright réussis, dont disponibilité réelle et mode Runner hors ligne.
 - Sonde locale : réponse `LOCAL_DOCKER` disponible avec les trois images installées.
 - Script hybride : analyse syntaxique PowerShell réussie. Tailscale n'est pas encore installé sur la machine de développement ; le script s'arrête donc avec un diagnostic explicite tant que ce prérequis manque.
+
+## Correctif éditeur Monaco
+
+- **Symptôme :** une petite zone rectangulaire apparaissait au-dessus du code, le curseur semblait bloqué et les clics devenaient imprévisibles.
+- **Cause :** les règles globales des six thèmes ciblaient toutes les `textarea` avec `!important`, y compris la zone de saisie technique invisible de Monaco.
+- **Résolution :** exclusion explicite de `.inputarea` des styles de formulaires, restauration des propriétés invisibles de la zone technique et recalcul de la mise en page après le premier rendu.
+- **Non-régression :** ajout d'un test Playwright qui clique dans Monaco, remplace le contenu au clavier et vérifie le focus ainsi que le texte rendu.

@@ -97,13 +97,16 @@ export class CodeEditorComponent implements AfterViewInit, OnChanges, OnDestroy 
         padding: { top: 14, bottom: 14 },
         scrollBeyondLastLine: false,
         tabSize: 4,
-        wordWrap: 'on'
+        wordWrap: 'on',
+        fixedOverflowWidgets: true,
+        overviewRulerLanes: 0
       });
       this.editor.onDidChangeModelContent(() => {
         if (!this.applyingExternalValue) this.valueChange.emit(this.editor?.getValue() ?? '');
       });
       this.resizeObserver = new ResizeObserver(() => this.editor?.layout());
       this.resizeObserver.observe(this.host.nativeElement);
+      requestAnimationFrame(() => this.editor?.layout());
       this.themeObserver = new MutationObserver(() => this.applyMonacoTheme());
       this.themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme', 'data-theme-mode'] });
       this.loading.set(false);

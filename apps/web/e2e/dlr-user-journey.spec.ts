@@ -32,6 +32,22 @@ test('un laboratoire expose concept, runner et réinitialisation', async ({ page
   await expect(page.getByRole('button', { name: 'Réinitialiser ce laboratoire' })).toBeVisible();
 });
 
+test('le curseur Monaco reste éditable sans textarea parasite', async ({ page }) => {
+  await page.goto('/labs/JAVA-01');
+  const editor = page.locator('.monaco-editor');
+  const inputArea = editor.locator('textarea');
+  await expect(editor).toBeVisible();
+  await expect(inputArea).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
+
+  await editor.click({ position: { x: 260, y: 105 } });
+  await page.keyboard.press('Control+A');
+  await page.keyboard.type('ABC');
+  await page.keyboard.press('ArrowLeft');
+  await page.keyboard.type('X');
+
+  await expect(editor.locator('.view-lines')).toContainText('ABXC');
+});
+
 test('navigation principale sans page introuvable', async ({ page }) => {
   await page.goto('/dashboard');
   await expect(page.getByRole('heading', { name: /prochaine étape/i })).toBeVisible();

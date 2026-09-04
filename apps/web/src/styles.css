@@ -58,11 +58,23 @@ body {
   min-width: 320px;
 }
 
-body,button,input,select,textarea,a { transition:background-color .18s ease,border-color .18s ease,color .18s ease; }
+body,button,input:not(.inputarea),select,textarea:not(.inputarea):not(.ime-text-area),a { transition:background-color .18s ease,border-color .18s ease,color .18s ease; }
 :focus-visible { outline:3px solid color-mix(in srgb,var(--focus-ring) 68%,transparent);outline-offset:2px; }
-input,select,textarea { caret-color:var(--accent); }
-input,select,textarea { background-color:var(--input-background)!important;border-color:var(--border)!important;color:var(--text)!important; }
-input::placeholder,textarea::placeholder { color:var(--text-muted);opacity:.85; }
+input:not(.inputarea),select,textarea:not(.inputarea):not(.ime-text-area) { caret-color:var(--accent); }
+input:not(.inputarea),select,textarea:not(.inputarea):not(.ime-text-area) { background-color:var(--input-background)!important;border-color:var(--border)!important;color:var(--text)!important; }
+input:not(.inputarea)::placeholder,textarea:not(.inputarea):not(.ime-text-area)::placeholder { color:var(--text-muted);opacity:.85; }
+
+/* Monaco possède une textarea technique invisible pour la méthode de saisie.
+   Les styles des champs applicatifs ne doivent jamais la rendre visible. */
+.monaco-editor textarea {
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  color: transparent !important;
+  min-height: 0 !important;
+  padding: 0 !important;
+  resize: none !important;
+}
 pre { background-color:var(--editor-background)!important;border-color:var(--border)!important;color:var(--editor-text)!important; }
 ::selection { background:var(--accent);color:var(--on-accent); }
 dlr-coach .primary,dlr-coach .ask,dlr-portfolio .primary,dlr-planning button,dlr-lab-workspace .actions button,dlr-lab-workspace .complete-button { color:var(--on-accent)!important; }
