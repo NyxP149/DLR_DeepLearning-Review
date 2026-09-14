@@ -1,0 +1,168 @@
+# Issues
+
+## La réponse correcte du quiz était exposée par l'API
+- severity: high
+- date: 2026-08
+- tags: Sécurité, API
+
+**Problème**
+`GET /api/labs/JAVA-01` sérialisait directement le modèle métier, y compris le champ `correctChoice`, ce qui aurait permis à n'importe quel apprenant de lire la bonne réponse dans la réponse JSON brute.
+
+**Solution**
+Ajout de DTOs de sortie dédiés (`LabDetailResponse`, `QuizQuestionResponse`) séparant le contenu affichable des données de correction, avec une assertion MockMvc vérifiant en continu l'absence de `correctChoice` dans la réponse.
+
+---
+
+## Le runner TypeScript dépasse systématiquement son timeout
+- severity: medium
+- date: 2026-08
+- tags: Runner, Performance
+
+**Problème**
+Le test Docker réel du runner TypeScript retournait `TIMEOUT` après 10 secondes alors que Java et Python réussissaient : `tsc` revérifiait les déclarations de toute sa bibliothèque standard sous les limites de 128 Mo et 0,5 CPU du conteneur isolé.
+
+**Solution**
+Ajout de l'option `--skipLibCheck` tout en conservant `--strict` sur le code de l'apprenant ; l'exécution réelle passe ensuite à environ 5 secondes sans affaiblir la vérification du code soumis.
+
+---
+
+## Les nouveaux laboratoires multilangages faussent la progression Java
+- severity: medium
+- date: 2026-08
+- tags: Dashboard, Données
+
+**Problème**
+Après l'ajout des parcours Python, TypeScript et Learn LLMs, le tableau de bord annonçait 9 laboratoires Java au lieu de 6 : le compteur utilisait la taille totale du catalogue au lieu de filtrer par parcours.
+
+**Solution**
+Calcul du total, des laboratoires terminés, du badge Java et du prochain laboratoire restreint au sous-ensemble `language = JAVA`, en conservant l'XP comme métrique globale valorisant tous les parcours.
+
+---
+
+## Les activités Spring Boot gonflent le compteur de progression Java
+- severity: medium
+- date: 2026-08
+- tags: Dashboard, Données
+
+**Problème**
+Le tableau de bord annonçait 36 laboratoires Java au lieu de 24 : les preuves Spring Boot s'exécutent bien via le runner Java, mais le calcul de progression confondait le langage d'exécution avec le parcours pédagogique.
+
+**Solution**
+Sélection du parcours Java par le préfixe de contenu `JAVA-` plutôt que par le runner utilisé, afin que Spring Boot reste exécuté en Java sans contaminer la progression du parcours Java.
+
+---
+
+## Les facteurs d'adaptation exposent des valeurs techniques internes
+- severity: low
+- date: 2026-08
+- tags: UI, Adaptation
+
+**Problème**
+L'écran Coach V2 affichait directement des valeurs de domaine comme `CONSOLIDATING` ou une étape de révision `-1` dans une carte destinée à l'apprenant, au lieu d'un texte compréhensible.
+
+**Solution**
+Traduction explicite des statuts internes en texte lisible et remplacement de la sentinelle négative par la formulation « aucune révision différée validée ».
+
+---
+
+## Ollama invente une restriction inexistante sur le bytecode
+- severity: medium
+- date: 2026-08
+- tags: IA, Qualité
+
+**Problème**
+Lors de la correction qualitative d'une réponse libre, le modèle affirmait à tort qu'un bytecode Java devait être généré pour une plateforme cible précise, alors que la réponse de l'apprenant décrivait correctement sa portabilité — la question et les objectifs seuls ne fournissaient pas une base factuelle assez contraignante.
+
+**Solution**
+Injection des sections et concepts publics du laboratoire comme références fiables dans le prompt, interdiction explicite d'inventer un fait absent et obligation d'annoncer les critères réels avant de signaler une erreur.
+
+---
+
+## CORS refuse l'origine locale 127.0.0.1
+- severity: low
+- date: 2026-08
+- tags: CORS, Configuration
+
+**Problème**
+Le dashboard affichait « API indisponible » alors que le shell se chargeait correctement : seule l'origine `http://localhost:4200` était autorisée côté API, alors qu'un accès réel utilisait `http://127.0.0.1:4200`.
+
+**Solution**
+Autorisation explicite des deux origines locales équivalentes dans la configuration CORS, sans recourir à un joker réseau.
+
+---
+
+## Le calendrier propose des dates indépendantes de la progression réelle
+- severity: medium
+- date: 2026-08
+- tags: Planning
+
+**Problème**
+Le planificateur ne connaissait que les séances quotidiennes prévues et ne reliait pas sa projection aux tentatives réellement terminées, ce qui pouvait suggérer des dates futures figées sans lien avec l'avancement effectif de l'apprenant.
+
+**Solution**
+La projection lit désormais les tentatives qualifiantes et leur `completed_at` ; après chaque validation, seule la prochaine activité déverrouillée reçoit une date, calculée depuis la fin effective et le rythme semaine/week-end du profil, tandis que les étapes suivantes restent sans date tant que leur prérequis n'est pas validé.
+
+---
+
+## Le Blueprint Render est introuvable au premier déploiement
+- severity: medium
+- date: 2026-09
+- tags: Déploiement, Render
+
+**Problème**
+L'écran New Blueprint de Render indiquait `Blueprint file render.yaml not found on main branch` : le guide de déploiement avait été rédigé avant que le socle technique correspondant ne soit livré dans le dépôt.
+
+**Solution**
+Ajout du Blueprint racine `render.yaml` déclarant les deux services (`dlr-api`, `dlr-web`) avec liaison automatique de leurs URL publiques respectives.
+
+---
+
+## Le Runner apparaît indisponible en permanence sur Render
+- severity: medium
+- date: 2026-09
+- tags: Déploiement, Runner
+
+**Problème**
+La variable `DLR_EXECUTION_AVAILABLE=false` était figée dans le Blueprint Render, affichant en permanence le Runner comme indisponible même lorsque l'exécution locale hybride était réellement opérationnelle.
+
+**Solution**
+La configuration autorise désormais la découverte dynamique : l'API exécute `docker image inspect` sur les trois images requises avec timeout et décide de l'état réel du Runner, au lieu de dépendre d'une seule variable statique.
+
+---
+
+## Le curseur Monaco reste bloqué après le changement de thème
+- severity: medium
+- date: 2026-09
+- tags: Éditeur, UI
+
+**Problème**
+Une petite zone rectangulaire apparaissait au-dessus du code, le curseur semblait bloqué et les clics devenaient imprévisibles : les règles CSS globales des six thèmes ciblaient toutes les `textarea` avec `!important`, y compris la zone de saisie technique invisible utilisée en interne par Monaco.
+
+**Solution**
+Exclusion explicite des zones internes `.inputarea` et `.ime-text-area` des styles de formulaires, restauration de leurs propriétés invisibles et recalcul de la mise en page après le premier rendu, avec un test Playwright de non-régression qui clique et saisit du texte dans l'éditeur.
+
+---
+
+## Création simultanée de plusieurs tentatives lors de l'autosauvegarde des notes
+- severity: medium
+- date: 2026-09
+- tags: Notes, Concurrence
+
+**Problème**
+Les autosauvegardes concurrentes du carnet personnel, des réponses et des analyses Ollama pouvaient chacune déclencher leur propre création de tentative en l'absence d'une tentative déjà ouverte, provoquant des doublons.
+
+**Solution**
+Les autosauvegardes concurrentes partagent désormais la même promesse de création de tentative, garantissant qu'une seule tentative est créée même si plusieurs champs sont modifiés au même moment.
+
+---
+
+## Une ancienne réponse de réflexion réapparaît après suppression
+- severity: low
+- date: 2026-09
+- tags: Notes, Données
+
+**Problème**
+Effacer une réponse de réflexion dans l'interface ne supprimait pas systématiquement sa version déjà persistée côté serveur, ce qui pouvait la faire réapparaître au rechargement du laboratoire.
+
+**Solution**
+Ajout d'une route `DELETE` dédiée qui retire explicitement la réponse de la tentative dès que son champ est vidé côté client, garantissant qu'une valeur effacée ne soit jamais restaurée.
