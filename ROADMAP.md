@@ -33,6 +33,7 @@
 - [x] Catalogue étendu à 148 activités sur neuf parcours
 - [x] Carnet personnel par laboratoire, page de notes groupée par langage et mémoire des réponses de réflexion (V3.7)
 - [x] Éditeur simple en alternative à Monaco, export du fichier vers un IDE externe et brouillon conservé au rechargement (V3.9)
+- [x] Éditeur de code migré de Monaco vers CodeMirror 6, plus léger et fiable au clavier (V3.10)
 
 ## Déploiement cloud
 

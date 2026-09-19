@@ -485,7 +485,7 @@ La première version exploitable doit contenir :
 
 - modèle Ollama retenu selon la puissance du PC ;
 - politique exacte de stockage du code et des conversations ;
-- choix de l'éditeur embarqué, probablement Monaco Editor ;
+- choix de l'éditeur embarqué : Monaco Editor a été essayé puis remplacé par CodeMirror 6 (voir `DLR_Implementation.md`, V3.10) ;
 - format d'import depuis IntelliJ, VS Code ou PyCharm ;
 - thèmes exacts des trois projets professionnels ;
 - catalogue final des badges et barème d'XP ;

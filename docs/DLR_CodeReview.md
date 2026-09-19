@@ -1217,3 +1217,30 @@ Le correctif du cache n'a pas suffi sur le poste de l'utilisateur : l'éditeur M
 - Modification, rechargement puis restauration vérifiés dans le navigateur, avec un espace de travail serveur existant.
 - Playwright : 12 tests réussis, dont Retour arrière et Tab au clavier réel dans l'éditeur simple.
 - Les scénarios n'écrivent que dans IndexedDB : aucune tentative ni soumission n'est créée sur l'API.
+
+## 2026-09-20 — Monaco remplacé par CodeMirror 6
+
+### Contexte
+
+Après le rechargement du service worker, l'éditeur simple fonctionnait mais Monaco gardait un comportement anormal sur le poste de l'utilisateur : le curseur ne se déplaçait pas librement et le rectangle violet apparaissait vide. Monaco fonctionnait pourtant dans tous les essais faits ici, dans ses deux modes de saisie. La cause n'a jamais pu être isolée ; l'éditeur est remplacé plutôt que de continuer à le diagnostiquer à distance.
+
+### Modifications
+
+- `CodeEditorComponent` réécrit avec CodeMirror 6, chargé à la demande ; l'interface du composant (`value`, `language`, `simple`, `valueChange`) ne change pas, donc le laboratoire n'a pas été modifié.
+- Thème piloté par les variables CSS de l'application, palette de coloration unique car les six fonds d'éditeur sont sombres.
+- Suppression de `monaco-editor`, de l'override `dompurify` et des règles CSS globales conçues pour la textarea cachée de Monaco.
+- Tests Playwright : déplacement du curseur, coloration des trois langages, sortie du clavier par Échap puis Tab. Le test Monaco est remplacé.
+
+### Risques traités
+
+- **Cadre de focus parasite** : la règle globale `:focus-visible` aurait dessiné un contour autour de la zone de contenu. Le focus natif du contenu est désactivé et l'anneau est dessiné sur l'éditeur entier.
+- **Piège au clavier** : `indentWithTab` capture Tab. Échap puis Tab reste disponible et est couvert par un test.
+- **Valeur externe** : le remplacement du texte par le parent, par exemple lors d'un changement de laboratoire, est signalé par un drapeau pour ne pas être renvoyé comme une saisie.
+
+### Validation
+
+- Build de production réussi sans avertissement ; bundle initial inchangé à 273,37 kB et environ 0,98 Mo de JavaScript pour toute l'application.
+- `npm audit` des dépendances de production : 0 vulnérabilité.
+- Playwright : 16 tests réussis, dont ceux qui saisissent au clavier réel, déplacent le curseur, effacent du texte et quittent l'éditeur par le clavier.
+- Contrôle visuel dans le navigateur : coloration, numéros de ligne et ligne active corrects, aucun rectangle parasite.
+- Non vérifié : le rendu sur téléphone, où le repli vers un champ natif sous 700 px a été supprimé.

@@ -32,26 +32,53 @@ test('un laboratoire expose concept, runner et réinitialisation', async ({ page
   await expect(page.getByRole('button', { name: 'Réinitialiser ce laboratoire' })).toBeVisible();
 });
 
-test('le curseur Monaco reste éditable sans textarea parasite', async ({ page }) => {
+test('le curseur CodeMirror se déplace librement et le texte reste modifiable', async ({ page }) => {
   await page.goto('/labs/JAVA-01');
-  const editor = page.locator('.monaco-editor');
-  const inputArea = editor.locator('textarea');
-  await expect(editor).toBeVisible();
-  await expect(inputArea).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
+  const editor = page.getByRole('textbox', { name: 'Code JAVA' });
+  await expect(page.locator('.cm-editor')).toBeVisible();
+  await expect(page.locator('.editor-host textarea')).toHaveCount(0);
 
-  await editor.click({ position: { x: 260, y: 105 } });
+  await editor.click();
   await page.keyboard.press('Control+A');
   await page.keyboard.type('ABC');
   await page.keyboard.press('ArrowLeft');
   await page.keyboard.type('X');
+  await page.keyboard.press('Home');
+  await page.keyboard.type('Y');
+  await page.keyboard.press('End');
+  await page.keyboard.press('Backspace');
 
-  await expect(editor.locator('.view-lines')).toContainText('ABXC');
+  await expect(editor).toHaveText('YABX');
+});
+
+for (const lab of ['JAVA-01', 'PYTHON-01', 'TYPESCRIPT-01']) {
+  test(`la coloration syntaxique est active pour ${lab}`, async ({ page }) => {
+    await page.goto(`/labs/${lab}`);
+    const editor = page.locator('.cm-editor');
+    await expect(editor).toBeVisible();
+    const plain = await editor.locator('.cm-content').evaluate((element) => getComputedStyle(element).color);
+    const colors = await editor.locator('.cm-line span').evaluateAll((spans) =>
+      spans.map((span) => getComputedStyle(span).color));
+    expect(colors.length).toBeGreaterThan(0);
+    expect(colors.some((color) => color !== plain)).toBeTruthy();
+  });
+}
+
+test('Échap puis Tab quitte CodeMirror sans piéger le clavier', async ({ page }) => {
+  await page.goto('/labs/JAVA-01');
+  const editor = page.getByRole('textbox', { name: 'Code JAVA' });
+  await editor.click();
+  await page.keyboard.press('Tab');
+  await expect(editor).toBeFocused();
+  await page.keyboard.press('Escape');
+  await page.keyboard.press('Tab');
+  await expect(editor).not.toBeFocused();
 });
 
 test("l'éditeur simple reste modifiable et son brouillon survit au rechargement", async ({ page }) => {
   await page.goto('/labs/JAVA-01');
   await page.getByRole('button', { name: 'Éditeur simple' }).click();
-  await expect(page.locator('.monaco-editor')).toHaveCount(0);
+  await expect(page.locator('.cm-editor')).toHaveCount(0);
 
   const editor = page.getByRole('textbox', { name: 'Code JAVA' });
   await editor.click();

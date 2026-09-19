@@ -26,7 +26,7 @@ Le principe directeur est de construire un monolithe modulaire pour la V1. Cette
 | Migrations | Flyway | schéma versionné et reproductible |
 | ORM | Spring Data JPA + Hibernate | pratique professionnelle de la persistance Java |
 | IA | Ollama local | confidentialité, absence de coût par requête et fonctionnement local |
-| Éditeur | Monaco Editor | expérience proche de VS Code et support multilangage |
+| Éditeur | CodeMirror 6 | éditeur modulaire et léger, coloration multilangage et saisie fiable sur tous les navigateurs (remplace Monaco depuis la V3.10) |
 | Exécution | Docker Engine + workers | isolation des programmes Java, Python et TypeScript |
 | Tests backend | JUnit 5, AssertJ, Mockito, Testcontainers | tests unitaires et intégration réelle avec PostgreSQL |
 | Tests frontend | Vitest/Jasmine selon Angular, Testing Library, Playwright | tests de composants et parcours complets |
@@ -1066,8 +1066,20 @@ Changer le nom du cache supprime l'ancien à l'activation. Cela évite qu'un cor
 
 ## V3.9 — Éditeur simple et brouillon fiable
 
-L'éditeur de code propose deux modes. Monaco reste le mode par défaut ; le mode simple utilise un champ texte natif, sans worker ni chargement différé, et ne dépend donc d'aucune entrée de saisie propre à Monaco. Le composant `CodeEditorComponent` reçoit une entrée `simple`, et le laboratoire choisit entre les deux instances par un bloc `@if`. Le choix est conservé dans `localStorage` sous `dlr-simple-editor`. Un écran de moins de 700 px ou l'absence de `Worker` utilisent déjà ce champ natif.
+L'éditeur de code propose deux modes. L'éditeur avancé est le mode par défaut ; le mode simple utilise un champ texte natif, sans chargement différé. Le composant `CodeEditorComponent` reçoit une entrée `simple`, et le laboratoire choisit entre les deux instances par un bloc `@if`. Le choix est conservé dans `localStorage` sous `dlr-simple-editor`. Le champ natif sert aussi de repli si le chargement de l'éditeur avancé échoue.
 
 Pour travailler dans un IDE, le laboratoire télécharge le code courant (`Main.java` pour Java, `main.py`, `main.ts` sinon). Le fichier revient par l'import existant, limité à 64 Kio et à l'extension du langage, avec l'origine `IMPORT`.
 
 À l'ouverture d'un laboratoire, le code affiché suit cette règle : le code serveur de la dernière soumission sert de base, puis le brouillon IndexedDB le remplace lorsqu'il diffère, car il contient des modifications plus récentes. Un brouillon identique au code serveur est supprimé. Sans espace de travail serveur, le brouillon est restauré comme avant sauf si une tentative a déjà été créée pendant le chargement.
+
+## V3.10 — CodeMirror 6 remplace Monaco
+
+Monaco restait inutilisable sur le poste de l'utilisateur : le curseur ne se déplaçait pas librement et un rectangle violet vide s'affichait au clic. Sa saisie repose sur un élément de saisie caché ou sur l'API EditContext du navigateur, ce qui la rend sensible aux styles globaux et aux navigateurs. L'éditeur avancé est donc remplacé par CodeMirror 6, qui édite directement un élément `contenteditable` standard.
+
+- **Paquets** : `@codemirror/state`, `view`, `commands`, `language`, `search`, `autocomplete`, `lang-java`, `lang-python`, `lang-javascript` et `@lezer/highlight`. `monaco-editor` et l'override `dompurify` qui ne servait qu'à lui sont supprimés ; `npm audit` des dépendances de production reste à zéro.
+- **Chargement** : les modules sont importés à la demande à l'ouverture d'un laboratoire, donc le bundle initial ne change pas (273 kB). L'application entière pèse désormais environ 1 Mo de JavaScript.
+- **Langages** : Java, Python et TypeScript (`javascript({ typescript: true })`). Un changement de laboratoire reconfigure le langage sans recréer l'éditeur.
+- **Fonctions** : numéros de ligne, ligne active, fermeture automatique des crochets, indentation à quatre espaces, historique, recherche, retour à la ligne automatique. Il n'y a pas d'autocomplétion, comme avec Monaco.
+- **Thème** : les couleurs de l'interface (`--editor-background`, `--editor-text`, `--accent`, `--focus-ring`) sont lues directement par le thème CodeMirror, sans observateur ni reconstruction de palette. Les six thèmes ont un fond d'éditeur sombre, donc une seule palette de coloration suffit.
+- **Accessibilité** : le contenu porte le rôle `textbox` et le nom « Code JAVA ». Tab indente ; Échap puis Tab quitte l'éditeur. L'anneau de focus est dessiné sur l'éditeur entier, et le focus natif du contenu est désactivé pour éviter un cadre parasite.
+- **Repli mobile supprimé** : Monaco basculait sur un champ natif sous 700 px, alors que CodeMirror gère le tactile.

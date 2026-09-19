@@ -205,3 +205,16 @@ Sur le poste de l'utilisateur, le texte du laboratoire restait impossible à mod
 
 **Solution**
 Ajout d'un éditeur simple à champ texte natif activable d'un clic et mémorisé, d'un téléchargement du fichier pour l'éditer dans un IDE puis le réimporter, et de tests Playwright qui couvrent ces deux chemins. La cause exacte côté Monaco reste à établir.
+
+---
+
+## Le curseur Monaco ne se déplace pas librement et un rectangle vide s'affiche
+- severity: high
+- date: 2026-09
+- tags: Éditeur, Compatibilité, Dépendances
+
+**Problème**
+Sur le poste de l'utilisateur, l'éditeur Monaco empêchait le curseur de se déplacer librement et affichait un rectangle violet vide au début de la zone de code, alors qu'il fonctionnait dans tous les essais faits ailleurs, avec ses deux modes de saisie : sa saisie repose sur un élément caché ou sur l'API EditContext, sensible aux styles globaux et au navigateur, et la cause précise n'a pas pu être isolée.
+
+**Solution**
+Monaco est remplacé par CodeMirror 6, qui édite un élément `contenteditable` standard et se thème directement avec les variables CSS de l'application. Le curseur, la sélection et la suppression sont couverts par des tests Playwright au clavier réel, et l'application entière tient désormais en environ 1 Mo de JavaScript.

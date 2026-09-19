@@ -8,7 +8,7 @@ DLR est une application locale d'apprentissage de la programmation, avec évalua
 - application Angular standalone en thème sombre ;
 - persistance PostgreSQL versionnée par Flyway ;
 - 148 activités disponibles : Java 24, Python 24, TypeScript 24, Spring Boot 12, Angular 10, SQL 10, Docker/CI-CD 8, Learn LLMs 12 et Architecture Système 24 ;
-- parcours, laboratoire, éditeur Monaco, reprise de brouillon, quiz, checklist et import `.java` ;
+- parcours, laboratoire, éditeur CodeMirror, reprise de brouillon, quiz, checklist et import `.java` ;
 - exécution Docker isolée, assertions privées et score déterministe ;
 - tableau de bord, concepts clés, révisions espacées et planning ;
 - planning glissant : seule la prochaine activité est datée, après la fin effective de son prérequis ;
@@ -25,7 +25,7 @@ DLR est une application locale d'apprentissage de la programmation, avec évalua
 - catalogue extensible avec neuf parcours complets, projets portfolio et défis de synthèse.
 - carnet personnel par laboratoire, page de notes groupée par langage et autosauvegarde des réponses de réflexion ;
 - analyses Ollama persistantes sous chaque réponse, avec suppression explicite ;
-- éditeur simple en alternative à Monaco, téléchargement du fichier pour un IDE externe et brouillon conservé au rechargement.
+- éditeur simple en alternative à CodeMirror, téléchargement du fichier pour un IDE externe et brouillon conservé au rechargement.
 
 ## Structure
 
@@ -95,7 +95,7 @@ Les runners désactivent le réseau, utilisent un utilisateur non privilégié, 
 
 Le catalogue expose une première tranche verticale exécutable pour `PYTHON-01`, `TYPESCRIPT-01` et `LLM-01`. Learn LLMs dépend du parcours Python et réutilise son runner pour les expériences reproductibles hors réseau. Les nombres d'activités affichés dans les cartes sont les cibles finales ; la mention **Bêta** distingue clairement les premières activités déjà disponibles.
 
-Dans chaque laboratoire, un concept clé est associé à une section et apparaît avant le contenu concerné. L'éditeur Monaco adapte la coloration, l'import (`.java`, `.py`, `.ts`) et la requête d'exécution au langage du laboratoire.
+Dans chaque laboratoire, un concept clé est associé à une section et apparaît avant le contenu concerné. L'éditeur CodeMirror adapte la coloration, l'import (`.java`, `.py`, `.ts`) et la requête d'exécution au langage du laboratoire.
 
 ## Parcours V2.6 — Python professionnel
 
