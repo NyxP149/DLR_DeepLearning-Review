@@ -10,6 +10,7 @@ import type { editor as MonacoEditor } from 'monaco-editor/editor';
         spellcheck="false"
         [value]="value"
         (input)="emitFallback($event)"
+        (keydown)="onFallbackKeydown($event)"
         [attr.aria-label]="'Code ' + language"
       ></textarea>
     } @else {
@@ -42,6 +43,7 @@ import type { editor as MonacoEditor } from 'monaco-editor/editor';
 export class CodeEditorComponent implements AfterViewInit, OnChanges, OnDestroy {
   @Input() value = '';
   @Input() language = 'JAVA';
+  @Input() simple = false;
   @Output() readonly valueChange = new EventEmitter<string>();
   @ViewChild('host') private host?: ElementRef<HTMLDivElement>;
 
@@ -52,9 +54,10 @@ export class CodeEditorComponent implements AfterViewInit, OnChanges, OnDestroy 
   private resizeObserver?: ResizeObserver;
   private themeObserver?: MutationObserver;
   private applyingExternalValue = false;
+  private releaseTab = false;
 
   async ngAfterViewInit(): Promise<void> {
-    if (window.matchMedia('(max-width: 700px)').matches || typeof Worker === 'undefined') {
+    if (this.simple || window.matchMedia('(max-width: 700px)').matches || typeof Worker === 'undefined') {
       this.fallback.set(true);
       this.loading.set(false);
       return;
@@ -130,6 +133,21 @@ export class CodeEditorComponent implements AfterViewInit, OnChanges, OnDestroy 
 
   emitFallback(event: Event): void {
     this.valueChange.emit((event.target as HTMLTextAreaElement).value);
+  }
+
+  onFallbackKeydown(event: KeyboardEvent): void {
+    if (event.key === 'Escape') {
+      this.releaseTab = true;
+      return;
+    }
+    if (event.key !== 'Tab' || event.shiftKey || event.ctrlKey || event.altKey || event.metaKey || this.releaseTab) {
+      this.releaseTab = false;
+      return;
+    }
+    event.preventDefault();
+    const area = event.target as HTMLTextAreaElement;
+    area.setRangeText('    ', area.selectionStart, area.selectionEnd, 'end');
+    this.valueChange.emit(area.value);
   }
 
   private monacoLanguage(): string {

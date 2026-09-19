@@ -19,6 +19,8 @@ import { KeyConcept, LabContent } from './lab.model';
 import { CodeEditorComponent } from '../../shared/code-editor/code-editor.component';
 import { EXECUTION_AVAILABLE } from '../../core/api/api-config';
 
+const SIMPLE_EDITOR_KEY = 'dlr-simple-editor';
+
 type LabViewState =
   | { status: 'loading' }
   | { status: 'loaded'; lab: LabContent }
@@ -55,6 +57,7 @@ export class LabWorkspaceComponent implements OnDestroy {
   readonly completion = signal<CompletionResult | null>(null);
   readonly completionError = signal<string | null>(null);
   readonly sourceOrigin = signal<'EDITOR' | 'PASTE' | 'IMPORT'>('EDITOR');
+  readonly simpleEditor = signal(this.readSimpleEditorPreference());
   readonly resumed = signal(false);
   readonly tutorAvailable = signal(false);
   readonly tutorModel = signal('Ollama');
@@ -149,11 +152,7 @@ export class LabWorkspaceComponent implements OnDestroy {
           this.resumed.set(workspace !== null);
           this.loadPersonalNote(lab.code);
           this.loadReflectionAnalyses(lab.code);
-          if (workspace === null) {
-            void this.restoreLocalDraft(lab.code);
-          } else {
-            void this.drafts.remove(lab.code);
-          }
+          void this.restoreLocalDraft(lab.code, workspace !== null, workspace?.sourceCode ?? null);
         }),
           map(() => lab)
         )),
@@ -173,6 +172,38 @@ export class LabWorkspaceComponent implements OnDestroy {
     this.code.set(value);
     this.sourceOrigin.set('EDITOR');
     this.scheduleDraft();
+  }
+
+  toggleSimpleEditor(): void {
+    const next = !this.simpleEditor();
+    this.simpleEditor.set(next);
+    try {
+      localStorage.setItem(SIMPLE_EDITOR_KEY, next ? '1' : '0');
+    } catch {
+      // Le choix reste appliqué pour la session même si le stockage est indisponible.
+    }
+  }
+
+  downloadSource(): void {
+    const name = this.sourceFileName(this.activeLanguage);
+    const url = URL.createObjectURL(new Blob([this.code()], { type: 'text/plain;charset=utf-8' }));
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = name;
+    link.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1_000);
+  }
+
+  sourceFileName(language: string): string {
+    return language.toUpperCase() === 'JAVA' ? 'Main.java' : `main${this.fileExtension(language)}`;
+  }
+
+  private readSimpleEditorPreference(): boolean {
+    try {
+      return localStorage.getItem(SIMPLE_EDITOR_KEY) === '1';
+    } catch {
+      return false;
+    }
   }
 
   async onFileSelected(event: Event): Promise<void> {
@@ -520,12 +551,16 @@ export class LabWorkspaceComponent implements OnDestroy {
     this.reflectionTimers.clear();
   }
 
-  private async restoreLocalDraft(labCode: string): Promise<void> {
-    const sourceCode = await this.drafts.load(labCode);
-    if (sourceCode !== null && this.activeLabCode === labCode && this.attemptId === null) {
-      this.code.set(sourceCode);
-      this.resumed.set(true);
+  private async restoreLocalDraft(labCode: string, hasWorkspace: boolean, savedCode: string | null): Promise<void> {
+    const draft = await this.drafts.load(labCode);
+    if (draft === null || this.activeLabCode !== labCode) return;
+    if (!hasWorkspace && this.attemptId !== null) return;
+    if (draft === savedCode) {
+      await this.drafts.remove(labCode);
+      return;
     }
+    this.code.set(draft);
+    this.resumed.set(true);
   }
 
   private errorMessage(error: unknown): string {

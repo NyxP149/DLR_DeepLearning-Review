@@ -48,6 +48,35 @@ test('le curseur Monaco reste éditable sans textarea parasite', async ({ page }
   await expect(editor.locator('.view-lines')).toContainText('ABXC');
 });
 
+test("l'éditeur simple reste modifiable et son brouillon survit au rechargement", async ({ page }) => {
+  await page.goto('/labs/JAVA-01');
+  await page.getByRole('button', { name: 'Éditeur simple' }).click();
+  await expect(page.locator('.monaco-editor')).toHaveCount(0);
+
+  const editor = page.getByRole('textbox', { name: 'Code JAVA' });
+  await editor.click();
+  await page.keyboard.press('Control+A');
+  await page.keyboard.type('ABC');
+  await page.keyboard.press('Backspace');
+  await page.keyboard.press('Tab');
+  await page.keyboard.type('X');
+  await expect(editor).toHaveValue('AB    X');
+
+  await page.waitForTimeout(800);
+  await page.reload();
+  await expect(page.getByRole('button', { name: 'Éditeur avancé' })).toBeVisible();
+  await expect(page.getByRole('textbox', { name: 'Code JAVA' })).toHaveValue('AB    X');
+});
+
+test('le code du laboratoire peut être téléchargé pour un éditeur externe', async ({ page }) => {
+  await page.goto('/labs/JAVA-01');
+  const [download] = await Promise.all([
+    page.waitForEvent('download'),
+    page.getByRole('button', { name: 'Télécharger Main.java' }).click()
+  ]);
+  expect(download.suggestedFilename()).toBe('Main.java');
+});
+
 test('une note personnelle est sauvegardée puis regroupée dans Mes notes', async ({ page }) => {
   let savedNote = '';
   await page.route('**/api/labs/JAVA-01/note', async (route) => {

@@ -1194,3 +1194,26 @@ Ce fichier conserve l'historique des modifications, décisions techniques, bugs 
 - Le cache `dlr-v2-shell` contenant un `styles.css` périmé est supprimé après enregistrement du nouveau worker ; seul `dlr-v3-shell` subsiste et aucune règle périmée n'est appliquée.
 - Éditeur : clic, saisie et sélection fonctionnent sur les deux modes d'entrée, sans contour violet.
 - La suppression de texte par touche n'a pas pu être vérifiée en mode EditContext avec l'automatisation du navigateur, qui n'envoie pas les commandes natives d'édition ; elle est confirmée en mode `textarea`.
+
+## 2026-09-19 — Éditeur simple, export vers un IDE et brouillon conservé
+
+Le correctif du cache n'a pas suffi sur le poste de l'utilisateur : l'éditeur Monaco restait inutilisable sans que la cause ait pu être reproduite. Plutôt que de multiplier les hypothèses, une alternative qui ne dépend pas de Monaco est livrée.
+
+### Modifications
+
+- Bouton **Éditeur simple / Éditeur avancé** dans le laboratoire : le champ texte natif remplace Monaco, le choix est mémorisé dans `localStorage` (`dlr-simple-editor`) et Monaco reste l'éditeur par défaut.
+- Dans l'éditeur simple, Tab insère quatre espaces ; Échap puis Tab quitte le champ pour ne pas piéger la navigation au clavier.
+- Bouton **Télécharger Main.java** (`main.py`, `main.ts` selon le langage) pour éditer dans un IDE, puis **Importer un fichier** existant pour le rapporter dans le laboratoire.
+- Trois tests Playwright : édition et rechargement de l'éditeur simple, téléchargement du fichier, et le test Monaco existant. La suite complète compte 12 scénarios réussis.
+
+### Bug corrigé : les modifications non exécutées étaient perdues au rechargement
+
+- **Symptôme :** après avoir modifié le code d'un laboratoire déjà commencé, un rechargement rendait le code de départ ou celui de la dernière exécution.
+- **Cause :** à l'ouverture, dès qu'un espace de travail serveur existait, le brouillon local était supprimé sans être comparé. Seul le code soumis par « Compiler et exécuter » survivait.
+- **Résolution :** le brouillon local est comparé au code du serveur. Identique, il est supprimé comme avant ; différent, il contient des modifications plus récentes et il est restauré. La protection contre une exécution lancée pendant le chargement dépend maintenant de l'existence d'un espace de travail et non de la présence de code soumis, car une tentative peut exister sans aucune soumission.
+
+### Validation
+
+- Modification, rechargement puis restauration vérifiés dans le navigateur, avec un espace de travail serveur existant.
+- Playwright : 12 tests réussis, dont Retour arrière et Tab au clavier réel dans l'éditeur simple.
+- Les scénarios n'écrivent que dans IndexedDB : aucune tentative ni soumission n'est créée sur l'API.

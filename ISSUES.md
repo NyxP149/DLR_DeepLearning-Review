@@ -179,3 +179,29 @@ Le correctif Monaco était déjà sur `main`, mais l'éditeur restait inutilisab
 
 **Solution**
 Le cache est renommé `dlr-v3-shell` pour supprimer l'ancien à l'activation, seuls les fichiers au nom haché par leur contenu restent servis depuis le cache, et tout le reste passe par le réseau d'abord avec repli hors ligne ; un rechargement suffit ensuite à récupérer la version corrigée.
+
+---
+
+## Les modifications de code non exécutées sont perdues au rechargement
+- severity: medium
+- date: 2026-09
+- tags: Laboratoire, Brouillon, Données
+
+**Problème**
+Après avoir modifié le code d'un laboratoire déjà commencé, un rechargement rendait le code de la dernière exécution : dès qu'un espace de travail serveur existait, le brouillon local était supprimé à l'ouverture sans être comparé au code enregistré.
+
+**Solution**
+Le brouillon local est maintenant comparé au code du serveur : identique il est supprimé, différent il est restauré car plus récent. La protection contre une exécution lancée pendant le chargement dépend de la présence d'un espace de travail et non de code déjà soumis, une tentative pouvant exister sans soumission.
+
+---
+
+## L'éditeur Monaco reste inutilisable sur certains postes
+- severity: medium
+- date: 2026-09
+- tags: Éditeur, Accessibilité
+
+**Problème**
+Sur le poste de l'utilisateur, le texte du laboratoire restait impossible à modifier et un rectangle parasite s'affichait au clic, sans que la cause ait pu être reproduite : Monaco fonctionne dans les deux modes de saisie testés et le cache périmé du service worker n'expliquait pas tout.
+
+**Solution**
+Ajout d'un éditeur simple à champ texte natif activable d'un clic et mémorisé, d'un téléchargement du fichier pour l'éditer dans un IDE puis le réimporter, et de tests Playwright qui couvrent ces deux chemins. La cause exacte côté Monaco reste à établir.

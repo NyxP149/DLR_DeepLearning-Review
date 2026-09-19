@@ -97,18 +97,38 @@
               <label class="editor-label" for="lab-source">Code {{ state.lab.language }}</label>
               <div class="import-row">
                 <span>Origine : {{ sourceOrigin() }}</span>
-                <label class="import-button">
-                  Importer un fichier {{ fileExtension(state.lab.language) }}
-                  <input type="file" [attr.accept]="fileAccept(state.lab.language)" (change)="onFileSelected($event)" />
-                </label>
+                <div class="editor-tools">
+                  <button class="tool-button" type="button" [attr.aria-pressed]="simpleEditor()" (click)="toggleSimpleEditor()">
+                    {{ simpleEditor() ? 'Éditeur avancé' : 'Éditeur simple' }}
+                  </button>
+                  <button class="tool-button" type="button" (click)="downloadSource()" [title]="'Télécharger ' + sourceFileName(state.lab.language) + ' pour l’ouvrir dans ton IDE'">
+                    Télécharger {{ sourceFileName(state.lab.language) }}
+                  </button>
+                  <label class="import-button">
+                    Importer un fichier {{ fileExtension(state.lab.language) }}
+                    <input type="file" [attr.accept]="fileAccept(state.lab.language)" (change)="onFileSelected($event)" />
+                  </label>
+                </div>
               </div>
-              <dlr-code-editor
-                id="lab-source"
-                [value]="code()"
-                [language]="state.lab.language"
-                (valueChange)="onCodeChange($event)"
-                aria-describedby="runner-description"
-              />
+              @if (simpleEditor()) {
+                <dlr-code-editor
+                  id="lab-source"
+                  [simple]="true"
+                  [value]="code()"
+                  [language]="state.lab.language"
+                  (valueChange)="onCodeChange($event)"
+                  aria-describedby="runner-description"
+                />
+                <p class="editor-hint">Éditeur simple : Tab insère quatre espaces, Échap puis Tab quitte le champ.</p>
+              } @else {
+                <dlr-code-editor
+                  id="lab-source"
+                  [value]="code()"
+                  [language]="state.lab.language"
+                  (valueChange)="onCodeChange($event)"
+                  aria-describedby="runner-description"
+                />
+              }
               <div class="actions">
                 <button type="button" [disabled]="running() || !executionAvailable()" (click)="runCode()">
                   {{ executionChecking() ? 'Vérification du Runner…' : !executionAvailable() ? 'Runner hors ligne' : running() ? 'Exécution…' : 'Compiler et exécuter' }}

@@ -1063,3 +1063,11 @@ Le service worker (`apps/web/src/sw.js`, cache `dlr-v3-shell`) applique désorma
 - **tout le reste** (`styles.css` et `main.js` en développement, `runtime-config.js`, manifeste, icônes) : réseau d'abord, avec repli sur le cache pour l'usage hors ligne.
 
 Changer le nom du cache supprime l'ancien à l'activation. Cela évite qu'un correctif frontend déjà publié reste invisible parce qu'une copie périmée d'un fichier à nom fixe est servie indéfiniment. Le premier chargement suivant une mise à jour du worker peut encore afficher l'ancienne version ; un second rechargement suffit.
+
+## V3.9 — Éditeur simple et brouillon fiable
+
+L'éditeur de code propose deux modes. Monaco reste le mode par défaut ; le mode simple utilise un champ texte natif, sans worker ni chargement différé, et ne dépend donc d'aucune entrée de saisie propre à Monaco. Le composant `CodeEditorComponent` reçoit une entrée `simple`, et le laboratoire choisit entre les deux instances par un bloc `@if`. Le choix est conservé dans `localStorage` sous `dlr-simple-editor`. Un écran de moins de 700 px ou l'absence de `Worker` utilisent déjà ce champ natif.
+
+Pour travailler dans un IDE, le laboratoire télécharge le code courant (`Main.java` pour Java, `main.py`, `main.ts` sinon). Le fichier revient par l'import existant, limité à 64 Kio et à l'extension du langage, avec l'origine `IMPORT`.
+
+À l'ouverture d'un laboratoire, le code affiché suit cette règle : le code serveur de la dernière soumission sert de base, puis le brouillon IndexedDB le remplace lorsqu'il diffère, car il contient des modifications plus récentes. Un brouillon identique au code serveur est supprimé. Sans espace de travail serveur, le brouillon est restauré comme avant sauf si une tentative a déjà été créée pendant le chargement.
