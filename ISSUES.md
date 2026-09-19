@@ -166,3 +166,16 @@ Effacer une réponse de réflexion dans l'interface ne supprimait pas systémati
 
 **Solution**
 Ajout d'une route `DELETE` dédiée qui retire explicitement la réponse de la tentative dès que son champ est vidé côté client, garantissant qu'une valeur effacée ne soit jamais restaurée.
+
+---
+
+## Le correctif de l'éditeur n'atteint pas le navigateur à cause du service worker
+- severity: medium
+- date: 2026-09
+- tags: PWA, Éditeur, Cache
+
+**Problème**
+Le correctif Monaco était déjà sur `main`, mais l'éditeur restait inutilisable pour l'utilisateur, avec un rectangle violet parasite au clic : le service worker servait tous les fichiers hors navigation en cache d'abord, si bien que les `styles.css` et `main.js` d'avant le correctif, à noms fixes sous `npm start`, restaient servis indéfiniment.
+
+**Solution**
+Le cache est renommé `dlr-v3-shell` pour supprimer l'ancien à l'activation, seuls les fichiers au nom haché par leur contenu restent servis depuis le cache, et tout le reste passe par le réseau d'abord avec repli hors ligne ; un rechargement suffit ensuite à récupérer la version corrigée.

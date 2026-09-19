@@ -1178,3 +1178,19 @@ Ce fichier conserve l'historique des modifications, décisions techniques, bugs 
 - Backend : 57 tests, 0 échec, dont sauvegarde/suppression des notes et analyses ; 9 scénarios Docker optionnels ignorés dans cette suite standard.
 - Frontend : build Angular de production réussi.
 - Navigateur : 10 tests Playwright réussis, dont restauration d'une note après rechargement, regroupement dans **Mes notes**, restauration d'une analyse Ollama et suppression explicite.
+
+## 2026-09-19 — Correctif : l'éditeur Monaco reste cassé malgré son correctif
+
+### Bug corrigé : ancien bundle servi par le service worker
+
+- **Symptôme :** un petit rectangle violet apparaît en haut de l'éditeur dès qu'on clique dedans et le texte semble impossible à modifier, alors que le correctif Monaco du 5 septembre était déjà sur `main`.
+- **Diagnostic :** le code source actuel fonctionne : clic, saisie et focus ont été validés avec les deux modes d'entrée de Monaco 0.56, `native-edit-context` (EditContext) et la `textarea` `.inputarea` (EditContext désactivé). Restaurer temporairement les fichiers d'avant le correctif reproduit exactement le contour violet de la capture.
+- **Cause :** depuis la V1, `sw.js` servait tous les fichiers hors navigation en cache d'abord. Sous `npm start`, les bundles ont des noms fixes (`styles.css`, `main.js`) : les copies de début septembre restaient dans le cache `dlr-v2-shell` et l'éditeur corrigé n'atteignait jamais le navigateur.
+- **Résolution :** le cache devient `dlr-v3-shell`, ce qui supprime l'ancien à l'activation. Seuls les fichiers dont le nom contient un hachage de contenu sont servis depuis le cache ; tout le reste (dont `runtime-config.js`) passe par le réseau, avec repli sur le cache hors ligne.
+- **Limite connue :** le premier chargement suivant la mise à jour est encore traité par l'ancien worker ; un second rechargement (ou Ctrl+Maj+R) est nécessaire une seule fois.
+
+### Validation
+
+- Le cache `dlr-v2-shell` contenant un `styles.css` périmé est supprimé après enregistrement du nouveau worker ; seul `dlr-v3-shell` subsiste et aucune règle périmée n'est appliquée.
+- Éditeur : clic, saisie et sélection fonctionnent sur les deux modes d'entrée, sans contour violet.
+- La suppression de texte par touche n'a pas pu être vérifiée en mode EditContext avec l'automatisation du navigateur, qui n'envoie pas les commandes natives d'édition ; elle est confirmée en mode `textarea`.

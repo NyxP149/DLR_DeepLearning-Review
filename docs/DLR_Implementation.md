@@ -1053,3 +1053,13 @@ Chaque laboratoire propose un carnet libre limité à 20 000 caractères. La sai
 Les choix et réponses de réflexion sont eux aussi sauvegardés pendant la saisie. Le navigateur conserve une copie locale et l'API les associe à la tentative en cours ; effacer une réponse supprime sa version persistée afin qu'une ancienne valeur ne réapparaisse pas.
 
 Une correction qualitative demandée à Ollama est conservée séparément de la réponse et du score. Elle apparaît sous la question concernée, est restaurée au retour dans le laboratoire et peut être supprimée explicitement. Flyway V18 crée `lab_note` et `reflection_analysis`, toutes deux rattachées au profil local et au laboratoire.
+
+## V3.8 — Service worker à cache frais
+
+Le service worker (`apps/web/src/sw.js`, cache `dlr-v3-shell`) applique désormais trois stratégies :
+
+- **navigation** : réseau d'abord, avec repli sur `/index.html` hors ligne ;
+- **fichiers au nom haché par leur contenu** (`nom-XXXXXXXX.js` ou `.css`) : cache d'abord, car leur contenu ne change jamais sous un même nom ;
+- **tout le reste** (`styles.css` et `main.js` en développement, `runtime-config.js`, manifeste, icônes) : réseau d'abord, avec repli sur le cache pour l'usage hors ligne.
+
+Changer le nom du cache supprime l'ancien à l'activation. Cela évite qu'un correctif frontend déjà publié reste invisible parce qu'une copie périmée d'un fichier à nom fixe est servie indéfiniment. Le premier chargement suivant une mise à jour du worker peut encore afficher l'ancienne version ; un second rechargement suffit.

@@ -1,5 +1,7 @@
-const CACHE_NAME = 'dlr-v2-shell';
+const CACHE_NAME = 'dlr-v3-shell';
 const SHELL = ['/', '/index.html', '/runtime-config.js', '/manifest.webmanifest', '/icons/dlr-192.svg', '/icons/dlr-512.svg'];
+// Seuls les bundles au nom haché par leur contenu peuvent être servis depuis le cache sans risque de version périmée.
+const CONTENT_HASHED = /-[A-Z0-9]{8}\.(?:js|css)$/;
 
 self.addEventListener('install', (event) => {
   event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(SHELL)).then(() => self.skipWaiting()));
@@ -27,18 +29,18 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  if (url.pathname === '/runtime-config.js') {
-    event.respondWith(fetch(request)
-      .then((response) => {
-        if (response.ok) caches.open(CACHE_NAME).then((cache) => cache.put(request, response.clone()));
-        return response;
-      })
-      .catch(() => caches.match(request)));
+  if (CONTENT_HASHED.test(url.pathname)) {
+    event.respondWith(caches.match(request).then((cached) => cached || fetch(request).then((response) => {
+      if (response.ok) caches.open(CACHE_NAME).then((cache) => cache.put(request, response.clone()));
+      return response;
+    })));
     return;
   }
 
-  event.respondWith(caches.match(request).then((cached) => cached || fetch(request).then((response) => {
-    if (response.ok) caches.open(CACHE_NAME).then((cache) => cache.put(request, response.clone()));
-    return response;
-  })));
+  event.respondWith(fetch(request)
+    .then((response) => {
+      if (response.ok) caches.open(CACHE_NAME).then((cache) => cache.put(request, response.clone()));
+      return response;
+    })
+    .catch(() => caches.match(request)));
 });
