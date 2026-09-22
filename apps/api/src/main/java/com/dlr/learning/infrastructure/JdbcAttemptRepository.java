@@ -41,7 +41,9 @@ public class JdbcAttemptRepository implements AttemptRepository {
     public Optional<Attempt> findById(UUID id) {
         return jdbcTemplate.query(
                         """
-                        select id, lab_id, started_at, completed_at, status, score, continued_below_threshold
+                        select id, lab_id, started_at, completed_at, status, score, continued_below_threshold,
+                               tests_score, quiz_score, practice_score, connections_score, self_assessment_score,
+                               score_version
                         from attempt
                         where id = ?
                         """,
@@ -52,12 +54,14 @@ public class JdbcAttemptRepository implements AttemptRepository {
     }
 
     @Override
-    public Optional<Attempt> findLatestInProgress(String labCode) {
+    public Optional<Attempt> findLatest(String labCode) {
         return jdbcTemplate.query(
                         """
-                        select id, lab_id, started_at, completed_at, status, score, continued_below_threshold
+                        select id, lab_id, started_at, completed_at, status, score, continued_below_threshold,
+                               tests_score, quiz_score, practice_score, connections_score, self_assessment_score,
+                               score_version
                         from attempt
-                        where lab_id = ? and status = 'IN_PROGRESS'
+                        where lab_id = ?
                         order by started_at desc
                         limit 1
                         """,
@@ -102,6 +106,12 @@ public class JdbcAttemptRepository implements AttemptRepository {
                 completedAt == null ? null : completedAt.toInstant(),
                 AttemptStatus.valueOf(result.getString("status")),
                 result.getBigDecimal("score"),
-                result.getBoolean("continued_below_threshold"));
+                result.getBoolean("continued_below_threshold"),
+                result.getBigDecimal("tests_score"),
+                result.getBigDecimal("quiz_score"),
+                result.getBigDecimal("practice_score"),
+                result.getBigDecimal("connections_score"),
+                result.getBigDecimal("self_assessment_score"),
+                result.getString("score_version"));
     }
 }

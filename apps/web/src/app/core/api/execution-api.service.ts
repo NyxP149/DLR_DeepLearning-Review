@@ -9,6 +9,12 @@ export interface Attempt {
   status: 'IN_PROGRESS' | 'COMPLETED' | 'COMPLETED_BELOW_THRESHOLD';
   score: number | null;
   continuedBelowThreshold: boolean;
+  testsScore: number | null;
+  quizScore: number | null;
+  practiceScore: number | null;
+  connectionsScore: number | null;
+  selfAssessmentScore: number | null;
+  scoreVersion: string | null;
 }
 
 export interface SubmissionResponse {

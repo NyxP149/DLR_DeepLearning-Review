@@ -6,6 +6,7 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { catchError, firstValueFrom, map, Observable, of, startWith, switchMap, tap } from 'rxjs';
 
 import {
+  AttemptWorkspace,
   ExecutionApiService,
   ExecutionResult,
   CompletionResult
@@ -144,7 +145,7 @@ export class LabWorkspaceComponent implements OnDestroy {
           this.checklist.set(workspace?.checklist.length === lab.checklist.length
             ? workspace.checklist
             : lab.checklist.map(() => false));
-          this.completion.set(null);
+          this.completion.set(this.restoredCompletion(workspace, lab.threshold));
           this.completionError.set(null);
           this.resetNotice.set(null);
           this.code.set(workspace?.sourceCode ?? lab.exercises[0]?.starterCode ?? '');
@@ -273,6 +274,26 @@ export class LabWorkspaceComponent implements OnDestroy {
   onChecklistChange(index: number, event: Event): void {
     const checked = (event.target as HTMLInputElement).checked;
     this.checklist.update((items) => items.map((item, itemIndex) => itemIndex === index ? checked : item));
+  }
+
+  private restoredCompletion(workspace: AttemptWorkspace | null, threshold: number): CompletionResult | null {
+    const attempt = workspace?.attempt;
+    if (!attempt || attempt.status === 'IN_PROGRESS' || attempt.testsScore === null) {
+      return null;
+    }
+    return {
+      attempt,
+      breakdown: {
+        tests: attempt.testsScore,
+        quiz: attempt.quizScore ?? 0,
+        practice: attempt.practiceScore ?? 0,
+        connections: attempt.connectionsScore ?? 0,
+        selfAssessment: attempt.selfAssessmentScore ?? 0,
+        version: attempt.scoreVersion ?? ''
+      },
+      threshold,
+      reviewScheduled: true
+    };
   }
 
   async completeLab(lab: LabContent): Promise<void> {

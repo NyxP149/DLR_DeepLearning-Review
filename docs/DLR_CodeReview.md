@@ -1279,3 +1279,21 @@ L'utilisateur signale que la fenêtre de réponse du tuteur Ollama est petite et
 
 - Vérifié en direct via `window.ng.getComponent()` en injectant une réponse longue simulée (Ollama n'est pas disponible dans cet environnement) : hauteur maximale 448 px, `overflow-y: auto`, `scrollHeight` (745) supérieur à `clientHeight` (448) donc réellement défilable.
 - Contrôle visuel : encadré arrondi avec barre de défilement interne violette visible, la section « Quiz et explication » reste visible juste en dessous sans nécessiter un défilement de toute la page.
+
+## 2026-09-22 — Le bilan de fin de laboratoire disparaissait au rechargement
+
+### Contexte
+
+L'utilisateur signale que rien ne semble être sauvegardé quand il clique sur « Terminer et calculer mon score ». En creusant le point soulevé en parallèle sur l'échec ponctuel du test Playwright de planning, deux choses distinctes sont découvertes : l'échec du test venait d'un vieux processus backend resté connecté à une base Postgres contenant de vraies données historiques (non reproductible sur environnement propre, donc pas un vrai bug) ; en revanche, en vérifiant manuellement le cycle de vie d'une tentative terminée, un vrai bug apparaît : `AttemptService.current(labCode)` n'allait chercher que la tentative **en cours** (`findLatestInProgress`). Une fois le score calculé, la tentative passe au statut `COMPLETED`, donc au rechargement de la page l'API renvoyait « aucune tentative » et le frontend réinitialisait tout à l'état vierge (code, quiz, checklist et bilan de score), alors que le score était bel et bien persisté en base.
+
+### Modifications
+
+- Backend : `Attempt` (record) reçoit les 5 scores de détail (`testsScore`, `quizScore`, `practiceScore`, `connectionsScore`, `selfAssessmentScore`) et `scoreVersion`, déjà présents en base mais jamais relus. `AttemptRepository.findLatestInProgress` est remplacé par `findLatest`, qui renvoie la tentative la plus récente d'un laboratoire quel que soit son statut ; `AttemptService.current()` l'utilise désormais.
+- Frontend : `Attempt` (execution-api.service.ts) reçoit les mêmes champs. `LabWorkspaceComponent` reconstruit le panneau de bilan (`completion`) à partir de la tentative renvoyée par `/attempts/current` dès que son statut n'est plus `IN_PROGRESS`, au lieu de le remettre systématiquement à `null` au chargement du laboratoire.
+- Test Playwright ajouté : termine réellement un laboratoire (exécution Docker, quiz, checklist), recharge la page et vérifie que le bilan (score, répartition, message de révision programmée) reste identique.
+
+### Validation
+
+- Vérifié manuellement de bout en bout via l'API (démarrage de tentative, soumission, exécution, quiz, checklist, complétion) puis dans le navigateur : le bilan « Laboratoire validé · 100 % » s'affiche dès le chargement de la page, y compris après un rechargement forcé (`window.location.reload()`).
+- `mvn test` et `ng build` de production restent verts après l'extension du record `Attempt`.
+- Playwright : 17/17 tests réussis, dont le nouveau test de persistance du bilan (≈8 s, exécution Docker réelle incluse).

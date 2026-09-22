@@ -231,3 +231,16 @@ L'utilisateur signale que la fenêtre de réponse du tuteur Ollama est petite et
 
 **Solution**
 `.tutor-answer` reçoit une hauteur maximale (`min(28rem, 55vh)`) et son propre défilement interne stylé aux couleurs de l'application, au lieu de dépendre du défilement de la page entière. Vérifié en injectant une réponse longue simulée via `window.ng.getComponent()`.
+
+---
+
+## Le bilan de fin de laboratoire disparaît au rechargement de la page
+- severity: high
+- date: 2026-09
+- tags: Backend, Données, Régression fonctionnelle
+
+**Problème**
+L'utilisateur signale qu'après avoir cliqué sur « Terminer et calculer mon score », rien ne semble sauvegardé. En vérifiant le cycle de vie complet d'une tentative (démarrage, exécution, quiz, checklist, complétion) via l'API puis dans le navigateur, `AttemptService.current(labCode)` s'est révélé ne chercher que la tentative **en cours** : une fois complétée, son statut passe à `COMPLETED` et sort de ce filtre, donc au rechargement de la page l'API renvoie « aucune tentative » et le frontend réinitialise tout (code, quiz, checklist, bilan) à l'état vierge — alors que le score est réellement écrit en base.
+
+**Solution**
+`AttemptRepository.findLatestInProgress` est remplacé par `findLatest`, qui renvoie la tentative la plus récente quel que soit son statut ; le record `Attempt` expose désormais aussi les scores détaillés déjà stockés en base. Le frontend reconstruit le panneau de bilan à partir de cette tentative dès qu'elle n'est plus en cours. Couvert par un nouveau test Playwright qui termine réellement un laboratoire puis recharge la page.

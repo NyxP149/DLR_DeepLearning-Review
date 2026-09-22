@@ -1092,3 +1092,11 @@ Chaque concept clé (un par laboratoire, 148 au total sur 9 parcours) n'exposait
 - **Backend** : `LabContent.KeyConcept` (record) et `ConceptMasteryService.ConceptMastery` (record) reçoivent les deux champs ; `LabDetailResponse` réutilise `KeyConcept` directement, donc aucun DTO à modifier.
 - **Frontend** : les interfaces `KeyConcept` (lab.model.ts) et `ConceptMastery` (mastery-api.service.ts) sont étendues, et les deux gabarits qui rendent un concept (fiche du laboratoire, carte de maîtrise autonome) affichent les deux nouveaux blocs.
 - **Rédaction du contenu** : déléguée par parcours à des agents indépendants, chacun contextualisé avec le titre et la structure réelle des laboratoires de son parcours pour éviter un texte générique — un exemple de référence (Java, laboratoire 1) fixait le niveau de qualité et l'ordre exact des clés JSON attendu.
+
+## V3.12 — Le bilan de fin de laboratoire survit désormais au rechargement
+
+`AttemptService.current(labCode)` ne recherchait que la tentative **en cours** (`findLatestInProgress`). Une fois « Terminer et calculer mon score » cliqué, la tentative passe au statut `COMPLETED` et sort donc de ce filtre : au rechargement de la page, l'API renvoyait « aucune tentative », et le frontend réinitialisait tout (code, quiz, checklist, bilan) à l'état vierge, alors que le score était réellement persisté en base.
+
+- **Backend** : `findLatestInProgress` est remplacé par `findLatest`, qui renvoie la tentative la plus récente d'un laboratoire quel que soit son statut. Le record `Attempt` expose désormais aussi les cinq scores de détail et la version de barème, déjà stockés en base (`attempt.tests_score`, etc.) mais jamais relus après écriture.
+- **Frontend** : au chargement d'un laboratoire, `LabWorkspaceComponent` reconstruit le panneau de bilan à partir de la tentative renvoyée par `/attempts/current` dès que son statut n'est plus `IN_PROGRESS`, au lieu de le vider systématiquement.
+- **Non concerné** : la persistance elle-même n'a jamais été en cause — `AssessmentService.complete()` écrivait déjà correctement le score en base au clic ; seule sa relecture après rechargement était manquante.

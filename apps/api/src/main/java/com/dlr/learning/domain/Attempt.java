@@ -11,6 +11,12 @@ public record Attempt(
         Instant completedAt,
         AttemptStatus status,
         BigDecimal score,
-        boolean continuedBelowThreshold
+        boolean continuedBelowThreshold,
+        BigDecimal testsScore,
+        BigDecimal quizScore,
+        BigDecimal practiceScore,
+        BigDecimal connectionsScore,
+        BigDecimal selfAssessmentScore,
+        String scoreVersion
 ) {
 }

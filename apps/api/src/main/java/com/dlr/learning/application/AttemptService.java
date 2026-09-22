@@ -49,7 +49,8 @@ public class AttemptService {
                 null,
                 AttemptStatus.IN_PROGRESS,
                 null,
-                false);
+                false,
+                null, null, null, null, null, null);
         return attemptRepository.save(attempt);
     }
 
@@ -63,7 +64,7 @@ public class AttemptService {
         labCatalog.findByCode(labCode)
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "LAB_NOT_FOUND", "Laboratoire introuvable : " + labCode));
-        return attemptRepository.findLatestInProgress(labCode.toUpperCase());
+        return attemptRepository.findLatest(labCode.toUpperCase());
     }
 
     @Transactional

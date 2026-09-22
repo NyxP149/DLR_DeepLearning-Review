@@ -240,3 +240,34 @@ test('le déploiement cloud conserve le brouillon sans simuler un runner', async
   await expect(page.getByRole('button', { name: 'Validation disponible avec le Runner' })).toBeDisabled();
   await expect(page.getByText('Brouillon actif · démarre le service hybride pour exécuter')).toBeVisible();
 });
+
+test('le bilan d’un laboratoire terminé reste affiché après un rechargement', async ({ page }) => {
+  await page.goto('/labs/JAVA-01');
+  page.once('dialog', (dialog) => dialog.accept());
+  await page.getByRole('button', { name: 'Réinitialiser ce laboratoire' }).click();
+  await expect(page.getByText('a été remis à zéro')).toBeVisible();
+  await page.getByRole('button', { name: 'Éditeur simple' }).click();
+  await page.getByRole('textbox', { name: 'Code JAVA' }).fill(
+    'public class Main {\n    public static void main(String[] args) {\n        System.out.println("DLR Java Lab 1");\n    }\n}\n'
+  );
+
+  await page.getByRole('button', { name: 'Compiler et exécuter' }).click();
+  await expect(page.locator('.execution-result.success')).toBeVisible({ timeout: 15_000 });
+
+  await page.getByRole('radio', { name: 'javac' }).check();
+  await page.getByPlaceholder('Explique avec tes propres mots…').fill(
+    'Le code source est compilé en bytecode que la JVM exécute.'
+  );
+  for (const item of await page.locator('.checklist input[type="checkbox"]').all()) {
+    await item.check();
+  }
+
+  await page.getByRole('button', { name: 'Terminer et calculer mon score' }).click();
+  await expect(page.getByRole('heading', { name: 'Laboratoire validé' })).toBeVisible();
+  const score = await page.locator('.completion-score').textContent();
+
+  await page.reload();
+  await expect(page.getByRole('heading', { name: 'Laboratoire validé' })).toBeVisible();
+  await expect(page.locator('.completion-score')).toHaveText(score ?? '');
+  await expect(page.getByText('Une révision prioritaire a été programmée pour demain.')).toBeVisible();
+});
