@@ -244,3 +244,29 @@ L'utilisateur signale qu'après avoir cliqué sur « Terminer et calculer mon sc
 
 **Solution**
 `AttemptRepository.findLatestInProgress` est remplacé par `findLatest`, qui renvoie la tentative la plus récente quel que soit son statut ; le record `Attempt` expose désormais aussi les scores détaillés déjà stockés en base. Le frontend reconstruit le panneau de bilan à partir de cette tentative dès qu'elle n'est plus en cours. Couvert par un nouveau test Playwright qui termine réellement un laboratoire puis recharge la page.
+
+---
+
+## Le tuteur Ollama répond très lentement
+- severity: medium
+- date: 2026-09
+- tags: Performance, Tuteur IA
+
+**Problème**
+L'utilisateur signale des réponses très lentes du professeur Ollama. Le modèle par défaut, `llama3.1:latest` (8 Md de paramètres), est lourd pour une inférence CPU locale : le poste de développement n'a pas de GPU exploité par Ollama (`size_vram: 0`, seul un Intel Iris Xe intégré est présent).
+
+**Solution**
+Le modèle par défaut passe à `llama3.2:latest` (3,2 Md de paramètres, déjà installé localement), toujours configurable via `DLR_OLLAMA_MODEL`. Le gain est net (66 s à froid puis ~32 s à chaud contre nettement plus avec le modèle 8B) sans être instantané, l'inférence restant limitée par l'absence de GPU.
+
+---
+
+## Un test d'exercice semble refuser un résultat pourtant correct
+- severity: low
+- date: 2026-09
+- tags: Validation, Pédagogie, UX
+
+**Problème**
+L'utilisateur signale qu'un résultat logiquement correct mais formaté différemment (ex. `total = 42` au lieu de `total=42`) est marqué comme incorrect, et demande un audit des laboratoires. Vérification faite : la comparaison stricte de la sortie du programme est un choix pédagogique assumé sur tout le catalogue — 124 des 148 exercices demandent explicitement dans leur consigne d'« afficher exactement » une chaîne précise — mais le message d'échec générique ne montrait pas la sortie attendue, rendant l'écart de formatage difficile à repérer.
+
+**Solution**
+Le message d'échec du test visible affiche désormais la sortie attendue à côté de la sortie obtenue (`ExecutionService.run`), au lieu d'une phrase générique. La logique de comparaison elle-même n'a pas changé : elle reste volontairement exacte.

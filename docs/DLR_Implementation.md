@@ -1093,6 +1093,13 @@ Chaque concept clé (un par laboratoire, 148 au total sur 9 parcours) n'exposait
 - **Frontend** : les interfaces `KeyConcept` (lab.model.ts) et `ConceptMastery` (mastery-api.service.ts) sont étendues, et les deux gabarits qui rendent un concept (fiche du laboratoire, carte de maîtrise autonome) affichent les deux nouveaux blocs.
 - **Rédaction du contenu** : déléguée par parcours à des agents indépendants, chacun contextualisé avec le titre et la structure réelle des laboratoires de son parcours pour éviter un texte générique — un exemple de référence (Java, laboratoire 1) fixait le niveau de qualité et l'ordre exact des clés JSON attendu.
 
+## V3.11B — Fenêtre de réponse du tuteur Ollama devenue défilante
+
+Signalement : la réponse du tuteur Ollama « coupe » le texte. Diagnostic : aucun découpage CSS n'existait réellement — `.tutor-answer` n'avait pas de hauteur maximale, donc la colonne de droite atteignait environ 3142 px pour une réponse longue, obligeant à faire défiler toute la page pour la lire en entier.
+
+- `.tutor-answer` reçoit `max-height: min(28rem, 55vh)`, `overflow-y: auto` et une barre de défilement interne stylée aux couleurs de l'application, au lieu de dépendre du défilement de la page entière.
+- Vérifié en injectant une réponse longue simulée via `window.ng.getComponent()` (Ollama n'étant pas disponible dans l'environnement de vérification).
+
 ## V3.12 — Le bilan de fin de laboratoire survit désormais au rechargement
 
 `AttemptService.current(labCode)` ne recherchait que la tentative **en cours** (`findLatestInProgress`). Une fois « Terminer et calculer mon score » cliqué, la tentative passe au statut `COMPLETED` et sort donc de ce filtre : au rechargement de la page, l'API renvoyait « aucune tentative », et le frontend réinitialisait tout (code, quiz, checklist, bilan) à l'état vierge, alors que le score était réellement persisté en base.
@@ -1100,3 +1107,10 @@ Chaque concept clé (un par laboratoire, 148 au total sur 9 parcours) n'exposait
 - **Backend** : `findLatestInProgress` est remplacé par `findLatest`, qui renvoie la tentative la plus récente d'un laboratoire quel que soit son statut. Le record `Attempt` expose désormais aussi les cinq scores de détail et la version de barème, déjà stockés en base (`attempt.tests_score`, etc.) mais jamais relus après écriture.
 - **Frontend** : au chargement d'un laboratoire, `LabWorkspaceComponent` reconstruit le panneau de bilan à partir de la tentative renvoyée par `/attempts/current` dès que son statut n'est plus `IN_PROGRESS`, au lieu de le vider systématiquement.
 - **Non concerné** : la persistance elle-même n'a jamais été en cause — `AssessmentService.complete()` écrivait déjà correctement le score en base au clic ; seule sa relecture après rechargement était manquante.
+
+## V3.13 — Modèle Ollama allégé et message d'échec de test explicite
+
+Le modèle par défaut passe de `llama3.1:latest` (8 Md de paramètres) à `llama3.2:latest` (3,2 Md), configurable comme avant via `DLR_OLLAMA_MODEL`. Le poste de développement n'a pas de GPU exploité par Ollama (`size_vram: 0` sur `/api/ps`, seul un Intel Iris Xe intégré est présent) : l'inférence reste CPU, donc un modèle plus léger réduit la latence sans changer d'architecture.
+
+- **Configuration** : `application.yml`, `.env.example` et le fallback `@Value` d'`OllamaAiTutorAdapter` pointent désormais vers `llama3.2:latest`.
+- **Validation des exercices** : audit de la comparaison stricte (`ExecutionService.run`, `.strip().equals()`) sur les 148 exercices après un signalement de faux négatif (sortie « logiquement » correcte mais rejetée). 124/148 demandent explicitement dans leur consigne d'« afficher exactement » une chaîne précise ; les 24 restants (parcours Architecture) rejouent une preuve déjà fournie. La comparaison exacte est donc un choix pédagogique assumé, pas un bug — mais le message d'échec affiche désormais la sortie attendue à côté de la sortie obtenue, au lieu d'une phrase générique.

@@ -483,7 +483,7 @@ La première version exploitable doit contenir :
 
 ## 20. Points à préciser lors de la conception détaillée
 
-- modèle Ollama retenu selon la puissance du PC ;
+- modèle Ollama retenu selon la puissance du PC : `llama3.2:latest` (3 Md de paramètres) choisi par défaut faute de GPU exploitable par Ollama sur le poste de développement (voir `DLR_Implementation.md`, V3.13) ;
 - politique exacte de stockage du code et des conversations ;
 - choix de l'éditeur embarqué : Monaco Editor a été essayé puis remplacé par CodeMirror 6 (voir `DLR_Implementation.md`, V3.10) ;
 - format d'import depuis IntelliJ, VS Code ou PyCharm ;
