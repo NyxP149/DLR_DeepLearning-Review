@@ -37,7 +37,7 @@ dlr:
     root: classpath:content
   ollama:
     url: ${DLR_OLLAMA_URL:http://localhost:11434}
-    model: ${DLR_OLLAMA_MODEL:llama3.1:latest}
+    model: ${DLR_OLLAMA_MODEL:llama3.2:latest}
     timeout-seconds: ${DLR_OLLAMA_TIMEOUT_SECONDS:180}
   execution:
     enabled: ${DLR_EXECUTION_ENABLED:true}

@@ -151,7 +151,7 @@ Restaurer explicitement une sauvegarde (cette opération remplace les données a
 
 ## Professeur local
 
-Ollama est optionnel : DLR reste utilisable si le serveur est arrêté. Le modèle V1 par défaut est `llama3.1:latest` et se configure avec `DLR_OLLAMA_MODEL`. Les prompts bruts ne sont pas persistés ; seules leur empreinte et la réponse locale le sont.
+Ollama est optionnel : DLR reste utilisable si le serveur est arrêté. Le modèle par défaut est `llama3.2:latest` (3B, plus rapide en local que le 8B initial) et se configure avec `DLR_OLLAMA_MODEL`. Les prompts bruts ne sont pas persistés ; seules leur empreinte et la réponse locale le sont.
 
 ## Mode hybride gratuit
 

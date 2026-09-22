@@ -95,12 +95,13 @@ public class ExecutionService {
                     .orElseThrow(() -> new ResourceNotFoundException(
                             "LAB_NOT_FOUND", "Laboratoire introuvable : " + attempt.labCode()));
             String expected = lab.exercises().getFirst().expectedOutput().strip();
-            if (!result.standardOutput().strip().equals(expected)) {
+            String actual = result.standardOutput().strip();
+            if (!actual.equals(expected)) {
                 result = new ExecutionResult(
                         result.id(), result.submissionId(),
                         com.dlr.execution.domain.ExecutionStatus.TESTS_FAILED,
                         result.exitCode(), result.standardOutput(),
-                        "Test visible échoué : la sortie du programme ne correspond pas exactement à la consigne.",
+                        "Test visible échoué : sortie attendue « " + expected + " », sortie obtenue « " + actual + " ».",
                         result.durationMs(), result.createdAt());
             }
         }

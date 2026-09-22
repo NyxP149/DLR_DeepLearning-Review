@@ -37,6 +37,7 @@
 - [x] Exemple professionnel et extrait de code ajoutés à chacun des 148 concepts clés, sur les neuf parcours (V3.11)
 - [x] Fenêtre de réponse du tuteur Ollama devenue une zone défilante bornée au lieu d'étirer toute la page
 - [x] Le bilan de fin de laboratoire (score et répartition) survit désormais à un rechargement de page (V3.12)
+- [x] Modèle Ollama par défaut allégé (llama3.2, 3B) et message d'échec de test affichant la sortie attendue
 
 ## Déploiement cloud
 

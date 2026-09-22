@@ -1297,3 +1297,19 @@ L'utilisateur signale que rien ne semble être sauvegardé quand il clique sur �
 - Vérifié manuellement de bout en bout via l'API (démarrage de tentative, soumission, exécution, quiz, checklist, complétion) puis dans le navigateur : le bilan « Laboratoire validé · 100 % » s'affiche dès le chargement de la page, y compris après un rechargement forcé (`window.location.reload()`).
 - `mvn test` et `ng build` de production restent verts après l'extension du record `Attempt`.
 - Playwright : 17/17 tests réussis, dont le nouveau test de persistance du bilan (≈8 s, exécution Docker réelle incluse).
+
+## 2026-09-23 — Modèle Ollama par défaut allégé, message d'échec de test détaillé
+
+### Contexte
+
+L'utilisateur signale que le professeur Ollama est très lent. Le modèle par défaut, `llama3.1:latest` (8 Md de paramètres), est lourd pour une inférence CPU locale sans GPU dédié. En parallèle, l'utilisateur signale qu'un exercice dont le résultat est « logiquement » correct (ex. `total = 42` au lieu de `total=42`) est refusé — un checkup de tous les laboratoires a été demandé.
+
+### Modifications
+
+- `dlr.ollama.model` passe de `llama3.1:latest` à `llama3.2:latest` (3,2 Md de paramètres, ~2,5× plus léger) comme valeur par défaut, dans `application.yml`, `.env.example`, le fallback `@Value` de `OllamaAiTutorAdapter` et la documentation (`README.md`, `DLR_Deploye.md`). Reste configurable via `DLR_OLLAMA_MODEL`.
+- Checkup de la comparaison de sortie (`ExecutionService.run`) : sur les 148 exercices, 124 demandent explicitement dans leur consigne d'« afficher exactement » une chaîne précise (ex. `java-02.json` — VARIABLES-INVOICE : « affiche exactement : total=42 ») ; les 24 restants (parcours Architecture) rejouent une preuve déjà fournie. La comparaison stricte (`.strip().equals()`) est donc intentionnelle et cohérente sur tout le catalogue — ce n'est pas un bug. Le message d'échec est en revanche enrichi pour afficher la sortie attendue à côté de la sortie obtenue, au lieu d'un message générique, afin que l'écart de formatage soit immédiatement visible.
+
+### Validation
+
+- `GET /api/tutor/status` confirme `"selectedModel":"llama3.2:latest"`. Premier appel réel (chargement à froid du modèle) : 66 s ; les appels suivants, modèle déjà chargé en mémoire, sont nettement plus rapides.
+- `mvn test` reste vert (le test existant sur le message d'échec utilise `containsString("Test visible échoué")`, toujours valide).

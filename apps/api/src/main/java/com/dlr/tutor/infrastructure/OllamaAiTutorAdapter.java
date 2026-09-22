@@ -19,7 +19,7 @@ public class OllamaAiTutorAdapter implements AiTutorPort {
 
     public OllamaAiTutorAdapter(
             @Value("${dlr.ollama.url:http://localhost:11434}") String url,
-            @Value("${dlr.ollama.model:llama3.1:latest}") String model,
+            @Value("${dlr.ollama.model:llama3.2:latest}") String model,
             @Value("${dlr.ollama.timeout-seconds:180}") int timeoutSeconds
     ) {
         HttpClient client = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(3)).build();

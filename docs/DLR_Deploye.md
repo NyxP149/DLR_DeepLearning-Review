@@ -550,7 +550,7 @@ Pour Ollama :
 
 ```powershell
 ollama list
-ollama pull llama3.1:latest
+ollama pull llama3.2:latest
 ollama serve
 ```
 
