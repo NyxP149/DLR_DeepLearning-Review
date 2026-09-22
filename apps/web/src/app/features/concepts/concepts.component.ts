@@ -46,6 +46,8 @@ import { ConceptMastery, MasteryApiService, MasteryStatus } from '../../core/api
                 <h3>Pourquoi ce concept existe</h3><p>{{ concept.whyExists }}</p>
                 <h3>Pourquoi il est important</h3><p>{{ concept.whyImportant }}</p>
                 <h3>Exemple minimal</h3><pre><code>{{ concept.minimalExample }}</code></pre>
+                <h3>Dans un projet réel</h3><p>{{ concept.professionalExample }}</p>
+                <h3>Exemple de code</h3><pre><code>{{ concept.codeExample }}</code></pre>
                 <h3>Erreur fréquente</h3><p>{{ concept.commonMistake }}</p>
                 <h3>Question de maîtrise</h3><p>{{ concept.masteryQuestion }}</p>
                 <h3>Preuve attendue</h3><p>{{ concept.masteryProof }}</p>

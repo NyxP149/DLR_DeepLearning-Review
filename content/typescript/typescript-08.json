@@ -36,6 +36,8 @@
       "whyExists": "Il réduit les hypothèses implicites et rend le système plus simple à faire évoluer.",
       "whyImportant": "En contexte professionnel, la preuve reproductible facilite la revue, le diagnostic et la maintenance.",
       "minimalExample": "Une petite preuve TYPESCRIPT-08 vérifie le cas nominal et expose une sortie stable.",
+      "professionalExample": "L'équipe backend factorise l'accès aux données avec un Repository<T> générique contraint par extends Identifiable, réutilisé pour les entités User, Order et Product sans dupliquer findById et save à chaque fois. La contrainte garantit à la compilation que toute entité stockée expose bien un champ id, évitant qu'un futur type sans identifiant casse silencieusement l'indexation en base.",
+      "codeExample": "interface Identifiable {\n  id: string;\n}\n\nclass Repository<T extends Identifiable> {\n  private items = new Map<string, T>();\n\n  save(item: T): void {\n    this.items.set(item.id, item);\n  }\n\n  findById(id: string): T | undefined {\n    return this.items.get(id);\n  }\n}\n\ninterface Order extends Identifiable {\n  totalCents: number;\n}\n\nconst orders = new Repository<Order>();\norders.save({ id: 'ORD-1', totalCents: 4200 });\nconsole.log(orders.findById('ORD-1'));",
       "commonMistake": "Appliquer la technique sans mesurer son effet ni documenter sa frontière.",
       "masteryQuestion": "Quelle contrainte de génériques, contraintes et réutilisabilité doit rester vraie lorsque le système évolue ?",
       "masteryProof": "Exécuter la preuve, expliquer son invariant et proposer un cas d’échec."

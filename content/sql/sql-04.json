@@ -36,6 +36,8 @@
       "whyExists": "Il réduit les hypothèses implicites et rend le système plus simple à faire évoluer.",
       "whyImportant": "En contexte professionnel, la preuve reproductible facilite la revue, le diagnostic et la maintenance.",
       "minimalExample": "Une petite preuve SQL-04 vérifie le cas nominal et expose une sortie stable.",
+      "professionalExample": "Un tableau de bord commercial doit afficher, pour chaque commande, le chiffre d'affaires cumulé du client dans le mois en cours, sans perdre le détail ligne par ligne. Un GROUP BY classique agrège les lignes et fait disparaître les colonnes individuelles de chaque commande, ce qui obligerait à faire une auto-jointure coûteuse pour les récupérer. Une fonction fenêtre comme SUM(...) OVER (PARTITION BY customer_id ORDER BY created_at) calcule ce cumul tout en conservant une ligne par commande, ce qui est exactement ce que demande l'équipe produit.",
+      "codeExample": "SELECT\n  o.id,\n  o.customer_id,\n  o.created_at,\n  o.total_cents,\n  SUM(o.total_cents) OVER (\n    PARTITION BY o.customer_id\n    ORDER BY o.created_at\n    ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW\n  ) AS cumulative_total_cents,\n  RANK() OVER (\n    PARTITION BY o.customer_id\n    ORDER BY o.total_cents DESC\n  ) AS order_rank_for_customer\nFROM orders o;",
       "commonMistake": "Appliquer la technique sans mesurer son effet ni documenter sa frontière.",
       "masteryQuestion": "Quelle contrainte de agrégations et fonctions fenêtre doit rester vraie lorsque le système évolue ?",
       "masteryProof": "Exécuter la preuve, expliquer son invariant et proposer un cas d’échec."

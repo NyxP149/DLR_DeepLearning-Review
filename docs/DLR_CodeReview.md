@@ -1244,3 +1244,38 @@ Après le rechargement du service worker, l'éditeur simple fonctionnait mais Mo
 - Playwright : 16 tests réussis, dont ceux qui saisissent au clavier réel, déplacent le curseur, effacent du texte et quittent l'éditeur par le clavier.
 - Contrôle visuel dans le navigateur : coloration, numéros de ligne et ligne active corrects, aucun rectangle parasite.
 - Non vérifié : le rendu sur téléphone, où le repli vers un champ natif sous 700 px a été supprimé.
+
+## 2026-09-22 — V3.11 : exemples pratiques pour les 148 concepts clés
+
+### Contexte
+
+Chaque concept clé n'exposait qu'une théorie (définition, pourquoi il existe, pourquoi il est important) et un exemple minimal abstrait. L'apprenant n'avait pas de cas concret tiré d'un contexte professionnel ni d'extrait de code illustrant le concept en situation réelle.
+
+### Modifications
+
+- Backend : `LabContent.KeyConcept` et `ConceptMasteryService.ConceptMastery` reçoivent deux nouveaux champs, `professionalExample` et `codeExample`, insérés entre `minimalExample` et `commonMistake`. Aucune migration Flyway requise : le contenu des laboratoires est chargé directement depuis les fichiers JSON versionnés (`JsonLabCatalog`), pas depuis PostgreSQL.
+- Frontend : `KeyConcept` (lab.model.ts) et `ConceptMastery` (mastery-api.service.ts) reçoivent les mêmes champs. Les deux gabarits qui affichent un concept — `lab-workspace.component.html` (fiche concept intégrée au laboratoire) et `concepts.component.ts` (carte de maîtrise autonome) — affichent désormais « Dans un projet réel » et « Exemple de code » juste après l'exemple minimal.
+- Contenu : les 148 fichiers `content/**/*.json` (9 parcours : Java, Python, TypeScript, Spring Boot, Angular, SQL, DevOps, Learn LLMs, Architecture Système) ont reçu ces deux champs pour leur concept clé. Chaque exemple professionnel décrit un incident ou une situation réaliste (ex. `UnsupportedClassVersionError` au déploiement, citation RAG pointant vers un document archivé, prompt injection indirecte via un ticket de support, double débit par absence de clé d'idempotence, fuite de secret dans une image Docker) plutôt qu'un texte générique.
+- Rédaction déléguée à des agents en arrière-plan, un par parcours, avec un exemple de référence (Java, laboratoire 1) fixant le niveau de qualité et le format JSON attendu.
+
+### Validation
+
+- Sweep JSON : 148/148 fichiers de contenu valides, présence et ordre corrects (`minimalExample` → `professionalExample` → `codeExample` → `commonMistake`) vérifiés programmatiquement sur l'ensemble des fichiers, pas seulement sur un échantillon.
+- Backend : `mvn test` complet, 0 échec.
+- Frontend : `ng build` de production réussi.
+- Playwright : 15/16 tests réussis. Le seul échec (« le planning ne date que la prochaine activité disponible ») porte sur la logique de planification/mastery, sans lien avec les champs ajoutés ; il reflète l'état accumulé dans la base de développement locale après plusieurs exécutions successives de la suite au cours de cette session, pas une régression introduite par ce changement.
+
+## 2026-09-22 — Fenêtre de réponse du tuteur Ollama trop petite
+
+### Contexte
+
+L'utilisateur signale que la fenêtre de réponse du tuteur Ollama est petite et coupe la réponse. Diagnostic : `.tutor-answer` n'avait aucune limite de hauteur ni découpage CSS ; la colonne de droite entière atteint environ 3142 px pour une réponse longue, obligeant à faire défiler toute la page pour lire la fin d'une réponse — ce que l'utilisateur perçoit comme une fenêtre trop petite qui « coupe » le texte.
+
+### Modifications
+
+- `lab-workspace.component.css` : `.tutor-answer` reçoit `max-height: min(28rem, 55vh)`, `overflow-y: auto` et `overscroll-behavior: contain`, avec une barre de défilement stylée aux couleurs de l'application (`scrollbar-color`, `scrollbar-width`, et les pseudo-éléments `::-webkit-scrollbar*`).
+
+### Validation
+
+- Vérifié en direct via `window.ng.getComponent()` en injectant une réponse longue simulée (Ollama n'est pas disponible dans cet environnement) : hauteur maximale 448 px, `overflow-y: auto`, `scrollHeight` (745) supérieur à `clientHeight` (448) donc réellement défilable.
+- Contrôle visuel : encadré arrondi avec barre de défilement interne violette visible, la section « Quiz et explication » reste visible juste en dessous sans nécessiter un défilement de toute la page.

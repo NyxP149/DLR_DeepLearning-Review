@@ -36,6 +36,8 @@
       "whyExists": "Il réduit les hypothèses implicites et rend le système plus simple à faire évoluer.",
       "whyImportant": "En contexte professionnel, la preuve reproductible facilite la revue, le diagnostic et la maintenance.",
       "minimalExample": "Une petite preuve TYPESCRIPT-12 vérifie le cas nominal et expose une sortie stable.",
+      "professionalExample": "Le package interne @dlr/billing expose volontairement une seule porte d'entrée via un index.ts qui réexporte uniquement InvoiceService et ses types publics, tout en gardant les taux de TVA internes au dossier src/internal. Un autre module de l'équipe avait commencé à importer directement le chemin interne du fichier de constantes, créant une dépendance cachée qui a cassé au premier refactoring ; la frontière de paquet stricte (via le champ exports de package.json) a ensuite rendu ce type d'import impossible dès la compilation.",
+      "codeExample": "// src/internal/vat-rates.ts (non exporté publiquement)\nexport const VAT_RATES = { FR: 0.2, DE: 0.19 };\n\n// src/invoice-service.ts\nimport { VAT_RATES } from './internal/vat-rates';\n\nexport class InvoiceService {\n  vatFor(country: keyof typeof VAT_RATES): number {\n    return VAT_RATES[country];\n  }\n}\n\n// index.ts : seule porte d'entrée publique du paquet\nexport { InvoiceService } from './invoice-service';",
       "commonMistake": "Appliquer la technique sans mesurer son effet ni documenter sa frontière.",
       "masteryQuestion": "Quelle contrainte de modules es, npm et frontières de paquet doit rester vraie lorsque le système évolue ?",
       "masteryProof": "Exécuter la preuve, expliquer son invariant et proposer un cas d’échec."

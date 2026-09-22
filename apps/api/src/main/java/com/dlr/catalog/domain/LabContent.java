@@ -41,6 +41,8 @@ public record LabContent(
             String whyExists,
             String whyImportant,
             String minimalExample,
+            String professionalExample,
+            String codeExample,
             String commonMistake,
             String masteryQuestion,
             String masteryProof

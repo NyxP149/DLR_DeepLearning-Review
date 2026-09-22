@@ -36,6 +36,8 @@
       "whyExists": "Il réduit les hypothèses implicites et rend le système plus simple à faire évoluer.",
       "whyImportant": "En contexte professionnel, la preuve reproductible facilite la revue, le diagnostic et la maintenance.",
       "minimalExample": "Une petite preuve PYTHON-13 vérifie le cas nominal et expose une sortie stable.",
+      "professionalExample": "Un client météo interne faisait confiance au JSON renvoyé par une API tierce et lisait directement response.json()['temperature'], ce qui a provoqué un crash en production le jour où le fournisseur a renommé le champ. En validant chaque réponse avec un modèle Pydantic avant de l'utiliser, l'erreur de contrat est désormais détectée immédiatement avec un message explicite, au lieu de se propager sous forme de KeyError obscur plus loin dans le code.",
+      "codeExample": "import httpx\nfrom pydantic import BaseModel, ValidationError\n\nclass WeatherResponse(BaseModel):\n    temperature_celsius: float\n    humidity_percent: float\n\ndef fetch_weather(city: str) -> WeatherResponse:\n    response = httpx.get(f\"https://api.example.com/weather/{city}\", timeout=3.0)\n    response.raise_for_status()\n    try:\n        return WeatherResponse.model_validate(response.json())\n    except ValidationError as error:\n        raise RuntimeError(f\"Contrat API rompu pour {city}: {error}\") from error",
       "commonMistake": "Appliquer la technique sans mesurer son effet ni documenter sa frontière.",
       "masteryQuestion": "Quelle contrainte de clients http, contrats et validation de réponses doit rester vraie lorsque le système évolue ?",
       "masteryProof": "Exécuter la preuve, expliquer son invariant et proposer un cas d’échec."

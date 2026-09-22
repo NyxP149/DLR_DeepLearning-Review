@@ -36,6 +36,8 @@
       "whyExists": "Il réduit les hypothèses implicites et rend le système plus simple à faire évoluer.",
       "whyImportant": "En contexte professionnel, la preuve reproductible facilite la revue, le diagnostic et la maintenance.",
       "minimalExample": "Une petite preuve TYPESCRIPT-06 vérifie le cas nominal et expose une sortie stable.",
+      "professionalExample": "La configuration des taux de TVA par pays est chargée une fois au démarrage du service et partagée par toutes les requêtes. En la typant comme readonly VatRate[] et en gelant le tableau, l'équipe a empêché un bug où un module de test modifiait accidentellement le tableau partagé via push(), ce qui faussait silencieusement les calculs de TVA pour toutes les requêtes suivantes exécutées dans le même processus Node.",
+      "codeExample": "interface VatRate {\n  readonly country: string;\n  readonly rate: number;\n}\n\nconst VAT_RATES: readonly VatRate[] = [\n  { country: 'FR', rate: 0.2 },\n  { country: 'DE', rate: 0.19 },\n];\n\nfunction rateFor(country: string): number {\n  const entry = VAT_RATES.find(r => r.country === country);\n  return entry?.rate ?? 0;\n}\n\n// VAT_RATES.push({ country: 'BE', rate: 0.21 }); // erreur de compilation : push n'existe pas sur readonly[]",
       "commonMistake": "Appliquer la technique sans mesurer son effet ni documenter sa frontière.",
       "masteryQuestion": "Quelle contrainte de tableaux, tuples et données readonly doit rester vraie lorsque le système évolue ?",
       "masteryProof": "Exécuter la preuve, expliquer son invariant et proposer un cas d’échec."

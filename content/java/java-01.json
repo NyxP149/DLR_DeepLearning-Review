@@ -32,6 +32,8 @@
       "whyExists": "Il sépare le langage Java du système d'exploitation et permet au même programme compilé de fonctionner sur plusieurs plateformes.",
       "whyImportant": "Comprendre cette chaîne aide à diagnostiquer les erreurs de compilation, de version et d'exécution rencontrées dans les projets professionnels.",
       "minimalExample": "javac Hello.java produit Hello.class, puis java Hello demande à la JVM de l'exécuter.",
+      "professionalExample": "Une équipe livre le même fichier .jar à un serveur Linux de production et à un poste Windows de développement, sans jamais recompiler le code : seule la JVM installée sur chaque machine doit correspondre à la version ciblée par le build. Un incident classique est de compiler avec Java 21 puis de déployer sur un serveur qui n'a que Java 11 installé : la JVM refuse alors le bytecode avec une erreur UnsupportedClassVersionError, avant même de lancer le programme.",
+      "codeExample": "$ javac Hello.java\n$ ls\nHello.class  Hello.java\n$ java Hello\nHello, DLR !\n$ java -version\njava version \"11.0.2\"\n$ java Hello\nError: LinkageError occurred while loading main class Hello\n\tjava.lang.UnsupportedClassVersionError: Hello has been compiled by a more recent version of the Java Runtime",
       "commonMistake": "Confondre javac, qui compile le code source, avec java, qui lance une classe compilée.",
       "masteryQuestion": "Pourquoi Java utilise-t-il une JVM au lieu de compiler directement un exécutable propre à Windows ?",
       "masteryProof": "Compiler puis exécuter le programme et expliquer le rôle de chaque fichier obtenu."

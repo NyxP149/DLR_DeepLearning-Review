@@ -36,6 +36,8 @@
       "whyExists": "Il réduit les hypothèses implicites et rend le système plus simple à faire évoluer.",
       "whyImportant": "En contexte professionnel, la preuve reproductible facilite la revue, le diagnostic et la maintenance.",
       "minimalExample": "Une petite preuve SQL-07 vérifie le cas nominal et expose une sortie stable.",
+      "professionalExample": "Sur un site de vente en ligne, deux clients achètent simultanément le dernier exemplaire d'un produit en stock. Si chaque requête lit stock=1 puis décrémente sans verrouillage, les deux transactions valident et le stock passe à -1 : c'est une survente, un incident classique de concurrence. La correction consiste à lire la ligne avec SELECT ... FOR UPDATE à l'intérieur d'une transaction, ce qui bloque la seconde transaction jusqu'à ce que la première ait validé ou annulé, garantissant qu'une seule des deux ventes aboutisse.",
+      "codeExample": "-- Sans protection : condition de course possible\nSELECT stock FROM products WHERE id = 17; -- lit 1\nUPDATE products SET stock = stock - 1 WHERE id = 17;\n\n-- Avec transaction et verrou de ligne\nBEGIN;\nSELECT stock FROM products WHERE id = 17 FOR UPDATE;\n-- une deuxième transaction concurrente attend ici\nUPDATE products SET stock = stock - 1 WHERE id = 17 AND stock > 0;\nCOMMIT;\n-- si stock était déjà à 0, l'UPDATE ne touche aucune ligne :\n-- l'application vérifie le rowcount et refuse la vente",
       "commonMistake": "Appliquer la technique sans mesurer son effet ni documenter sa frontière.",
       "masteryQuestion": "Quelle contrainte de transactions, isolation et concurrence doit rester vraie lorsque le système évolue ?",
       "masteryProof": "Exécuter la preuve, expliquer son invariant et proposer un cas d’échec."

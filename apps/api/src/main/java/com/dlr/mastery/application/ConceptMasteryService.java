@@ -45,7 +45,8 @@ public class ConceptMasteryService {
         }
         return new ConceptMastery(
                 concept.code(), concept.name(), lab.code(), lab.number(), lab.title(), concept.definition(),
-                concept.whyExists(), concept.whyImportant(), concept.minimalExample(), concept.commonMistake(),
+                concept.whyExists(), concept.whyImportant(), concept.minimalExample(), concept.professionalExample(),
+                concept.codeExample(), concept.commonMistake(),
                 concept.masteryQuestion(), concept.masteryProof(), status, score, completedReviewStage);
     }
 
@@ -81,6 +82,8 @@ public class ConceptMasteryService {
             String whyExists,
             String whyImportant,
             String minimalExample,
+            String professionalExample,
+            String codeExample,
             String commonMistake,
             String masteryQuestion,
             String masteryProof,

@@ -1083,3 +1083,12 @@ Monaco restait inutilisable sur le poste de l'utilisateur : le curseur ne se dé
 - **Thème** : les couleurs de l'interface (`--editor-background`, `--editor-text`, `--accent`, `--focus-ring`) sont lues directement par le thème CodeMirror, sans observateur ni reconstruction de palette. Les six thèmes ont un fond d'éditeur sombre, donc une seule palette de coloration suffit.
 - **Accessibilité** : le contenu porte le rôle `textbox` et le nom « Code JAVA ». Tab indente ; Échap puis Tab quitte l'éditeur. L'anneau de focus est dessiné sur l'éditeur entier, et le focus natif du contenu est désactivé pour éviter un cadre parasite.
 - **Repli mobile supprimé** : Monaco basculait sur un champ natif sous 700 px, alors que CodeMirror gère le tactile.
+
+## V3.11 — Exemples pratiques pour les 148 concepts clés
+
+Chaque concept clé (un par laboratoire, 148 au total sur 9 parcours) n'exposait qu'une définition théorique et un exemple minimal abstrait. Deux champs sont ajoutés à `KeyConcept`/`ConceptMastery`, `professionalExample` (un cas concret rédigé, 2 à 4 phrases, ancré dans un incident réaliste) et `codeExample` (un extrait de code, config ou terminal illustrant le concept), insérés entre `minimalExample` et `commonMistake`.
+
+- **Aucune migration** : le contenu des laboratoires vit uniquement dans les fichiers JSON versionnés sous `content/**`, chargés au démarrage par `JsonLabCatalog`. Seules les données utilisateur (tentatives, notes) résident en PostgreSQL.
+- **Backend** : `LabContent.KeyConcept` (record) et `ConceptMasteryService.ConceptMastery` (record) reçoivent les deux champs ; `LabDetailResponse` réutilise `KeyConcept` directement, donc aucun DTO à modifier.
+- **Frontend** : les interfaces `KeyConcept` (lab.model.ts) et `ConceptMastery` (mastery-api.service.ts) sont étendues, et les deux gabarits qui rendent un concept (fiche du laboratoire, carte de maîtrise autonome) affichent les deux nouveaux blocs.
+- **Rédaction du contenu** : déléguée par parcours à des agents indépendants, chacun contextualisé avec le titre et la structure réelle des laboratoires de son parcours pour éviter un texte générique — un exemple de référence (Java, laboratoire 1) fixait le niveau de qualité et l'ordre exact des clés JSON attendu.

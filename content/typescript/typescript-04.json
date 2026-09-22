@@ -36,6 +36,8 @@
       "whyExists": "Il réduit les hypothèses implicites et rend le système plus simple à faire évoluer.",
       "whyImportant": "En contexte professionnel, la preuve reproductible facilite la revue, le diagnostic et la maintenance.",
       "minimalExample": "Une petite preuve TYPESCRIPT-04 vérifie le cas nominal et expose une sortie stable.",
+      "professionalExample": "Une équipe backend expose une interface OrderSummary consommée par deux couches indépendantes : le service de facturation et le service d'export analytique, écrits par des équipes différentes sans dépendance directe entre elles. Grâce à la compatibilité structurelle, chaque service peut construire son propre objet respectant la forme attendue sans implémenter explicitement l'interface, ce qui évite un couplage fort entre modules tout en gardant un contrat vérifié à la compilation.",
+      "codeExample": "interface OrderSummary {\n  orderId: string;\n  totalCents: number;\n  currency: string;\n}\n\nfunction exportToAnalytics(order: OrderSummary): void {\n  console.log(`export: ${order.orderId} -> ${order.totalCents} ${order.currency}`);\n}\n\n// Aucun 'implements' nécessaire : la forme suffit.\nconst invoiceRow = {\n  orderId: 'ORD-2044',\n  totalCents: 15900,\n  currency: 'EUR',\n  internalNote: 'facturé le 12/03', // propriété en plus, toujours compatible\n};\n\nexportToAnalytics(invoiceRow);",
       "commonMistake": "Appliquer la technique sans mesurer son effet ni documenter sa frontière.",
       "masteryQuestion": "Quelle contrainte de objets, interfaces et compatibilité structurelle doit rester vraie lorsque le système évolue ?",
       "masteryProof": "Exécuter la preuve, expliquer son invariant et proposer un cas d’échec."

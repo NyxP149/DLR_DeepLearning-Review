@@ -36,6 +36,8 @@
       "whyExists": "Les résultats d’un LLM sont probabilistes ; le système qui l’entoure doit rendre les hypothèses et contrôles explicites.",
       "whyImportant": "Sans mesure, provenance et cas d’échec, une démonstration convaincante ne garantit pas un produit fiable.",
       "minimalExample": "Le programme LLM-09 reproduit localement le mécanisme essentiel et affiche une preuve stable.",
+      "professionalExample": "Un assistant interne répond aux questions sur la politique de remboursement en citant sa source, mais un bug d'indexation fait pointer la citation vers une ancienne version archivée du document au lieu de la version en vigueur. Un employé applique une règle de remboursement obsolète en toute confiance parce que la réponse semblait sourcée. L'équipe ajoute alors une validation systématique que le document cité correspond bien à la version active du corpus avant d'afficher toute réponse.",
+      "codeExample": "documents = {\n    \"remboursement-v2\": {\"text\": \"Délai de remboursement: 14 jours.\", \"active\": True},\n    \"remboursement-v1\": {\"text\": \"Délai de remboursement: 30 jours.\", \"active\": False},\n}\nsource = next(k for k, d in documents.items() if \"remboursement\" in k and d[\"active\"])\nanswer = f\"{documents[source]['text']} [source:{source}]\"\nprint(answer)\n# Une citation vers un document inactif doit être rejetée avant l'affichage",
       "commonMistake": "Évaluer un seul exemple favorable ou confondre plausibilité et exactitude.",
       "masteryQuestion": "Quelle métrique et quel cas d’échec utiliserais-tu pour pipeline rag local et citations ?",
       "masteryProof": "Exécuter la preuve, modifier une entrée et expliquer le résultat ainsi que la limite du modèle local."

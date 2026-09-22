@@ -40,6 +40,8 @@
       "whyExists": "Une stack verticale échoue lorsque les frontières et les invariants restent implicites entre la base, le serveur, le client et le déploiement.",
       "whyImportant": "Une décision explicite peut être testée, observée et révisée ; une préférence technique isolée ne le peut pas.",
       "minimalExample": "Le programme ARCHITECTURE-02 réduit le problème à un modèle exécutable et à une sortie contrôlée.",
+      "professionalExample": "Une product owner décrit le besoin « permettre à un client d’annuler une commande dans les 10 minutes suivant l’achat ». L’architecte traduit ce besoin en contrat avant que le backend n’existe : DELETE /orders/{id} renvoyant 204 si le délai est respecté et 409 sinon, ce qui permet à l’équipe frontend de construire son écran en parallèle sur un mock. Sans cette démarche descendante, l’équipe frontend aurait dû deviner la forme de la réponse et tout refaire une fois l’API livrée.",
+      "codeExample": "User story: \"Annuler une commande dans les 10 minutes\"\n\nContrat dérivé:\nDELETE /orders/{id}\n  -> 204 No Content   si now - order.createdAt <= 10min\n  -> 409 Conflict     si le délai est dépassé\n  -> 404 Not Found    si la commande n'existe pas",
       "commonMistake": "Choisir un outil avant d’identifier le besoin, la charge, le risque et le propriétaire de la donnée.",
       "masteryQuestion": "Quel compromis, quel signal et quelle condition de réévaluation associes-tu à « Top-down : du besoin utilisateur aux contrats » ?",
       "masteryProof": "Exécuter la preuve, modifier une contrainte, expliquer le résultat et dessiner la place du composant dans la stack complète."

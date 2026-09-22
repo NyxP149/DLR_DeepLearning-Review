@@ -36,6 +36,8 @@
       "whyExists": "Il réduit les hypothèses implicites et rend le système plus simple à faire évoluer.",
       "whyImportant": "En contexte professionnel, la preuve reproductible facilite la revue, le diagnostic et la maintenance.",
       "minimalExample": "Une petite preuve PYTHON-18 vérifie le cas nominal et expose une sortie stable.",
+      "professionalExample": "Une équipe soupçonnait qu'une fonction de transformation de données était le goulot d'étranglement d'un job nocturne, et l'a réécrite entièrement avant de mesurer quoi que ce soit ; le job est resté tout aussi lent. En profilant le code avec cProfile, l'équipe a découvert que la majorité du temps venait en réalité d'une conversion de type répétée dans une autre fonction, et a corrigé le vrai goulot d'étranglement au lieu de deviner.",
+      "codeExample": "import cProfile\nimport pstats\n\ndef transform_batch(rows: list[dict]) -> list[dict]:\n    return [{\"id\": r[\"id\"], \"amount\": float(r[\"amount\"])} for r in rows]\n\nprofiler = cProfile.Profile()\nprofiler.enable()\ntransform_batch(large_dataset)\nprofiler.disable()\n\nstats = pstats.Stats(profiler).sort_stats(\"cumulative\")\nstats.print_stats(5)  # affiche les 5 fonctions les plus coûteuses, mesurées, pas devinées",
       "commonMistake": "Appliquer la technique sans mesurer son effet ni documenter sa frontière.",
       "masteryQuestion": "Quelle contrainte de profilage, mémoire et optimisation mesurée doit rester vraie lorsque le système évolue ?",
       "masteryProof": "Exécuter la preuve, expliquer son invariant et proposer un cas d’échec."

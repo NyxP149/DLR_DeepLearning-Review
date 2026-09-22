@@ -40,6 +40,8 @@
       "whyExists": "Une stack verticale échoue lorsque les frontières et les invariants restent implicites entre la base, le serveur, le client et le déploiement.",
       "whyImportant": "Une décision explicite peut être testée, observée et révisée ; une préférence technique isolée ne le peut pas.",
       "minimalExample": "Le programme ARCHITECTURE-09 réduit le problème à un modèle exécutable et à une sortie contrôlée.",
+      "professionalExample": "Deux employés modifient le même stock d’entrepôt en même temps : chacun lit une quantité de 100 unités, l’un la décrémente de 30 et l’autre de 20, et la dernière écriture gagnante efface silencieusement la première mise à jour au lieu de les cumuler. Ce bug classique de mise à jour perdue passe inaperçu jusqu’à un inventaire physique qui révèle un écart de stock inexpliqué. Un verrouillage optimiste basé sur un numéro de version aurait rejeté la seconde écriture avec un conflit explicite plutôt que de perdre silencieusement la première.",
+      "codeExample": "UPDATE stock\nSET quantity = quantity - 30, version = version + 1\nWHERE id = 42 AND version = 3;\n-- 0 ligne affectée si version a déjà changé -> conflit détecté\n-- au lieu d'un écrasement silencieux",
       "commonMistake": "Choisir un outil avant d’identifier le besoin, la charge, le risque et le propriétaire de la donnée.",
       "masteryQuestion": "Quel compromis, quel signal et quelle condition de réévaluation associes-tu à « Transactions, concurrence et cohérence » ?",
       "masteryProof": "Exécuter la preuve, modifier une contrainte, expliquer le résultat et dessiner la place du composant dans la stack complète."

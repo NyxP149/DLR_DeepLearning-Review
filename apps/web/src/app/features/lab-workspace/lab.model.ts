@@ -29,6 +29,8 @@ export interface KeyConcept {
   whyExists: string;
   whyImportant: string;
   minimalExample: string;
+  professionalExample: string;
+  codeExample: string;
   commonMistake: string;
   masteryQuestion: string;
   masteryProof: string;

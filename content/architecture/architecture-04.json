@@ -40,6 +40,8 @@
       "whyExists": "Une stack verticale échoue lorsque les frontières et les invariants restent implicites entre la base, le serveur, le client et le déploiement.",
       "whyImportant": "Une décision explicite peut être testée, observée et révisée ; une préférence technique isolée ne le peut pas.",
       "minimalExample": "Le programme ARCHITECTURE-04 réduit le problème à un modèle exécutable et à une sortie contrôlée.",
+      "professionalExample": "Une startup de cinq développeurs hésite entre Spring Boot/Angular, déjà maîtrisé par l’équipe, et une stack FastAPI/React plus à la mode mais inconnue de tous. Plutôt que de trancher sur préférence, l’architecte construit une matrice pondérée sur la compétence de l’équipe, la vitesse de livraison et la charge opérationnelle, et documente le score obtenu par chaque option. Un concurrent ayant choisi la stack tendance sans évaluer la compétence de son équipe a vu son delivery ralentir de moitié pendant les trois premiers mois.",
+      "codeExample": "stacks = {\n    \"Spring-Angular\": {\"equipe\": 5, \"vitesse\": 3, \"ops\": 4},\n    \"FastAPI-React\": {\"equipe\": 2, \"vitesse\": 4, \"ops\": 3},\n}\nweights = {\"equipe\": 3, \"vitesse\": 1, \"ops\": 2}\n# Spring-Angular gagne car l'équipe maîtrise déjà la stack",
       "commonMistake": "Choisir un outil avant d’identifier le besoin, la charge, le risque et le propriétaire de la donnée.",
       "masteryQuestion": "Quel compromis, quel signal et quelle condition de réévaluation associes-tu à « Choisir une stack verticale avec une matrice de décision » ?",
       "masteryProof": "Exécuter la preuve, modifier une contrainte, expliquer le résultat et dessiner la place du composant dans la stack complète."

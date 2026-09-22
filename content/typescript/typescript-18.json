@@ -36,6 +36,8 @@
       "whyExists": "Il réduit les hypothèses implicites et rend le système plus simple à faire évoluer.",
       "whyImportant": "En contexte professionnel, la preuve reproductible facilite la revue, le diagnostic et la maintenance.",
       "minimalExample": "Une petite preuve TYPESCRIPT-18 vérifie le cas nominal et expose une sortie stable.",
+      "professionalExample": "Le NotificationService envoyait initialement des emails en appelant directement le SDK SendGrid à l'intérieur de sa logique métier, ce qui rendait tout test unitaire impossible sans envoyer un vrai email. En appliquant le principe d'inversion des dépendances, le service dépend désormais d'une interface EmailSender injectée au constructeur ; en production on injecte SendGridSender, et en test un FakeEmailSender, sans jamais modifier la classe NotificationService elle-même.",
+      "codeExample": "interface EmailSender {\n  send(to: string, subject: string, body: string): Promise<void>;\n}\n\nclass NotificationService {\n  constructor(private readonly emailSender: EmailSender) {}\n\n  async notifyOrderShipped(email: string, orderId: string): Promise<void> {\n    await this.emailSender.send(email, 'Commande expédiée', `Votre commande ${orderId} est en route.`);\n  }\n}\n\nclass SendGridSender implements EmailSender {\n  async send(to: string, subject: string, body: string): Promise<void> {\n    // appel réel au SDK SendGrid\n  }\n}",
       "commonMistake": "Appliquer la technique sans mesurer son effet ni documenter sa frontière.",
       "masteryQuestion": "Quelle contrainte de solid, injection et architecture modulaire doit rester vraie lorsque le système évolue ?",
       "masteryProof": "Exécuter la preuve, expliquer son invariant et proposer un cas d’échec."

@@ -36,6 +36,8 @@
       "whyExists": "Il réduit les hypothèses implicites et rend le système plus simple à faire évoluer.",
       "whyImportant": "En contexte professionnel, la preuve reproductible facilite la revue, le diagnostic et la maintenance.",
       "minimalExample": "Une petite preuve PYTHON-16 vérifie le cas nominal et expose une sortie stable.",
+      "professionalExample": "Un service de gestion de stock mettait à jour la quantité d'un produit avec deux requêtes SQL séparées (lecture puis écriture) sans transaction, et deux commandes simultanées ont fini par décrémenter le même stock deux fois à partir de la même valeur lue, créant un stock négatif. En englobant la lecture et l'écriture dans une transaction unique, l'opération est devenue atomique et l'incident de survente ne s'est plus reproduit.",
+      "codeExample": "import sqlite3\n\ndef reserve_stock(conn: sqlite3.Connection, product_id: str, quantity: int) -> None:\n    with conn:  # transaction : commit automatique, rollback si exception\n        cursor = conn.execute(\n            \"SELECT stock FROM products WHERE id = ?\", (product_id,)\n        )\n        current_stock = cursor.fetchone()[0]\n        if current_stock < quantity:\n            raise ValueError(f\"Stock insuffisant pour {product_id}\")\n        conn.execute(\n            \"UPDATE products SET stock = stock - ? WHERE id = ?\",\n            (quantity, product_id),\n        )",
       "commonMistake": "Appliquer la technique sans mesurer son effet ni documenter sa frontière.",
       "masteryQuestion": "Quelle contrainte de sql, transactions et couches de persistance doit rester vraie lorsque le système évolue ?",
       "masteryProof": "Exécuter la preuve, expliquer son invariant et proposer un cas d’échec."

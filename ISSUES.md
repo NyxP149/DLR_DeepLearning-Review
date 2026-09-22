@@ -218,3 +218,16 @@ Sur le poste de l'utilisateur, l'éditeur Monaco empêchait le curseur de se dé
 
 **Solution**
 Monaco est remplacé par CodeMirror 6, qui édite un élément `contenteditable` standard et se thème directement avec les variables CSS de l'application. Le curseur, la sélection et la suppression sont couverts par des tests Playwright au clavier réel, et l'application entière tient désormais en environ 1 Mo de JavaScript.
+
+---
+
+## La réponse du tuteur Ollama semble coupée
+- severity: low
+- date: 2026-09
+- tags: UX, Tuteur IA
+
+**Problème**
+L'utilisateur signale que la fenêtre de réponse du tuteur Ollama est petite et coupe la réponse. Aucun découpage CSS n'existait réellement : la colonne de droite atteint environ 3142 px pour une réponse longue, ce qui oblige à faire défiler toute la page pour en lire la fin, perçu par l'utilisateur comme une fenêtre trop petite.
+
+**Solution**
+`.tutor-answer` reçoit une hauteur maximale (`min(28rem, 55vh)`) et son propre défilement interne stylé aux couleurs de l'application, au lieu de dépendre du défilement de la page entière. Vérifié en injectant une réponse longue simulée via `window.ng.getComponent()`.

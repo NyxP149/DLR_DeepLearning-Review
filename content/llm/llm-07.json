@@ -36,6 +36,8 @@
       "whyExists": "Les résultats d’un LLM sont probabilistes ; le système qui l’entoure doit rendre les hypothèses et contrôles explicites.",
       "whyImportant": "Sans mesure, provenance et cas d’échec, une démonstration convaincante ne garantit pas un produit fiable.",
       "minimalExample": "Le programme LLM-07 reproduit localement le mécanisme essentiel et affiche une preuve stable.",
+      "professionalExample": "Une base de connaissances technique découpe ses pages en chunks de 500 tokens sans chevauchement pour l'indexation. Une réponse RAG cite un chunk qui commence au milieu d'une phrase de procédure de sécurité, coupant la condition qui rendait l'instruction valable, et un technicien applique la procédure hors contexte. Après l'incident, l'équipe introduit un chevauchement entre chunks et attache à chacun des métadonnées (document source, section, version) pour garantir la traçabilité et limiter les coupures dangereuses.",
+      "codeExample": "def chunks(words: list[str], size: int, overlap: int) -> list[dict]:\n    step = size - overlap\n    return [\n        {\"text\": \" \".join(words[i:i+size]), \"start\": i, \"doc\": \"procedure-securite-v3\"}\n        for i in range(0, len(words), step) if words[i:i+size]\n    ]\n\nresult = chunks(\"couper le courant avant toute intervention sur le boîtier\".split(), 4, 1)\nfor c in result:\n    print(c[\"start\"], c[\"doc\"], c[\"text\"])",
       "commonMistake": "Évaluer un seul exemple favorable ou confondre plausibilité et exactitude.",
       "masteryQuestion": "Quelle métrique et quel cas d’échec utiliserais-tu pour découpage, chevauchement et métadonnées ?",
       "masteryProof": "Exécuter la preuve, modifier une entrée et expliquer le résultat ainsi que la limite du modèle local."

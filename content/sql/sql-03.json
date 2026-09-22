@@ -36,6 +36,8 @@
       "whyExists": "Il réduit les hypothèses implicites et rend le système plus simple à faire évoluer.",
       "whyImportant": "En contexte professionnel, la preuve reproductible facilite la revue, le diagnostic et la maintenance.",
       "minimalExample": "Une petite preuve SQL-03 vérifie le cas nominal et expose une sortie stable.",
+      "professionalExample": "Pour un rapport mensuel, une équipe data doit lister tous les clients avec le nombre de commandes passées, y compris les clients inscrits mais n'ayant encore jamais commandé. Utiliser un INNER JOIN entre customers et orders exclut silencieusement ces clients inactifs du rapport, faussant le taux d'activation communiqué à la direction marketing. Le correctif consiste à passer en LEFT JOIN depuis customers vers orders, avec un COUNT qui ignore correctement les valeurs NULL côté commandes.",
+      "codeExample": "-- Bug : exclut les clients sans commande\nSELECT c.id, c.email, COUNT(o.id) AS nb_orders\nFROM customers c\nJOIN orders o ON o.customer_id = c.id\nGROUP BY c.id, c.email;\n\n-- Correction : conserve tous les clients\nSELECT c.id, c.email, COUNT(o.id) AS nb_orders\nFROM customers c\nLEFT JOIN orders o ON o.customer_id = c.id\nGROUP BY c.id, c.email\nORDER BY nb_orders DESC;",
       "commonMistake": "Appliquer la technique sans mesurer son effet ni documenter sa frontière.",
       "masteryQuestion": "Quelle contrainte de jointures et relations métier doit rester vraie lorsque le système évolue ?",
       "masteryProof": "Exécuter la preuve, expliquer son invariant et proposer un cas d’échec."

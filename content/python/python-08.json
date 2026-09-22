@@ -36,6 +36,8 @@
       "whyExists": "Il réduit les hypothèses implicites et rend le système plus simple à faire évoluer.",
       "whyImportant": "En contexte professionnel, la preuve reproductible facilite la revue, le diagnostic et la maintenance.",
       "minimalExample": "Une petite preuve PYTHON-08 vérifie le cas nominal et expose une sortie stable.",
+      "professionalExample": "Un pipeline d'analyse de journaux serveur chargeait un fichier de plusieurs gigaoctets entièrement en mémoire avec readlines() avant de le filtrer, ce qui faisait planter le conteneur pour manque de mémoire sur les fichiers les plus volumineux. En remplaçant la lecture par un générateur qui produit une ligne à la fois, seule la ligne courante est en mémoire, et le traitement peut s'arrêter dès qu'un nombre suffisant d'anomalies est trouvé sans jamais lire tout le fichier.",
+      "codeExample": "from pathlib import Path\nfrom collections.abc import Iterator\n\ndef read_errors(path: Path) -> Iterator[str]:\n    with path.open(encoding=\"utf-8\") as stream:\n        for line in stream:  # une ligne à la fois, jamais tout le fichier en mémoire\n            if \"ERROR\" in line:\n                yield line.rstrip(\"\\n\")\n\ndef first_n_errors(path: Path, n: int) -> list[str]:\n    errors = read_errors(path)\n    return [next(errors) for _ in range(n)]  # arrêt anticipé, évaluation paresseuse",
       "commonMistake": "Appliquer la technique sans mesurer son effet ni documenter sa frontière.",
       "masteryQuestion": "Quelle contrainte de itérateurs, générateurs et évaluation paresseuse doit rester vraie lorsque le système évolue ?",
       "masteryProof": "Exécuter la preuve, expliquer son invariant et proposer un cas d’échec."

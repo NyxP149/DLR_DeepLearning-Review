@@ -36,6 +36,8 @@
       "whyExists": "Il réduit les hypothèses implicites et rend le système plus simple à faire évoluer.",
       "whyImportant": "En contexte professionnel, la preuve reproductible facilite la revue, le diagnostic et la maintenance.",
       "minimalExample": "Une petite preuve TYPESCRIPT-02 vérifie le cas nominal et expose une sortie stable.",
+      "professionalExample": "Une équipe active strictNullChecks après un incident où une fonction getUser(id) pouvait renvoyer undefined si l'identifiant n'existait pas en base, mais le code appelant supposait toujours un utilisateur valide et plantait en production avec un TypeError sur une propriété de undefined. Le mode strict oblige à traiter explicitement le cas manquant (if (!user) return), et l'inférence de type sur const user = users.find(...) révèle immédiatement que le type est User | undefined plutôt que User.",
+      "codeExample": "interface User {\n  id: string;\n  email: string;\n}\n\nfunction getUser(id: string, users: User[]): User | undefined {\n  return users.find(u => u.id === id);\n}\n\n// strictNullChecks force la vérification avant usage\nconst user = getUser('u_42', []);\nif (!user) {\n  throw new Error('Utilisateur introuvable');\n}\nconsole.log(user.email); // sûr : user est narrowed en User ici",
       "commonMistake": "Appliquer la technique sans mesurer son effet ni documenter sa frontière.",
       "masteryQuestion": "Quelle contrainte de types primitifs, inférence et mode strict doit rester vraie lorsque le système évolue ?",
       "masteryProof": "Exécuter la preuve, expliquer son invariant et proposer un cas d’échec."

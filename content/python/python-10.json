@@ -36,6 +36,8 @@
       "whyExists": "Il réduit les hypothèses implicites et rend le système plus simple à faire évoluer.",
       "whyImportant": "En contexte professionnel, la preuve reproductible facilite la revue, le diagnostic et la maintenance.",
       "minimalExample": "Une petite preuve PYTHON-10 vérifie le cas nominal et expose une sortie stable.",
+      "professionalExample": "Un service de notification acceptait n'importe quel objet possédant une méthode send(), mais un nouveau développeur a créé une classe EmailSender sans cette méthode et l'erreur n'a été découverte qu'en production lors du premier envoi. En définissant un Protocol Notifier avec la signature attendue et en exécutant mypy en CI, cette incompatibilité est désormais détectée avant la fusion de la pull request.",
+      "codeExample": "from typing import Protocol\n\nclass Notifier(Protocol):\n    def send(self, message: str) -> bool: ...\n\nclass SlackSender:\n    def send(self, message: str) -> bool:\n        return slack_client.post(message)\n\ndef notify_team(sender: Notifier, message: str) -> None:\n    if not sender.send(message):\n        raise RuntimeError(\"Échec de l'envoi de la notification\")\n\n# $ mypy notifications.py\n# Success: no issues found — SlackSender respecte le Protocol sans en hériter",
       "commonMistake": "Appliquer la technique sans mesurer son effet ni documenter sa frontière.",
       "masteryQuestion": "Quelle contrainte de typage progressif, protocol et outils statiques doit rester vraie lorsque le système évolue ?",
       "masteryProof": "Exécuter la preuve, expliquer son invariant et proposer un cas d’échec."

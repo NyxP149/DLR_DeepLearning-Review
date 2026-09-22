@@ -36,6 +36,8 @@
       "whyExists": "Il réduit les hypothèses implicites et rend le système plus simple à faire évoluer.",
       "whyImportant": "En contexte professionnel, la preuve reproductible facilite la revue, le diagnostic et la maintenance.",
       "minimalExample": "Une petite preuve TYPESCRIPT-22 vérifie le cas nominal et expose une sortie stable.",
+      "professionalExample": "Un champ de recherche de clients appelait l'API à chaque frappe clavier, saturant le backend de requêtes redondantes pendant la frappe. En modélisant les saisies comme un flux RxJS et en composant les opérateurs debounceTime(300) et switchMap, qui annule automatiquement la requête précédente si une nouvelle frappe arrive, le nombre d'appels réseau a chuté drastiquement sans jamais afficher une réponse obsolète arrivée en retard — un pattern central des services Angular basés sur RxJS.",
+      "codeExample": "import { fromEvent } from 'rxjs';\nimport { debounceTime, switchMap, map, distinctUntilChanged } from 'rxjs/operators';\n\nfunction wireSearchInput(input: HTMLInputElement, searchApi: (q: string) => Promise<string[]>) {\n  fromEvent(input, 'input')\n    .pipe(\n      map(() => input.value),\n      debounceTime(300),\n      distinctUntilChanged(),\n      switchMap(query => searchApi(query)) // annule la requête précédente\n    )\n    .subscribe(results => console.log('résultats :', results));\n}",
       "commonMistake": "Appliquer la technique sans mesurer son effet ni documenter sa frontière.",
       "masteryQuestion": "Quelle contrainte de préparation angular, décorateurs et rxjs doit rester vraie lorsque le système évolue ?",
       "masteryProof": "Exécuter la preuve, expliquer son invariant et proposer un cas d’échec."

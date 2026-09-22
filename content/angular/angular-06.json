@@ -36,6 +36,8 @@
       "whyExists": "Il réduit les hypothèses implicites et rend le système plus simple à faire évoluer.",
       "whyImportant": "En contexte professionnel, la preuve reproductible facilite la revue, le diagnostic et la maintenance.",
       "minimalExample": "Une petite preuve ANGULAR-06 vérifie le cas nominal et expose une sortie stable.",
+      "professionalExample": "Sur un champ de recherche de clients, chaque frappe déclenche potentiellement un appel HTTP ; sans annulation, une réponse lente pour « jea » peut arriver après celle pour « jean » et afficher un résultat obsolète. debounceTime limite la fréquence des appels, et switchMap annule automatiquement la requête précédente dès qu'une nouvelle frappe arrive, garantissant que seule la dernière réponse est affichée. takeUntilDestroyed désabonne le flux quand le composant est détruit, évitant une fuite mémoire si l'utilisateur change d'écran pendant une recherche en cours.",
+      "codeExample": "readonly results = toSignal(\n  this.searchControl.valueChanges.pipe(\n    debounceTime(300),\n    distinctUntilChanged(),\n    switchMap(query => this.customers.search(query).pipe(\n      catchError(() => of<Customer[]>([]))\n    )),\n    takeUntilDestroyed(),\n  ),\n  { initialValue: [] as Customer[] },\n);",
       "commonMistake": "Appliquer la technique sans mesurer son effet ni documenter sa frontière.",
       "masteryQuestion": "Quelle contrainte de rxjs, annulation et états asynchrones doit rester vraie lorsque le système évolue ?",
       "masteryProof": "Exécuter la preuve, expliquer son invariant et proposer un cas d’échec."

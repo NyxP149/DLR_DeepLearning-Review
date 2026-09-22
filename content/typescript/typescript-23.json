@@ -36,6 +36,8 @@
       "whyExists": "Il réduit les hypothèses implicites et rend le système plus simple à faire évoluer.",
       "whyImportant": "En contexte professionnel, la preuve reproductible facilite la revue, le diagnostic et la maintenance.",
       "minimalExample": "Une petite preuve TYPESCRIPT-23 vérifie le cas nominal et expose une sortie stable.",
+      "professionalExample": "L'équipe publie un SDK npm interne @dlr/catalog-sdk pour que les équipes partenaires interrogent le catalogue produit sans réimplémenter l'appel HTTP à chaque fois. Le SDK expose des méthodes fortement typées comme getProduct(id): Promise<Product> et embarque ses fichiers .d.ts générés automatiquement à partir du code source, garantissant que toute évolution de contrat côté API casse la compilation chez les consommateurs plutôt qu'en silence à l'exécution.",
+      "codeExample": "export interface Product {\n  id: string;\n  name: string;\n  priceCents: number;\n}\n\nexport class CatalogClient {\n  constructor(private readonly baseUrl: string, private readonly apiKey: string) {}\n\n  async getProduct(id: string): Promise<Product> {\n    const response = await fetch(`${this.baseUrl}/products/${id}`, {\n      headers: { Authorization: `Bearer ${this.apiKey}` },\n    });\n    if (!response.ok) {\n      throw new Error(`Produit ${id} introuvable (${response.status})`);\n    }\n    return response.json() as Promise<Product>;\n  }\n}",
       "commonMistake": "Appliquer la technique sans mesurer son effet ni documenter sa frontière.",
       "masteryQuestion": "Quelle contrainte de projet professionnel : sdk métier typé doit rester vraie lorsque le système évolue ?",
       "masteryProof": "Exécuter la preuve, expliquer son invariant et proposer un cas d’échec."

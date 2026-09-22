@@ -36,6 +36,8 @@
       "whyExists": "Il réduit les hypothèses implicites et rend le système plus simple à faire évoluer.",
       "whyImportant": "En contexte professionnel, la preuve reproductible facilite la revue, le diagnostic et la maintenance.",
       "minimalExample": "Une petite preuve PYTHON-12 vérifie le cas nominal et expose une sortie stable.",
+      "professionalExample": "Un service qui agrège des prix depuis cinq fournisseurs externes appelait chaque API l'une après l'autre avec requests, ce qui portait le temps de réponse total à plusieurs secondes. En passant à des appels asynchrones avec asyncio.gather et un client HTTP async, les cinq requêtes s'exécutent pendant l'attente réseau des unes des autres, ramenant le temps total proche de celui de l'appel le plus lent plutôt que de leur somme.",
+      "codeExample": "import asyncio\nimport httpx\n\nasync def fetch_price(client: httpx.AsyncClient, supplier_url: str) -> float:\n    response = await client.get(supplier_url, timeout=2.0)\n    response.raise_for_status()\n    return response.json()[\"price\"]\n\nasync def best_price(supplier_urls: list[str]) -> float:\n    async with httpx.AsyncClient() as client:\n        prices = await asyncio.gather(\n            *(fetch_price(client, url) for url in supplier_urls),\n            return_exceptions=True,\n        )\n    valid_prices = [p for p in prices if isinstance(p, float)]\n    return min(valid_prices)",
       "commonMistake": "Appliquer la technique sans mesurer son effet ni documenter sa frontière.",
       "masteryQuestion": "Quelle contrainte de asynchronisme avec async, await et asyncio doit rester vraie lorsque le système évolue ?",
       "masteryProof": "Exécuter la preuve, expliquer son invariant et proposer un cas d’échec."

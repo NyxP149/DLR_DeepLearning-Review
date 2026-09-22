@@ -36,6 +36,8 @@
       "whyExists": "Il réduit les hypothèses implicites et rend le système plus simple à faire évoluer.",
       "whyImportant": "En contexte professionnel, la preuve reproductible facilite la revue, le diagnostic et la maintenance.",
       "minimalExample": "Une petite preuve SQL-02 vérifie le cas nominal et expose une sortie stable.",
+      "professionalExample": "Un endpoint d'API qui liste les commandes d'un client utilise LIMIT/OFFSET pour paginer les résultats affichés dans un tableau de bord. Une erreur fréquente est d'omettre ORDER BY : sans tri explicite, deux appels successifs peuvent renvoyer les lignes dans un ordre différent, ce qui fait apparaître des doublons ou des trous entre deux pages côté client. Sur une table à forte volumétrie, l'équipe finit par remplacer OFFSET par une pagination par clé (keyset pagination sur id) car OFFSET devient lent et instable quand des lignes sont insérées entre deux requêtes.",
+      "codeExample": "-- Pagination par OFFSET (simple mais coûteuse sur grosse table)\nSELECT id, status, total_cents\nFROM orders\nWHERE customer_id = 42\nORDER BY created_at DESC, id DESC\nLIMIT 20 OFFSET 40;\n\n-- Pagination par clé (keyset), stable et performante\nSELECT id, status, total_cents\nFROM orders\nWHERE customer_id = 42\n  AND (created_at, id) < ('2026-09-10 12:00:00', 1032)\nORDER BY created_at DESC, id DESC\nLIMIT 20;",
       "commonMistake": "Appliquer la technique sans mesurer son effet ni documenter sa frontière.",
       "masteryQuestion": "Quelle contrainte de select, filtres, tri et pagination doit rester vraie lorsque le système évolue ?",
       "masteryProof": "Exécuter la preuve, expliquer son invariant et proposer un cas d’échec."

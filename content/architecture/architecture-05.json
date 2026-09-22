@@ -40,6 +40,8 @@
       "whyExists": "Une stack verticale échoue lorsque les frontières et les invariants restent implicites entre la base, le serveur, le client et le déploiement.",
       "whyImportant": "Une décision explicite peut être testée, observée et révisée ; une préférence technique isolée ne le peut pas.",
       "minimalExample": "Le programme ARCHITECTURE-05 réduit le problème à un modèle exécutable et à une sortie contrôlée.",
+      "professionalExample": "Un bug en production permet à un client de valider une commande avec une ligne à prix négatif, injectée via un champ de remise mal validé côté client, ce qui rembourse discrètement le client au lieu de le facturer. L’invariant « le prix d’une ligne doit être strictement positif » n’était vérifié nulle part côté serveur ni en base. Modéliser les invariants avant la persistance aurait imposé une contrainte CHECK en base et une validation dans le service, empêchant l’incident.",
+      "codeExample": "-- Invariant imposé au niveau base\nALTER TABLE order_line\n  ADD CONSTRAINT price_positive CHECK (price > 0);\n\n-- Invariant redondant côté service (défense en profondeur)\nif line.price <= 0:\n    raise ValueError(\"Le prix d'une ligne doit être positif\")",
       "commonMistake": "Choisir un outil avant d’identifier le besoin, la charge, le risque et le propriétaire de la donnée.",
       "masteryQuestion": "Quel compromis, quel signal et quelle condition de réévaluation associes-tu à « Modéliser les données et leurs invariants » ?",
       "masteryProof": "Exécuter la preuve, modifier une contrainte, expliquer le résultat et dessiner la place du composant dans la stack complète."

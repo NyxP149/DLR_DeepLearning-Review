@@ -51,7 +51,7 @@
                   <p class="concept-label">Concept clé · {{ concept.code }}</p>
                   <h2>{{ concept.name }}</h2>
                   <p>{{ concept.definition }}</p>
-                  <details><summary>Comprendre ce concept</summary><h3>Pourquoi il existe</h3><p>{{ concept.whyExists }}</p><h3>Erreur fréquente</h3><p>{{ concept.commonMistake }}</p><div class="mastery-question"><strong>Question de maîtrise</strong><p>{{ concept.masteryQuestion }}</p></div><button class="tutor-trigger" type="button" [disabled]="tutorLoading()" (click)="explainConcept(concept.code)">Demander une explication à Ollama</button></details>
+                  <details><summary>Comprendre ce concept</summary><h3>Pourquoi il existe</h3><p>{{ concept.whyExists }}</p><h3>Dans un projet réel</h3><p>{{ concept.professionalExample }}</p><h3>Exemple de code</h3><pre><code>{{ concept.codeExample }}</code></pre><h3>Erreur fréquente</h3><p>{{ concept.commonMistake }}</p><div class="mastery-question"><strong>Question de maîtrise</strong><p>{{ concept.masteryQuestion }}</p></div><button class="tutor-trigger" type="button" [disabled]="tutorLoading()" (click)="explainConcept(concept.code)">Demander une explication à Ollama</button></details>
                 </section>
               }
               <h2>{{ section.title }}</h2>
@@ -66,6 +66,10 @@
               <p>{{ concept.definition }}</p>
               <h3>Pourquoi il existe</h3>
               <p>{{ concept.whyExists }}</p>
+              <h3>Dans un projet réel</h3>
+              <p>{{ concept.professionalExample }}</p>
+              <h3>Exemple de code</h3>
+              <pre><code>{{ concept.codeExample }}</code></pre>
               <h3>Erreur fréquente</h3>
               <p>{{ concept.commonMistake }}</p>
               <div class="mastery-question">

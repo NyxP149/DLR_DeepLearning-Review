@@ -36,6 +36,8 @@
       "whyExists": "Il réduit les hypothèses implicites et rend le système plus simple à faire évoluer.",
       "whyImportant": "En contexte professionnel, la preuve reproductible facilite la revue, le diagnostic et la maintenance.",
       "minimalExample": "Une petite preuve TYPESCRIPT-07 vérifie le cas nominal et expose une sortie stable.",
+      "professionalExample": "Un module de paiement définit une classe abstraite PaymentProcessor dont le solde interne est un champ privé (#balanceCents) : seules les sous-classes StripeProcessor et PaypalProcessor implémentent la méthode abstraite charge(), sans jamais pouvoir lire ou modifier le solde directement depuis l'extérieur. Cela a évité un bug où un module de reporting modifiait directement une propriété publique balance, désynchronisant l'état interne du solde réel côté fournisseur de paiement.",
+      "codeExample": "abstract class PaymentProcessor {\n  #balanceCents = 0;\n\n  protected credit(amountCents: number): void {\n    this.#balanceCents += amountCents;\n  }\n\n  get balanceCents(): number {\n    return this.#balanceCents;\n  }\n\n  abstract charge(amountCents: number): Promise<void>;\n}\n\nclass StripeProcessor extends PaymentProcessor {\n  async charge(amountCents: number): Promise<void> {\n    // appel réseau au fournisseur, puis mise à jour de l'état interne\n    this.credit(amountCents);\n  }\n}",
       "commonMistake": "Appliquer la technique sans mesurer son effet ni documenter sa frontière.",
       "masteryQuestion": "Quelle contrainte de classes, visibilité et abstraction doit rester vraie lorsque le système évolue ?",
       "masteryProof": "Exécuter la preuve, expliquer son invariant et proposer un cas d’échec."

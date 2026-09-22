@@ -36,6 +36,8 @@
       "whyExists": "Il réduit les hypothèses implicites et rend le système plus simple à faire évoluer.",
       "whyImportant": "En contexte professionnel, la preuve reproductible facilite la revue, le diagnostic et la maintenance.",
       "minimalExample": "Une petite preuve SQL-06 vérifie le cas nominal et expose une sortie stable.",
+      "professionalExample": "Une page de profil client devient lente en production alors qu'elle fonctionnait bien en développement : la table orders contient désormais deux millions de lignes et le filtre WHERE customer_id = ? déclenche un scan séquentiel complet. L'équipe lance EXPLAIN sur la requête, constate l'absence d'index sur customer_id, puis en crée un ; le temps de réponse passe de 800 ms à moins de 5 ms. Sur PostgreSQL, EXPLAIN ANALYZE est préféré à EXPLAIN seul car il exécute réellement la requête et compare le temps estimé au temps réel, révélant les mauvaises estimations de cardinalité.",
+      "codeExample": "-- Avant : scan complet de la table\nEXPLAIN QUERY PLAN\nSELECT id, status, total_cents\nFROM orders\nWHERE customer_id = 4821;\n-- SCAN orders\n\nCREATE INDEX idx_orders_customer_id ON orders(customer_id);\n\n-- Après : utilisation de l'index\nEXPLAIN QUERY PLAN\nSELECT id, status, total_cents\nFROM orders\nWHERE customer_id = 4821;\n-- SEARCH orders USING INDEX idx_orders_customer_id (customer_id=?)",
       "commonMistake": "Appliquer la technique sans mesurer son effet ni documenter sa frontière.",
       "masteryQuestion": "Quelle contrainte de index, explain et coût des requêtes doit rester vraie lorsque le système évolue ?",
       "masteryProof": "Exécuter la preuve, expliquer son invariant et proposer un cas d’échec."

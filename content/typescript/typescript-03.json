@@ -36,6 +36,8 @@
       "whyExists": "Il réduit les hypothèses implicites et rend le système plus simple à faire évoluer.",
       "whyImportant": "En contexte professionnel, la preuve reproductible facilite la revue, le diagnostic et la maintenance.",
       "minimalExample": "Une petite preuve TYPESCRIPT-03 vérifie le cas nominal et expose une sortie stable.",
+      "professionalExample": "Un système de facturation modélise le statut d'une commande avec un type union littéral 'pending' | 'paid' | 'refunded' | 'cancelled'. Lorsqu'un nouveau statut 'partially_refunded' est ajouté, le compilateur signale immédiatement tous les switch qui ne le gèrent pas grâce à une clause default assertNever, évitant qu'une commande partiellement remboursée soit traitée en silence comme payée dans le calcul du chiffre d'affaires.",
+      "codeExample": "type OrderStatus = 'pending' | 'paid' | 'refunded' | 'cancelled';\n\nfunction assertNever(value: never): never {\n  throw new Error(`Cas non géré : ${JSON.stringify(value)}`);\n}\n\nfunction describeStatus(status: OrderStatus): string {\n  switch (status) {\n    case 'pending': return 'En attente de paiement';\n    case 'paid': return 'Payée';\n    case 'refunded': return 'Remboursée';\n    case 'cancelled': return 'Annulée';\n    default: return assertNever(status);\n  }\n}",
       "commonMistake": "Appliquer la technique sans mesurer son effet ni documenter sa frontière.",
       "masteryQuestion": "Quelle contrainte de unions, littéraux et narrowing exhaustif doit rester vraie lorsque le système évolue ?",
       "masteryProof": "Exécuter la preuve, expliquer son invariant et proposer un cas d’échec."

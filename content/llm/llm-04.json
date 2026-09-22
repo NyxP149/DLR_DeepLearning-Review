@@ -36,6 +36,8 @@
       "whyExists": "Les résultats d’un LLM sont probabilistes ; le système qui l’entoure doit rendre les hypothèses et contrôles explicites.",
       "whyImportant": "Sans mesure, provenance et cas d’échec, une démonstration convaincante ne garantit pas un produit fiable.",
       "minimalExample": "Le programme LLM-04 reproduit localement le mécanisme essentiel et affiche une preuve stable.",
+      "professionalExample": "Un pipeline de classification de tickets attend une réponse JSON {\"category\":..., \"confidence\":...} pour router automatiquement vers la bonne équipe. Un jour le modèle renvoie confidence: \"élevée\" (une chaîne au lieu d'un nombre entre 0 et 1), et le service de routage plante en production faute de validation, bloquant le traitement des tickets pendant une heure. Après l'incident, l'équipe ajoute une validation de schéma stricte avant tout usage métier de la sortie du modèle, avec un chemin de repli vers une file d'erreurs.",
+      "codeExample": "from pydantic import BaseModel, ValidationError\n\nclass Classification(BaseModel):\n    category: str\n    confidence: float\n\nraw = '{\"category\": \"facturation\", \"confidence\": \"élevée\"}'\ntry:\n    result = Classification.model_validate_json(raw)\nexcept ValidationError as exc:\n    print(\"Rejeté avant le métier:\", exc.errors()[0][\"msg\"])",
       "commonMistake": "Évaluer un seul exemple favorable ou confondre plausibilité et exactitude.",
       "masteryQuestion": "Quelle métrique et quel cas d’échec utiliserais-tu pour sorties structurées et validation de schéma ?",
       "masteryProof": "Exécuter la preuve, modifier une entrée et expliquer le résultat ainsi que la limite du modèle local."

@@ -40,6 +40,8 @@
       "whyExists": "Une stack verticale échoue lorsque les frontières et les invariants restent implicites entre la base, le serveur, le client et le déploiement.",
       "whyImportant": "Une décision explicite peut être testée, observée et révisée ; une préférence technique isolée ne le peut pas.",
       "minimalExample": "Le programme ARCHITECTURE-15 réduit le problème à un modèle exécutable et à une sortie contrôlée.",
+      "professionalExample": "Une équipe passe deux semaines à optimiser des requêtes SQL déjà rapides (5 ms) parce que « la base est toujours suspecte », alors que le vrai goulot d’étranglement est un appel à une API de géocodage tierce qui prend 400 ms sans budget de latence défini. Après avoir instrumenté chaque couche avec un budget explicite, l’équipe découvre en dix minutes le vrai coupable et le corrige en ajoutant un cache. Mesurer avant d’optimiser évite de gaspiller des semaines d’ingénierie sur la mauvaise couche.",
+      "codeExample": "budget_ms = {\"ui\": 30, \"api\": 20, \"db\": 35, \"geocoding_api\": 400}\ntotal = sum(budget_ms.values())\nprint(\"Budget total:\", total, \"ms\")\n# geocoding_api consomme 85% du budget -> cible d'optimisation réelle",
       "commonMistake": "Choisir un outil avant d’identifier le besoin, la charge, le risque et le propriétaire de la donnée.",
       "masteryQuestion": "Quel compromis, quel signal et quelle condition de réévaluation associes-tu à « Mesurer avant d’optimiser » ?",
       "masteryProof": "Exécuter la preuve, modifier une contrainte, expliquer le résultat et dessiner la place du composant dans la stack complète."

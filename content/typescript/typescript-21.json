@@ -36,6 +36,8 @@
       "whyExists": "Il réduit les hypothèses implicites et rend le système plus simple à faire évoluer.",
       "whyImportant": "En contexte professionnel, la preuve reproductible facilite la revue, le diagnostic et la maintenance.",
       "minimalExample": "Une petite preuve TYPESCRIPT-21 vérifie le cas nominal et expose une sortie stable.",
+      "professionalExample": "Le bundle JavaScript d'une application de tableau de bord dépassait 900 Ko après l'ajout d'une bibliothèque de graphiques importée en entier pour un seul composant peu utilisé. L'équipe a fixé un budget de performance dans la CI (échec du build au-delà de 500 Ko pour le chunk principal) et remplacé l'import statique par un import dynamique chargé uniquement quand l'utilisateur ouvre l'onglet statistiques, ramenant le chunk initial sous le budget fixé.",
+      "codeExample": "// Avant : import statique qui alourdit le bundle initial\n// import { ChartLibrary } from 'heavy-chart-lib';\n\nasync function renderStatsTab(container: HTMLElement): Promise<void> {\n  const { ChartLibrary } = await import('heavy-chart-lib'); // import dynamique\n  const chart = new ChartLibrary(container);\n  chart.render();\n}\n\n// budget vérifié en CI, ex. avec size-limit :\n// \"size-limit\": [{ \"path\": \"dist/main.js\", \"limit\": \"500 KB\" }]",
       "commonMistake": "Appliquer la technique sans mesurer son effet ni documenter sa frontière.",
       "masteryQuestion": "Quelle contrainte de performance, profiling et budgets doit rester vraie lorsque le système évolue ?",
       "masteryProof": "Exécuter la preuve, expliquer son invariant et proposer un cas d’échec."

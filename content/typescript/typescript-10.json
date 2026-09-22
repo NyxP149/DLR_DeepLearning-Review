@@ -36,6 +36,8 @@
       "whyExists": "Il réduit les hypothèses implicites et rend le système plus simple à faire évoluer.",
       "whyImportant": "En contexte professionnel, la preuve reproductible facilite la revue, le diagnostic et la maintenance.",
       "minimalExample": "Une petite preuve TYPESCRIPT-10 vérifie le cas nominal et expose une sortie stable.",
+      "professionalExample": "Le routeur interne d'une API type ses routes avec des littéraux de gabarit : la route '/users/:id/orders/:orderId' produit automatiquement un type de paramètres { id: string; orderId: string } via un type conditionnel qui extrait les segments préfixés par ':'. Cela a supprimé une classe entière de bugs où un handler lisait req.params.orderId alors que la route ne définissait que req.params.id, une faute de frappe qui passait inaperçue avec un typage any classique.",
+      "codeExample": "type ExtractParams<Path extends string> =\n  Path extends `${infer _Start}:${infer Param}/${infer Rest}`\n    ? { [K in Param | keyof ExtractParams<`/${Rest}`>]: string }\n    : Path extends `${infer _Start}:${infer Param}`\n      ? { [K in Param]: string }\n      : {};\n\ntype OrderRouteParams = ExtractParams<'/users/:id/orders/:orderId'>;\n// équivalent à { id: string; orderId: string }\n\nfunction handleRoute(params: OrderRouteParams): void {\n  console.log(params.id, params.orderId);\n}",
       "commonMistake": "Appliquer la technique sans mesurer son effet ni documenter sa frontière.",
       "masteryQuestion": "Quelle contrainte de types conditionnels et littéraux de gabarit doit rester vraie lorsque le système évolue ?",
       "masteryProof": "Exécuter la preuve, expliquer son invariant et proposer un cas d’échec."

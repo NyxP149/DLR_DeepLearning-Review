@@ -40,6 +40,8 @@
       "whyExists": "Une stack verticale échoue lorsque les frontières et les invariants restent implicites entre la base, le serveur, le client et le déploiement.",
       "whyImportant": "Une décision explicite peut être testée, observée et révisée ; une préférence technique isolée ne le peut pas.",
       "minimalExample": "Le programme ARCHITECTURE-06 réduit le problème à un modèle exécutable et à une sortie contrôlée.",
+      "professionalExample": "Un client mobile envoie une requête de paiement, le réseau coupe avant que la réponse n’arrive, et l’application retente automatiquement le même appel. Sans clé d’idempotence, le serveur traite les deux requêtes comme deux paiements distincts et débite le client deux fois. En exigeant une clé Idempotency-Key et en renvoyant la même réponse pour une clé déjà vue, l’API rend la commande rejouable sans risque de double facturation.",
+      "codeExample": "POST /payments\nIdempotency-Key: pay-8f2c-42\n{ \"amount\": 49.90 }\n\n-> 201 Created { \"status\": \"charged\" }\n\n# Même requête rejouée après un timeout réseau\nPOST /payments\nIdempotency-Key: pay-8f2c-42\n{ \"amount\": 49.90 }\n\n-> 200 OK { \"status\": \"charged\" }  # rejouée, pas de double débit",
       "commonMistake": "Choisir un outil avant d’identifier le besoin, la charge, le risque et le propriétaire de la donnée.",
       "masteryQuestion": "Quel compromis, quel signal et quelle condition de réévaluation associes-tu à « Concevoir API, erreurs et idempotence » ?",
       "masteryProof": "Exécuter la preuve, modifier une contrainte, expliquer le résultat et dessiner la place du composant dans la stack complète."

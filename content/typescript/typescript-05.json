@@ -36,6 +36,8 @@
       "whyExists": "Il réduit les hypothèses implicites et rend le système plus simple à faire évoluer.",
       "whyImportant": "En contexte professionnel, la preuve reproductible facilite la revue, le diagnostic et la maintenance.",
       "minimalExample": "Une petite preuve TYPESCRIPT-05 vérifie le cas nominal et expose une sortie stable.",
+      "professionalExample": "Le client HTTP interne d'une équipe expose une fonction findUser avec des surcharges : appelée avec un simple id elle renvoie toujours un User, appelée avec des options { includeDeleted: true } elle renvoie un User | null. Sans surcharges, une signature unique aurait forcé chaque appelant à gérer un null même dans les cas où c'est impossible, ou pire, aurait masqué un vrai risque de valeur nulle dans les cas où c'est nécessaire.",
+      "codeExample": "interface User { id: string; name: string; }\n\nconst db = new Map<string, User>([\n  ['u_1', { id: 'u_1', name: 'Alice' }],\n]);\n\nfunction findUser(id: string): User;\nfunction findUser(id: string, options: { includeDeleted: true }): User | null;\nfunction findUser(id: string, options?: { includeDeleted: true }): User | null {\n  const user = db.get(id) ?? null;\n  return options?.includeDeleted ? user : (user as User);\n}\n\nconst active = findUser('u_1'); // typé User\nconst maybeMissing = findUser('u_9', { includeDeleted: true }); // typé User | null",
       "commonMistake": "Appliquer la technique sans mesurer son effet ni documenter sa frontière.",
       "masteryQuestion": "Quelle contrainte de fonctions, surcharges et paramètres sûrs doit rester vraie lorsque le système évolue ?",
       "masteryProof": "Exécuter la preuve, expliquer son invariant et proposer un cas d’échec."

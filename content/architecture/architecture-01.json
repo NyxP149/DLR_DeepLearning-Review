@@ -38,6 +38,8 @@
       "whyExists": "Une stack verticale échoue lorsque les frontières et les invariants restent implicites entre la base, le serveur, le client et le déploiement.",
       "whyImportant": "Une décision explicite peut être testée, observée et révisée ; une préférence technique isolée ne le peut pas.",
       "minimalExample": "Le programme ARCHITECTURE-01 réduit le problème à un modèle exécutable et à une sortie contrôlée.",
+      "professionalExample": "Un architecte audite un incident de production où l’équipe mobile a ajouté un appel direct à la base PostgreSQL pour contourner un endpoint jugé trop lent, en court-circuitant l’API Spring Boot. Six mois plus tard, une migration de schéma casse silencieusement l’application mobile car personne n’avait tracé cette responsabilité cachée. Lire le système comme une chaîne de responsabilités aurait révélé cette frontière violée avant l’incident.",
+      "codeExample": "# Chaîne de responsabilités attendue\nAngular (UI) -> Spring Boot (API) -> PostgreSQL (données)\n\n# Ce qui a réellement été trouvé en audit\nAngular (UI) -> Spring Boot (API) -> PostgreSQL (données)\nApp mobile ------------------------> PostgreSQL (données)  # frontière violée",
       "commonMistake": "Choisir un outil avant d’identifier le besoin, la charge, le risque et le propriétaire de la donnée.",
       "masteryQuestion": "Quel compromis, quel signal et quelle condition de réévaluation associes-tu à « Lire un système comme une chaîne de responsabilités » ?",
       "masteryProof": "Exécuter la preuve, modifier une contrainte, expliquer le résultat et dessiner la place du composant dans la stack complète."

@@ -36,6 +36,8 @@
       "whyExists": "Il réduit les hypothèses implicites et rend le système plus simple à faire évoluer.",
       "whyImportant": "En contexte professionnel, la preuve reproductible facilite la revue, le diagnostic et la maintenance.",
       "minimalExample": "Une petite preuve TYPESCRIPT-17 vérifie le cas nominal et expose une sortie stable.",
+      "professionalExample": "Le reducer d'un panier d'achat modifiait directement le tableau items reçu en paramètre avec push(), ce qui fonctionnait en apparence mais cassait la détection de changement d'un composant d'interface qui compare l'ancienne et la nouvelle référence du panier. En réécrivant addItem comme une fonction pure qui retourne un nouveau tableau via le spread plutôt que de muter l'existant, l'interface s'est remise à jour correctement à chaque ajout.",
+      "codeExample": "interface CartItem { sku: string; quantity: number; }\ninterface Cart { items: readonly CartItem[]; }\n\n// Pure : ne modifie jamais 'cart', retourne toujours un nouvel objet.\nfunction addItem(cart: Cart, item: CartItem): Cart {\n  const existing = cart.items.find(i => i.sku === item.sku);\n  if (!existing) {\n    return { items: [...cart.items, item] };\n  }\n  return {\n    items: cart.items.map(i =>\n      i.sku === item.sku ? { ...i, quantity: i.quantity + item.quantity } : i\n    ),\n  };\n}",
       "commonMistake": "Appliquer la technique sans mesurer son effet ni documenter sa frontière.",
       "masteryQuestion": "Quelle contrainte de programmation fonctionnelle et immutabilité doit rester vraie lorsque le système évolue ?",
       "masteryProof": "Exécuter la preuve, expliquer son invariant et proposer un cas d’échec."
