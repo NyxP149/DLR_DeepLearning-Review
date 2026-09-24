@@ -52,7 +52,7 @@ public class OllamaAiTutorAdapter implements AiTutorPort {
                             List.of(new Message("system", systemPrompt), new Message("user", userPrompt)),
                             false,
                             false,
-                            new Options(0.3, 220)))
+                            new Options(0.3, 500)))
                     .retrieve()
                     .body(ChatResponse.class);
             if (response == null || response.message() == null || response.message().content().isBlank()) {

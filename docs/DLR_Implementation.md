@@ -1100,6 +1100,7 @@ Signalement : la réponse du tuteur Ollama « coupe » le texte. Diagnostic : au
 - `.tutor-answer` reçoit `max-height: min(28rem, 55vh)`, `overflow-y: auto` et une barre de défilement interne stylée aux couleurs de l'application, au lieu de dépendre du défilement de la page entière.
 - Vérifié en injectant une réponse longue simulée via `window.ng.getComponent()` (Ollama n'étant pas disponible dans l'environnement de vérification).
 - **Itération suivante** : l'utilisateur a d'abord demandé une hauteur maximale plus grande (`min(48rem, 80vh)`), puis a précisé vouloir que la fenêtre s'adapte entièrement au texte. `max-height`, `overflow-y` et le style de barre de défilement sont retirés : la boîte grandit désormais exactement selon le contenu, sans aucune troncature ni défilement interne.
+- **Itération suivante** : malgré ce correctif CSS, l'utilisateur a signalé que la fenêtre montrait toujours une limite. La vraie cause était la génération elle-même : `OllamaAiTutorAdapter` plafonnait chaque réponse à `num_predict: 220` tokens côté Ollama, coupant le texte en plein mot avant même son envoi au frontend. La limite est portée à 500 tokens. Vérifié par un appel direct à `/api/chat` : réponse nettement plus complète, mais 500 tokens restent atteignables sur une question très détaillée (~49 s de génération pure sur ce poste sans GPU) — compromis assumé entre exhaustivité et temps de réponse.
 
 ## V3.12 — Le bilan de fin de laboratoire survit désormais au rechargement
 

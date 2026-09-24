@@ -232,6 +232,9 @@ L'utilisateur signale que la fenêtre de réponse du tuteur Ollama est petite et
 **Solution**
 Un premier essai a borné `.tutor-answer` à une hauteur maximale avec défilement interne, mais l'utilisateur voulait que la fenêtre s'adapte au texte plutôt que de défiler. La hauteur maximale et le défilement interne sont retirés : la boîte grandit désormais exactement selon le contenu, et c'est de nouveau la page entière qui défile pour une réponse longue — sans aucune troncature. Vérifié en injectant une réponse longue simulée via `window.ng.getComponent()`.
 
+**Itération suivante**
+Après ce correctif CSS, l'utilisateur a signalé que la fenêtre montrait toujours une limite. La vraie cause n'était pas l'affichage mais la génération : `OllamaAiTutorAdapter` plafonnait chaque réponse à `num_predict: 220` tokens côté Ollama, coupant le texte lui-même en plein mot avant même qu'il n'atteigne le frontend. La limite est portée à 500 tokens. Un test direct contre `/api/chat` confirme une réponse nettement plus complète, tout en montrant que 500 tokens peuvent encore être atteints sur une question très détaillée (~49 s de génération pure sur ce poste sans GPU) : le compromis retenu privilégie un temps de réponse raisonnable plutôt qu'une garantie absolue contre toute coupure.
+
 ---
 
 ## Le bilan de fin de laboratoire disparaît au rechargement de la page
