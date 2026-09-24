@@ -230,7 +230,7 @@ Monaco est remplacé par CodeMirror 6, qui édite un élément `contenteditable`
 L'utilisateur signale que la fenêtre de réponse du tuteur Ollama est petite et coupe la réponse. Aucun découpage CSS n'existait réellement : la colonne de droite atteint environ 3142 px pour une réponse longue, ce qui oblige à faire défiler toute la page pour en lire la fin, perçu par l'utilisateur comme une fenêtre trop petite.
 
 **Solution**
-`.tutor-answer` reçoit une hauteur maximale (`min(28rem, 55vh)`) et son propre défilement interne stylé aux couleurs de l'application, au lieu de dépendre du défilement de la page entière. Vérifié en injectant une réponse longue simulée via `window.ng.getComponent()`.
+Un premier essai a borné `.tutor-answer` à une hauteur maximale avec défilement interne, mais l'utilisateur voulait que la fenêtre s'adapte au texte plutôt que de défiler. La hauteur maximale et le défilement interne sont retirés : la boîte grandit désormais exactement selon le contenu, et c'est de nouveau la page entière qui défile pour une réponse longue — sans aucune troncature. Vérifié en injectant une réponse longue simulée via `window.ng.getComponent()`.
 
 ---
 

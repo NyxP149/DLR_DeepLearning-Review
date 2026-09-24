@@ -1099,6 +1099,7 @@ Signalement : la réponse du tuteur Ollama « coupe » le texte. Diagnostic : au
 
 - `.tutor-answer` reçoit `max-height: min(28rem, 55vh)`, `overflow-y: auto` et une barre de défilement interne stylée aux couleurs de l'application, au lieu de dépendre du défilement de la page entière.
 - Vérifié en injectant une réponse longue simulée via `window.ng.getComponent()` (Ollama n'étant pas disponible dans l'environnement de vérification).
+- **Itération suivante** : l'utilisateur a d'abord demandé une hauteur maximale plus grande (`min(48rem, 80vh)`), puis a précisé vouloir que la fenêtre s'adapte entièrement au texte. `max-height`, `overflow-y` et le style de barre de défilement sont retirés : la boîte grandit désormais exactement selon le contenu, sans aucune troncature ni défilement interne.
 
 ## V3.12 — Le bilan de fin de laboratoire survit désormais au rechargement
 
