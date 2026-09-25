@@ -69,10 +69,7 @@ public class AttemptService {
 
     @Transactional
     public Attempt complete(UUID id, BigDecimal score, AttemptRepository.ScoreBreakdown breakdown, int threshold) {
-        Attempt attempt = get(id);
-        if (attempt.status() != AttemptStatus.IN_PROGRESS) {
-            throw new IllegalStateException("Cette tentative est déjà terminée.");
-        }
+        get(id);
         AttemptStatus status = score.compareTo(BigDecimal.valueOf(threshold)) >= 0
                 ? AttemptStatus.COMPLETED
                 : AttemptStatus.COMPLETED_BELOW_THRESHOLD;

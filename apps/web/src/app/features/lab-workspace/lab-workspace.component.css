@@ -558,6 +558,11 @@ pre {
   grid-column: 1 / -1;
 }
 
+.completion-hint {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
 .state-panel {
   align-items: center;
   background: var(--surface);

@@ -297,7 +297,7 @@ export class LabWorkspaceComponent implements OnDestroy {
   }
 
   async completeLab(lab: LabContent): Promise<void> {
-    if (this.completing() || this.completion() !== null) {
+    if (this.completing()) {
       return;
     }
     this.completing.set(true);

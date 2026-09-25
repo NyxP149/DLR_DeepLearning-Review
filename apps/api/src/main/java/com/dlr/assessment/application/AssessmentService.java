@@ -73,7 +73,7 @@ public class AssessmentService {
             Integer selectedChoice,
             String answerText
     ) {
-        Attempt attempt = requireInProgress(attemptId);
+        Attempt attempt = requireAttempt(attemptId);
         LabContent lab = requireLab(attempt.labCode());
         LabContent.QuizQuestion question = lab.quiz().stream()
                 .filter(candidate -> candidate.code().equals(questionId))
@@ -116,13 +116,13 @@ public class AssessmentService {
 
     @Transactional
     public void removeAnswer(UUID attemptId, String questionId) {
-        requireInProgress(attemptId);
+        requireAttempt(attemptId);
         assessmentRepository.deleteAnswer(attemptId, questionId);
     }
 
     @Transactional
     public AssessmentRepository.Checklist saveChecklist(UUID attemptId, List<Boolean> completed) {
-        Attempt attempt = requireInProgress(attemptId);
+        Attempt attempt = requireAttempt(attemptId);
         LabContent lab = requireLab(attempt.labCode());
         if (completed == null || completed.size() != lab.checklist().size() || completed.isEmpty()) {
             throw new IllegalArgumentException("La checklist doit contenir exactement " + lab.checklist().size() + " réponses.");
@@ -141,7 +141,8 @@ public class AssessmentService {
 
     @Transactional
     public CompletionResult complete(UUID attemptId) {
-        Attempt attempt = requireInProgress(attemptId);
+        Attempt attempt = requireAttempt(attemptId);
+        boolean firstCompletion = attempt.completedAt() == null;
         LabContent lab = requireLab(attempt.labCode());
         Map<String, AssessmentRepository.QuizAnswer> answers = assessmentRepository.findAnswers(attemptId).stream()
                 .collect(Collectors.toMap(AssessmentRepository.QuizAnswer::questionId, Function.identity()));
@@ -175,25 +176,23 @@ public class AssessmentService {
                 executionScore, quizScore, executionScore, connectionScore, selfAssessmentScore, SCORE_VERSION);
         Attempt completed = attemptService.complete(attemptId, calculated.score(), breakdown, lab.threshold());
 
-        Instant now = Instant.now(clock);
-        String reviewReason = completed.status() == AttemptStatus.COMPLETED_BELOW_THRESHOLD
-                ? "Score " + calculated.score() + " % sous le seuil recommandé de " + lab.threshold() + " %."
-                : "Consolider les concepts du laboratoire avec la répétition espacée.";
-        assessmentRepository.createReview(
-                attemptId,
-                lab.code(),
-                now.plus(1, ChronoUnit.DAYS),
-                reviewReason,
-                now);
-        return new CompletionResult(completed, breakdown, lab.threshold(), true);
+        if (firstCompletion) {
+            Instant now = Instant.now(clock);
+            String reviewReason = completed.status() == AttemptStatus.COMPLETED_BELOW_THRESHOLD
+                    ? "Score " + calculated.score() + " % sous le seuil recommandé de " + lab.threshold() + " %."
+                    : "Consolider les concepts du laboratoire avec la répétition espacée.";
+            assessmentRepository.createReview(
+                    attemptId,
+                    lab.code(),
+                    now.plus(1, ChronoUnit.DAYS),
+                    reviewReason,
+                    now);
+        }
+        return new CompletionResult(completed, breakdown, lab.threshold(), firstCompletion);
     }
 
-    private Attempt requireInProgress(UUID attemptId) {
-        Attempt attempt = attemptService.get(attemptId);
-        if (attempt.status() != AttemptStatus.IN_PROGRESS) {
-            throw new IllegalStateException("Cette tentative est déjà terminée.");
-        }
-        return attempt;
+    private Attempt requireAttempt(UUID attemptId) {
+        return attemptService.get(attemptId);
     }
 
     private LabContent requireLab(String labCode) {

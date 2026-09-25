@@ -178,6 +178,54 @@ class AttemptExecutionControllerTest {
     }
 
     @Test
+    void recalculatesTheScoreAfterFixingAFailedRunWithoutResettingTheLab() throws Exception {
+        when(codeRunner.run(any()))
+                .thenAnswer(invocation -> {
+                    var submission = invocation.getArgument(0, com.dlr.execution.domain.Submission.class);
+                    return new ExecutionResult(
+                            UUID.randomUUID(), submission.id(), ExecutionStatus.TESTS_FAILED, 1,
+                            "Mauvaise sortie", "Sortie inattendue", 50, Instant.now());
+                })
+                .thenAnswer(invocation -> {
+                    var submission = invocation.getArgument(0, com.dlr.execution.domain.Submission.class);
+                    return new ExecutionResult(
+                            UUID.randomUUID(), submission.id(), ExecutionStatus.SUCCESS, 0,
+                            "DLR Java Lab 1\n", "", 120, Instant.now());
+                });
+
+        String attemptId = startAttempt();
+        String firstSubmissionId = submit(attemptId);
+        mockMvc.perform(post("/api/submissions/{id}/run", firstSubmissionId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("TESTS_FAILED"));
+
+        answerChoice(attemptId, 1);
+        answerFreeText(attemptId, "Le compilateur compile le code source en bytecode, ensuite la JVM l'exécute.");
+        mockMvc.perform(put("/api/attempts/{id}/checklist", attemptId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"completed\":[true,true,true]}"))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(post("/api/attempts/{id}/complete", attemptId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.attempt.status").value("COMPLETED_BELOW_THRESHOLD"))
+                .andExpect(jsonPath("$.breakdown.tests").value(0))
+                .andExpect(jsonPath("$.reviewScheduled").value(true));
+
+        String secondSubmissionId = submit(attemptId);
+        mockMvc.perform(post("/api/submissions/{id}/run", secondSubmissionId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("SUCCESS"));
+
+        mockMvc.perform(post("/api/attempts/{id}/complete", attemptId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.attempt.status").value("COMPLETED"))
+                .andExpect(jsonPath("$.attempt.score").value(100))
+                .andExpect(jsonPath("$.breakdown.tests").value(100))
+                .andExpect(jsonPath("$.reviewScheduled").value(false));
+    }
+
+    @Test
     void reportsAFailedTestWhenTheProgramOutputIsWrong() throws Exception {
         when(codeRunner.run(any())).thenAnswer(invocation -> {
             var submission = invocation.getArgument(0, com.dlr.execution.domain.Submission.class);

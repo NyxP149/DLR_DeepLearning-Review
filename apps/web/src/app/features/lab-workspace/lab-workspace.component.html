@@ -262,7 +262,7 @@
               }
             </div>
             <button class="complete-button" type="button" [disabled]="completing() || !executionAvailable()" (click)="completeLab(state.lab)">
-              {{ !executionAvailable() ? 'Validation disponible avec le Runner' : completing() ? 'Calcul du bilan…' : 'Terminer et calculer mon score' }}
+              {{ !executionAvailable() ? 'Validation disponible avec le Runner' : completing() ? 'Calcul du bilan…' : completion() ? 'Recalculer mon score' : 'Terminer et calculer mon score' }}
             </button>
 
             @if (completion(); as result) {
@@ -279,6 +279,10 @@
                   <div><dt>Connexion</dt><dd>{{ result.breakdown.connections }} %</dd></div>
                   <div><dt>Auto-évaluation</dt><dd>{{ result.breakdown.selfAssessment }} %</dd></div>
                 </dl>
+                <p class="completion-hint">
+                  Un score te semble incorrect (pratique ou tests à 0 % par exemple) ? Corrige le code, le quiz ou la checklist
+                  ci-dessus puis clique de nouveau sur « Recalculer mon score » — pas besoin de réinitialiser le laboratoire.
+                </p>
                 @if (result.reviewScheduled) {
                   <p>Une révision prioritaire a été programmée pour demain.</p>
                 }
