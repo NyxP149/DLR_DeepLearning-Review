@@ -35,9 +35,12 @@
 - [x] Éditeur simple en alternative à Monaco, export du fichier vers un IDE externe et brouillon conservé au rechargement (V3.9)
 - [x] Éditeur de code migré de Monaco vers CodeMirror 6, plus léger et fiable au clavier (V3.10)
 - [x] Exemple professionnel et extrait de code ajoutés à chacun des 148 concepts clés, sur les neuf parcours (V3.11)
-- [x] Fenêtre de réponse du tuteur Ollama devenue une zone défilante bornée au lieu d'étirer toute la page
+- [x] Fenêtre de réponse du tuteur Ollama redimensionnée pour s'adapter entièrement au texte, sans troncature (V3.11B)
 - [x] Le bilan de fin de laboratoire (score et répartition) survit désormais à un rechargement de page (V3.12)
 - [x] Modèle Ollama par défaut allégé (llama3.2, 3B) et message d'échec de test affichant la sortie attendue
+- [x] Plafond de génération du tuteur Ollama relevé (220 → 500 tokens) pour réduire les réponses coupées en plein mot
+- [x] Recalcul du score d'un laboratoire déjà validé sans réinitialisation complète (V3.14)
+- [x] Notes personnelles : vue liste et cartes (grandes/petites) au choix, mémorisée entre les visites (V3.15)
 
 ## Déploiement cloud
 

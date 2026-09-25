@@ -1116,3 +1116,19 @@ Le modèle par défaut passe de `llama3.1:latest` (8 Md de paramètres) à `llam
 
 - **Configuration** : `application.yml`, `.env.example` et le fallback `@Value` d'`OllamaAiTutorAdapter` pointent désormais vers `llama3.2:latest`.
 - **Validation des exercices** : audit de la comparaison stricte (`ExecutionService.run`, `.strip().equals()`) sur les 148 exercices après un signalement de faux négatif (sortie « logiquement » correcte mais rejetée). 124/148 demandent explicitement dans leur consigne d'« afficher exactement » une chaîne précise ; les 24 restants (parcours Architecture) rejouent une preuve déjà fournie. La comparaison exacte est donc un choix pédagogique assumé, pas un bug — mais le message d'échec affiche désormais la sortie attendue à côté de la sortie obtenue, au lieu d'une phrase générique.
+
+## V3.14 — Recalcul du score sans réinitialiser le laboratoire
+
+Une fois un laboratoire validé (`COMPLETED` ou `COMPLETED_BELOW_THRESHOLD`), la seule façon de corriger un composant manquant ou incorrect (code non exécuté avec succès, réponse de quiz, checklist) était de réinitialiser entièrement le laboratoire — perdant tentative, exécutions, réponses et notes. `AssessmentService.complete()` refusait toute nouvelle tentative de terminer une tentative déjà `!= IN_PROGRESS`, et le frontend rendait le bouton silencieusement inopérant après la première validation.
+
+- **Backend** : `AssessmentService.requireInProgress` (qui bloquait `answer`, `removeAnswer`, `saveChecklist`, `complete` à `IN_PROGRESS` uniquement) est remplacé par `requireAttempt`, qui se contente de vérifier que la tentative existe. `AttemptService.complete()` n'exige plus non plus `IN_PROGRESS`. Le score, la répartition et le statut sont donc recalculés à chaque appel, quel que soit l'état courant.
+- **Anti-doublon** : la planification de révision (`review_item`) n'est créée que lors de la toute première validation (`attempt.completedAt() == null` avant le recalcul) ; les recalculs suivants renvoient `reviewScheduled: false` sans réinsertion.
+- **Frontend** : le bouton « Terminer et calculer mon score » redevient cliquable une fois la tentative déjà validée et se relabellise en « Recalculer mon score », avec un texte d'aide invitant à corriger le code, le quiz ou la checklist puis à recalculer.
+- **Test** : `AttemptExecutionControllerTest.recalculatesTheScoreAfterFixingAFailedRunWithoutResettingTheLab` simule le scénario complet — exécution échouée → validation sous le seuil (Tests/Pratique à 0 %) → correction du code → recalcul → laboratoire validé à 100 %, sans second `review_item`.
+
+## V3.15 — Vue liste et cartes (grandes/petites) pour les notes personnelles
+
+La page « Mes notes personnelles » n'affichait qu'une grille de grandes cartes, sans alternative pour parcourir rapidement un carnet volumineux.
+
+- **Trois modes** : Liste (lignes compactes, aperçu du contenu tronqué en une ligne), Grandes cartes (affichage historique, par défaut) et Petites cartes (grille plus dense, aperçu limité à 3 lignes via `-webkit-line-clamp`). Le choix est mémorisé dans `localStorage` (`dlr-notes-view`), même pattern que la préférence d'éditeur simple du laboratoire.
+- **Bug corrigé en vérifiant dans le navigateur** : la première version du mode Liste débordait horizontalement (le pied de carte, non contraint, s'étalait sur ~280 px). Corrigé en fixant une largeur pour le titre, en réservant `flex: 1 1 0; min-width: 0` au texte tronqué (nécessaire pour qu'`text-overflow: ellipsis` fonctionne dans un conteneur flex) et en empilant la date et le lien du pied de carte verticalement au lieu de les mettre côte à côte.

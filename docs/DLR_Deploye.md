@@ -502,6 +502,16 @@ Cette commande utilise PostgreSQL local. Pour conserver la progression dans Neon
 
 Le script demande ensuite le mot de passe Neon dans une saisie masquée. Ne jamais écrire ce mot de passe dans le dépôt ni dans la commande. Utiliser l'hôte complet fourni par Neon, y compris le préfixe propre au projet (`ep-...`) ; ne pas le raccourcir en `pooler...`.
 
+### Raccourci de lancement
+
+Pour éviter de retaper la commande ci-dessus (avec les paramètres Render/Neon) à chaque démarrage, `start-hybrid.sh` (racine du dépôt) l'enveloppe pour un lancement depuis Git Bash :
+
+```bash
+./start-hybrid.sh
+```
+
+Le script se place lui-même à la racine du dépôt (chemin absolu en dur), donc il peut être appelé depuis n'importe quel dossier. Un raccourci Bureau (`DLR - Demarrer API.lnk`, également suivi dans le dépôt) lance ce script via `bash.exe` et ajoute une pause en fin d'exécution pour que la fenêtre ne se ferme pas avant qu'une erreur ait pu être lue. Dans les deux cas, le mot de passe Neon reste demandé de façon interactive — il n'est jamais écrit sur disque. Ces deux fichiers contiennent des chemins absolus propres au poste qui les a créés et doivent être adaptés (ou régénérés) sur un autre poste.
+
 Le script :
 
 - vérifie Docker Desktop et Tailscale ;

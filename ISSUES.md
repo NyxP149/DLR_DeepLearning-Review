@@ -273,3 +273,16 @@ L'utilisateur signale qu'un résultat logiquement correct mais formaté différe
 
 **Solution**
 Le message d'échec du test visible affiche désormais la sortie attendue à côté de la sortie obtenue (`ExecutionService.run`), au lieu d'une phrase générique. La logique de comparaison elle-même n'a pas changé : elle reste volontairement exacte.
+
+---
+
+## Impossible de recalculer le score d'un laboratoire déjà validé
+- severity: medium
+- date: 2026-09
+- tags: Scoring, UX
+
+**Problème**
+Une fois un laboratoire validé, corriger un élément manquant ou incorrect (code non exécuté avec succès, réponse de quiz, checklist) obligeait à réinitialiser entièrement le laboratoire, perdant tentative, exécutions, réponses et notes : `AssessmentService.complete()` refusait toute tentative dont le statut n'était plus `IN_PROGRESS`, et le bouton « Terminer et calculer mon score » devenait silencieusement inopérant après la première validation.
+
+**Solution**
+Les vérifications de statut `IN_PROGRESS` sont retirées d'`AssessmentService` (`answer`, `removeAnswer`, `saveChecklist`, `complete`) et d'`AttemptService.complete()`, permettant de recalculer le score à tout moment après correction. La planification de révision n'est déclenchée qu'à la toute première validation pour éviter les doublons. Le bouton se relabellise en « Recalculer mon score » une fois le laboratoire déjà validé.
