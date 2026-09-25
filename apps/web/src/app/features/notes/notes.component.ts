@@ -1,9 +1,13 @@
 import { AsyncPipe, DatePipe } from '@angular/common';
-import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { catchError, map, of, startWith } from 'rxjs';
 
 import { NotesApiService, PersonalNote } from '../../core/api/notes-api.service';
+
+const NOTES_VIEW_KEY = 'dlr-notes-view';
+
+type NotesView = 'list' | 'grid-large' | 'grid-small';
 
 type NotesState =
   | { status: 'loading'; notes: PersonalNote[] }
@@ -32,13 +36,18 @@ type NotesState =
           <a routerLink="/paths">Choisir un laboratoire →</a>
         </section>
       } @else {
+        <div class="view-toggle" role="group" aria-label="Affichage des notes">
+          <button type="button" [class.active]="view() === 'list'" (click)="setView('list')">Liste</button>
+          <button type="button" [class.active]="view() === 'grid-large'" (click)="setView('grid-large')">Grandes cartes</button>
+          <button type="button" [class.active]="view() === 'grid-small'" (click)="setView('grid-small')">Petites cartes</button>
+        </div>
         @for (language of languages(state.notes); track language) {
           <section class="language-group" [attr.aria-label]="'Notes ' + language">
             <div class="group-title">
               <div><p>Langage</p><h2>{{ languageLabel(language) }}</h2></div>
               <span>{{ notesFor(state.notes, language).length }} note{{ notesFor(state.notes, language).length > 1 ? 's' : '' }}</span>
             </div>
-            <div class="note-grid">
+            <div class="note-grid" [class.view-list]="view() === 'list'" [class.view-grid-small]="view() === 'grid-small'">
               @for (note of notesFor(state.notes, language); track note.labCode) {
                 <article class="note-card">
                   <div class="meta">
@@ -60,7 +69,27 @@ type NotesState =
     }
   `,
   styles: [`
-    :host{display:block}.page-header{margin-bottom:1.5rem}.page-header p,.group-title p{color:var(--accent);font-size:.75rem;font-weight:800;letter-spacing:.09em;margin:0;text-transform:uppercase}.page-header h1{font-size:clamp(2rem,4vw,3rem);margin:.25rem 0}.page-header span,.note-card h3,.state,.empty p{color:var(--text-muted)}.state,.empty{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:1.2rem}.state.error{color:var(--danger)}.empty a,.note-card a{color:var(--link);font-weight:750;text-decoration:none}.language-group{margin-top:1.4rem}.group-title{align-items:end;display:flex;justify-content:space-between;margin-bottom:.7rem}.group-title h2{font-size:1.45rem;margin:.2rem 0 0}.group-title>span{background:var(--accent-soft);border-radius:99px;color:var(--link);font-size:.72rem;font-weight:750;padding:.35rem .65rem}.note-grid{display:grid;gap:.8rem;grid-template-columns:repeat(auto-fit,minmax(min(100%,340px),1fr))}.note-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);display:flex;flex-direction:column;padding:1rem}.meta,footer{align-items:center;display:flex;gap:.7rem;justify-content:space-between}.meta>span:first-child{color:var(--accent);font-size:.72rem;font-weight:800}.status{background:var(--surface-raised);border-radius:99px;color:var(--text-muted);font-size:.65rem;padding:.3rem .5rem}.status.completed{background:var(--success-soft);color:var(--success)}.note-card h3{font-size:.85rem;margin:.8rem 0 .35rem}.content{line-height:1.65;margin:.4rem 0 1rem;white-space:pre-wrap}.note-card footer{border-top:1px solid var(--border);margin-top:auto;padding-top:.8rem}.note-card small{color:var(--text-muted);font-size:.67rem}@media(max-width:600px){.group-title,.note-card footer{align-items:flex-start;flex-direction:column}}
+    :host{display:block}.page-header{margin-bottom:1.5rem}.page-header p,.group-title p{color:var(--accent);font-size:.75rem;font-weight:800;letter-spacing:.09em;margin:0;text-transform:uppercase}.page-header h1{font-size:clamp(2rem,4vw,3rem);margin:.25rem 0}.page-header span,.note-card h3,.state,.empty p{color:var(--text-muted)}.state,.empty{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:1.2rem}.state.error{color:var(--danger)}.empty a,.note-card a{color:var(--link);font-weight:750;text-decoration:none}
+    .view-toggle{display:inline-flex;gap:.3rem;background:var(--surface);border:1px solid var(--border);border-radius:99px;padding:.25rem;margin-bottom:1rem}
+    .view-toggle button{background:transparent;border:none;border-radius:99px;color:var(--text-muted);cursor:pointer;font-size:.75rem;font-weight:750;padding:.4rem .8rem}
+    .view-toggle button.active{background:var(--accent-soft);color:var(--link)}
+    .language-group{margin-top:1.4rem}.group-title{align-items:end;display:flex;justify-content:space-between;margin-bottom:.7rem}.group-title h2{font-size:1.45rem;margin:.2rem 0 0}.group-title>span{background:var(--accent-soft);border-radius:99px;color:var(--link);font-size:.72rem;font-weight:750;padding:.35rem .65rem}
+    .note-grid{display:grid;gap:.8rem;grid-template-columns:repeat(auto-fit,minmax(min(100%,340px),1fr))}
+    .note-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);display:flex;flex-direction:column;padding:1rem}.meta,footer{align-items:center;display:flex;gap:.7rem;justify-content:space-between}.meta>span:first-child{color:var(--accent);font-size:.72rem;font-weight:800}.status{background:var(--surface-raised);border-radius:99px;color:var(--text-muted);font-size:.65rem;padding:.3rem .5rem}.status.completed{background:var(--success-soft);color:var(--success)}.note-card h3{font-size:.85rem;margin:.8rem 0 .35rem}.content{line-height:1.65;margin:.4rem 0 1rem;white-space:pre-wrap}.note-card footer{border-top:1px solid var(--border);margin-top:auto;padding-top:.8rem}.note-card small{color:var(--text-muted);font-size:.67rem}
+    .note-grid.view-grid-small{grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:.6rem}
+    .note-grid.view-grid-small .note-card{padding:.7rem}
+    .note-grid.view-grid-small .note-card h3{font-size:.78rem;margin:.5rem 0 .25rem}
+    .note-grid.view-grid-small .note-card .content{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;margin:.3rem 0 .6rem;overflow:hidden}
+    .note-grid.view-grid-small .note-card footer{padding-top:.5rem}
+    .note-grid.view-grid-small .note-card small{font-size:.6rem}
+    .note-grid.view-list{grid-template-columns:1fr;gap:.5rem}
+    .note-grid.view-list .note-card{align-items:center;flex-direction:row;gap:1rem;min-width:0;padding:.6rem 1rem}
+    .note-grid.view-list .note-card .meta{align-items:flex-start;flex:0 0 auto;flex-direction:column;gap:.2rem;min-width:0}
+    .note-grid.view-list .note-card h3{flex:0 0 160px;margin:0;max-width:160px}
+    .note-grid.view-list .note-card .content{flex:1 1 0;margin:0;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .note-grid.view-list .note-card footer{align-items:flex-end;border-top:none;flex:0 0 auto;flex-direction:column;gap:.15rem;margin-top:0;padding-top:0}
+    .note-grid.view-list .note-card footer a{white-space:nowrap}
+    @media(max-width:600px){.group-title,.note-card footer{align-items:flex-start;flex-direction:column}.note-grid.view-list .note-card{align-items:flex-start;flex-direction:column}.note-grid.view-list .note-card .content{overflow:visible;text-overflow:clip;white-space:pre-wrap}}
   `],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
@@ -72,6 +101,26 @@ export class NotesComponent {
     startWith({ status: 'loading' as const, notes: [] as PersonalNote[] }),
     catchError(() => of({ status: 'error' as const, notes: [] as PersonalNote[] }))
   );
+
+  readonly view = signal<NotesView>(this.readViewPreference());
+
+  setView(view: NotesView): void {
+    this.view.set(view);
+    try {
+      localStorage.setItem(NOTES_VIEW_KEY, view);
+    } catch {
+      // Le choix d'affichage reste appliqué pour la session même si le stockage est indisponible.
+    }
+  }
+
+  private readViewPreference(): NotesView {
+    try {
+      const stored = localStorage.getItem(NOTES_VIEW_KEY);
+      return stored === 'list' || stored === 'grid-small' || stored === 'grid-large' ? stored : 'grid-large';
+    } catch {
+      return 'grid-large';
+    }
+  }
 
   languages(notes: PersonalNote[]): string[] {
     return [...new Set(notes.map((note) => note.language))].sort();
