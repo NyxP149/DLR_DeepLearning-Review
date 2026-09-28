@@ -35,10 +35,18 @@ dlr:
     public-api-url: ${DLR_PUBLIC_API_URL:http://localhost:8081}
   content:
     root: classpath:content
+  tutor:
+    provider: ${DLR_TUTOR_PROVIDER:ollama}
   ollama:
     url: ${DLR_OLLAMA_URL:http://localhost:11434}
     model: ${DLR_OLLAMA_MODEL:llama3.2:latest}
     timeout-seconds: ${DLR_OLLAMA_TIMEOUT_SECONDS:180}
+  deepseek:
+    url: ${DLR_DEEPSEEK_URL:https://api.deepseek.com}
+    api-key: ${DLR_DEEPSEEK_API_KEY:}
+    model: ${DLR_DEEPSEEK_MODEL:deepseek-chat}
+    max-tokens: ${DLR_DEEPSEEK_MAX_TOKENS:700}
+    timeout-seconds: ${DLR_DEEPSEEK_TIMEOUT_SECONDS:60}
   execution:
     enabled: ${DLR_EXECUTION_ENABLED:true}
     docker-cli: ${DLR_DOCKER_CLI:docker}

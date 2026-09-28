@@ -3,6 +3,7 @@ package com.dlr.tutor.infrastructure;
 import com.dlr.tutor.application.AiTutorPort;
 import com.dlr.tutor.application.TutorUnavailableException;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
@@ -12,6 +13,7 @@ import java.time.Duration;
 import java.util.List;
 
 @Component
+@ConditionalOnProperty(prefix = "dlr.tutor", name = "provider", havingValue = "ollama", matchIfMissing = true)
 public class OllamaAiTutorAdapter implements AiTutorPort {
 
     private final RestClient restClient;
