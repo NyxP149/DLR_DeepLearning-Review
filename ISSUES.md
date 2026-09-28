@@ -286,3 +286,29 @@ Une fois un laboratoire validé, corriger un élément manquant ou incorrect (co
 
 **Solution**
 Les vérifications de statut `IN_PROGRESS` sont retirées d'`AssessmentService` (`answer`, `removeAnswer`, `saveChecklist`, `complete`) et d'`AttemptService.complete()`, permettant de recalculer le score à tout moment après correction. La planification de révision n'est déclenchée qu'à la toute première validation pour éviter les doublons. Le bouton se relabellise en « Recalculer mon score » une fois le laboratoire déjà validé.
+
+---
+
+## Le lancement direct de l'API échoue si PostgreSQL local n'est pas démarré
+- severity: medium
+- date: 2026-09
+- tags: Déploiement, Base de données
+
+**Problème**
+Pour tester la nouvelle intégration DeepSeek, l'API a été lancée directement avec `mvn spring-boot:run` (hors du script `start-hybrid.ps1`) et a échoué avec un message générique `Process terminated with exit code: 1`, sans indication claire de la cause. L'API tente de se connecter à PostgreSQL local sur le port 5434 par défaut, mais aucun conteneur Docker du projet n'était démarré : ce démarrage est normalement pris en charge automatiquement par `start-hybrid.ps1`, sauté ici en lançant Maven directement.
+
+**Solution**
+Démarrage manuel du service `postgres` défini dans `compose.yaml` (`docker compose up --detach postgres`) avant de relancer `mvn spring-boot:run` ; confirmé par un appel à `/actuator/health` renvoyant `{"status":"UP"}`.
+
+---
+
+## Le frontend Render affiche « API indisponible » malgré une API locale fonctionnelle
+- severity: medium
+- date: 2026-09
+- tags: Déploiement, Hybride, Tunnel
+
+**Problème**
+Après avoir démarré l'API en local pour tester DeepSeek, le site Render déployé en production continuait d'afficher « API indisponible » alors que l'API répondait correctement en local (`/api/dashboard` renvoyait les vraies données de progression). Cause : l'API avait été lancée avec un simple `mvn spring-boot:run`, sans passer par `start-hybrid.ps1`, seul responsable de publier l'API via Tailscale Serve — le frontend Render en production n'appelle que cette URL Tailscale, jamais `localhost`.
+
+**Solution**
+Relance via `start-hybrid.ps1` (Neon + Tailscale Serve), qui publie l'API à une URL joignable par le frontend Render déployé ; un rechargement de la page a ensuite résolu l'affichage.
