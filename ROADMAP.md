@@ -41,6 +41,8 @@
 - [x] Plafond de génération du tuteur Ollama relevé (220 → 500 tokens) pour réduire les réponses coupées en plein mot
 - [x] Recalcul du score d'un laboratoire déjà validé sans réinitialisation complète (V3.14)
 - [x] Notes personnelles : vue liste et cartes (grandes/petites) au choix, mémorisée entre les visites (V3.15)
+- [x] API DeepSeek intégrée comme second fournisseur du professeur IA, sélection par configuration sans bean Spring ambigu (V3.16)
+- [x] DeepSeek devient le fournisseur IA par défaut ; le lanceur hybride demande la clé à chaque session et bascule automatiquement sur Ollama si elle est absente (V3.16)
 
 ## Déploiement cloud
 
@@ -48,5 +50,5 @@
 - [x] Mode hybride privé et gratuit : frontend Render + API/Docker/Ollama locaux via Tailscale Serve
 - [ ] Déploiement réel Neon + Render validé (checklist de recette dans `docs/DLR_Deploye.md`)
 - [ ] Service Runner distant isolé pour Java/Python/TypeScript (travaux signés, file d'attente, workers en bac à sable — Partie B de `docs/DLR_Deploye.md`)
-- [ ] Professeur IA distant pour les déploiements cloud sans Ollama local
+- [x] Professeur IA distant pour les déploiements cloud sans Ollama local (API DeepSeek, V3.16)
 - [ ] Packaging et lancement simplifié sous Windows

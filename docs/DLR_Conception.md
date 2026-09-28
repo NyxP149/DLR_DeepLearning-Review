@@ -16,7 +16,7 @@ DLR est une application personnelle d'apprentissage et de suivi destinée à con
 
 L'apprentissage commence par Java, déjà mieux maîtrisé par l'utilisateur. Python et TypeScript sont ensuite enseignés par comparaison avec Java : syntaxe équivalente, différences de typage, paradigmes, erreurs fréquentes et cas d'utilisation professionnels.
 
-L'application associe un programme fixe conçu à l'avance à une assistance locale fournie par Ollama. Le programme garantit une progression pédagogique cohérente ; l'IA enrichit les explications et adapte les révisions, sans remplacer les objectifs officiels des laboratoires.
+L'application associe un programme fixe conçu à l'avance à une assistance IA — Ollama en local ou l'API DeepSeek, selon la disponibilité et la puissance du poste (voir `DLR_Implementation.md`, V3.16). Le programme garantit une progression pédagogique cohérente ; l'IA enrichit les explications et adapte les révisions, sans remplacer les objectifs officiels des laboratoires.
 
 ## 2. Objectifs
 
@@ -215,7 +215,9 @@ Le seuil est une recommandation, pas un verrou. L'utilisateur peut continuer, ma
 - **Solide** : réussite confirmée lors d'une révision espacée.
 - **Maîtrisé** : concept réutilisé correctement dans un projet ou un défi.
 
-## 8. IA locale avec Ollama
+## 8. Tuteur IA — Ollama local ou DeepSeek API
+
+Deux fournisseurs implémentent le même contrat (`AiTutorPort`) et sont sélectionnés par configuration (`dlr.tutor.provider`), un seul étant actif à la fois : Ollama en local (gratuit, mais limité par la puissance du poste) et l'API DeepSeek (payante à l'usage, réponses plus fiables et plus rapides). DeepSeek est le fournisseur par défaut depuis la V3.16 ; Ollama reste disponible sans reconfiguration du code.
 
 ### 8.1 Responsabilités de l'IA
 
@@ -237,7 +239,7 @@ Le seuil est une recommandation, pas un verrou. L'utilisateur peut continuer, ma
 - Toute correction IA indique les critères utilisés.
 - L'utilisateur peut demander une seconde explication ou contester une correction.
 - Les prompts et réponses utiles sont conservés localement avec possibilité de suppression.
-- Si Ollama est indisponible, les cours, quiz et tests restent utilisables.
+- Si le professeur IA (Ollama ou DeepSeek) est indisponible, les cours, quiz et tests restent utilisables.
 
 ## 9. Planning d'apprentissage
 
@@ -335,7 +337,7 @@ Le défi 24 est généré après le projet. Il cible plusieurs faiblesses combin
 | API principale | Java + Spring Boot | règles métier, progression, scores, planning et orchestration |
 | Persistance | PostgreSQL | utilisateurs, parcours, résultats, concepts et historique |
 | Migration DB | Flyway | versionnement du schéma |
-| IA locale | Ollama | explications, corrections qualitatives et personnalisation |
+| Tuteur IA | Ollama (local) ou DeepSeek (API cloud) | explications, corrections qualitatives et personnalisation |
 | Exécution du code | Workers isolés par langage | compilation/exécution et tests Java, Python et TypeScript |
 | Isolation | Docker local | limites de temps, mémoire, réseau et fichiers |
 | Temps réel | WebSocket ou SSE | retour progressif des tests et de l'IA |

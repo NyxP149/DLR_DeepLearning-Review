@@ -180,7 +180,8 @@ Dans **Environment**, ajoute les variables suivantes :
 | `DLR_ALLOWED_ORIGINS` | URL exacte du frontend Render, à compléter après sa création |
 | `DLR_SYNC_PAIRING_CODE` | code long, aléatoire et privé |
 | `DLR_RUNNER_TIMEOUT_SECONDS` | `10` |
-| `DLR_OLLAMA_URL` | laisser absent tant qu'aucun service IA distant n'est prévu |
+| `DLR_TUTOR_PROVIDER` | `deepseek` (par défaut depuis la V3.16) ou `ollama` |
+| `DLR_DEEPSEEK_API_KEY` | clé API DeepSeek, marquée secret — seule option d'IA viable sur ce service distant, `DLR_OLLAMA_URL` ne pouvant pas viser `localhost` |
 
 Spring Boot lit directement la variable `PORT` fournie par Render. `DLR_API_PORT=8081` reste uniquement le réglage local de secours.
 
@@ -448,14 +449,13 @@ Le Runner devra :
 
 ## Professeur IA futur
 
-Ollama est actuellement prévu comme service local optionnel. Une API Render ne peut pas appeler `localhost:11434` sur le PC de l'utilisateur.
+Ollama reste un service local optionnel : une API Render ne peut pas appeler `localhost:11434` sur le PC de l'utilisateur. Des deux options envisagées ici, la seconde est réalisée depuis la V3.16 (`DLR_Implementation.md`) : l'API DeepSeek est intégrée comme fournisseur alternatif, sélectionné par `dlr.tutor.provider` et appelé avec une clé secrète côté backend uniquement (`DLR_DEEPSEEK_API_KEY`), jamais transmise au frontend. Cela rend le professeur IA utilisable même sur un déploiement Render pur (Partie A), sans dépendre du mode hybride ni d'un PC allumé.
 
-Deux options futures sont possibles :
+Reste en option future non réalisée :
 
-1. déployer un service de modèle privé accessible par l'API ;
-2. intégrer un fournisseur d'IA distant avec clé secrète côté backend uniquement.
+1. déployer un service de modèle privé (auto-hébergé) accessible par l'API, si le coût à l'usage de DeepSeek devenait un problème.
 
-Dans les deux cas, le frontend ne doit jamais recevoir la clé. DLR doit rester utilisable si le professeur IA est indisponible.
+DLR doit rester utilisable si le professeur IA est indisponible, quel que soit le fournisseur.
 
 ## Passage de « maintenant » à « futur »
 
@@ -517,7 +517,7 @@ Le script :
 - vérifie Docker Desktop et Tailscale ;
 - utilise Neon si ses paramètres sont fournis, sinon démarre PostgreSQL local ;
 - construit les images Runner manquantes ;
-- vérifie Ollama sans bloquer le reste de l'application ;
+- demande la clé API DeepSeek (saisie masquée) ; si elle est fournie, active DeepSeek comme professeur IA, sinon bascule sur Ollama et vérifie qu'il répond, sans bloquer le reste de l'application ;
 - limite CORS au site Render et aux deux origines locales ;
 - active Tailscale Serve devant `127.0.0.1:8081` ;
 - démarre l'API Spring Boot au premier plan.

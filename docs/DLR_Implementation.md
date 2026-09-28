@@ -4,7 +4,7 @@
 
 **Document associé :** [`DLR_Conception.md`](DLR_Conception.md)  
 **Architecture :** application web responsive, local-first  
-**Stack :** Java, Spring Boot, Angular, TypeScript, PostgreSQL, Ollama et Docker  
+**Stack :** Java, Spring Boot, Angular, TypeScript, PostgreSQL, Ollama, API DeepSeek et Docker  
 **Cible initiale :** utilisateur unique
 
 ---
@@ -1132,3 +1132,23 @@ La page « Mes notes personnelles » n'affichait qu'une grille de grandes cartes
 
 - **Trois modes** : Liste (lignes compactes, aperçu du contenu tronqué en une ligne), Grandes cartes (affichage historique, par défaut) et Petites cartes (grille plus dense, aperçu limité à 3 lignes via `-webkit-line-clamp`). Le choix est mémorisé dans `localStorage` (`dlr-notes-view`), même pattern que la préférence d'éditeur simple du laboratoire.
 - **Bug corrigé en vérifiant dans le navigateur** : la première version du mode Liste débordait horizontalement (le pied de carte, non contraint, s'étalait sur ~280 px). Corrigé en fixant une largeur pour le titre, en réservant `flex: 1 1 0; min-width: 0` au texte tronqué (nécessaire pour qu'`text-overflow: ellipsis` fonctionne dans un conteneur flex) et en empilant la date et le lien du pied de carte verticalement au lieu de les mettre côte à côte.
+
+## V3.16 — DeepSeek comme second fournisseur IA, puis fournisseur par défaut
+
+**Contexte** : Ollama en local donnait des réponses confuses ou contradictoires sur des questions Java basiques avec les petits modèles (`llama3.2:latest`, 3,2 Md de paramètres), et le poste de développement n'a pas de GPU exploitable (voir V3.13). Un modèle plus gros et plus fiable (`deepseek-coder-v2:16b`) a été testé en local via Ollama : correct mais trop lent pour un usage interactif (`std::bad_alloc` à froid faute de RAM libre ; ~4,7 minutes par réponse une fois le cache disque chaud). Décision : ajouter l'API DeepSeek comme second fournisseur plutôt que de continuer à chercher un modèle local viable.
+
+### Ajout du fournisseur (opt-in)
+
+- **Sélection de fournisseur** : `AiTutorPort` a désormais deux implémentations, `OllamaAiTutorAdapter` et `DeepSeekAiTutorAdapter`, chacune annotée `@ConditionalOnProperty(prefix = "dlr.tutor", name = "provider", ...)` sur la propriété `dlr.tutor.provider` — Spring n'active que l'une des deux, évitant l'erreur de bean ambigu sur le point d'injection unique de `TutorService`.
+- **`DeepSeekAiTutorAdapter`** : appelle `POST https://api.deepseek.com/chat/completions` (API compatible OpenAI) avec `RestClient` + `JdkClientHttpRequestFactory`, sur le même schéma que l'adaptateur Ollama existant (mêmes timeouts, même gestion d'erreur qui dégrade en `TutorUnavailableException` sans jamais bloquer le laboratoire). `status()` ne fait aucun appel réseau : il déclare le professeur disponible dès que `dlr.deepseek.api-key` est renseignée.
+- **Configuration** (`application.yml`, `.env.example`) : `dlr.tutor.provider`, et un bloc `dlr.deepseek` (`url`, `api-key`, `model` par défaut `deepseek-chat`, `max-tokens`, `timeout-seconds`), sur le même modèle que `dlr.ollama`.
+- **Test** : `TutorControllerTest` reste inchangé — `@MockitoBean AiTutorPort` remplace quel que soit le bean concret actif par défaut.
+- **Comparatif retenu** : `deepseek-coder:6.7b` (Ollama local) donnait une réponse rapide mais factuellement fausse de façon reproductible (affirmait à tort que `s = s + "!"` était une erreur de compilation) sur deux essais séparés ; `deepseek-coder-v2:16b` (Ollama local) était correct mais inutilisable en interactif sur ce poste ; l'API DeepSeek (`deepseek-chat`) donne une réponse correcte, bien structurée et rapide (latence réseau uniquement).
+
+### Bascule en fournisseur par défaut
+
+Une fois la qualité confirmée, DeepSeek est devenu le fournisseur par défaut :
+
+- `application.yml` : `dlr.tutor.provider` par défaut passe de `ollama` à `deepseek`.
+- `infrastructure/scripts/start-hybrid.ps1` demande désormais la clé API DeepSeek à chaque lancement (saisie masquée, jamais écrite sur disque, même mécanisme que le mot de passe Neon) ; si elle est laissée vide, le script bascule automatiquement sur `dlr.tutor.provider=ollama` et vérifie qu'Ollama répond en local, exactement comme avant cette phase.
+- La clé API DeepSeek n'est jamais générée ni saisie par l'assistant : l'utilisateur la crée sur `platform.deepseek.com` et la fournit lui-même à chaque session.
