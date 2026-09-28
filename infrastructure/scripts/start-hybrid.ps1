@@ -84,12 +84,33 @@ if ($missingRunner) {
     if ($LASTEXITCODE -ne 0) { throw 'La construction des images Runner a échoué.' }
 }
 
-try {
-    Invoke-RestMethod -Uri 'http://127.0.0.1:11434/api/tags' -TimeoutSec 3 | Out-Null
-    Write-Host 'Ollama détecté.' -ForegroundColor Green
+if ([string]::IsNullOrWhiteSpace($env:DLR_DEEPSEEK_API_KEY)) {
+    $secureDeepSeekKey = Read-Host 'Clé API DeepSeek (laisser vide pour utiliser Ollama en local)' -AsSecureString
+    if ($secureDeepSeekKey.Length -gt 0) {
+        $deepSeekKeyPointer = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($secureDeepSeekKey)
+        try {
+            $env:DLR_DEEPSEEK_API_KEY = [Runtime.InteropServices.Marshal]::PtrToStringBSTR($deepSeekKeyPointer)
+        }
+        finally {
+            [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($deepSeekKeyPointer)
+        }
+    }
 }
-catch {
-    Write-Warning 'Ollama ne répond pas sur le port 11434. Le Runner fonctionnera, mais le professeur IA restera en mode dégradé.'
+
+if ([string]::IsNullOrWhiteSpace($env:DLR_DEEPSEEK_API_KEY)) {
+    $env:DLR_TUTOR_PROVIDER = 'ollama'
+    Write-Host 'Professeur IA : Ollama (aucune clé DeepSeek fournie).' -ForegroundColor Yellow
+    try {
+        Invoke-RestMethod -Uri 'http://127.0.0.1:11434/api/tags' -TimeoutSec 3 | Out-Null
+        Write-Host 'Ollama détecté.' -ForegroundColor Green
+    }
+    catch {
+        Write-Warning 'Ollama ne répond pas sur le port 11434. Le Runner fonctionnera, mais le professeur IA restera en mode dégradé.'
+    }
+}
+else {
+    $env:DLR_TUTOR_PROVIDER = 'deepseek'
+    Write-Host 'Professeur IA : DeepSeek activé.' -ForegroundColor Green
 }
 
 $tailscaleStatus = & $tailscalePath status --json | ConvertFrom-Json
