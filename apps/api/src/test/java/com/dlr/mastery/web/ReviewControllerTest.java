@@ -100,6 +100,67 @@ class ReviewControllerTest {
                 .andExpect(jsonPath("$[?(@.id == '" + reviewId + "')]").doesNotExist());
     }
 
+    @Test
+    void successIsRefusedWhileTheLabScoreIsBelowItsThreshold() throws Exception {
+        UUID attemptId = insertScoredAttempt("JAVA-02", "COMPLETED_BELOW_THRESHOLD", "35.00");
+        UUID reviewId = insertReview(attemptId, "JAVA-02", 0);
+
+        mockMvc.perform(get("/api/reviews"))
+                .andExpect(jsonPath("$[?(@.id == '" + reviewId + "')].belowThreshold").value(true));
+
+        mockMvc.perform(post("/api/reviews/{id}/complete", reviewId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"successful\":true}"))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.detail").value(org.hamcrest.Matchers.containsString("35.00")));
+
+        mockMvc.perform(get("/api/reviews"))
+                .andExpect(jsonPath("$[?(@.id == '" + reviewId + "')]").exists());
+
+        mockMvc.perform(post("/api/reviews/{id}/complete", reviewId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"successful\":false}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.nextReview.stage").value(0));
+    }
+
+    @Test
+    void successIsAcceptedOnceTheScoreReachesTheThreshold() throws Exception {
+        UUID attemptId = insertScoredAttempt("JAVA-03", "COMPLETED", "85.00");
+        UUID reviewId = insertReview(attemptId, "JAVA-03", 0);
+
+        mockMvc.perform(get("/api/reviews"))
+                .andExpect(jsonPath("$[?(@.id == '" + reviewId + "')].belowThreshold").value(false));
+
+        mockMvc.perform(post("/api/reviews/{id}/complete", reviewId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"successful\":true}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.nextReview.stage").value(1));
+    }
+
+    private UUID insertScoredAttempt(String labCode, String status, String score) {
+        UUID attemptId = UUID.randomUUID();
+        Instant now = Instant.now();
+        jdbcTemplate.update(
+                "insert into attempt (id, lab_id, started_at, completed_at, status, score) values (?, ?, ?, ?, ?, ?)",
+                attemptId, labCode, Timestamp.from(now.minusSeconds(3600)), Timestamp.from(now.minusSeconds(60)),
+                status, new java.math.BigDecimal(score));
+        return attemptId;
+    }
+
+    private UUID insertReview(UUID attemptId, String labCode, int stage) {
+        UUID reviewId = UUID.randomUUID();
+        Instant now = Instant.now();
+        jdbcTemplate.update(
+                """
+                insert into review_item (id, attempt_id, lab_id, due_at, reason, status, repetition_stage, created_at)
+                values (?, ?, ?, ?, 'Test', 'PENDING', ?, ?)
+                """,
+                reviewId, attemptId, labCode, Timestamp.from(now.minusSeconds(60)), stage, Timestamp.from(now));
+        return reviewId;
+    }
+
     private UUID insertAttempt() {
         UUID attemptId = UUID.randomUUID();
         jdbcTemplate.update(

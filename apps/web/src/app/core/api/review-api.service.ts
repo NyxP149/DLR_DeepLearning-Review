@@ -10,6 +10,8 @@ export interface ReviewItem {
   reason: string;
   status: string;
   stage: number;
+  belowThreshold: boolean;
+  bestScore: number | null;
 }
 
 @Injectable({ providedIn: 'root' })

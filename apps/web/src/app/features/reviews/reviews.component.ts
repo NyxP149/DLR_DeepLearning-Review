@@ -1,4 +1,5 @@
 import { DatePipe } from '@angular/common';
+import { HttpErrorResponse } from '@angular/common/http';
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
@@ -18,13 +19,14 @@ import { ReviewApiService, ReviewItem } from '../../core/api/review-api.service'
         <article>
           <div class="stage">J{{ stageDay(review.stage) }}</div>
           <div><p>{{ review.labCode }} · étape {{ review.stage + 1 }}</p><h2>{{ review.reason }}</h2><span>Échéance {{ review.dueAt | date:'dd/MM/yyyy à HH:mm' }}</span></div>
-          <div class="actions"><a [routerLink]="['/labs', review.labCode]">Revoir le labo</a><button type="button" (click)="finish(review, true)">Réussi</button><button class="retry" type="button" (click)="finish(review, false)">Encore difficile</button></div>
+          <div class="actions"><a [routerLink]="['/labs', review.labCode]">Revoir le labo</a><button type="button" [disabled]="review.belowThreshold" [attr.title]="review.belowThreshold ? 'Score du laboratoire sous le seuil : revois le labo et recalcule ton score avant de valider.' : null" (click)="finish(review, true)">Réussi</button><button class="retry" type="button" (click)="finish(review, false)">Encore difficile</button></div>
+          @if (review.belowThreshold) { <p class="gate">Score actuel {{ review.bestScore }} % : sous le seuil. Revois le labo et recalcule ton score pour pouvoir valider cette révision.</p> }
         </article>
       }
     </section>
   `,
   styles: [`
-    :host{display:block} header{margin-bottom:1.5rem} header p{color:var(--accent);font-size:.78rem;font-weight:750;letter-spacing:.09em;text-transform:uppercase} header h1{font-size:clamp(2rem,4vw,3rem);margin:.2rem 0} header span,article span,article p,.empty p{color:var(--text-muted)} .review-list{display:grid;gap:1rem} article{align-items:center;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);display:grid;gap:1rem;grid-template-columns:auto 1fr auto;padding:1rem} .stage{align-items:center;background:var(--accent-soft);border-radius:50%;color:#a9c8ff;display:flex;font-weight:850;height:3.4rem;justify-content:center;width:3.4rem} article p{font-size:.72rem;margin:0} article h2{font-size:1rem;margin:.25rem 0} .actions{display:flex;flex-wrap:wrap;gap:.5rem;justify-content:flex-end}.actions a,.actions button,.empty a{border:1px solid var(--border);border-radius:.55rem;color:var(--text);font:inherit;font-size:.78rem;font-weight:700;padding:.55rem .7rem;text-decoration:none}.actions button{background:var(--success);border-color:transparent;color:#07150d;cursor:pointer}.actions .retry{background:transparent;border-color:#99712c;color:#e8c77f}.state,.empty{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:1rem}.error{color:var(--danger)}@media(max-width:760px){article{align-items:start;grid-template-columns:auto 1fr}.actions{grid-column:1/-1;justify-content:flex-start}}
+    :host{display:block} header{margin-bottom:1.5rem} header p{color:var(--accent);font-size:.78rem;font-weight:750;letter-spacing:.09em;text-transform:uppercase} header h1{font-size:clamp(2rem,4vw,3rem);margin:.2rem 0} header span,article span,article p,.empty p{color:var(--text-muted)} .review-list{display:grid;gap:1rem} article{align-items:center;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);display:grid;gap:1rem;grid-template-columns:auto 1fr auto;padding:1rem} .stage{align-items:center;background:var(--accent-soft);border-radius:50%;color:#a9c8ff;display:flex;font-weight:850;height:3.4rem;justify-content:center;width:3.4rem} article p{font-size:.72rem;margin:0} article h2{font-size:1rem;margin:.25rem 0} .actions{display:flex;flex-wrap:wrap;gap:.5rem;justify-content:flex-end}.actions a,.actions button,.empty a{border:1px solid var(--border);border-radius:.55rem;color:var(--text);font:inherit;font-size:.78rem;font-weight:700;padding:.55rem .7rem;text-decoration:none}.actions button{background:var(--success);border-color:transparent;color:#07150d;cursor:pointer}.actions button:disabled{cursor:not-allowed;opacity:.45}.gate{color:#e8c77f;grid-column:1/-1;margin:0}.actions .retry{background:transparent;border-color:#99712c;color:#e8c77f}.state,.empty{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:1rem}.error{color:var(--danger)}@media(max-width:760px){article{align-items:start;grid-template-columns:auto 1fr}.actions{grid-column:1/-1;justify-content:flex-start}}
   `],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
@@ -42,7 +44,10 @@ export class ReviewsComponent {
     try {
       await firstValueFrom(this.api.complete(review.id, successful));
       await this.reload();
-    } catch { this.error.set('Impossible d’enregistrer cette révision.'); }
+    } catch (error) {
+      const detail = error instanceof HttpErrorResponse ? error.error?.detail : null;
+      this.error.set(typeof detail === 'string' ? detail : 'Impossible d’enregistrer cette révision.');
+    }
   }
 
   private async reload(): Promise<void> {
