@@ -338,3 +338,29 @@ Le bouton « Réussi » faisait avancer la répétition espacée (J+3, J+7…) m
 
 **Solution**
 `ReviewService.complete` refuse « Réussi » (409 avec le score dans le message) tant que le meilleur score est sous le seuil, la révision restant en attente ; « Encore difficile » reste permis. L'interface grise le bouton avec une explication et affiche le message du serveur en cas de refus. Couvert par deux tests dans `ReviewControllerTest`.
+
+---
+
+## La révision continue d'afficher un ancien score et des révisions en double
+- severity: medium
+- date: 2026-10
+- tags: Révisions, Scoring, Données
+
+**Problème**
+Après le premier correctif, la révision JAVA-04 affichait encore « Score 35.00 % » alors que le laboratoire était à 95 % : le texte enregistré à la validation n'était réécrit qu'à un recalcul, donc les lignes déjà en base restaient fausses. Les données réelles montraient aussi deux révisions en attente pour JAVA-01 (étape 1 et étape 3), et un double-clic sur un bouton faisait échouer la seconde requête avec une erreur parasite.
+
+**Solution**
+La raison d'étape 0 est désormais dérivée du meilleur score en direct à chaque affichage. Une validation ne crée plus de révision si le laboratoire en a déjà une en attente, et la migration V19 supprime les doublons existants en gardant la plus avancée. Les boutons sont verrouillés pendant l'envoi. Couvert par des tests sur `ReviewControllerTest` et `AttemptExecutionControllerTest`.
+
+---
+
+## Le coach affiche des boutons qui échouent sur une proposition déjà acceptée
+- severity: medium
+- date: 2026-10
+- tags: Coach, UX, Adaptation
+
+**Problème**
+Sur la page du coach, « La décision n'a pas pu être enregistrée. Recharge la page. » s'affichait à chaque clic : la proposition était déjà `ACCEPTED` côté serveur, qui ne traite une décision que sur `PROPOSED` ou `POSTPONED` (409), mais l'écran proposait toujours les quatre boutons, et recharger la page réaffichait la même carte.
+
+**Solution**
+Une proposition acceptée affiche « ✓ Proposition acceptée » avec seulement « Autre proposition » et « Ignorer », que le serveur accepte désormais sur ce statut ; accepter ou reporter une proposition déjà acceptée reste refusé. En cas de refus, la proposition est rechargée. Couvert par `AdaptationControllerTest`.

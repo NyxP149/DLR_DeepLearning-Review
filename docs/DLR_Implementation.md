@@ -1169,3 +1169,22 @@ Constat : « Réussi » faisait avancer la répétition espacée même quand le 
 - **Backend** : `ReviewService.complete(id, true)` lève une `IllegalStateException` (409, message explicite avec le score) tant que le meilleur score terminé du laboratoire est inférieur à son seuil (`LabCatalog`). La révision reste en attente. « Encore difficile » reste toujours possible. `ReviewService` reçoit `LabCatalog` ; `ReviewItem` expose `belowThreshold` et `bestScore`, calculés dans `pending()` par une sous-requête sur `attempt` (même règle que `ConceptMasteryService`). Sans tentative terminée, aucune restriction.
 - **Frontend** : le bouton « Réussi » est désactivé sous le seuil, avec une info-bulle et une phrase d'explication sous la carte (« Revois le labo et recalcule ton score ») ; il se réactive dès que le recalcul atteint le seuil. Le message d'erreur du serveur (`detail`) est affiché à la place de l'erreur générique.
 - **Tests** : `ReviewControllerTest` vérifie le refus (409, révision toujours en attente, « Encore difficile » accepté) sous le seuil et l'acceptation au-dessus. Rendu vérifié dans le navigateur avec des données injectées.
+
+## V3.19 — Fiabilisation des révisions et du coach sur données réelles
+
+Signalement : malgré V3.17 et V3.18, l'utilisateur voyait toujours des scores incorrects et des boutons bloqués sur les révisions, ainsi qu'une erreur « La décision n'a pas pu être enregistrée. Recharge la page. » sur le coach adaptatif. L'état réel a été relu en lecture seule via l'API locale (`GET /api/reviews`, `GET /api/adaptation/recommendation`).
+
+### Révisions
+
+- **Score toujours incorrect** : la révision JAVA-04 affichait « Score 35.00 % » alors que le laboratoire était à 95 %. Le correctif V3.17 ne réécrivait la raison qu'à un recalcul, donc les lignes déjà enregistrées restaient fausses. `ReviewService.pending()` dérive désormais la raison d'étape 0 du meilleur score en direct (`ReviewService.initialReason`, partagée avec `AssessmentService`) ; le texte stocké n'est plus qu'une valeur de repli. `refreshInitialReviewReason` (V3.17) est supprimé. « Revoir rapidement après une difficulté » et les étapes suivantes ne sont jamais réécrits.
+- **Deux chaînes de révision pour un même laboratoire** : JAVA-01 avait deux révisions en attente (étape 1 et étape 3). `AssessmentService.complete` ne crée plus de révision initiale si le laboratoire en a déjà une en attente (`hasPendingReview`) ; `reviewScheduled` reflète ce qui a réellement été créé. Flyway V19 supprime les doublons existants en gardant, par laboratoire, la révision en attente la plus avancée (puis la plus récente) ; les révisions terminées ne sont pas touchées.
+- **Boutons et erreur parasite** : la page n'empêchait pas le double-clic, et la seconde requête échouait (révision déjà clôturée). Un signal `busy` désactive les boutons pendant l'envoi ; après une erreur la liste est rechargée sans effacer le message.
+
+### Coach adaptatif
+
+- **Cause** : la proposition était déjà `ACCEPTED` côté serveur, mais l'écran affichait toujours les quatre boutons. `AdaptationService.decide` n'accepte une décision que sur `PROPOSED`/`POSTPONED` : tout clic renvoyait 409 « déjà traitée », et recharger la page affichait la même carte.
+- **Correctif** : une proposition acceptée affiche « ✓ Proposition acceptée » et ne propose plus que « Autre proposition » et « Ignorer » (désormais acceptés par le serveur sur une proposition `ACCEPTED`). Accepter ou reporter une proposition déjà acceptée reste refusé. En cas de refus, la proposition est rechargée.
+
+### Tests
+
+`ReviewControllerTest` (score en direct, raison de difficulté conservée, nettoyage V19 exécuté sur H2), `AttemptExecutionControllerTest` (pas de seconde chaîne ; nettoyage des révisions avant chaque test) et `AdaptationControllerTest` (accepter deux fois → 409, remplacer après acceptation). Suite complète : 68 tests, 9 ignorés (intégration Docker).
