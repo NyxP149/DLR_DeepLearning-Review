@@ -44,6 +44,7 @@
 - [x] API DeepSeek intégrée comme second fournisseur du professeur IA, sélection par configuration sans bean Spring ambigu (V3.16)
 - [x] DeepSeek devient le fournisseur IA par défaut ; le lanceur hybride demande la clé à chaque session et bascule automatiquement sur Ollama si elle est absente (V3.16)
 - [x] Révisions : le score affiché suit désormais les recalculs du laboratoire, et le rôle des boutons « Réussi » / « Encore difficile » est couvert par des tests (V3.17)
+- [x] Révisions : « Réussi » refusé tant que le score du laboratoire est sous son seuil (bouton désactivé et message explicatif) (V3.18)
 
 ## Déploiement cloud
 

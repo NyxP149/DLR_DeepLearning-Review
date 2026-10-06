@@ -325,3 +325,16 @@ La page « Mes révisions » affichait « Score 35.00 % sous le seuil recommand�
 
 **Solution**
 Chaque recalcul réécrit désormais la raison de la révision d'étape 0 encore en attente (nouveau score sous le seuil, ou texte de consolidation si le seuil est atteint), sans toucher aux raisons « Revoir rapidement après une difficulté » ni aux étapes suivantes. Le test du recalcul vérifie la raison avant et après, et `ReviewControllerTest` couvre les intervalles J+3/7/14/30, la dernière étape et « Encore difficile ».
+
+---
+
+## Une révision pouvait être validée alors que le laboratoire restait sous le seuil
+- severity: medium
+- date: 2026-10
+- tags: Révisions, Scoring, UX
+
+**Problème**
+Le bouton « Réussi » faisait avancer la répétition espacée (J+3, J+7…) même lorsque le meilleur score du laboratoire était sous son seuil, par exemple 35 % pour 70 % requis. Le concept restait « À réviser » puisque la maîtrise lit le score en direct : on pouvait enchaîner les « Réussi » sans jamais améliorer le score.
+
+**Solution**
+`ReviewService.complete` refuse « Réussi » (409 avec le score dans le message) tant que le meilleur score est sous le seuil, la révision restant en attente ; « Encore difficile » reste permis. L'interface grise le bouton avec une explication et affiche le message du serveur en cas de refus. Couvert par deux tests dans `ReviewControllerTest`.
