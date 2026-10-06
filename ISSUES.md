@@ -312,3 +312,16 @@ Après avoir démarré l'API en local pour tester DeepSeek, le site Render dépl
 
 **Solution**
 Relance via `start-hybrid.ps1` (Neon + Tailscale Serve), qui publie l'API à une URL joignable par le frontend Render déployé ; un rechargement de la page a ensuite résolu l'affichage.
+
+---
+
+## La révision affiche un ancien score après le recalcul du laboratoire
+- severity: medium
+- date: 2026-10
+- tags: Révisions, Scoring, Données
+
+**Problème**
+La page « Mes révisions » affichait « Score 35.00 % sous le seuil recommandé de 70 % » alors que le laboratoire avait été recalculé depuis : le score était écrit en dur dans le texte de la révision à la toute première validation puis jamais mis à jour, ce qui contredisait la carte de maîtrise, calculée en direct. Le calcul du score lui-même était correct.
+
+**Solution**
+Chaque recalcul réécrit désormais la raison de la révision d'étape 0 encore en attente (nouveau score sous le seuil, ou texte de consolidation si le seuil est atteint), sans toucher aux raisons « Revoir rapidement après une difficulté » ni aux étapes suivantes. Le test du recalcul vérifie la raison avant et après, et `ReviewControllerTest` couvre les intervalles J+3/7/14/30, la dernière étape et « Encore difficile ».

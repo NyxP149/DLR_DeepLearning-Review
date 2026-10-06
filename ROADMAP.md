@@ -43,6 +43,7 @@
 - [x] Notes personnelles : vue liste et cartes (grandes/petites) au choix, mémorisée entre les visites (V3.15)
 - [x] API DeepSeek intégrée comme second fournisseur du professeur IA, sélection par configuration sans bean Spring ambigu (V3.16)
 - [x] DeepSeek devient le fournisseur IA par défaut ; le lanceur hybride demande la clé à chaque session et bascule automatiquement sur Ollama si elle est absente (V3.16)
+- [x] Révisions : le score affiché suit désormais les recalculs du laboratoire, et le rôle des boutons « Réussi » / « Encore difficile » est couvert par des tests (V3.17)
 
 ## Déploiement cloud
 
