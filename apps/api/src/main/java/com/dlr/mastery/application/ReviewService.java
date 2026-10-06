@@ -46,13 +46,33 @@ public class ReviewService {
                 """,
                 (result, row) -> {
                     String labCode = result.getString("lab_id");
+                    BigDecimal bestScore = result.getBigDecimal("best_score");
+                    int stage = result.getInt("repetition_stage");
                     return new ReviewItem(
                             result.getObject("id", UUID.class), result.getObject("attempt_id", UUID.class),
                             labCode, result.getTimestamp("due_at").toInstant(),
-                            result.getString("reason"), result.getString("status"), result.getInt("repetition_stage"),
+                            displayedReason(result.getString("reason"), stage, labCode, bestScore),
+                            result.getString("status"), stage,
                             result.getTimestamp("created_at").toInstant(), null,
-                            isBelowThreshold(labCode, result.getBigDecimal("best_score")), result.getBigDecimal("best_score"));
+                            isBelowThreshold(labCode, bestScore), bestScore);
                 });
+    }
+
+    public static String initialReason(BigDecimal score, int threshold) {
+        return score.compareTo(BigDecimal.valueOf(threshold)) < 0
+                ? "Score " + score + " % sous le seuil recommandé de " + threshold + " %."
+                : "Consolider les concepts du laboratoire avec la répétition espacée.";
+    }
+
+    // Le score est relu en direct : le texte enregistré à la validation devient faux après un recalcul.
+    private String displayedReason(String stored, int stage, String labCode, BigDecimal bestScore) {
+        boolean generated = stage == 0 && (stored.startsWith("Score ") || stored.startsWith("Consolider les concepts"));
+        if (!generated || bestScore == null) {
+            return stored;
+        }
+        return labCatalog.findByCode(labCode)
+                .map(lab -> initialReason(bestScore, lab.threshold()))
+                .orElse(stored);
     }
 
     public List<ReviewItem> today() {

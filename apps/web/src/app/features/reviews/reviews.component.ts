@@ -19,7 +19,7 @@ import { ReviewApiService, ReviewItem } from '../../core/api/review-api.service'
         <article>
           <div class="stage">J{{ stageDay(review.stage) }}</div>
           <div><p>{{ review.labCode }} · étape {{ review.stage + 1 }}</p><h2>{{ review.reason }}</h2><span>Échéance {{ review.dueAt | date:'dd/MM/yyyy à HH:mm' }}</span></div>
-          <div class="actions"><a [routerLink]="['/labs', review.labCode]">Revoir le labo</a><button type="button" [disabled]="review.belowThreshold" [attr.title]="review.belowThreshold ? 'Score du laboratoire sous le seuil : revois le labo et recalcule ton score avant de valider.' : null" (click)="finish(review, true)">Réussi</button><button class="retry" type="button" (click)="finish(review, false)">Encore difficile</button></div>
+          <div class="actions"><a [routerLink]="['/labs', review.labCode]">Revoir le labo</a><button type="button" [disabled]="busy() || review.belowThreshold" [attr.title]="review.belowThreshold ? 'Score du laboratoire sous le seuil : revois le labo et recalcule ton score avant de valider.' : null" (click)="finish(review, true)">Réussi</button><button class="retry" type="button" [disabled]="busy()" (click)="finish(review, false)">Encore difficile</button></div>
           @if (review.belowThreshold) { <p class="gate">Score actuel {{ review.bestScore }} % : sous le seuil. Revois le labo et recalcule ton score pour pouvoir valider cette révision.</p> }
         </article>
       }
@@ -34,6 +34,7 @@ export class ReviewsComponent {
   private readonly api = inject(ReviewApiService);
   readonly reviews = signal<ReviewItem[]>([]);
   readonly loading = signal(true);
+  readonly busy = signal(false);
   readonly error = signal<string | null>(null);
 
   constructor() { void this.reload(); }
@@ -41,18 +42,23 @@ export class ReviewsComponent {
   stageDay(stage: number): number { return [1, 3, 7, 14, 30][Math.min(stage, 4)]; }
 
   async finish(review: ReviewItem, successful: boolean): Promise<void> {
+    if (this.busy()) return;
+    this.busy.set(true);
     try {
       await firstValueFrom(this.api.complete(review.id, successful));
       await this.reload();
     } catch (error) {
       const detail = error instanceof HttpErrorResponse ? error.error?.detail : null;
       this.error.set(typeof detail === 'string' ? detail : 'Impossible d’enregistrer cette révision.');
+      await this.reload(false);
+    } finally {
+      this.busy.set(false);
     }
   }
 
-  private async reload(): Promise<void> {
+  private async reload(clearError = true): Promise<void> {
     this.loading.set(true);
-    try { this.reviews.set(await firstValueFrom(this.api.pending())); this.error.set(null); }
+    try { this.reviews.set(await firstValueFrom(this.api.pending())); if (clearError) this.error.set(null); }
     catch { this.error.set('L’API DLR est indisponible.'); }
     finally { this.loading.set(false); }
   }

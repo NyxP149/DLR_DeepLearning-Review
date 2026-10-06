@@ -2,6 +2,7 @@ package com.dlr.assessment.application;
 
 import com.dlr.assessment.domain.ScoreCalculator;
 import com.dlr.catalog.application.LabCatalog;
+import com.dlr.mastery.application.ReviewService;
 import com.dlr.catalog.domain.LabContent;
 import com.dlr.execution.application.ExecutionResultRepository;
 import com.dlr.execution.domain.ExecutionStatus;
@@ -176,21 +177,17 @@ public class AssessmentService {
                 executionScore, quizScore, executionScore, connectionScore, selfAssessmentScore, SCORE_VERSION);
         Attempt completed = attemptService.complete(attemptId, calculated.score(), breakdown, lab.threshold());
 
-        String reviewReason = completed.status() == AttemptStatus.COMPLETED_BELOW_THRESHOLD
-                ? "Score " + calculated.score() + " % sous le seuil recommandé de " + lab.threshold() + " %."
-                : "Consolider les concepts du laboratoire avec la répétition espacée.";
-        if (!firstCompletion) {
-            assessmentRepository.refreshInitialReviewReason(attemptId, reviewReason);
-        } else {
+        boolean reviewScheduled = firstCompletion && !assessmentRepository.hasPendingReview(lab.code());
+        if (reviewScheduled) {
             Instant now = Instant.now(clock);
             assessmentRepository.createReview(
                     attemptId,
                     lab.code(),
                     now.plus(1, ChronoUnit.DAYS),
-                    reviewReason,
+                    ReviewService.initialReason(calculated.score(), lab.threshold()),
                     now);
         }
-        return new CompletionResult(completed, breakdown, lab.threshold(), firstCompletion);
+        return new CompletionResult(completed, breakdown, lab.threshold(), reviewScheduled);
     }
 
     private Attempt requireAttempt(UUID attemptId) {

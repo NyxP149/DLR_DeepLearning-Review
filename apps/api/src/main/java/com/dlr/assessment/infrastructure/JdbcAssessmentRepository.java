@@ -108,15 +108,10 @@ public class JdbcAssessmentRepository implements AssessmentRepository {
     }
 
     @Override
-    public void refreshInitialReviewReason(UUID attemptId, String reason) {
-        // Seules les raisons générées à la validation sont réécrites ; « Revoir rapidement… » (Encore difficile) est conservée.
-        jdbcTemplate.update(
-                """
-                update review_item set reason = ?
-                where attempt_id = ? and status = 'PENDING' and repetition_stage = 0
-                  and (reason like 'Score %' or reason like 'Consolider les concepts%')
-                """,
-                reason, attemptId);
+    public boolean hasPendingReview(String labCode) {
+        Integer count = jdbcTemplate.queryForObject(
+                "select count(*) from review_item where lab_id = ? and status = 'PENDING'", Integer.class, labCode);
+        return count != null && count > 0;
     }
 
     private QuizAnswer mapAnswer(ResultSet result, int rowNumber) throws SQLException {

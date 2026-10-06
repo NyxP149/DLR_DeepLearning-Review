@@ -94,10 +94,17 @@ public class AdaptationService {
                         "update adaptation_recommendation set status = ?, decided_at = ?, expires_at = ? where id = ? and status in ('PROPOSED', 'POSTPONED')",
                         status, Timestamp.from(now), Timestamp.from(now.plus(3, ChronoUnit.DAYS)), id)
                 : jdbcTemplate.update(
-                        "update adaptation_recommendation set status = ?, decided_at = ? where id = ? and status in ('PROPOSED', 'POSTPONED')",
+                        "update adaptation_recommendation set status = ?, decided_at = ? where id = ? and status in " + decidableStatuses(decision),
                         status, Timestamp.from(now), id);
         if (updated == 0) throw new IllegalStateException("Cette recommandation a déjà été traitée.");
         return (decision == Decision.IGNORE || decision == Decision.REPLACE) ? current() : find(id);
+    }
+
+    // Une proposition acceptée peut encore être remplacée ou ignorée, mais pas acceptée de nouveau.
+    private String decidableStatuses(Decision decision) {
+        return decision == Decision.REPLACE || decision == Decision.IGNORE
+                ? "('PROPOSED', 'POSTPONED', 'ACCEPTED')"
+                : "('PROPOSED', 'POSTPONED')";
     }
 
     public Insights insights() {

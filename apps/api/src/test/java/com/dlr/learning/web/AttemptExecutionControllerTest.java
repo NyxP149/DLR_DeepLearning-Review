@@ -34,8 +34,16 @@ class AttemptExecutionControllerTest {
     @Autowired
     private ObjectMapper objectMapper;
 
+    @Autowired
+    private org.springframework.jdbc.core.JdbcTemplate jdbcTemplate;
+
     @MockitoBean
     private CodeRunner codeRunner;
+
+    @org.junit.jupiter.api.BeforeEach
+    void clearReviews() {
+        jdbcTemplate.update("delete from review_item");
+    }
 
     @Test
     void startsAndReloadsAnAttempt() throws Exception {
@@ -212,11 +220,6 @@ class AttemptExecutionControllerTest {
                 .andExpect(jsonPath("$.breakdown.tests").value(0))
                 .andExpect(jsonPath("$.reviewScheduled").value(true));
 
-        mockMvc.perform(get("/api/reviews"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$[?(@.attemptId == '" + attemptId + "')].reason")
-                        .value(org.hamcrest.Matchers.contains(org.hamcrest.Matchers.containsString("sous le seuil recommandé"))));
-
         String secondSubmissionId = submit(attemptId);
         mockMvc.perform(post("/api/submissions/{id}/run", secondSubmissionId))
                 .andExpect(status().isOk())
@@ -235,6 +238,37 @@ class AttemptExecutionControllerTest {
                 .andExpect(jsonPath("$[?(@.attemptId == '" + attemptId + "')].reason")
                         .value(org.hamcrest.Matchers.contains(
                                 "Consolider les concepts du laboratoire avec la répétition espacée.")));
+    }
+
+    @Test
+    void doesNotCreateASecondReviewChainWhenTheLabAlreadyHasAPendingReview() throws Exception {
+        when(codeRunner.run(any())).thenAnswer(invocation -> {
+            var submission = invocation.getArgument(0, com.dlr.execution.domain.Submission.class);
+            return new ExecutionResult(
+                    UUID.randomUUID(), submission.id(), ExecutionStatus.SUCCESS, 0,
+                    "DLR Java Lab 1\n", "", 120, Instant.now());
+        });
+
+        String firstAttempt = completeLabOnce();
+        String secondAttempt = completeLabOnce();
+
+        mockMvc.perform(get("/api/reviews"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[?(@.attemptId == '" + firstAttempt + "')]", org.hamcrest.Matchers.hasSize(1)))
+                .andExpect(jsonPath("$[?(@.attemptId == '" + secondAttempt + "')]", org.hamcrest.Matchers.hasSize(0)));
+    }
+
+    private String completeLabOnce() throws Exception {
+        String attemptId = startAttempt();
+        mockMvc.perform(post("/api/submissions/{id}/run", submit(attemptId))).andExpect(status().isOk());
+        answerChoice(attemptId, 1);
+        answerFreeText(attemptId, "Le compilateur compile le code source en bytecode, ensuite la JVM l'exécute.");
+        mockMvc.perform(put("/api/attempts/{id}/checklist", attemptId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"completed\":[true,true,true]}"))
+                .andExpect(status().isOk());
+        mockMvc.perform(post("/api/attempts/{id}/complete", attemptId)).andExpect(status().isOk());
+        return attemptId;
     }
 
     @Test

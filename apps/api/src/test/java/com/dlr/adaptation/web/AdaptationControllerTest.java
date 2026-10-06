@@ -58,6 +58,28 @@ class AdaptationControllerTest {
     }
 
     @Test
+    void anAcceptedRecommendationCanBeReplacedButNotAcceptedTwice() throws Exception {
+        String body = mockMvc.perform(get("/api/adaptation/recommendation"))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        String id = objectMapper.readTree(body).get("id").asText();
+
+        mockMvc.perform(post("/api/adaptation/recommendations/{id}/decision", id)
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"decision\":\"ACCEPT\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("ACCEPTED"));
+
+        mockMvc.perform(post("/api/adaptation/recommendations/{id}/decision", id)
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"decision\":\"ACCEPT\"}"))
+                .andExpect(status().isConflict());
+
+        mockMvc.perform(post("/api/adaptation/recommendations/{id}/decision", id)
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"decision\":\"REPLACE\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("PROPOSED"))
+                .andExpect(jsonPath("$.id").value(org.hamcrest.Matchers.not(id)));
+    }
+
+    @Test
     void exposesBoundedLocalAutonomyInsightsWithADisclaimer() throws Exception {
         mockMvc.perform(get("/api/adaptation/insights"))
                 .andExpect(status().isOk())

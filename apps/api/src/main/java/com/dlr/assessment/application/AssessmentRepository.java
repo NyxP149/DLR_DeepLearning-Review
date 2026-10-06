@@ -20,7 +20,7 @@ public interface AssessmentRepository {
 
     void createReview(UUID attemptId, String labCode, Instant dueAt, String reason, Instant createdAt);
 
-    void refreshInitialReviewReason(UUID attemptId, String reason);
+    boolean hasPendingReview(String labCode);
 
     record QuizAnswer(
             UUID id,

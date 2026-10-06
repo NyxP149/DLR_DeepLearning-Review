@@ -139,6 +139,61 @@ class ReviewControllerTest {
                 .andExpect(jsonPath("$.nextReview.stage").value(1));
     }
 
+    @Test
+    void showsTheLiveScoreInsteadOfTheTextStoredAtFirstCompletion() throws Exception {
+        UUID attemptId = insertScoredAttempt("JAVA-04", "COMPLETED", "95.00");
+        UUID reviewId = insertReviewWithReason(attemptId, "JAVA-04", 0, "Score 35.00 % sous le seuil recommandé de 70 %.");
+
+        mockMvc.perform(get("/api/reviews"))
+                .andExpect(jsonPath("$[?(@.id == '" + reviewId + "')].reason")
+                        .value(org.hamcrest.Matchers.contains(
+                                "Consolider les concepts du laboratoire avec la répétition espacée.")));
+
+        UUID lowAttempt = insertScoredAttempt("JAVA-05", "COMPLETED_BELOW_THRESHOLD", "42.50");
+        UUID lowReview = insertReviewWithReason(lowAttempt, "JAVA-05", 0, "Consolider les concepts du laboratoire avec la répétition espacée.");
+
+        mockMvc.perform(get("/api/reviews"))
+                .andExpect(jsonPath("$[?(@.id == '" + lowReview + "')].reason")
+                        .value(org.hamcrest.Matchers.contains("Score 42.50 % sous le seuil recommandé de 70 %.")));
+    }
+
+    @Test
+    void keepsTheDifficultyReasonUntouched() throws Exception {
+        UUID attemptId = insertScoredAttempt("JAVA-06", "COMPLETED", "90.00");
+        UUID reviewId = insertReviewWithReason(attemptId, "JAVA-06", 0, "Revoir rapidement après une difficulté.");
+
+        mockMvc.perform(get("/api/reviews"))
+                .andExpect(jsonPath("$[?(@.id == '" + reviewId + "')].reason")
+                        .value(org.hamcrest.Matchers.contains("Revoir rapidement après une difficulté.")));
+    }
+
+    @Test
+    void cleanupMigrationKeepsOnlyTheMostAdvancedPendingReviewPerLab() throws Exception {
+        jdbcTemplate.update("delete from review_item where lab_id = 'JAVA-07'");
+        UUID attemptId = insertScoredAttempt("JAVA-07", "COMPLETED", "90.00");
+        UUID early = insertReview(attemptId, "JAVA-07", 0);
+        UUID advanced = insertReview(attemptId, "JAVA-07", 2);
+        UUID done = insertReview(attemptId, "JAVA-07", 1);
+        jdbcTemplate.update("update review_item set status = 'COMPLETED' where id = ?", done);
+
+        String sql = new String(new org.springframework.core.io.ClassPathResource(
+                "db/migration/V19__dedupe_pending_reviews.sql").getInputStream().readAllBytes(),
+                java.nio.charset.StandardCharsets.UTF_8);
+        jdbcTemplate.execute(sql);
+
+        mockMvc.perform(get("/api/reviews"))
+                .andExpect(jsonPath("$[?(@.id == '" + advanced + "')]").exists())
+                .andExpect(jsonPath("$[?(@.id == '" + early + "')]").doesNotExist());
+        org.assertj.core.api.Assertions.assertThat(jdbcTemplate.queryForObject(
+                "select count(*) from review_item where id = ? and status = 'COMPLETED'", Integer.class, done)).isEqualTo(1);
+    }
+
+    private UUID insertReviewWithReason(UUID attemptId, String labCode, int stage, String reason) {
+        UUID reviewId = insertReview(attemptId, labCode, stage);
+        jdbcTemplate.update("update review_item set reason = ? where id = ?", reason, reviewId);
+        return reviewId;
+    }
+
     private UUID insertScoredAttempt(String labCode, String status, String score) {
         UUID attemptId = UUID.randomUUID();
         Instant now = Instant.now();
