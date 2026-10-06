@@ -176,11 +176,13 @@ public class AssessmentService {
                 executionScore, quizScore, executionScore, connectionScore, selfAssessmentScore, SCORE_VERSION);
         Attempt completed = attemptService.complete(attemptId, calculated.score(), breakdown, lab.threshold());
 
-        if (firstCompletion) {
+        String reviewReason = completed.status() == AttemptStatus.COMPLETED_BELOW_THRESHOLD
+                ? "Score " + calculated.score() + " % sous le seuil recommandé de " + lab.threshold() + " %."
+                : "Consolider les concepts du laboratoire avec la répétition espacée.";
+        if (!firstCompletion) {
+            assessmentRepository.refreshInitialReviewReason(attemptId, reviewReason);
+        } else {
             Instant now = Instant.now(clock);
-            String reviewReason = completed.status() == AttemptStatus.COMPLETED_BELOW_THRESHOLD
-                    ? "Score " + calculated.score() + " % sous le seuil recommandé de " + lab.threshold() + " %."
-                    : "Consolider les concepts du laboratoire avec la répétition espacée.";
             assessmentRepository.createReview(
                     attemptId,
                     lab.code(),

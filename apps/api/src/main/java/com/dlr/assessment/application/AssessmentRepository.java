@@ -20,6 +20,8 @@ public interface AssessmentRepository {
 
     void createReview(UUID attemptId, String labCode, Instant dueAt, String reason, Instant createdAt);
 
+    void refreshInitialReviewReason(UUID attemptId, String reason);
+
     record QuizAnswer(
             UUID id,
             UUID attemptId,

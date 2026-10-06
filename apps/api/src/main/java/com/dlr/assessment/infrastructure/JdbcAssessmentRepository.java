@@ -107,6 +107,18 @@ public class JdbcAssessmentRepository implements AssessmentRepository {
                 UUID.randomUUID(), attemptId, labCode, Timestamp.from(dueAt), reason, Timestamp.from(createdAt));
     }
 
+    @Override
+    public void refreshInitialReviewReason(UUID attemptId, String reason) {
+        // Seules les raisons générées à la validation sont réécrites ; « Revoir rapidement… » (Encore difficile) est conservée.
+        jdbcTemplate.update(
+                """
+                update review_item set reason = ?
+                where attempt_id = ? and status = 'PENDING' and repetition_stage = 0
+                  and (reason like 'Score %' or reason like 'Consolider les concepts%')
+                """,
+                reason, attemptId);
+    }
+
     private QuizAnswer mapAnswer(ResultSet result, int rowNumber) throws SQLException {
         return new QuizAnswer(
                 result.getObject("id", UUID.class),

@@ -212,6 +212,11 @@ class AttemptExecutionControllerTest {
                 .andExpect(jsonPath("$.breakdown.tests").value(0))
                 .andExpect(jsonPath("$.reviewScheduled").value(true));
 
+        mockMvc.perform(get("/api/reviews"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[?(@.attemptId == '" + attemptId + "')].reason")
+                        .value(org.hamcrest.Matchers.contains(org.hamcrest.Matchers.containsString("sous le seuil recommandé"))));
+
         String secondSubmissionId = submit(attemptId);
         mockMvc.perform(post("/api/submissions/{id}/run", secondSubmissionId))
                 .andExpect(status().isOk())
@@ -223,6 +228,13 @@ class AttemptExecutionControllerTest {
                 .andExpect(jsonPath("$.attempt.score").value(100))
                 .andExpect(jsonPath("$.breakdown.tests").value(100))
                 .andExpect(jsonPath("$.reviewScheduled").value(false));
+
+        mockMvc.perform(get("/api/reviews"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[?(@.attemptId == '" + attemptId + "')]", org.hamcrest.Matchers.hasSize(1)))
+                .andExpect(jsonPath("$[?(@.attemptId == '" + attemptId + "')].reason")
+                        .value(org.hamcrest.Matchers.contains(
+                                "Consolider les concepts du laboratoire avec la répétition espacée.")));
     }
 
     @Test
