@@ -1188,3 +1188,14 @@ Signalement : malgré V3.17 et V3.18, l'utilisateur voyait toujours des scores i
 ### Tests
 
 `ReviewControllerTest` (score en direct, raison de difficulté conservée, nettoyage V19 exécuté sur H2), `AttemptExecutionControllerTest` (pas de seconde chaîne ; nettoyage des révisions avant chaque test) et `AdaptationControllerTest` (accepter deux fois → 409, remplacer après acceptation). Suite complète : 68 tests, 9 ignorés (intégration Docker).
+
+## V3.20 — Les exercices guidés ne donnent plus la solution
+
+Constat : dans les laboratoires Java 7 et 8, l'exercice guidé s'ouvrait avec un code de départ déjà complet qui affichait exactement la sortie attendue. Un audit exécutant le code de départ des 148 exercices (Java, Python, Node) a montré que 142 d'entre eux passaient déjà sans que l'apprenant écrive quoi que ce soit ; seuls JAVA-01 à JAVA-06 étaient de vrais exercices.
+
+- **Origine** : choix technique documenté. Les « preuves » étaient des programmes complets à sortie déterministe, validés dans les runners par des tests d'intégration qui exigeaient que le code de départ produise la sortie attendue. Le gabarit « preuve » (un `Evidence` validé puis un message) était identique pour 81 exercices.
+- **Conversion de 106 exercices** en squelettes à compléter, avec des consignes `TODO` numérotées : Java 7 à 24 (18), Spring Boot (12), Python (24), TypeScript (24), Angular (10), SQL (10) et DevOps (8). Un squelette s'exécute sans erreur mais n'affiche plus la sortie attendue. Seul le champ `starterCode` change ; énoncés, sorties attendues, quiz et checklists sont inchangés.
+- **Solutions de référence** : les codes d'origine sont conservés dans `apps/api/src/test/resources/<parcours>-solutions/` (106 fichiers), hors du contenu livré et jamais servis par l'API.
+- **Tests** : `JavaContentRunnerIntegrationTest`, `PythonContentRunnerIntegrationTest` et `ExpandedContentRunnerIntegrationTest` exigent désormais que le squelette s'exécute sans donner la sortie attendue et que la solution de référence la produise. Vérifié dans les runners Docker réels (4 classes de tests, 106 squelettes et 106 solutions).
+- **Non converti** : Architecture (24) et LLM (12). Leur énoncé demande explicitement d'exécuter la démonstration puis d'expliquer la décision ; le code fourni y est un support de raisonnement, pas une solution cachée. Ils restent testés tels quels.
+- **Limite** : pour Spring Boot, Angular, SQL, DevOps et la majorité des exercices Python et TypeScript, les squelettes restent génériques puisque le gabarit d'origine l'était ; des exercices propres à chaque sujet restent à rédiger.

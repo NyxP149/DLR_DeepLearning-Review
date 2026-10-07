@@ -364,3 +364,16 @@ Sur la page du coach, « La décision n'a pas pu être enregistrée. Recharge la
 
 **Solution**
 Une proposition acceptée affiche « ✓ Proposition acceptée » avec seulement « Autre proposition » et « Ignorer », que le serveur accepte désormais sur ce statut ; accepter ou reporter une proposition déjà acceptée reste refusé. En cas de refus, la proposition est rechargée. Couvert par `AdaptationControllerTest`.
+
+---
+
+## Les exercices guidés donnaient déjà la solution complète
+- severity: medium
+- date: 2026-10
+- tags: Pédagogie, Contenu, Laboratoires
+
+**Problème**
+Dans les laboratoires Java 7 et 8, l'exercice guidé s'ouvrait avec un code de départ déjà complet qui affichait exactement la sortie attendue. L'exécution du code de départ des 148 exercices a montré que 142 passaient déjà sans rien écrire : les « preuves » étaient des programmes complets à sortie déterministe, imposés par les tests d'intégration, et dont l'énoncé demandait pourtant d'implémenter.
+
+**Solution**
+106 codes de départ (Java 7 à 24, Spring Boot, Python, TypeScript, Angular, SQL, DevOps) sont remplacés par des squelettes à compléter avec des consignes `TODO` numérotées ; les solutions d'origine sont conservées en ressources de test, et les tests Docker exigent désormais que le départ ne passe pas et que la solution passe. Architecture et LLM restent inchangés car leur énoncé demande d'exécuter une démonstration puis de l'expliquer.

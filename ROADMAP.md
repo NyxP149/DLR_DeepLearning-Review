@@ -47,6 +47,8 @@
 - [x] Révisions : « Réussi » refusé tant que le score du laboratoire est sous son seuil (bouton désactivé et message explicatif) (V3.18)
 - [x] Révisions : score toujours relu en direct, doublons de révision nettoyés (migration V19) et boutons verrouillés pendant l'envoi (V3.19)
 - [x] Coach adaptatif : une proposition acceptée n'affiche plus de boutons qui échouaient, « Autre proposition » et « Ignorer » restent possibles (V3.19)
+- [x] Exercices guidés : 106 codes de départ convertis en squelettes à compléter (Java 7-24, Spring Boot, Python, TypeScript, Angular, SQL, DevOps) au lieu de donner la solution (V3.20)
+- [ ] Rédiger des exercices à compléter propres à chaque sujet pour les parcours dont le gabarit « preuve » était identique (Spring Boot, Angular, SQL, DevOps, Python et TypeScript)
 
 ## Déploiement cloud
 
