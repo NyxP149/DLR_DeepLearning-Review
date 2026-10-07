@@ -46,10 +46,10 @@
   "exercises": [
     {
       "code": "PYTHON-08-E1",
-      "title": "Valider itérateurs, générateurs et évaluation paresseuse",
-      "statement": "Conserve l'invariant et produis exactement : PYTHON-08: preuve validée",
-      "starterCode": "from dataclasses import dataclass\n\n# TODO 1 : définis une dataclass immuable Evidence (frozen=True, slots=True)\n#          avec les champs concept: str et validated: bool\n\n# TODO 2 : crée une preuve pour le concept \"PYTHON-GENERATORS\", marquée comme validée\n# TODO 3 : vérifie avec assert que la preuve est validée\n# TODO 4 : affiche \"PYTHON-08: preuve validée\"\n",
-      "expectedOutput": "PYTHON-08: preuve validée"
+      "title": "Découper un flux infini en lots paresseux",
+      "statement": "Écris le générateur batches(iterable, size) qui découpe n'importe quel itérable, même infini, en listes de size éléments sans rien lire à l'avance. Le programme prouve la paresse : aucune valeur n'est produite avant le premier next(), puis exactement trois de plus à chaque lot.",
+      "starterCode": "from itertools import islice\n\nproduced = 0\n\n\ndef numbers():\n    global produced\n    value = 0\n    while True:\n        value += 1\n        produced += 1\n        yield value\n\n\ndef batches(iterable, size):\n    # TODO : écris un générateur : prends un itérateur sur iterable, puis à chaque tour\n    #        lis `size` éléments avec islice, yield la liste obtenue, et arrête-toi quand elle est vide\n    return iter([])\n\n\nsource = batches(numbers(), 3)\nprint(f\"Avant le premier lot: {produced} valeur(s) produite(s)\")\nfor index in (1, 2):\n    batch = next(source, None)\n    print(f\"lot {index}: {batch} ({produced} produites)\")\n",
+      "expectedOutput": "Avant le premier lot: 0 valeur(s) produite(s)\nlot 1: [1, 2, 3] (3 produites)\nlot 2: [4, 5, 6] (6 produites)"
     }
   ],
   "quiz": [

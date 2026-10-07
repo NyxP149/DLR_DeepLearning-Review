@@ -1,11 +1,24 @@
 import sqlite3
 
 connection = sqlite3.connect(":memory:")
-connection.executescript("""
-create table evidence(id integer primary key, concept text not null, validated integer not null check(validated in (0, 1)));
-insert into evidence(concept, validated) values ('SQL-MODELING', 1), ('contrôle', 0);
-""")
-validated = connection.execute("select count(*) from evidence where validated = 1").fetchone()[0]
-assert validated == 1
-print("SQL-01: preuve validée")
-connection.close()
+connection.execute("PRAGMA foreign_keys = ON")
+
+connection.execute("CREATE TABLE customer (id INTEGER PRIMARY KEY, email TEXT NOT NULL UNIQUE)")
+connection.execute(
+    "CREATE TABLE orders ("
+    "id INTEGER PRIMARY KEY, "
+    "customer_id INTEGER NOT NULL REFERENCES customer(id), "
+    "total_cents INTEGER NOT NULL)"
+)
+
+for table in ("customer", "orders"):
+    columns = [row[1] for row in connection.execute(f"PRAGMA table_info({table})")]
+    print(f"{table}: {', '.join(columns)}")
+
+for row in connection.execute("PRAGMA foreign_key_list(orders)"):
+    print(f"Clé étrangère: orders.{row[3]} -> {row[2]}.{row[4]}")
+
+try:
+    connection.execute("INSERT INTO orders (customer_id, total_cents) VALUES (99, 1000)")
+except sqlite3.Error as error:
+    print(f"Insertion orpheline refusée: {error}")

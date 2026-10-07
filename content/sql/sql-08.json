@@ -46,10 +46,10 @@
   "exercises": [
     {
       "code": "SQL-08-E1",
-      "title": "Valider cte, sous-requêtes et transformations",
-      "statement": "Conserve l'invariant et produis exactement : SQL-08: preuve validée",
-      "starterCode": "import sqlite3\n\nconnection = sqlite3.connect(\":memory:\")\n# TODO 1 : crée une table evidence(id, concept, validated) ;\n#          validated vaut 0 ou 1 (contrainte check)\n# TODO 2 : insère deux lignes : ('SQL-CTE', 1) et ('contrôle', 0)\n# TODO 3 : compte avec une requête SQL les lignes validées\n# TODO 4 : vérifie avec assert qu'il y en a exactement une, puis affiche \"SQL-08: preuve validée\"\nconnection.close()\n",
-      "expectedOutput": "SQL-08: preuve validée"
+      "title": "Remonter une hiérarchie avec une CTE récursive",
+      "statement": "Dans une table d'employés avec manager_id, écris une CTE récursive qui remonte la chaîne hiérarchique de Grace jusqu'au sommet, puis une CTE non récursive qui calcule le salaire moyen pour lister les employés qui gagnent plus que la moyenne, du mieux payé au moins bien payé.",
+      "starterCode": "import sqlite3\n\nconnection = sqlite3.connect(\":memory:\")\nconnection.executescript(\n    \"\"\"\n    CREATE TABLE employee (id INTEGER PRIMARY KEY, name TEXT, manager_id INTEGER, salary INTEGER);\n    INSERT INTO employee VALUES\n      (1, 'Ada', NULL, 5000),\n      (2, 'Linus', 1, 4000),\n      (3, 'Grace', 2, 3000),\n      (4, 'Alan', 1, 2000);\n    \"\"\"\n)\n\n# TODO 1 : WITH RECURSIVE chain(...) : part de Grace (profondeur 0), puis rejoint à chaque tour\n#          l'employé dont l'id est le manager_id précédent (profondeur + 1) ;\n#          sélectionne les noms triés par profondeur\nchain = \"SELECT name FROM employee WHERE name = 'Grace'\"\n# TODO 2 : WITH average AS (SELECT AVG(salary) AS value FROM employee) : employés dont le salaire\n#          dépasse average.value, triés par salaire décroissant\nrich = \"SELECT name FROM employee ORDER BY name\"\n\nprint(\"Chaîne de Grace:\", \" > \".join(row[0] for row in connection.execute(chain)))\nprint(\"Au-dessus de la moyenne:\", \", \".join(row[0] for row in connection.execute(rich)))\n",
+      "expectedOutput": "Chaîne de Grace: Grace > Linus > Ada\nAu-dessus de la moyenne: Ada, Linus"
     }
   ],
   "quiz": [

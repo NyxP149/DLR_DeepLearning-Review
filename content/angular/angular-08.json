@@ -46,10 +46,10 @@
   "exercises": [
     {
       "code": "ANGULAR-08-E1",
-      "title": "Valider tests, accessibilité et budgets de performance",
-      "statement": "Conserve l'invariant et produis exactement : ANGULAR-08: preuve validée",
-      "starterCode": "// TODO 1 : définis un type Evidence en lecture seule (Readonly) avec concept: string et validated: boolean\n// TODO 2 : crée une preuve pour le concept 'ANGULAR-QUALITY', marquée comme validée\n// TODO 3 : lance une Error('preuve invalide') si elle n'est pas validée\n// TODO 4 : affiche 'ANGULAR-08: preuve validée' avec console.log\n",
-      "expectedOutput": "ANGULAR-08: preuve validée"
+      "title": "Auditer l'accessibilité et le budget de performance",
+      "statement": "Écris un audit automatisé : chaque image doit avoir un texte alternatif, chaque bouton un nom accessible (texte ou label), chaque champ un label ; puis compare la taille de chaque bundle à son budget et indique le dépassement éventuel.",
+      "starterCode": "export {};\n\ninterface Element {\n  tag: 'img' | 'button' | 'input';\n  id: string;\n  alt?: string;\n  label?: string;\n  text?: string;\n}\n\nconst elements: Element[] = [\n  { tag: 'img', id: 'logo' },\n  { tag: 'img', id: 'avatar', alt: 'Photo de profil' },\n  { tag: 'button', id: 'save' },\n  { tag: 'button', id: 'close', text: 'Fermer' },\n  { tag: 'input', id: 'email' },\n  { tag: 'input', id: 'name', label: 'Nom' },\n];\n\ninterface Bundle {\n  file: string;\n  kb: number;\n  budget: number;\n}\n\nconst bundles: Bundle[] = [\n  { file: 'main.js', kb: 520, budget: 500 },\n  { file: 'styles.css', kb: 80, budget: 100 },\n];\n\nfunction a11yProblem(element: Element): string | null {\n  // TODO 1 : img sans alt -> \"alt manquant\" ; button sans text ni label -> \"nom accessible manquant\" ;\n  //          input sans label -> \"label manquant\" ; sinon null\n  return null;\n}\n\nfunction budgetLine(bundle: Bundle): string {\n  // TODO 2 : dépassé -> \"Budget: <fichier> <kb> kB > <budget> kB (dépassé de <écart> kB)\"\n  //          respecté -> \"Budget: <fichier> <kb> kB <= <budget> kB\"\n  return '';\n}\n\nlet violations = 0;\nfor (const element of elements) {\n  // TODO 3 : affiche \"<tag>#<id>: <problème>\" pour chaque problème et compte les violations\n}\n// TODO 4 : affiche \"Accessibilité: <n> violation(s)\" puis la ligne de budget de chaque bundle\n",
+      "expectedOutput": "img#logo: alt manquant\nbutton#save: nom accessible manquant\ninput#email: label manquant\nAccessibilité: 3 violation(s)\nBudget: main.js 520 kB > 500 kB (dépassé de 20 kB)\nBudget: styles.css 80 kB <= 100 kB"
     }
   ],
   "quiz": [

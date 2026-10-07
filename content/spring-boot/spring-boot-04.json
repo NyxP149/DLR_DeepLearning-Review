@@ -46,10 +46,10 @@
   "exercises": [
     {
       "code": "SPRING_BOOT-04-E1",
-      "title": "Valider contrôleurs rest, http et négociation de contenu",
-      "statement": "Conserve l'invariant et produis exactement : SPRING_BOOT-04: preuve validée",
-      "starterCode": "// TODO 1 : définis un record Evidence(String concept, boolean validated)\n\npublic class Main {\n    public static void main(String[] args) {\n        // TODO 2 : crée une preuve pour le concept \"SPRING-REST\", marquée comme validée\n        // TODO 3 : lance une IllegalStateException(\"preuve invalide\") si elle n'est pas validée\n        // TODO 4 : affiche \"SPRING_BOOT-04: preuve validée\"\n    }\n}\n",
-      "expectedOutput": "SPRING_BOOT-04: preuve validée"
+      "title": "Router une requête HTTP et négocier le contenu",
+      "statement": "Écris le routage d'un contrôleur REST : GET /orders/{id} répond 200, POST /orders répond 201, un chemin inconnu répond 404, une méthode non permise sur un chemin connu répond 405, et un en-tête Accept que l'API ne sait pas produire (autre que application/json ou */*) répond 406.",
+      "starterCode": "public class Main {\n    static int handle(String method, String path, String accept) {\n        // TODO 1 : retourne 406 si accept n'est ni \"application/json\" ni \"*/*\"\n        // TODO 2 : \"/orders\" accepte POST (201) ; un chemin /orders/<chiffres> accepte GET (200)\n        // TODO 3 : sur un chemin connu avec une autre méthode, retourne 405\n        // TODO 4 : pour tout autre chemin, retourne 404\n        return 0;\n    }\n\n    public static void main(String[] args) {\n        String[][] requests = {\n            {\"GET\", \"/orders/42\", \"application/json\"},\n            {\"POST\", \"/orders\", \"application/json\"},\n            {\"DELETE\", \"/orders/42\", \"application/json\"},\n            {\"GET\", \"/customers\", \"application/json\"},\n            {\"GET\", \"/orders/42\", \"application/xml\"},\n        };\n        for (String[] request : requests) {\n            // TODO 5 : affiche \"<méthode> <chemin> (<accept>) -> <statut>\"\n        }\n    }\n}\n",
+      "expectedOutput": "GET /orders/42 (application/json) -> 200\nPOST /orders (application/json) -> 201\nDELETE /orders/42 (application/json) -> 405\nGET /customers (application/json) -> 404\nGET /orders/42 (application/xml) -> 406"
     }
   ],
   "quiz": [

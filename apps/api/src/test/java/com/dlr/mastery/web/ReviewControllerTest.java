@@ -66,8 +66,8 @@ class ReviewControllerTest {
                     .andExpect(jsonPath("$.nextReview.stage").value(stage + 1))
                     .andReturn().getResponse().getContentAsString();
             var next = objectMapper.readTree(body).get("nextReview");
-            long days = java.time.Duration.between(Instant.now(), Instant.parse(next.get("dueAt").asText())).toHours() / 24 + 1;
-            org.assertj.core.api.Assertions.assertThat(days).isBetween((long) expectedDays[stage] - 1, (long) expectedDays[stage]);
+            long days = Math.round(java.time.Duration.between(Instant.now(), Instant.parse(next.get("dueAt").asText())).toMinutes() / 1440.0);
+            org.assertj.core.api.Assertions.assertThat(days).isEqualTo(expectedDays[stage]);
             reviewId = UUID.fromString(next.get("id").asText());
         }
     }

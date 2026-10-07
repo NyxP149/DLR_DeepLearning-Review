@@ -46,10 +46,10 @@
   "exercises": [
     {
       "code": "SQL-07-E1",
-      "title": "Valider transactions, isolation et concurrence",
-      "statement": "Conserve l'invariant et produis exactement : SQL-07: preuve validée",
-      "starterCode": "import sqlite3\n\nconnection = sqlite3.connect(\":memory:\")\n# TODO 1 : crée une table evidence(id, concept, validated) ;\n#          validated vaut 0 ou 1 (contrainte check)\n# TODO 2 : insère deux lignes : ('SQL-TRANSACTIONS', 1) et ('contrôle', 0)\n# TODO 3 : compte avec une requête SQL les lignes validées\n# TODO 4 : vérifie avec assert qu'il y en a exactement une, puis affiche \"SQL-07: preuve validée\"\nconnection.close()\n",
-      "expectedOutput": "SQL-07: preuve validée"
+      "title": "Rendre un virement atomique et observer l'isolation",
+      "statement": "Écris un virement transactionnel (BEGIN, crédit, débit, COMMIT) qui annule tout si la contrainte de solde positif est violée. Ouvre ensuite une transaction sans la valider pour constater que l'écrivain voit sa modification mais pas le lecteur concurrent, puis annule-la.",
+      "starterCode": "import os\nimport sqlite3\n\nif os.path.exists(\"bank.db\"):\n    os.remove(\"bank.db\")\n\nwriter = sqlite3.connect(\"bank.db\", isolation_level=None)\nreader = sqlite3.connect(\"bank.db\", isolation_level=None)\nwriter.execute(\"CREATE TABLE account (id TEXT PRIMARY KEY, balance INTEGER NOT NULL CHECK (balance >= 0))\")\nwriter.executemany(\"INSERT INTO account VALUES (?, ?)\", [(\"A\", 100), (\"B\", 0)])\n\n\ndef state(connection: sqlite3.Connection) -> str:\n    rows = connection.execute(\"SELECT id, balance FROM account ORDER BY id\").fetchall()\n    return \", \".join(f\"{account}={balance}\" for account, balance in rows)\n\n\ndef transfer(amount: int) -> str:\n    # TODO 1 : BEGIN ; crédite B ; débite A ; COMMIT ; retourne \"OK\"\n    #          si sqlite3.IntegrityError : ROLLBACK puis retourne \"refusé\"\n    return \"\"\n\n\nprint(f\"Virement 30: {transfer(30)} -> {state(writer)}\")\nprint(f\"Virement 500: {transfer(500)} -> {state(writer)}\")\n\n# TODO 2 : ouvre une transaction sur writer (BEGIN) et débite A de 10 sans la valider\nprint(f\"Écrivain voit: {state(writer)}\")\nprint(f\"Lecteur voit: {state(reader)}\")\n# TODO 3 : annule la transaction du writer\nprint(f\"Après annulation: {state(writer)}\")\n\nwriter.close()\nreader.close()\n",
+      "expectedOutput": "Virement 30: OK -> A=70, B=30\nVirement 500: refusé -> A=70, B=30\nÉcrivain voit: A=60, B=30\nLecteur voit: A=70, B=30\nAprès annulation: A=70, B=30"
     }
   ],
   "quiz": [

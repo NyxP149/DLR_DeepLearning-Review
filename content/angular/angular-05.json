@@ -46,10 +46,10 @@
   "exercises": [
     {
       "code": "ANGULAR-05-E1",
-      "title": "Valider routing, guards, resolvers et chargement différé",
-      "statement": "Conserve l'invariant et produis exactement : ANGULAR-05: preuve validée",
-      "starterCode": "// TODO 1 : définis un type Evidence en lecture seule (Readonly) avec concept: string et validated: boolean\n// TODO 2 : crée une preuve pour le concept 'ANGULAR-ROUTING', marquée comme validée\n// TODO 3 : lance une Error('preuve invalide') si elle n'est pas validée\n// TODO 4 : affiche 'ANGULAR-05: preuve validée' avec console.log\n",
-      "expectedOutput": "ANGULAR-05: preuve validée"
+      "title": "Résoudre une route, appliquer un guard et charger à la demande",
+      "statement": "Écris le cœur d'un routeur : correspondance segment par segment avec paramètres (:id), guard canActivate qui redirige vers /login, et chargement différé d'un module une seule fois, uniquement lorsque la navigation est autorisée.",
+      "starterCode": "export {};\n\ninterface Route {\n  path: string;\n  component: string;\n  module?: string;\n  guard?: () => boolean;\n}\n\nconst auth = { loggedIn: false };\n\nconst routes: Route[] = [\n  { path: 'orders/:id', component: 'OrderDetail', module: 'orders' },\n  { path: 'admin', component: 'AdminPage', module: 'admin', guard: () => auth.loggedIn },\n  { path: 'login', component: 'LoginPage' },\n];\n\nconst loaded: string[] = [];\n\nfunction match(route: Route, url: string): Record<string, string> | null {\n  // TODO 1 : compare les segments de route.path et de url ; un segment \":x\" capture la valeur correspondante ;\n  //          retourne les paramètres capturés, ou null si l'URL ne correspond pas\n  return null;\n}\n\nfunction navigate(url: string): string {\n  // TODO 2 : trouve la première route qui correspond ; sinon retourne \"NotFound\"\n  // TODO 3 : si la route a un guard qui refuse, retourne \"redirection vers /login\" sans charger son module\n  // TODO 4 : charge le module à la demande (une seule fois dans loaded)\n  // TODO 5 : retourne le composant, suivi des paramètres s'il y en a : \"OrderDetail (id=42)\" ou \"AdminPage\"\n  return '';\n}\n\nfor (const url of ['orders/42', 'admin', 'login']) {\n  console.log(`/${url} -> ${navigate(url)}`);\n}\nauth.loggedIn = true;\nconsole.log(`/admin -> ${navigate('admin')}`);\nconsole.log(`/inconnu -> ${navigate('inconnu')}`);\nconsole.log(`Modules chargés: ${loaded.join(', ')}`);\n",
+      "expectedOutput": "/orders/42 -> OrderDetail (id=42)\n/admin -> redirection vers /login\n/login -> LoginPage\n/admin -> AdminPage\n/inconnu -> NotFound\nModules chargés: orders, admin"
     }
   ],
   "quiz": [

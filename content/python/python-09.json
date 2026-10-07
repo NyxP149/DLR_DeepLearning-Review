@@ -46,10 +46,10 @@
   "exercises": [
     {
       "code": "PYTHON-09-E1",
-      "title": "Valider décorateurs et gestionnaires de contexte",
-      "statement": "Conserve l'invariant et produis exactement : PYTHON-09: preuve validée",
-      "starterCode": "from dataclasses import dataclass\n\n# TODO 1 : définis une dataclass immuable Evidence (frozen=True, slots=True)\n#          avec les champs concept: str et validated: bool\n\n# TODO 2 : crée une preuve pour le concept \"PYTHON-DECORATORS\", marquée comme validée\n# TODO 3 : vérifie avec assert que la preuve est validée\n# TODO 4 : affiche \"PYTHON-09: preuve validée\"\n",
-      "expectedOutput": "PYTHON-09: preuve validée"
+      "title": "Écrire un décorateur retry et un gestionnaire de transaction",
+      "statement": "Écris un décorateur retry(times) qui relance une fonction en cas de ConnectionError (en conservant son nom grâce à functools.wraps) et un gestionnaire de contexte transaction() qui affiche BEGIN, puis COMMIT en cas de succès ou ROLLBACK avec le message d'erreur avant de relancer l'exception.",
+      "starterCode": "import functools\nfrom contextlib import contextmanager\n\n\ndef retry(times: int):\n    def decorator(func):\n        # TODO 1 : retourne un wrapper (décoré avec functools.wraps) qui essaie jusqu'à `times` fois :\n        #          succès -> affiche \"tentative <n>: succès\" et retourne le résultat ;\n        #          ConnectionError -> affiche \"tentative <n>: échec (<message>)\" et relance à la dernière tentative\n        return func\n\n    return decorator\n\n\n@contextmanager\ndef transaction():\n    # TODO 2 : affiche \"BEGIN\" ; si le bloc réussit affiche \"COMMIT\" ;\n    #          s'il lève une exception affiche \"ROLLBACK (<message>)\" puis relance-la\n    yield\n\n\ncalls = {\"count\": 0}\n\n\n@retry(3)\ndef fetch() -> str:\n    calls[\"count\"] += 1\n    if calls[\"count\"] == 1:\n        raise ConnectionError(\"réseau\")\n    return \"ok\"\n\n\ntry:\n    print(f\"Résultat: {fetch()} | nom conservé: {fetch.__name__}\")\nexcept ConnectionError as error:\n    print(f\"Erreur non gérée: {error}\")\n\nwith transaction():\n    pass\n\ntry:\n    with transaction():\n        raise ValueError(\"boom\")\nexcept ValueError:\n    pass\n",
+      "expectedOutput": "tentative 1: échec (réseau)\ntentative 2: succès\nRésultat: ok | nom conservé: fetch\nBEGIN\nCOMMIT\nBEGIN\nROLLBACK (boom)"
     }
   ],
   "quiz": [

@@ -46,10 +46,10 @@
   "exercises": [
     {
       "code": "SPRING_BOOT-07-E1",
-      "title": "Valider transactions, cohérence et idempotence",
-      "statement": "Conserve l'invariant et produis exactement : SPRING_BOOT-07: preuve validée",
-      "starterCode": "// TODO 1 : définis un record Evidence(String concept, boolean validated)\n\npublic class Main {\n    public static void main(String[] args) {\n        // TODO 2 : crée une preuve pour le concept \"SPRING-TRANSACTIONS\", marquée comme validée\n        // TODO 3 : lance une IllegalStateException(\"preuve invalide\") si elle n'est pas validée\n        // TODO 4 : affiche \"SPRING_BOOT-07: preuve validée\"\n    }\n}\n",
-      "expectedOutput": "SPRING_BOOT-07: preuve validée"
+      "title": "Protéger un virement par transaction et idempotence",
+      "statement": "Implémente un virement qui se comporte comme une méthode @Transactional : si une étape échoue, l'état revient à l'instantané pris avant l'opération (rollback) ; et une clé d'idempotence déjà traitée est ignorée au lieu de débiter deux fois.",
+      "starterCode": "import java.util.HashSet;\nimport java.util.Map;\nimport java.util.Set;\nimport java.util.TreeMap;\n\nclass Bank {\n    private final Map<String, Integer> balances = new TreeMap<>();\n    private final Set<String> processed = new HashSet<>();\n\n    Bank(Map<String, Integer> initial) {\n        balances.putAll(initial);\n    }\n\n    String transfer(String key, String from, String to, int amount) {\n        // TODO 1 : si la clé a déjà été traitée, retourne \"ignoré\"\n        // TODO 2 : prends un instantané des soldes (copie de la map)\n        // TODO 3 : crédite d'abord le destinataire, puis débite l'émetteur ;\n        //          si le solde de l'émetteur est insuffisant, lance IllegalStateException(\"fonds insuffisants\")\n        // TODO 4 : en cas de succès, mémorise la clé et retourne \"OK\"\n        // TODO 5 : en cas d'échec, restaure l'instantané et retourne \"ÉCHEC <message>, rollback\"\n        return \"\";\n    }\n\n    String state() {\n        return \"A=\" + balances.get(\"A\") + \" B=\" + balances.get(\"B\");\n    }\n}\n\npublic class Main {\n    public static void main(String[] args) {\n        var bank = new Bank(Map.of(\"A\", 100, \"B\", 0));\n        System.out.println(\"T1: \" + bank.transfer(\"T1\", \"A\", \"B\", 30) + \" \" + bank.state());\n        System.out.println(\"T1 rejoué: \" + bank.transfer(\"T1\", \"A\", \"B\", 30) + \" \" + bank.state());\n        System.out.println(\"T2: \" + bank.transfer(\"T2\", \"A\", \"B\", 500) + \" \" + bank.state());\n    }\n}\n",
+      "expectedOutput": "T1: OK A=70 B=30\nT1 rejoué: ignoré A=70 B=30\nT2: ÉCHEC fonds insuffisants, rollback A=70 B=30"
     }
   ],
   "quiz": [

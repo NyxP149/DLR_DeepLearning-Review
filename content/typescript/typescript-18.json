@@ -46,10 +46,10 @@
   "exercises": [
     {
       "code": "TYPESCRIPT-18-E1",
-      "title": "Valider solid, injection et architecture modulaire",
-      "statement": "Conserve l'invariant et produis exactement : TYPESCRIPT-18: preuve validée",
-      "starterCode": "// TODO 1 : définis un type Evidence en lecture seule (Readonly) avec concept: string et validated: boolean\n// TODO 2 : crée une preuve pour le concept 'TYPESCRIPT-ARCHITECTURE', marquée comme validée\n// TODO 3 : lance une Error('preuve invalide') si elle n'est pas validée\n// TODO 4 : affiche 'TYPESCRIPT-18: preuve validée' avec console.log\n",
-      "expectedOutput": "TYPESCRIPT-18: preuve validée"
+      "title": "Injecter l'horloge et le journal d'un service de facturation",
+      "statement": "Applique l'inversion de dépendances : InvoiceService ne crée ni horloge ni journal, il reçoit deux interfaces (Clock et Logger) par son constructeur. Écris issue, qui produit et journalise le message de facture, et le compteur de factures émises ; une horloge fixe et un journal en mémoire rendent le comportement vérifiable.",
+      "starterCode": "export {};\n\ninterface Clock {\n  now(): string;\n}\n\ninterface Logger {\n  info(message: string): void;\n}\n\nclass InvoiceService {\n  private issued = 0;\n  private clock: Clock;\n  private logger: Logger;\n\n  constructor(clock: Clock, logger: Logger) {\n    this.clock = clock;\n    this.logger = logger;\n  }\n\n  issue(id: number, total: number): string {\n    // TODO : construis `[<heure>] facture <id> émise (total <total>)` avec la Clock injectée,\n    //        envoie-le au Logger injecté, compte la facture et retourne le message\n    return '';\n  }\n\n  get count(): number {\n    // TODO : nombre de factures émises\n    return 0;\n  }\n}\n\nclass FixedClock implements Clock {\n  now(): string {\n    return '2024-01-01T00:00:00Z';\n  }\n}\n\nclass MemoryLogger implements Logger {\n  messages: string[] = [];\n\n  info(message: string): void {\n    this.messages.push(message);\n  }\n}\n\nconst logger = new MemoryLogger();\nconst service = new InvoiceService(new FixedClock(), logger);\nconsole.log(service.issue(42, 120));\nconsole.log(`Journal: ${logger.messages.length} message(s)`);\nconsole.log(`Émises: ${service.count}`);\n",
+      "expectedOutput": "[2024-01-01T00:00:00Z] facture 42 émise (total 120)\nJournal: 1 message(s)\nÉmises: 1"
     }
   ],
   "quiz": [

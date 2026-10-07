@@ -46,10 +46,10 @@
   "exercises": [
     {
       "code": "PYTHON-10-E1",
-      "title": "Valider typage progressif, protocol et outils statiques",
-      "statement": "Conserve l'invariant et produis exactement : PYTHON-10: preuve validée",
-      "starterCode": "from dataclasses import dataclass\n\n# TODO 1 : définis une dataclass immuable Evidence (frozen=True, slots=True)\n#          avec les champs concept: str et validated: bool\n\n# TODO 2 : crée une preuve pour le concept \"PYTHON-TYPING\", marquée comme validée\n# TODO 3 : vérifie avec assert que la preuve est validée\n# TODO 4 : affiche \"PYTHON-10: preuve validée\"\n",
-      "expectedOutput": "PYTHON-10: preuve validée"
+      "title": "Définir un Protocol vérifiable à l'exécution",
+      "statement": "Décris par un Protocol le contrat d'un notificateur (une méthode send(message) -> str) sans imposer d'héritage, rends-le vérifiable avec runtime_checkable, implémente deux classes conformes et vérifie qu'une troisième, qui n'a pas la bonne méthode, est rejetée.",
+      "starterCode": "from typing import Protocol, runtime_checkable\n\n\n# TODO 1 : décore Notifier avec @runtime_checkable\nclass Notifier(Protocol):\n    def send(self, message: str) -> str: ...\n\n\nclass EmailNotifier:\n    def send(self, message: str) -> str:\n        # TODO 2 : retourne \"email: <message>\"\n        return \"\"\n\n\nclass SmsNotifier:\n    def send(self, message: str) -> str:\n        # TODO 3 : retourne \"sms: <message>\"\n        return \"\"\n\n\nclass Broken:\n    def push(self, message: str) -> str:\n        return message\n\n\ndef conforms(candidate: object) -> bool:\n    # TODO 4 : retourne True si le candidat respecte le protocole Notifier\n    return False\n\n\nfor candidate in (EmailNotifier(), SmsNotifier(), Broken()):\n    name = type(candidate).__name__\n    if conforms(candidate):\n        print(f\"{name}: conforme -> {candidate.send('bonjour')}\")\n    else:\n        print(f\"{name}: non conforme\")\n",
+      "expectedOutput": "EmailNotifier: conforme -> email: bonjour\nSmsNotifier: conforme -> sms: bonjour\nBroken: non conforme"
     }
   ],
   "quiz": [

@@ -46,10 +46,10 @@
   "exercises": [
     {
       "code": "PYTHON-11-E1",
-      "title": "Valider tests avec pytest, doublures et couverture utile",
-      "statement": "Conserve l'invariant et produis exactement : PYTHON-11: preuve validée",
-      "starterCode": "from dataclasses import dataclass\n\n# TODO 1 : définis une dataclass immuable Evidence (frozen=True, slots=True)\n#          avec les champs concept: str et validated: bool\n\n# TODO 2 : crée une preuve pour le concept \"PYTHON-TESTS\", marquée comme validée\n# TODO 3 : vérifie avec assert que la preuve est validée\n# TODO 4 : affiche \"PYTHON-11: preuve validée\"\n",
-      "expectedOutput": "PYTHON-11: preuve validée"
+      "title": "Tester un paiement avec une doublure Mock",
+      "statement": "Teste la fonction pay sans appeler de vrai service : configure un Mock de passerelle qui répond « ok », vérifie qu'il a été appelé une seule fois avec le bon montant, puis un second Mock dont charge lève un TimeoutError pour vérifier que pay retourne False.",
+      "starterCode": "from unittest.mock import Mock\n\n\ndef pay(gateway, amount: int) -> bool:\n    try:\n        return gateway.charge(amount) == \"ok\"\n    except TimeoutError:\n        return False\n\n\n# TODO 1 : crée un Mock de passerelle dont charge retourne \"ok\" (charge.return_value)\ngateway = Mock()\nprint(f\"paiement accepté: {pay(gateway, 120)}\")\n\n# TODO 2 : vérifie avec assert_called_once_with(120) que charge a été appelé une seule fois avec 120\ngateway.charge.assert_called_once_with(120)\nprint(\"appel vérifié: charge(120) une seule fois\")\n\n# TODO 3 : crée un second Mock dont charge lève TimeoutError (charge.side_effect)\nslow = Mock()\nprint(f\"paiement après timeout: {pay(slow, 120)}\")\n",
+      "expectedOutput": "paiement accepté: True\nappel vérifié: charge(120) une seule fois\npaiement après timeout: False"
     }
   ],
   "quiz": [

@@ -46,10 +46,10 @@
   "exercises": [
     {
       "code": "ANGULAR-03-E1",
-      "title": "Valider composants, inputs, outputs et composition",
-      "statement": "Conserve l'invariant et produis exactement : ANGULAR-03: preuve validée",
-      "starterCode": "// TODO 1 : définis un type Evidence en lecture seule (Readonly) avec concept: string et validated: boolean\n// TODO 2 : crée une preuve pour le concept 'ANGULAR-COMPONENTS', marquée comme validée\n// TODO 3 : lance une Error('preuve invalide') si elle n'est pas validée\n// TODO 4 : affiche 'ANGULAR-03: preuve validée' avec console.log\n",
-      "expectedOutput": "ANGULAR-03: preuve validée"
+      "title": "Relier un composant enfant à son parent par un output",
+      "statement": "Écris la communication d'un composant de notation : un petit EventEmitter (subscribe/emit) joue le rôle de l'output, et le composant n'émet que lorsque la note change réellement et reste comprise entre 1 et 5. Le parent s'abonne et affiche les notes reçues.",
+      "starterCode": "export {};\n\nclass EventEmitter<T> {\n  private listeners: Array<(value: T) => void> = [];\n\n  subscribe(listener: (value: T) => void): void {\n    // TODO 1 : mémorise l'écouteur\n  }\n\n  emit(value: T): void {\n    // TODO 2 : appelle chaque écouteur avec la valeur\n  }\n}\n\nclass RatingComponent {\n  readonly rated = new EventEmitter<number>();\n  private value = 0;\n\n  click(stars: number): void {\n    // TODO 3 : ignore une note hors de 1..5 ou identique à la note actuelle ;\n    //          sinon mémorise-la puis émets-la\n  }\n\n  render(): string {\n    return `Composant: ${this.value} étoiles`;\n  }\n}\n\nconst rating = new RatingComponent();\nrating.rated.subscribe((stars) => console.log(`Parent: note reçue ${stars}`));\nrating.click(4);\nrating.click(4);\nrating.click(9);\nrating.click(5);\nconsole.log(rating.render());\n",
+      "expectedOutput": "Parent: note reçue 4\nParent: note reçue 5\nComposant: 5 étoiles"
     }
   ],
   "quiz": [

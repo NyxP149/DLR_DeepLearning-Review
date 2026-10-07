@@ -46,10 +46,10 @@
   "exercises": [
     {
       "code": "TYPESCRIPT-10-E1",
-      "title": "Valider types conditionnels et littéraux de gabarit",
-      "statement": "Conserve l'invariant et produis exactement : TYPESCRIPT-10: preuve validée",
-      "starterCode": "// TODO 1 : définis un type Evidence en lecture seule (Readonly) avec concept: string et validated: boolean\n// TODO 2 : crée une preuve pour le concept 'TYPESCRIPT-CONDITIONAL-TYPES', marquée comme validée\n// TODO 3 : lance une Error('preuve invalide') si elle n'est pas validée\n// TODO 4 : affiche 'TYPESCRIPT-10: preuve validée' avec console.log\n",
-      "expectedOutput": "TYPESCRIPT-10: preuve validée"
+      "title": "Construire un type littéral de gabarit et un type conditionnel",
+      "statement": "Écris deux types calculés par le compilateur : EventName<T> qui produit le littéral `${T}:created` (le type retourné par eventName('user') est alors exactement 'user:created') et ElementOf<T> qui extrait le type des éléments d'un tableau avec infer (et laisse les autres types inchangés), puis les fonctions qui les utilisent.",
+      "starterCode": "export {};\n\n// TODO 1 : remplace string par le type littéral de gabarit `${T}:created`\ntype EventName<T extends string> = string;\n\n// TODO 2 : type conditionnel : si T est un tableau (T extends readonly (infer U)[]) alors U, sinon T\ntype ElementOf<T> = T;\n\nfunction eventName<T extends string>(entity: T): EventName<T> {\n  // TODO 3 : retourne `${entity}:created`\n  return entity as EventName<T>;\n}\n\nfunction first<T>(value: T): ElementOf<T> {\n  // TODO 4 : retourne le premier élément si value est un tableau, sinon value lui-même\n  return value as ElementOf<T>;\n}\n\nconst created: string = eventName('user');\nconsole.log(created);\nconsole.log(eventName('order'));\nconsole.log(`first([1, 2]) = ${first([1, 2])}`);\nconsole.log(`first(\"x\") = ${first('x')}`);\n",
+      "expectedOutput": "user:created\norder:created\nfirst([1, 2]) = 1\nfirst(\"x\") = x"
     }
   ],
   "quiz": [

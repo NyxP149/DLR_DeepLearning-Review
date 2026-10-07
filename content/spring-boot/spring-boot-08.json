@@ -46,10 +46,10 @@
   "exercises": [
     {
       "code": "SPRING_BOOT-08-E1",
-      "title": "Valider tests unitaires, slices et intégration",
-      "statement": "Conserve l'invariant et produis exactement : SPRING_BOOT-08: preuve validée",
-      "starterCode": "// TODO 1 : définis un record Evidence(String concept, boolean validated)\n\npublic class Main {\n    public static void main(String[] args) {\n        // TODO 2 : crée une preuve pour le concept \"SPRING-TESTS\", marquée comme validée\n        // TODO 3 : lance une IllegalStateException(\"preuve invalide\") si elle n'est pas validée\n        // TODO 4 : affiche \"SPRING_BOOT-08: preuve validée\"\n    }\n}\n",
-      "expectedOutput": "SPRING_BOOT-08: preuve validée"
+      "title": "Tester un service avec des doublures",
+      "statement": "Teste PriceService sans Spring ni réseau : écris un faux client de taxe qui répond 20 %, un client qui échoue pour vérifier le repli à 0 %, et un mini exécuteur check qui affiche PASS ou FAIL puis un résumé « Résultat: x/y réussis ».",
+      "starterCode": "interface TaxClient {\n    int ratePercent();\n}\n\nclass PriceService {\n    private final TaxClient client;\n\n    PriceService(TaxClient client) {\n        this.client = client;\n    }\n\n    int withTax(int net) {\n        int rate;\n        try {\n            rate = client.ratePercent();\n        } catch (IllegalStateException error) {\n            rate = 0;\n        }\n        return net + net * rate / 100;\n    }\n}\n\npublic class Main {\n    static int passed = 0;\n    static int total = 0;\n\n    static void check(String name, int expected, int actual) {\n        // TODO 1 : incrémente total ; si expected == actual incrémente passed\n        // TODO 2 : affiche \"PASS <nom>\" ou \"FAIL <nom> (attendu <expected>, obtenu <actual>)\"\n    }\n\n    public static void main(String[] args) {\n        // TODO 3 : crée un faux TaxClient (lambda) qui retourne 20\n        TaxClient fake = null;\n        // TODO 4 : crée un TaxClient (lambda) qui lance new IllegalStateException(\"service taxe indisponible\")\n        TaxClient broken = null;\n\n        // TODO 5 : appelle check(\"prix avec taxe 20%\", 120, ...) puis check(\"repli sans taxe\", 100, ...)\n        //          avec new PriceService(<client>).withTax(100)\n\n        // TODO 6 : affiche \"Résultat: <passed>/<total> réussis\"\n    }\n}\n",
+      "expectedOutput": "PASS prix avec taxe 20%\nPASS repli sans taxe\nRésultat: 2/2 réussis"
     }
   ],
   "quiz": [

@@ -46,10 +46,10 @@
   "exercises": [
     {
       "code": "SPRING_BOOT-10-E1",
-      "title": "Valider profils, métriques, logs et observabilité",
-      "statement": "Conserve l'invariant et produis exactement : SPRING_BOOT-10: preuve validée",
-      "starterCode": "// TODO 1 : définis un record Evidence(String concept, boolean validated)\n\npublic class Main {\n    public static void main(String[] args) {\n        // TODO 2 : crée une preuve pour le concept \"SPRING-OBSERVABILITY\", marquée comme validée\n        // TODO 3 : lance une IllegalStateException(\"preuve invalide\") si elle n'est pas validée\n        // TODO 4 : affiche \"SPRING_BOOT-10: preuve validée\"\n    }\n}\n",
-      "expectedOutput": "SPRING_BOOT-10: preuve validée"
+      "title": "Choisir un profil et compter les requêtes",
+      "statement": "Simule les profils Spring et Micrometer : le profil prod surcharge le niveau de log par défaut (INFO) avec WARN, le profil dev avec DEBUG, et un compteur requests_total étiqueté par statut HTTP est affiché trié par statut.",
+      "starterCode": "import java.util.List;\nimport java.util.Map;\nimport java.util.TreeMap;\n\npublic class Main {\n    static final Map<String, String> DEFAULTS = Map.of(\"log.level\", \"INFO\");\n    static final Map<String, Map<String, String>> PROFILES = Map.of(\n        \"dev\", Map.of(\"log.level\", \"DEBUG\"),\n        \"prod\", Map.of(\"log.level\", \"WARN\"));\n\n    static String logLevel(String profile) {\n        // TODO 1 : retourne la valeur du profil si elle existe, sinon la valeur par défaut\n        return \"\";\n    }\n\n    public static void main(String[] args) {\n        for (String profile : List.of(\"dev\", \"prod\", \"test\")) {\n            // TODO 2 : affiche \"<profil>: niveau de log=<niveau>\"\n        }\n\n        var counters = new TreeMap<Integer, Integer>();\n        for (int status : List.of(200, 500, 200, 404, 200)) {\n            // TODO 3 : incrémente le compteur du statut\n        }\n        for (var entry : counters.entrySet()) {\n            // TODO 4 : affiche requests_total{status=\"<statut>\"} <valeur>\n        }\n    }\n}\n",
+      "expectedOutput": "dev: niveau de log=DEBUG\nprod: niveau de log=WARN\ntest: niveau de log=INFO\nrequests_total{status=\"200\"} 3\nrequests_total{status=\"404\"} 1\nrequests_total{status=\"500\"} 1"
     }
   ],
   "quiz": [

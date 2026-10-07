@@ -46,10 +46,10 @@
   "exercises": [
     {
       "code": "ANGULAR-10-E1",
-      "title": "Valider défi final : optimiser une application complexe",
-      "statement": "Conserve l'invariant et produis exactement : ANGULAR-10: preuve validée",
-      "starterCode": "// TODO 1 : définis un type Evidence en lecture seule (Readonly) avec concept: string et validated: boolean\n// TODO 2 : crée une preuve pour le concept 'ANGULAR-CHALLENGE', marquée comme validée\n// TODO 3 : lance une Error('preuve invalide') si elle n'est pas validée\n// TODO 4 : affiche 'ANGULAR-10: preuve validée' avec console.log\n",
-      "expectedOutput": "ANGULAR-10: preuve validée"
+      "title": "Mesurer le gain d'un trackBy sur une liste",
+      "statement": "Quand une liste change, Angular peut détruire et recréer tous les nœuds ou, avec trackBy, réutiliser ceux dont l'identité est inchangée. Calcule les deux stratégies sur le même changement de données et affiche le nombre d'opérations DOM évitées.",
+      "starterCode": "export {};\n\ninterface Row {\n  id: number;\n  label: string;\n}\n\nconst before: Row[] = [\n  { id: 1, label: 'A' },\n  { id: 2, label: 'B' },\n  { id: 3, label: 'C' },\n];\nconst after: Row[] = [\n  { id: 2, label: 'B' },\n  { id: 3, label: 'C2' },\n  { id: 4, label: 'D' },\n];\n\ninterface Diff {\n  created: number;\n  removed: number;\n  updated: number;\n  kept: number;\n}\n\nfunction diffWithoutTrackBy(oldRows: Row[], newRows: Row[]): Diff {\n  // TODO 1 : sans trackBy, tous les anciens nœuds sont détruits et tous les nouveaux sont créés\n  return { created: 0, removed: 0, updated: 0, kept: 0 };\n}\n\nfunction diffWithTrackBy(oldRows: Row[], newRows: Row[]): Diff {\n  // TODO 2 : l'identité est l'id : created = ids nouveaux, removed = ids disparus,\n  //          updated = id conservé dont le label a changé, kept = id conservé et identique\n  return { created: 0, removed: 0, updated: 0, kept: 0 };\n}\n\nfunction operations(diff: Diff): number {\n  // TODO 3 : nombre d'opérations DOM : created + removed + updated\n  return 0;\n}\n\nconst naive = diffWithoutTrackBy(before, after);\nconst tracked = diffWithTrackBy(before, after);\nconsole.log(`Sans trackBy: supprimés=${naive.removed} créés=${naive.created} mis à jour=${naive.updated} conservés=${naive.kept}`);\nconsole.log(`Avec trackBy: supprimés=${tracked.removed} créés=${tracked.created} mis à jour=${tracked.updated} conservés=${tracked.kept}`);\nconsole.log(`Opérations DOM évitées: ${operations(naive) - operations(tracked)}`);\n",
+      "expectedOutput": "Sans trackBy: supprimés=3 créés=3 mis à jour=0 conservés=0\nAvec trackBy: supprimés=1 créés=1 mis à jour=1 conservés=1\nOpérations DOM évitées: 3"
     }
   ],
   "quiz": [

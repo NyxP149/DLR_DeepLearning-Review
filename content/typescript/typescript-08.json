@@ -46,10 +46,10 @@
   "exercises": [
     {
       "code": "TYPESCRIPT-08-E1",
-      "title": "Valider génériques, contraintes et réutilisabilité",
-      "statement": "Conserve l'invariant et produis exactement : TYPESCRIPT-08: preuve validée",
-      "starterCode": "// TODO 1 : définis un type Evidence en lecture seule (Readonly) avec concept: string et validated: boolean\n// TODO 2 : crée une preuve pour le concept 'TYPESCRIPT-GENERICS', marquée comme validée\n// TODO 3 : lance une Error('preuve invalide') si elle n'est pas validée\n// TODO 4 : affiche 'TYPESCRIPT-08: preuve validée' avec console.log\n",
-      "expectedOutput": "TYPESCRIPT-08: preuve validée"
+      "title": "Écrire une pile, longest et groupBy génériques",
+      "statement": "Écris trois utilitaires réutilisables sans perdre le typage : une pile générique Stack<T>, une fonction longest dont les paramètres sont contraints par { length: number } (chaînes ou tableaux), et groupBy qui regroupe des éléments d'un type quelconque selon une clé calculée.",
+      "starterCode": "export {};\n\nclass Stack<T> {\n  private items: T[] = [];\n\n  push(item: T): void {\n    // TODO 1 : empile l'élément\n  }\n\n  pop(): T | undefined {\n    // TODO 2 : dépile et retourne le dernier élément (undefined si la pile est vide)\n    return undefined;\n  }\n\n  get size(): number {\n    // TODO 3 : nombre d'éléments\n    return 0;\n  }\n}\n\nfunction longest<T extends { length: number }>(a: T, b: T): T {\n  // TODO 4 : retourne le plus long des deux (le premier en cas d'égalité)\n  return a;\n}\n\nfunction groupBy<T>(items: T[], key: (item: T) => string): Record<string, T[]> {\n  // TODO 5 : regroupe les éléments par clé, dans l'ordre d'apparition\n  return {};\n}\n\nconst stack = new Stack<number>();\nstack.push(1);\nstack.push(2);\nstack.push(3);\nconsole.log(`pop: ${stack.pop()}, taille restante: ${stack.size}`);\nconsole.log(`plus long: ${longest('abc', 'abcd')}`);\nconsole.log(`groupes: ${JSON.stringify(groupBy([1, 2, 3, 4], (n) => (n % 2 === 0 ? 'pair' : 'impair')))}`);\n",
+      "expectedOutput": "pop: 3, taille restante: 2\nplus long: abcd\ngroupes: {\"impair\":[1,3],\"pair\":[2,4]}"
     }
   ],
   "quiz": [

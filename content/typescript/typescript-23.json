@@ -46,10 +46,10 @@
   "exercises": [
     {
       "code": "TYPESCRIPT-23-E1",
-      "title": "Valider projet professionnel : sdk métier typé",
-      "statement": "Conserve l'invariant et produis exactement : TYPESCRIPT-23: preuve validée",
-      "starterCode": "// TODO 1 : définis un type Evidence en lecture seule (Readonly) avec concept: string et validated: boolean\n// TODO 2 : crée une preuve pour le concept 'TYPESCRIPT-PROJECT', marquée comme validée\n// TODO 3 : lance une Error('preuve invalide') si elle n'est pas validée\n// TODO 4 : affiche 'TYPESCRIPT-23: preuve validée' avec console.log\n",
-      "expectedOutput": "TYPESCRIPT-23: preuve validée"
+      "title": "Construire un client d'API dont les réponses sont typées",
+      "statement": "Écris le cœur d'un SDK : une table Routes associe chaque chemin à son type de réponse, fill remplace les paramètres :id par leurs valeurs, et Client.get renvoie une Promise du bon type pour le chemin demandé (statut 200) ou lève « route <url> introuvable ». Le typage empêche de lire un champ qui n'existe pas dans la réponse.",
+      "starterCode": "export {};\n\ninterface User {\n  id: number;\n  name: string;\n}\ninterface Order {\n  id: number;\n  total: number;\n}\ninterface Routes {\n  '/users/:id': User;\n  '/orders/:id': Order;\n}\n\ntype Transport = (url: string) => Promise<{ status: number; body: string }>;\n\nfunction fill(path: string, params: Record<string, number | string>): string {\n  // TODO 1 : remplace chaque \":<clé>\" du chemin par la valeur correspondante\n  return path;\n}\n\nclass Client {\n  private transport: Transport;\n\n  constructor(transport: Transport) {\n    this.transport = transport;\n  }\n\n  async get<P extends keyof Routes>(path: P, params: Record<string, number | string>): Promise<Routes[P]> {\n    // TODO 2 : construis l'URL avec fill, appelle le transport ; si le statut est 200 retourne le corps\n    //          décodé (JSON.parse), sinon lance new Error(`route ${url} introuvable`)\n    return {} as Routes[P];\n  }\n}\n\nconst bodies: Record<string, string> = {\n  '/users/1': '{\"id\":1,\"name\":\"Ada\"}',\n  '/orders/7': '{\"id\":7,\"total\":120}',\n};\nconst transport: Transport = async (url) =>\n  url in bodies ? { status: 200, body: bodies[url] } : { status: 404, body: '' };\n\nasync function main(): Promise<void> {\n  const client = new Client(transport);\n  const user = await client.get('/users/:id', { id: 1 });\n  console.log(`GET /users/1 -> ${user.name}`);\n  const order = await client.get('/orders/:id', { id: 7 });\n  console.log(`GET /orders/7 -> total ${order.total}`);\n  try {\n    await client.get('/users/:id', { id: 404 });\n  } catch (error) {\n    console.log(`Erreur: ${(error as Error).message}`);\n  }\n}\n\nmain();\n",
+      "expectedOutput": "GET /users/1 -> Ada\nGET /orders/7 -> total 120\nErreur: route /users/404 introuvable"
     }
   ],
   "quiz": [

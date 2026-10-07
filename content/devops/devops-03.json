@@ -46,10 +46,10 @@
   "exercises": [
     {
       "code": "DEVOPS-03-E1",
-      "title": "Valider sécurité, secrets et moindre privilège",
-      "statement": "Conserve l'invariant et produis exactement : DEVOPS-03: preuve validée",
-      "starterCode": "from dataclasses import dataclass\n\n# TODO 1 : définis une dataclass immuable DeliveryCheck (frozen=True)\n#          avec les champs control: str et passed: bool\n\n# TODO 2 : crée un contrôle pour \"DEVOPS-SECURITY\", marqué comme réussi\n# TODO 3 : vérifie avec assert que le contrôle est réussi\n# TODO 4 : affiche \"DEVOPS-03: preuve validée\"\n",
-      "expectedOutput": "DEVOPS-03: preuve validée"
+      "title": "Détecter les secrets en clair et les privilèges excessifs",
+      "statement": "Écris un contrôle de sécurité pour un conteneur : toute variable dont le nom contient PASSWORD, TOKEN, SECRET ou KEY doit être une référence ${...} et non une valeur en clair, le mode privileged est interdit, et l'utilisateur root aussi. Le programme liste les risques et leur nombre.",
+      "starterCode": "ENV = [\"DB_HOST=db\", \"DB_PASSWORD=admin123\", \"API_TOKEN=${API_TOKEN}\", \"LOG_LEVEL=info\"]\nCONTAINER = {\"privileged\": True, \"user\": \"root\"}\nSENSITIVE = (\"PASSWORD\", \"TOKEN\", \"SECRET\", \"KEY\")\n\n\ndef scan_env(lines: list[str]) -> list[str]:\n    findings: list[str] = []\n    # TODO 1 : pour chaque ligne \"CLE=valeur\", si la clé contient un mot sensible et que la valeur\n    #          ne commence pas par \"${\", ajoute \"<CLE>: secret en clair -> utilise un secret Docker\"\n    return findings\n\n\ndef scan_container(config: dict) -> list[str]:\n    findings: list[str] = []\n    # TODO 2 : si privileged est vrai, ajoute \"privileged: true -> retire le mode privilégié\"\n    # TODO 3 : si user vaut \"root\", ajoute \"user: root -> utilise un utilisateur non-root\"\n    return findings\n\n\nfindings = scan_env(ENV) + scan_container(CONTAINER)\nfor finding in findings:\n    print(finding)\nprint(f\"Risques: {len(findings)}\")\n",
+      "expectedOutput": "DB_PASSWORD: secret en clair -> utilise un secret Docker\nprivileged: true -> retire le mode privilégié\nuser: root -> utilise un utilisateur non-root\nRisques: 3"
     }
   ],
   "quiz": [

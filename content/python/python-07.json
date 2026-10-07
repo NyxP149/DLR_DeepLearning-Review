@@ -46,10 +46,10 @@
   "exercises": [
     {
       "code": "PYTHON-07-E1",
-      "title": "Valider modules, imports et organisation en paquets",
-      "statement": "Conserve l'invariant et produis exactement : PYTHON-07: preuve validée",
-      "starterCode": "from dataclasses import dataclass\n\n# TODO 1 : définis une dataclass immuable Evidence (frozen=True, slots=True)\n#          avec les champs concept: str et validated: bool\n\n# TODO 2 : crée une preuve pour le concept \"PYTHON-MODULES\", marquée comme validée\n# TODO 3 : vérifie avec assert que la preuve est validée\n# TODO 4 : affiche \"PYTHON-07: preuve validée\"\n",
-      "expectedOutput": "PYTHON-07: preuve validée"
+      "title": "Construire et importer un petit paquet",
+      "statement": "Crée un vrai paquet Python sur le disque : le module shop/text.py expose slugify, et shop/__init__.py le ré-exporte avec __all__. Importe ensuite le paquet avec importlib et vérifie son nom, ses exports et le module d'origine de la fonction.",
+      "starterCode": "import importlib\nfrom pathlib import Path\n\npackage = Path(\"shop\")\npackage.mkdir(exist_ok=True)\n\n# TODO 1 : écris shop/text.py avec une fonction slugify(value) qui retire les espaces aux extrémités,\n#          met en minuscules et remplace les espaces par des tirets\n# TODO 2 : écris shop/__init__.py : importe slugify depuis .text (import relatif)\n#          et déclare __all__ = [\"slugify\"]\n(package / \"__init__.py\").write_text(\"\", encoding=\"utf-8\")\n\nimportlib.invalidate_caches()\nshop = importlib.import_module(\"shop\")\nslugify = getattr(shop, \"slugify\", None)\n\nprint(f\"Nom du paquet: {shop.__name__}\")\nprint(f\"Exports: {getattr(shop, '__all__', None)}\")\nprint(f\"slugify: {slugify('Hello DLR Python') if slugify else 'absent'}\")\nprint(f\"Module d'origine: {slugify.__module__ if slugify else 'absent'}\")\n",
+      "expectedOutput": "Nom du paquet: shop\nExports: ['slugify']\nslugify: hello-dlr-python\nModule d'origine: shop.text"
     }
   ],
   "quiz": [

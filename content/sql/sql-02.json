@@ -46,10 +46,10 @@
   "exercises": [
     {
       "code": "SQL-02-E1",
-      "title": "Valider select, filtres, tri et pagination",
-      "statement": "Conserve l'invariant et produis exactement : SQL-02: preuve validée",
-      "starterCode": "import sqlite3\n\nconnection = sqlite3.connect(\":memory:\")\n# TODO 1 : crée une table evidence(id, concept, validated) ;\n#          validated vaut 0 ou 1 (contrainte check)\n# TODO 2 : insère deux lignes : ('SQL-SELECT', 1) et ('contrôle', 0)\n# TODO 3 : compte avec une requête SQL les lignes validées\n# TODO 4 : vérifie avec assert qu'il y en a exactement une, puis affiche \"SQL-02: preuve validée\"\nconnection.close()\n",
-      "expectedOutput": "SQL-02: preuve validée"
+      "title": "Filtrer, trier et paginer un catalogue",
+      "statement": "Écris la requête d'une page de catalogue : uniquement les produits de la catégorie « peripherique » à 20 € ou plus, du plus cher au moins cher (puis par nom), avec LIMIT et OFFSET paramétrés. Trois pages de deux produits sont demandées, la dernière doit être vide.",
+      "starterCode": "import sqlite3\n\nconnection = sqlite3.connect(\":memory:\")\nconnection.execute(\"CREATE TABLE product (name TEXT, category TEXT, price INTEGER)\")\nconnection.executemany(\n    \"INSERT INTO product VALUES (?, ?, ?)\",\n    [\n        (\"Souris\", \"peripherique\", 20),\n        (\"Clavier\", \"peripherique\", 50),\n        (\"Câble\", \"peripherique\", 10),\n        (\"Écran\", \"peripherique\", 200),\n        (\"Webcam\", \"peripherique\", 80),\n        (\"Chaise\", \"mobilier\", 120),\n    ],\n)\n\nPAGE_SIZE = 2\n\n\ndef page(number: int) -> list[str]:\n    # TODO : complète la requête : filtre la catégorie « peripherique » et le prix >= 20,\n    #        trie par prix décroissant puis par nom, et garde LIMIT ? OFFSET ?\n    sql = \"SELECT name FROM product LIMIT ? OFFSET ?\"\n    rows = connection.execute(sql, (PAGE_SIZE, (number - 1) * PAGE_SIZE)).fetchall()\n    return [row[0] for row in rows]\n\n\nfor number in (1, 2, 3):\n    names = page(number)\n    print(f\"Page {number}: {', '.join(names) if names else '(vide)'}\")\n",
+      "expectedOutput": "Page 1: Écran, Webcam\nPage 2: Clavier, Souris\nPage 3: (vide)"
     }
   ],
   "quiz": [

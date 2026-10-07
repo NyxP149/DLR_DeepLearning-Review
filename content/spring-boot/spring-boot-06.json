@@ -46,10 +46,10 @@
   "exercises": [
     {
       "code": "SPRING_BOOT-06-E1",
-      "title": "Valider jpa, entités, repositories et pagination",
-      "statement": "Conserve l'invariant et produis exactement : SPRING_BOOT-06: preuve validée",
-      "starterCode": "// TODO 1 : définis un record Evidence(String concept, boolean validated)\n\npublic class Main {\n    public static void main(String[] args) {\n        // TODO 2 : crée une preuve pour le concept \"SPRING-JPA\", marquée comme validée\n        // TODO 3 : lance une IllegalStateException(\"preuve invalide\") si elle n'est pas validée\n        // TODO 4 : affiche \"SPRING_BOOT-06: preuve validée\"\n    }\n}\n",
-      "expectedOutput": "SPRING_BOOT-06: preuve validée"
+      "title": "Paginer et trier comme un repository Spring Data",
+      "statement": "Reproduis findAll(Pageable) : trie les produits par prix croissant, découpe en pages de 2 éléments et retourne un Page avec son contenu, son numéro, le nombre total de pages et le nombre total d'éléments. Une page au-delà de la dernière doit renvoyer un contenu vide.",
+      "starterCode": "import java.util.ArrayList;\nimport java.util.Comparator;\nimport java.util.List;\n\nrecord Product(long id, String name, int price) {}\n\nrecord Page<T>(List<T> content, int number, int totalPages, int totalElements) {}\n\npublic class Main {\n    static Page<Product> findAll(List<Product> all, int page, int size) {\n        // TODO 1 : copie la liste et trie-la par prix croissant\n        // TODO 2 : calcule totalPages = nombre de pages nécessaires (arrondi au supérieur)\n        // TODO 3 : extrais les éléments de la page demandée (numérotée à partir de 0) ;\n        //          une page hors limites donne une liste vide\n        return new Page<>(new ArrayList<>(), page, 0, all.size());\n    }\n\n    public static void main(String[] args) {\n        var products = List.of(\n            new Product(1, \"Souris\", 20), new Product(2, \"Clavier\", 50), new Product(3, \"Câble\", 10),\n            new Product(4, \"Écran\", 200), new Product(5, \"Webcam\", 80));\n        for (int number = 0; number < 4; number++) {\n            var page = findAll(products, number, 2);\n            // TODO 4 : affiche \"Page <n+1>/<totalPages>: <noms séparés par \", \">\" ou \"(vide)\" si le contenu est vide\n        }\n    }\n}\n",
+      "expectedOutput": "Page 1/3: Câble, Souris\nPage 2/3: Clavier, Webcam\nPage 3/3: Écran\nPage 4/3: (vide)"
     }
   ],
   "quiz": [

@@ -46,10 +46,10 @@
   "exercises": [
     {
       "code": "TYPESCRIPT-14-E1",
-      "title": "Valider fetch, validation runtime et contrats externes",
-      "statement": "Conserve l'invariant et produis exactement : TYPESCRIPT-14: preuve validée",
-      "starterCode": "// TODO 1 : définis un type Evidence en lecture seule (Readonly) avec concept: string et validated: boolean\n// TODO 2 : crée une preuve pour le concept 'TYPESCRIPT-HTTP', marquée comme validée\n// TODO 3 : lance une Error('preuve invalide') si elle n'est pas validée\n// TODO 4 : affiche 'TYPESCRIPT-14: preuve validée' avec console.log\n",
-      "expectedOutput": "TYPESCRIPT-14: preuve validée"
+      "title": "Valider une réponse JSON à l'exécution avec un type guard",
+      "statement": "Un type TypeScript disparaît à l'exécution : une réponse JSON externe doit être vérifiée. Écris le type guard isUser (value is User) puis parseUser qui lève « JSON invalide » si le texte n'est pas du JSON et « contrat violé » si la forme est mauvaise, et affiche le verdict pour quatre réponses.",
+      "starterCode": "export {};\n\ninterface User {\n  id: number;\n  name: string;\n}\n\nfunction isUser(value: unknown): value is User {\n  // TODO 1 : vrai si value est un objet non nul dont id est un nombre et name une chaîne\n  return false;\n}\n\nfunction parseUser(json: string): User {\n  // TODO 2 : JSON.parse dans un try/catch -> new Error('JSON invalide') ;\n  //          puis, si !isUser(data) -> new Error('contrat violé') ; sinon retourne l'utilisateur\n  return { id: 0, name: '' };\n}\n\nfor (const input of ['{\"id\":1,\"name\":\"Ada\"}', '{\"id\":\"1\",\"name\":\"Ada\"}', 'not json', '{\"id\":2}']) {\n  try {\n    console.log(`${input} -> User ${parseUser(input).name}`);\n  } catch (error) {\n    console.log(`${input} -> rejeté: ${(error as Error).message}`);\n  }\n}\n",
+      "expectedOutput": "{\"id\":1,\"name\":\"Ada\"} -> User Ada\n{\"id\":\"1\",\"name\":\"Ada\"} -> rejeté: contrat violé\nnot json -> rejeté: JSON invalide\n{\"id\":2} -> rejeté: contrat violé"
     }
   ],
   "quiz": [

@@ -46,10 +46,10 @@
   "exercises": [
     {
       "code": "TYPESCRIPT-24-E1",
-      "title": "Valider défi final typescript adaptatif",
-      "statement": "Conserve l'invariant et produis exactement : TYPESCRIPT-24: preuve validée",
-      "starterCode": "// TODO 1 : définis un type Evidence en lecture seule (Readonly) avec concept: string et validated: boolean\n// TODO 2 : crée une preuve pour le concept 'TYPESCRIPT-CHALLENGE', marquée comme validée\n// TODO 3 : lance une Error('preuve invalide') si elle n'est pas validée\n// TODO 4 : affiche 'TYPESCRIPT-24: preuve validée' avec console.log\n",
-      "expectedOutput": "TYPESCRIPT-24: preuve validée"
+      "title": "Écrire le réducteur exhaustif d'un panier",
+      "statement": "Écris le réducteur d'un panier d'achat : l'état est { items, total } et les actions forment une union discriminée (add, remove, clear). remove ne fait rien pour un article absent, aucune mutation n'est autorisée, et la branche par défaut appelle assertNever pour garantir à la compilation que toutes les actions sont traitées.",
+      "starterCode": "export {};\n\ninterface Cart {\n  items: string[];\n  total: number;\n}\n\ntype Action =\n  | { type: 'add'; item: string; price: number }\n  | { type: 'remove'; item: string; price: number }\n  | { type: 'clear' };\n\nfunction assertNever(value: never): never {\n  throw new Error(`action inconnue: ${JSON.stringify(value)}`);\n}\n\nfunction reduce(state: Cart, action: Action): Cart {\n  // TODO : switch exhaustif sur action.type, sans muter state :\n  //        add -> nouvel article ajouté et total + prix ;\n  //        remove -> si l'article est présent, un seul exemplaire retiré et total - prix, sinon état inchangé ;\n  //        clear -> panier vide ; default -> assertNever(action)\n  return state;\n}\n\nlet state: Cart = { items: [], total: 0 };\nconst actions: Action[] = [\n  { type: 'add', item: 'clavier', price: 50 },\n  { type: 'add', item: 'souris', price: 20 },\n  { type: 'remove', item: 'clavier', price: 50 },\n  { type: 'remove', item: 'écran', price: 200 },\n  { type: 'clear' },\n];\nfor (const action of actions) {\n  state = reduce(state, action);\n  console.log(`${action.type}: ${JSON.stringify(state)}`);\n}\n",
+      "expectedOutput": "add: {\"items\":[\"clavier\"],\"total\":50}\nadd: {\"items\":[\"clavier\",\"souris\"],\"total\":70}\nremove: {\"items\":[\"souris\"],\"total\":20}\nremove: {\"items\":[\"souris\"],\"total\":20}\nclear: {\"items\":[],\"total\":0}"
     }
   ],
   "quiz": [

@@ -46,10 +46,10 @@
   "exercises": [
     {
       "code": "DEVOPS-04-E1",
-      "title": "Valider pipeline ci, cache et parallélisation",
-      "statement": "Conserve l'invariant et produis exactement : DEVOPS-04: preuve validée",
-      "starterCode": "from dataclasses import dataclass\n\n# TODO 1 : définis une dataclass immuable DeliveryCheck (frozen=True)\n#          avec les champs control: str et passed: bool\n\n# TODO 2 : crée un contrôle pour \"DEVOPS-CI\", marqué comme réussi\n# TODO 3 : vérifie avec assert que le contrôle est réussi\n# TODO 4 : affiche \"DEVOPS-04: preuve validée\"\n",
-      "expectedOutput": "DEVOPS-04: preuve validée"
+      "title": "Trouver le chemin critique d'un pipeline CI",
+      "statement": "Un pipeline est un graphe de jobs avec des durées et des dépendances. Calcule sa durée séquentielle, sa durée en parallèle (le chemin critique) et le chemin lui-même, puis mesure le gain d'un cache de dépendances qui ramène l'installation de 3 à 1 minute.",
+      "starterCode": "JOBS = {\n    \"install\": (3, []),\n    \"lint\": (2, [\"install\"]),\n    \"test\": (6, [\"install\"]),\n    \"build\": (4, [\"install\"]),\n    \"package\": (3, [\"build\", \"test\"]),\n}\n\n\ndef critical_path(jobs: dict) -> tuple[int, list[str]]:\n    # TODO : pour chaque job, durée de fin = sa durée + la plus grande durée de fin de ses dépendances\n    #        (mémorise les résultats). Retourne la plus grande durée de fin et le chemin de jobs qui y mène,\n    #        de la racine au dernier job.\n    return 0, []\n\n\nsequential = sum(duration for duration, _ in JOBS.values())\nparallel, path = critical_path(JOBS)\nprint(f\"Séquentiel: {sequential} min\")\nprint(f\"Parallèle: {parallel} min\")\nprint(f\"Chemin critique: {' -> '.join(path)}\")\n\ncached = dict(JOBS)\ncached[\"install\"] = (1, [])\nprint(f\"Avec cache: {critical_path(cached)[0]} min\")\n",
+      "expectedOutput": "Séquentiel: 18 min\nParallèle: 12 min\nChemin critique: install -> test -> package\nAvec cache: 10 min"
     }
   ],
   "quiz": [

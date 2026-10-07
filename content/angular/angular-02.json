@@ -46,10 +46,10 @@
   "exercises": [
     {
       "code": "ANGULAR-02-E1",
-      "title": "Valider signals, computed et effets maîtrisés",
-      "statement": "Conserve l'invariant et produis exactement : ANGULAR-02: preuve validée",
-      "starterCode": "// TODO 1 : définis un type Evidence en lecture seule (Readonly) avec concept: string et validated: boolean\n// TODO 2 : crée une preuve pour le concept 'ANGULAR-SIGNALS', marquée comme validée\n// TODO 3 : lance une Error('preuve invalide') si elle n'est pas validée\n// TODO 4 : affiche 'ANGULAR-02: preuve validée' avec console.log\n",
-      "expectedOutput": "ANGULAR-02: preuve validée"
+      "title": "Écrire un computed mémorisé comme un signal Angular",
+      "statement": "Un computed ne doit recalculer sa valeur que lorsqu'une de ses sources a changé. Complète la fonction computed : elle mémorise la dernière valeur et la signature des versions des signaux sources, et compte ses recalculs. Écrire la même valeur dans un signal ne doit rien déclencher.",
+      "starterCode": "export {};\n\nclass WritableSignal<T> {\n  version = 0;\n  private value: T;\n\n  constructor(initial: T) {\n    this.value = initial;\n  }\n\n  get(): T {\n    return this.value;\n  }\n\n  set(next: T): void {\n    if (!Object.is(next, this.value)) {\n      this.value = next;\n      this.version++;\n    }\n  }\n}\n\ninterface Computed<T> {\n  get(): T;\n  runs(): number;\n}\n\nfunction computed<T>(compute: () => T, sources: WritableSignal<unknown>[]): Computed<T> {\n  // TODO 1 : garde en mémoire la dernière valeur, le nombre de calculs et la signature des versions des sources\n  //          (par exemple sources.map(s => s.version).join(','))\n  // TODO 2 : get() ne recalcule (et n'incrémente le compteur) que si rien n'a encore été calculé\n  //          ou si la signature a changé\n  return { get: () => compute(), runs: () => 0 };\n}\n\nconst price = new WritableSignal(10);\nconst quantity = new WritableSignal(3);\nconst total = computed(() => price.get() * quantity.get(), [price, quantity]);\n\nconsole.log(`Total: ${total.get()} (calculs: ${total.runs()})`);\nconsole.log(`Total: ${total.get()} (calculs: ${total.runs()})`);\nquantity.set(5);\nconsole.log(`Total: ${total.get()} (calculs: ${total.runs()})`);\nquantity.set(5);\nconsole.log(`Total: ${total.get()} (calculs: ${total.runs()})`);\n",
+      "expectedOutput": "Total: 30 (calculs: 1)\nTotal: 30 (calculs: 1)\nTotal: 50 (calculs: 2)\nTotal: 50 (calculs: 2)"
     }
   ],
   "quiz": [

@@ -46,10 +46,10 @@
   "exercises": [
     {
       "code": "SPRING_BOOT-05-E1",
-      "title": "Valider dto, validation et gestion uniforme des erreurs",
-      "statement": "Conserve l'invariant et produis exactement : SPRING_BOOT-05: preuve validée",
-      "starterCode": "// TODO 1 : définis un record Evidence(String concept, boolean validated)\n\npublic class Main {\n    public static void main(String[] args) {\n        // TODO 2 : crée une preuve pour le concept \"SPRING-VALIDATION\", marquée comme validée\n        // TODO 3 : lance une IllegalStateException(\"preuve invalide\") si elle n'est pas validée\n        // TODO 4 : affiche \"SPRING_BOOT-05: preuve validée\"\n    }\n}\n",
-      "expectedOutput": "SPRING_BOOT-05: preuve validée"
+      "title": "Valider un DTO et renvoyer une erreur uniforme",
+      "statement": "Valide un CreateUserRequest comme le ferait Bean Validation, puis fabrique le corps d'erreur uniforme que renvoie un @ControllerAdvice : {\"status\":400,\"errors\":[...]} avec une entrée « champ: message » par violation, dans l'ordre name, email, age.",
+      "starterCode": "import java.util.ArrayList;\nimport java.util.List;\n\nrecord CreateUserRequest(String name, String email, int age) {}\n\npublic class Main {\n    static List<String> validate(CreateUserRequest request) {\n        var errors = new ArrayList<String>();\n        // TODO 1 : si name est vide ou blanc, ajoute \"name: ne doit pas être vide\"\n        // TODO 2 : si email ne contient pas \"@\", ajoute \"email: format invalide\"\n        // TODO 3 : si age < 18, ajoute \"age: doit être >= 18\"\n        return errors;\n    }\n\n    static String errorBody(List<String> errors) {\n        // TODO 4 : retourne {\"status\":400,\"errors\":[\"<erreur 1>\",\"<erreur 2>\"]} (sans espace)\n        return \"\";\n    }\n\n    public static void main(String[] args) {\n        var invalid = new CreateUserRequest(\" \", \"ada-at-dlr.dev\", 15);\n        var valid = new CreateUserRequest(\"Ada\", \"ada@dlr.dev\", 30);\n        for (var request : List.of(invalid, valid)) {\n            var errors = validate(request);\n            // TODO 5 : s'il y a des erreurs affiche le corps d'erreur, sinon affiche \"201 <nom>\"\n        }\n    }\n}\n",
+      "expectedOutput": "{\"status\":400,\"errors\":[\"name: ne doit pas être vide\",\"email: format invalide\",\"age: doit être >= 18\"]}\n201 Ada"
     }
   ],
   "quiz": [

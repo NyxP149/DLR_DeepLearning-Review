@@ -1,4 +1,33 @@
-type Evidence = Readonly<{ concept: string; validated: boolean }>;
-const evidence: Evidence = { concept: 'TYPESCRIPT-NODE', validated: true };
-if (!evidence.validated) throw new Error('preuve invalide');
-console.log('TYPESCRIPT-15: preuve validée');
+export {};
+
+async function* chunks(): AsyncGenerator<string> {
+  for (const part of ['alp', 'ha\nbe', 'ta\ngam', 'ma']) {
+    yield part;
+  }
+}
+
+async function* lines(source: AsyncIterable<string>): AsyncGenerator<string> {
+  let buffer = '';
+  for await (const chunk of source) {
+    buffer += chunk;
+    const parts = buffer.split('\n');
+    buffer = parts.pop() ?? '';
+    for (const line of parts) {
+      yield line;
+    }
+  }
+  if (buffer !== '') {
+    yield buffer;
+  }
+}
+
+async function main(): Promise<void> {
+  let count = 0;
+  for await (const line of lines(chunks())) {
+    count++;
+    console.log(`Ligne: ${line}`);
+  }
+  console.log(`Lignes: ${count}`);
+}
+
+main();

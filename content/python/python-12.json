@@ -46,10 +46,10 @@
   "exercises": [
     {
       "code": "PYTHON-12-E1",
-      "title": "Valider asynchronisme avec async, await et asyncio",
-      "statement": "Conserve l'invariant et produis exactement : PYTHON-12: preuve validée",
-      "starterCode": "from dataclasses import dataclass\n\n# TODO 1 : définis une dataclass immuable Evidence (frozen=True, slots=True)\n#          avec les champs concept: str et validated: bool\n\n# TODO 2 : crée une preuve pour le concept \"PYTHON-ASYNC\", marquée comme validée\n# TODO 3 : vérifie avec assert que la preuve est validée\n# TODO 4 : affiche \"PYTHON-12: preuve validée\"\n",
-      "expectedOutput": "PYTHON-12: preuve validée"
+      "title": "Lancer des appels en concurrence avec asyncio",
+      "statement": "Écris la coroutine fetch(name, delay) qui attend delay secondes puis retourne son nom, lance trois appels de 0,1 s en concurrence avec asyncio.gather (le total doit rester sous 0,25 s au lieu de 0,3 s) et protège un appel lent par asyncio.wait_for avec un délai maximal.",
+      "starterCode": "import asyncio\nimport time\n\n\nasync def fetch(name: str, delay: float) -> str:\n    # TODO 1 : attends `delay` secondes avec asyncio.sleep puis retourne le nom\n    return \"\"\n\n\nasync def main() -> None:\n    start = time.perf_counter()\n    # TODO 2 : lance fetch(\"a\", 0.1), fetch(\"b\", 0.1) et fetch(\"c\", 0.1) en concurrence avec asyncio.gather\n    results: list[str] = []\n    elapsed = time.perf_counter() - start\n    print(f\"Résultats: {results}\")\n    print(f\"Concurrent: {elapsed < 0.25}\")\n    # TODO 3 : attends fetch(\"lent\", 0.5) avec asyncio.wait_for(..., timeout=0.05) ;\n    #          sur asyncio.TimeoutError affiche \"Timeout: délai dépassé\"\n\n\nasyncio.run(main())\n",
+      "expectedOutput": "Résultats: ['a', 'b', 'c']\nConcurrent: True\nTimeout: délai dépassé"
     }
   ],
   "quiz": [

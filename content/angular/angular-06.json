@@ -46,10 +46,10 @@
   "exercises": [
     {
       "code": "ANGULAR-06-E1",
-      "title": "Valider rxjs, annulation et états asynchrones",
-      "statement": "Conserve l'invariant et produis exactement : ANGULAR-06: preuve validée",
-      "starterCode": "// TODO 1 : définis un type Evidence en lecture seule (Readonly) avec concept: string et validated: boolean\n// TODO 2 : crée une preuve pour le concept 'ANGULAR-RXJS', marquée comme validée\n// TODO 3 : lance une Error('preuve invalide') si elle n'est pas validée\n// TODO 4 : affiche 'ANGULAR-06: preuve validée' avec console.log\n",
-      "expectedOutput": "ANGULAR-06: preuve validée"
+      "title": "Ignorer les réponses périmées d'une recherche",
+      "statement": "Une recherche à la frappe lance plusieurs requêtes dont les réponses peuvent arriver dans le désordre. Écris SearchBox.search avec la logique d'un switchMap : seule la requête la plus récente est affichée, les réponses périmées sont ignorées, et l'état passe de loading à done.",
+      "starterCode": "export {};\n\ninterface Deferred {\n  promise: Promise<string[]>;\n  resolve: (value: string[]) => void;\n}\n\nfunction deferred(): Deferred {\n  let resolve!: (value: string[]) => void;\n  const promise = new Promise<string[]>((done) => {\n    resolve = done;\n  });\n  return { promise, resolve };\n}\n\nclass SearchBox {\n  private latest = 0;\n  state: 'idle' | 'loading' | 'done' = 'idle';\n\n  async search(query: string, fetcher: (query: string) => Promise<string[]>): Promise<void> {\n    // TODO 1 : numérote la requête (incrémente this.latest) et passe l'état à 'loading'\n    // TODO 2 : attends le résultat du fetcher\n    // TODO 3 : si une requête plus récente a été lancée entre-temps, affiche \"ignoré: <query>\" et arrête-toi\n    // TODO 4 : sinon passe l'état à 'done' et affiche \"affiché: <query> -> <résultats séparés par \", \">\"\n  }\n}\n\nasync function main(): Promise<void> {\n  const box = new SearchBox();\n  const slow = deferred();\n  const fast = deferred();\n  const first = box.search('a', () => slow.promise);\n  const second = box.search('ab', () => fast.promise);\n  console.log(`État: ${box.state}`);\n  fast.resolve(['ab-1', 'ab-2']);\n  await second;\n  slow.resolve(['a-1']);\n  await first;\n  console.log(`État final: ${box.state}`);\n}\n\nmain();\n",
+      "expectedOutput": "État: loading\naffiché: ab -> ab-1, ab-2\nignoré: a\nÉtat final: done"
     }
   ],
   "quiz": [

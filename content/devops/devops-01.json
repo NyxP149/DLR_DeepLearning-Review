@@ -46,10 +46,10 @@
   "exercises": [
     {
       "code": "DEVOPS-01-E1",
-      "title": "Valider images docker, dockerfile et builds reproductibles",
-      "statement": "Conserve l'invariant et produis exactement : DEVOPS-01: preuve validée",
-      "starterCode": "from dataclasses import dataclass\n\n# TODO 1 : définis une dataclass immuable DeliveryCheck (frozen=True)\n#          avec les champs control: str et passed: bool\n\n# TODO 2 : crée un contrôle pour \"DEVOPS-IMAGES\", marqué comme réussi\n# TODO 3 : vérifie avec assert que le contrôle est réussi\n# TODO 4 : affiche \"DEVOPS-01: preuve validée\"\n",
-      "expectedOutput": "DEVOPS-01: preuve validée"
+      "title": "Auditer un Dockerfile pour un build reproductible",
+      "statement": "Écris un linter de Dockerfile qui détecte trois défauts : une image de base non épinglée (sans tag ou en :latest), l'absence d'un USER non-root, et un COPY . placé avant l'installation des dépendances qui invalide le cache à chaque changement de code.",
+      "starterCode": "BAD = \"\"\"FROM python:latest\nWORKDIR /app\nCOPY . .\nRUN pip install -r requirements.txt\nCMD [\"python\", \"main.py\"]\"\"\"\n\nGOOD = \"\"\"FROM python:3.13-slim\nWORKDIR /app\nCOPY requirements.txt .\nRUN pip install --no-cache-dir -r requirements.txt\nCOPY . .\nUSER app\nCMD [\"python\", \"main.py\"]\"\"\"\n\n\ndef lint(dockerfile: str) -> list[str]:\n    lines = [line.strip() for line in dockerfile.splitlines() if line.strip()]\n    problems: list[str] = []\n    # TODO 1 : si l'image de base du FROM n'a pas de tag ou finit par \":latest\",\n    #          ajoute \"image de base non épinglée (<image>)\"\n    # TODO 2 : s'il n'existe aucune instruction USER vers un utilisateur autre que root,\n    #          ajoute \"aucun USER non-root\"\n    # TODO 3 : si une ligne \"COPY . \" apparaît avant la ligne RUN qui installe les dépendances (pip install),\n    #          ajoute \"COPY . avant l'installation des dépendances (cache invalidé)\"\n    return problems\n\n\nfor label, dockerfile in ((\"mauvais\", BAD), (\"bon\", GOOD)):\n    problems = lint(dockerfile)\n    print(f\"Dockerfile {label}: {len(problems)} problème(s)\")\n    for problem in problems:\n        print(f\"- {problem}\")\n",
+      "expectedOutput": "Dockerfile mauvais: 3 problème(s)\n- image de base non épinglée (python:latest)\n- aucun USER non-root\n- COPY . avant l'installation des dépendances (cache invalidé)\nDockerfile bon: 0 problème(s)"
     }
   ],
   "quiz": [

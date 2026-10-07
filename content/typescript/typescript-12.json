@@ -46,10 +46,10 @@
   "exercises": [
     {
       "code": "TYPESCRIPT-12-E1",
-      "title": "Valider modules es, npm et frontières de paquet",
-      "statement": "Conserve l'invariant et produis exactement : TYPESCRIPT-12: preuve validée",
-      "starterCode": "// TODO 1 : définis un type Evidence en lecture seule (Readonly) avec concept: string et validated: boolean\n// TODO 2 : crée une preuve pour le concept 'TYPESCRIPT-MODULES', marquée comme validée\n// TODO 3 : lance une Error('preuve invalide') si elle n'est pas validée\n// TODO 4 : affiche 'TYPESCRIPT-12: preuve validée' avec console.log\n",
-      "expectedOutput": "TYPESCRIPT-12: preuve validée"
+      "title": "Protéger les frontières d'un paquet et détecter un cycle d'imports",
+      "statement": "Une frontière de paquet n'est respectée que si l'on importe sa racine publique (@dlr/core, pas @dlr/core/src/internal/...). Écris isPublicImport (chemins relatifs, paquet simple ou paquet avec scope sans sous-chemin) et findCycle qui cherche un cycle dans un graphe de dépendances entre modules.",
+      "starterCode": "export {};\n\nfunction isPublicImport(specifier: string): boolean {\n  // TODO 1 : un chemin relatif (commence par \".\") est autorisé ; un paquet npm \"zod\" a 1 segment,\n  //          un paquet à scope \"@dlr/core\" en a 2 ; tout sous-chemin supplémentaire est un import profond\n  return true;\n}\n\nfunction findCycle(graph: Record<string, string[]>): string[] | null {\n  // TODO 2 : parcours en profondeur ; si tu retombes sur un module en cours de visite, retourne le chemin\n  //          du cycle, par exemple [\"a\", \"b\", \"a\"] ; retourne null s'il n'y en a pas\n  return null;\n}\n\nfor (const specifier of ['@dlr/core', '@dlr/core/src/internal/cache', './local', 'zod']) {\n  console.log(`${specifier}: ${isPublicImport(specifier) ? 'autorisé' : 'interdit (import profond)'}`);\n}\n\nconst graphs: Array<Record<string, string[]>> = [\n  { app: ['lib', 'utils'], lib: ['utils'], utils: [] },\n  { a: ['b'], b: ['a'] },\n];\nfor (const graph of graphs) {\n  const cycle = findCycle(graph);\n  console.log(cycle ? `Cycle: ${cycle.join(' -> ')}` : 'Cycle: aucun');\n}\n",
+      "expectedOutput": "@dlr/core: autorisé\n@dlr/core/src/internal/cache: interdit (import profond)\n./local: autorisé\nzod: autorisé\nCycle: aucun\nCycle: a -> b -> a"
     }
   ],
   "quiz": [

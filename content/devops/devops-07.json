@@ -46,10 +46,10 @@
   "exercises": [
     {
       "code": "DEVOPS-07-E1",
-      "title": "Valider projet professionnel : chaîne de livraison",
-      "statement": "Conserve l'invariant et produis exactement : DEVOPS-07: preuve validée",
-      "starterCode": "from dataclasses import dataclass\n\n# TODO 1 : définis une dataclass immuable DeliveryCheck (frozen=True)\n#          avec les champs control: str et passed: bool\n\n# TODO 2 : crée un contrôle pour \"DEVOPS-PROJECT\", marqué comme réussi\n# TODO 3 : vérifie avec assert que le contrôle est réussi\n# TODO 4 : affiche \"DEVOPS-07: preuve validée\"\n",
-      "expectedOutput": "DEVOPS-07: preuve validée"
+      "title": "Orchestrer une chaîne de livraison avec arrêt au premier échec",
+      "statement": "Écris l'orchestrateur d'une chaîne build, test, scan, deploy : les étapes partagent un contexte (l'artefact construit est réutilisé par le déploiement), la première étape en échec arrête la chaîne et les suivantes sont marquées IGNORÉ. Le programme joue une chaîne qui échoue au scan, puis une chaîne saine.",
+      "starterCode": "class StageError(Exception):\n    pass\n\n\ndef build(ctx: dict) -> str:\n    ctx[\"artifact\"] = \"dlr-api:1.4.0\"\n    return f\"artefact {ctx['artifact']}\"\n\n\ndef test(ctx: dict) -> str:\n    return \"42 tests\"\n\n\ndef scan_failing(ctx: dict) -> str:\n    raise StageError(\"1 vulnérabilité critique\")\n\n\ndef scan_clean(ctx: dict) -> str:\n    return \"aucune vulnérabilité\"\n\n\ndef deploy(ctx: dict) -> str:\n    return f\"{ctx['artifact']} déployé\"\n\n\ndef run(stages: list) -> None:\n    ctx: dict = {}\n    executed = 0\n    failed = False\n    for name, stage in stages:\n        # TODO 1 : si la chaîne a déjà échoué, affiche \"[<nom>] IGNORÉ\" et passe à la suite\n        # TODO 2 : sinon exécute l'étape avec le contexte, compte-la, puis affiche \"[<nom>] OK: <message>\" ;\n        #          sur StageError affiche \"[<nom>] ÉCHEC: <message>\" et marque la chaîne comme échouée\n        pass\n    # TODO 3 : affiche \"Livraison: SUCCÈS (<n>/<total> étapes exécutées)\" ou \"Livraison: ÉCHEC (<n>/<total> étapes exécutées)\"\n\n\nrun([(\"build\", build), (\"test\", test), (\"scan\", scan_failing), (\"deploy\", deploy)])\nrun([(\"build\", build), (\"test\", test), (\"scan\", scan_clean), (\"deploy\", deploy)])\n",
+      "expectedOutput": "[build] OK: artefact dlr-api:1.4.0\n[test] OK: 42 tests\n[scan] ÉCHEC: 1 vulnérabilité critique\n[deploy] IGNORÉ\nLivraison: ÉCHEC (3/4 étapes exécutées)\n[build] OK: artefact dlr-api:1.4.0\n[test] OK: 42 tests\n[scan] OK: aucune vulnérabilité\n[deploy] OK: dlr-api:1.4.0 déployé\nLivraison: SUCCÈS (4/4 étapes exécutées)"
     }
   ],
   "quiz": [

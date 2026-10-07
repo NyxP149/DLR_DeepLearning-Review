@@ -46,10 +46,10 @@
   "exercises": [
     {
       "code": "SPRING_BOOT-11-E1",
-      "title": "Valider projet professionnel : api métier postgresql",
-      "statement": "Conserve l'invariant et produis exactement : SPRING_BOOT-11: preuve validée",
-      "starterCode": "// TODO 1 : définis un record Evidence(String concept, boolean validated)\n\npublic class Main {\n    public static void main(String[] args) {\n        // TODO 2 : crée une preuve pour le concept \"SPRING-PROJECT\", marquée comme validée\n        // TODO 3 : lance une IllegalStateException(\"preuve invalide\") si elle n'est pas validée\n        // TODO 4 : affiche \"SPRING_BOOT-11: preuve validée\"\n    }\n}\n",
-      "expectedOutput": "SPRING_BOOT-11: preuve validée"
+      "title": "Modéliser le cycle de vie d'une commande",
+      "statement": "Pour l'API métier, modélise l'état d'une commande avec un enum dont les transitions sont contrôlées (CREATED → PAID → SHIPPED, jamais en arrière) et calcule son total en centimes sans erreur d'arrondi.",
+      "starterCode": "import java.util.List;\nimport java.util.Locale;\n\nenum Status {\n    CREATED, PAID, SHIPPED;\n\n    boolean canMoveTo(Status next) {\n        // TODO 1 : n'autorise que le passage à l'état immédiatement suivant (ordinal() + 1)\n        return false;\n    }\n}\n\nclass OrderAggregate {\n    private Status status = Status.CREATED;\n    private final List<Integer> lineCents;\n\n    OrderAggregate(List<Integer> lineCents) {\n        this.lineCents = lineCents;\n    }\n\n    void moveTo(Status next) {\n        // TODO 2 : si la transition est interdite, lance IllegalStateException(\"transition refusée: <actuel> -> <next>\")\n        // TODO 3 : affiche \"Commande 1: <actuel> -> <next>\" puis change l'état\n    }\n\n    String total() {\n        // TODO 4 : additionne les lignes (en centimes) et retourne le total au format \"85.50\"\n        return \"\";\n    }\n}\n\npublic class Main {\n    public static void main(String[] args) {\n        var order = new OrderAggregate(List.of(2500, 2500, 3550));\n        order.moveTo(Status.PAID);\n        order.moveTo(Status.SHIPPED);\n        try {\n            order.moveTo(Status.PAID);\n        } catch (IllegalStateException error) {\n            System.out.println(error.getMessage());\n        }\n        System.out.println(\"Total: \" + order.total());\n    }\n}\n",
+      "expectedOutput": "Commande 1: CREATED -> PAID\nCommande 1: PAID -> SHIPPED\ntransition refusée: SHIPPED -> PAID\nTotal: 85.50"
     }
   ],
   "quiz": [

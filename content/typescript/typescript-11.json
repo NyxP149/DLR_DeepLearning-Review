@@ -46,10 +46,10 @@
   "exercises": [
     {
       "code": "TYPESCRIPT-11-E1",
-      "title": "Valider erreurs métier et modèle result",
-      "statement": "Conserve l'invariant et produis exactement : TYPESCRIPT-11: preuve validée",
-      "starterCode": "// TODO 1 : définis un type Evidence en lecture seule (Readonly) avec concept: string et validated: boolean\n// TODO 2 : crée une preuve pour le concept 'TYPESCRIPT-RESULT', marquée comme validée\n// TODO 3 : lance une Error('preuve invalide') si elle n'est pas validée\n// TODO 4 : affiche 'TYPESCRIPT-11: preuve validée' avec console.log\n",
-      "expectedOutput": "TYPESCRIPT-11: preuve validée"
+      "title": "Modéliser les erreurs métier avec un type Result",
+      "statement": "Plutôt que de lancer des exceptions pour des cas attendus, retourne un Result discriminé : { ok: true, value } ou { ok: false, error }. Écris parseQuantity (texte illisible, négatif ou non entier) et sumValid qui additionne uniquement les valeurs valides, puis affiche chaque résultat avec un switch sur ok.",
+      "starterCode": "export {};\n\ntype Result<T, E> = { ok: true; value: T } | { ok: false; error: E };\n\nfunction parseQuantity(input: string): Result<number, string> {\n  // TODO 1 : erreur \"quantité illisible\" si le texte n'est pas un nombre, \"quantité négative\" si < 0,\n  //          \"quantité non entière\" si ce n'est pas un entier ; sinon { ok: true, value }\n  return { ok: false, error: '' };\n}\n\nfunction sumValid(results: Result<number, string>[]): number {\n  // TODO 2 : additionne les valeurs des résultats ok\n  return 0;\n}\n\nconst inputs = ['5', '-2', 'abc'];\nconst results = inputs.map(parseQuantity);\ninputs.forEach((input, index) => {\n  const result = results[index];\n  // TODO 3 : affiche `\"<entrée>\" -> ok <valeur>` ou `\"<entrée>\" -> erreur: <message>`\n});\nconsole.log(`Total: ${sumValid(results)} (sur ${inputs.length} entrées)`);\n",
+      "expectedOutput": "\"5\" -> ok 5\n\"-2\" -> erreur: quantité négative\n\"abc\" -> erreur: quantité illisible\nTotal: 5 (sur 3 entrées)"
     }
   ],
   "quiz": [

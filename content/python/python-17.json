@@ -46,10 +46,10 @@
   "exercises": [
     {
       "code": "PYTHON-17-E1",
-      "title": "Valider algorithmique, complexité et structures adaptées",
-      "statement": "Conserve l'invariant et produis exactement : PYTHON-17: preuve validée",
-      "starterCode": "from dataclasses import dataclass\n\n# TODO 1 : définis une dataclass immuable Evidence (frozen=True, slots=True)\n#          avec les champs concept: str et validated: bool\n\n# TODO 2 : crée une preuve pour le concept \"PYTHON-ALGORITHMS\", marquée comme validée\n# TODO 3 : vérifie avec assert que la preuve est validée\n# TODO 4 : affiche \"PYTHON-17: preuve validée\"\n",
-      "expectedOutput": "PYTHON-17: preuve validée"
+      "title": "Comparer une recherche naïve et une recherche par hachage",
+      "statement": "Pour trouver deux nombres dont la somme vaut la cible, écris la version naïve (deux boucles imbriquées) et la version par dictionnaire (une seule passe), chacune en comptant ses opérations, afin de mesurer le gain de complexité sans dépendre du temps d'exécution.",
+      "starterCode": "NUMBERS = [8, 3, 11, 7, 2, 15, 4]\nTARGET = 9\n\n\ndef naive(numbers: list[int], target: int) -> tuple[tuple[int, int] | None, int]:\n    comparisons = 0\n    # TODO 1 : pour i puis pour j > i, compte une comparaison à chaque test numbers[i] + numbers[j] == target\n    #          et retourne ((i, j), comparaisons) dès que la paire est trouvée\n    return None, comparisons\n\n\ndef hashed(numbers: list[int], target: int) -> tuple[tuple[int, int] | None, int]:\n    lookups = 0\n    # TODO 2 : parcours la liste en mémorisant dans un dictionnaire valeur -> indice ;\n    #          à chaque élément, compte une consultation du dictionnaire pour le complément (target - valeur) ;\n    #          retourne ((indice du complément, indice courant), consultations) quand il existe\n    return None, lookups\n\n\npair_a, comparisons = naive(NUMBERS, TARGET)\npair_b, lookups = hashed(NUMBERS, TARGET)\nprint(f\"Naïf: indices {pair_a} après {comparisons} comparaisons\")\nprint(f\"Hachage: indices {pair_b} après {lookups} consultations\")\nprint(f\"Gain: {comparisons - lookups} opérations\")\n",
+      "expectedOutput": "Naïf: indices (3, 4) après 16 comparaisons\nHachage: indices (3, 4) après 5 consultations\nGain: 11 opérations"
     }
   ],
   "quiz": [

@@ -46,10 +46,10 @@
   "exercises": [
     {
       "code": "PYTHON-13-E1",
-      "title": "Valider clients http, contrats et validation de réponses",
-      "statement": "Conserve l'invariant et produis exactement : PYTHON-13: preuve validée",
-      "starterCode": "from dataclasses import dataclass\n\n# TODO 1 : définis une dataclass immuable Evidence (frozen=True, slots=True)\n#          avec les champs concept: str et validated: bool\n\n# TODO 2 : crée une preuve pour le concept \"PYTHON-HTTP\", marquée comme validée\n# TODO 3 : vérifie avec assert que la preuve est validée\n# TODO 4 : affiche \"PYTHON-13: preuve validée\"\n",
-      "expectedOutput": "PYTHON-13: preuve validée"
+      "title": "Valider la réponse d'un client HTTP contre son contrat",
+      "statement": "Un client ne doit jamais faire confiance au JSON reçu. Écris parse_user qui vérifie la présence et le type de chaque champ du contrat (id entier, name texte) et get_user qui transforme les statuts HTTP différents de 200 en HttpError, puis affiche le résultat de quatre réponses simulées.",
+      "starterCode": "from dataclasses import dataclass\n\n\n@dataclass(frozen=True)\nclass User:\n    id: int\n    name: str\n\n\nclass HttpError(Exception):\n    def __init__(self, status: int) -> None:\n        super().__init__(f\"erreur HTTP {status}\")\n        self.status = status\n\n\ndef parse_user(payload: dict) -> User | None:\n    # TODO 1 : pour \"id\" (int) puis \"name\" (str), lève\n    #          ValueError(\"contrat violé: champ '<champ>' manquant\") si le champ est absent, ou\n    #          ValueError(\"contrat violé: champ '<champ>' doit être <type>\") si son type est mauvais\n    # TODO 2 : retourne l'objet User\n    return None\n\n\ndef get_user(transport, user_id: int) -> User | None:\n    status, body = transport(f\"/users/{user_id}\")\n    # TODO 3 : si le statut n'est pas 200, lève HttpError(status) ; sinon retourne parse_user(body)\n    return None\n\n\nresponses = {\n    \"/users/1\": (200, {\"id\": 1, \"name\": \"Ada\"}),\n    \"/users/2\": (200, {\"id\": \"2\", \"name\": \"Linus\"}),\n    \"/users/3\": (200, {\"name\": \"Grace\"}),\n    \"/users/4\": (404, {}),\n}\n\nfor user_id in (1, 2, 3, 4):\n    try:\n        print(f\"{user_id} -> {get_user(responses.__getitem__, user_id)}\")\n    except (ValueError, HttpError) as error:\n        print(f\"{user_id} -> {error}\")\n",
+      "expectedOutput": "1 -> User(id=1, name='Ada')\n2 -> contrat violé: champ 'id' doit être int\n3 -> contrat violé: champ 'id' manquant\n4 -> erreur HTTP 404"
     }
   ],
   "quiz": [

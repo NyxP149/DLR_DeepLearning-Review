@@ -46,10 +46,10 @@
   "exercises": [
     {
       "code": "TYPESCRIPT-02-E1",
-      "title": "Valider types primitifs, inférence et mode strict",
-      "statement": "Conserve l'invariant et produis exactement : TYPESCRIPT-02: preuve validée",
-      "starterCode": "// TODO 1 : définis un type Evidence en lecture seule (Readonly) avec concept: string et validated: boolean\n// TODO 2 : crée une preuve pour le concept 'TYPESCRIPT-STRICT', marquée comme validée\n// TODO 3 : lance une Error('preuve invalide') si elle n'est pas validée\n// TODO 4 : affiche 'TYPESCRIPT-02: preuve validée' avec console.log\n",
-      "expectedOutput": "TYPESCRIPT-02: preuve validée"
+      "title": "Gérer null et undefined avec le mode strict",
+      "statement": "Avec strictNullChecks, une fonction qui peut ne rien retourner doit le dire dans son type. Écris average (null pour un tableau vide) et parseAge (null si le texte n'est pas un entier entre 0 et 150), puis laisse l'appelant traiter l'absence de valeur avec ?? et une comparaison explicite.",
+      "starterCode": "export {};\n\nfunction average(values: number[]): number | null {\n  // TODO 1 : retourne null si le tableau est vide, sinon la moyenne des valeurs\n  return null;\n}\n\nfunction parseAge(input: string): number | null {\n  // TODO 2 : retourne l'entier si input ne contient que des chiffres et vaut au plus 150, sinon null\n  return null;\n}\n\nconsole.log(`Moyenne: ${average([10, 20, 30]) ?? 'aucune donnée'}`);\nconsole.log(`Moyenne vide: ${average([]) ?? 'aucune donnée'}`);\nfor (const input of ['42', 'abc', '-3', '200']) {\n  const age = parseAge(input);\n  console.log(`Âge \"${input}\": ${age === null ? 'invalide' : age}`);\n}\n",
+      "expectedOutput": "Moyenne: 20\nMoyenne vide: aucune donnée\nÂge \"42\": 42\nÂge \"abc\": invalide\nÂge \"-3\": invalide\nÂge \"200\": invalide"
     }
   ],
   "quiz": [

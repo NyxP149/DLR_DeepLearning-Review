@@ -1,10 +1,25 @@
-from dataclasses import dataclass
+from itertools import islice
 
-@dataclass(frozen=True, slots=True)
-class Evidence:
-    concept: str
-    validated: bool
+produced = 0
 
-evidence = Evidence("PYTHON-GENERATORS", True)
-assert evidence.validated
-print("PYTHON-08: preuve validée")
+
+def numbers():
+    global produced
+    value = 0
+    while True:
+        value += 1
+        produced += 1
+        yield value
+
+
+def batches(iterable, size):
+    iterator = iter(iterable)
+    while batch := list(islice(iterator, size)):
+        yield batch
+
+
+source = batches(numbers(), 3)
+print(f"Avant le premier lot: {produced} valeur(s) produite(s)")
+for index in (1, 2):
+    batch = next(source, None)
+    print(f"lot {index}: {batch} ({produced} produites)")

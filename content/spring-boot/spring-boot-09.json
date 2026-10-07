@@ -46,10 +46,10 @@
   "exercises": [
     {
       "code": "SPRING_BOOT-09-E1",
-      "title": "Valider spring security et autorisations",
-      "statement": "Conserve l'invariant et produis exactement : SPRING_BOOT-09: preuve validée",
-      "starterCode": "// TODO 1 : définis un record Evidence(String concept, boolean validated)\n\npublic class Main {\n    public static void main(String[] args) {\n        // TODO 2 : crée une preuve pour le concept \"SPRING-SECURITY\", marquée comme validée\n        // TODO 3 : lance une IllegalStateException(\"preuve invalide\") si elle n'est pas validée\n        // TODO 4 : affiche \"SPRING_BOOT-09: preuve validée\"\n    }\n}\n",
-      "expectedOutput": "SPRING_BOOT-09: preuve validée"
+      "title": "Authentifier puis autoriser par rôle",
+      "statement": "Écris la chaîne de sécurité d'une API : /public est ouvert à tous, /admin exige un jeton connu (sinon 401) et le rôle ADMIN (sinon 403). Les jetons connus sont t-alice (USER) et t-bob (ADMIN).",
+      "starterCode": "import java.util.Map;\n\npublic class Main {\n    static final Map<String, String> ROLES = Map.of(\"t-alice\", \"USER\", \"t-bob\", \"ADMIN\");\n\n    static int authorize(String path, String token) {\n        // TODO 1 : /public répond toujours 200\n        // TODO 2 : pour /admin, un jeton absent (null) ou inconnu répond 401\n        // TODO 3 : un jeton connu dont le rôle n'est pas ADMIN répond 403 ; le rôle ADMIN répond 200\n        // TODO 4 : tout autre chemin répond 404\n        return 0;\n    }\n\n    public static void main(String[] args) {\n        String[][] calls = {\n            {\"/public\", null},\n            {\"/admin\", null},\n            {\"/admin\", \"t-alice\"},\n            {\"/admin\", \"t-bob\"},\n        };\n        for (String[] call : calls) {\n            // TODO 5 : affiche \"GET <chemin> [<jeton ou sans jeton>] -> <statut>\"\n        }\n    }\n}\n",
+      "expectedOutput": "GET /public [sans jeton] -> 200\nGET /admin [sans jeton] -> 401\nGET /admin [t-alice] -> 403\nGET /admin [t-bob] -> 200"
     }
   ],
   "quiz": [

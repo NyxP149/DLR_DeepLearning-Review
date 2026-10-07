@@ -46,10 +46,10 @@
   "exercises": [
     {
       "code": "PYTHON-15-E1",
-      "title": "Valider packaging moderne, pyproject et dépendances",
-      "statement": "Conserve l'invariant et produis exactement : PYTHON-15: preuve validée",
-      "starterCode": "from dataclasses import dataclass\n\n# TODO 1 : définis une dataclass immuable Evidence (frozen=True, slots=True)\n#          avec les champs concept: str et validated: bool\n\n# TODO 2 : crée une preuve pour le concept \"PYTHON-PACKAGING\", marquée comme validée\n# TODO 3 : vérifie avec assert que la preuve est validée\n# TODO 4 : affiche \"PYTHON-15: preuve validée\"\n",
-      "expectedOutput": "PYTHON-15: preuve validée"
+      "title": "Lire et contrôler un fichier pyproject.toml",
+      "statement": "Lis un pyproject.toml avec tomllib et contrôle-le : affiche le nom et la version du projet, la version de Python requise, les dépendances déclarées sans aucune borne de version (opérateurs >=, ==, ~=, <, !=) et chaque commande installée par [project.scripts].",
+      "starterCode": "import tomllib\n\nPYPROJECT = \"\"\"\n[project]\nname = \"dlr-tools\"\nversion = \"1.2.0\"\nrequires-python = \">=3.11\"\ndependencies = [\"requests>=2.31\", \"flask\", \"pydantic>=2\"]\n\n[project.scripts]\ndlr = \"dlr_tools.cli:main\"\n\"\"\"\n\n# TODO 1 : charge le texte avec tomllib.loads et récupère la table [\"project\"]\n# TODO 2 : affiche \"Projet: <nom> <version>\" puis \"Python requis: <requires-python>\"\n# TODO 3 : liste les dépendances sans opérateur de version et affiche\n#          \"Dépendances sans borne: <liste séparée par \", \">\" (ou \"aucune\")\n# TODO 4 : pour chaque entrée de [project.scripts], affiche \"Script: <commande> -> <cible>\"\n",
+      "expectedOutput": "Projet: dlr-tools 1.2.0\nPython requis: >=3.11\nDépendances sans borne: flask\nScript: dlr -> dlr_tools.cli:main"
     }
   ],
   "quiz": [

@@ -46,10 +46,10 @@
   "exercises": [
     {
       "code": "TYPESCRIPT-21-E1",
-      "title": "Valider performance, profiling et budgets",
-      "statement": "Conserve l'invariant et produis exactement : TYPESCRIPT-21: preuve validée",
-      "starterCode": "// TODO 1 : définis un type Evidence en lecture seule (Readonly) avec concept: string et validated: boolean\n// TODO 2 : crée une preuve pour le concept 'TYPESCRIPT-PERFORMANCE', marquée comme validée\n// TODO 3 : lance une Error('preuve invalide') si elle n'est pas validée\n// TODO 4 : affiche 'TYPESCRIPT-21: preuve validée' avec console.log\n",
-      "expectedOutput": "TYPESCRIPT-21: preuve validée"
+      "title": "Réduire le nombre d'appels avec la mémoïsation",
+      "statement": "Une optimisation se prouve par une mesure. Compte les appels de la suite de Fibonacci récursive naïve, puis écris une version mémoïsée (cache de type Map) qui compte les siens de la même façon, et compare les deux à un budget de 100 appels.",
+      "starterCode": "export {};\n\nlet naiveCalls = 0;\nlet memoCalls = 0;\n\nfunction fibNaive(n: number): number {\n  naiveCalls++;\n  return n < 2 ? n : fibNaive(n - 1) + fibNaive(n - 2);\n}\n\nconst cache = new Map<number, number>();\n\nfunction fibMemo(n: number): number {\n  memoCalls++;\n  // TODO : si n < 2 retourne n ; si le résultat est déjà dans le cache retourne-le ;\n  //        sinon calcule-le récursivement avec fibMemo, mémorise-le dans le cache puis retourne-le\n  return n < 2 ? n : fibMemo(n - 1) + fibMemo(n - 2);\n}\n\nconst BUDGET = 100;\nfibNaive(20);\nfibMemo(20);\nconsole.log(`fib(20) naïf: ${naiveCalls} appels`);\nconsole.log(`fib(20) mémoïsé: ${memoCalls} appels`);\nconsole.log(\n  `Budget ${BUDGET} appels: naïf ${naiveCalls > BUDGET ? 'dépasse' : 'respecte'}, mémoïsé ${memoCalls > BUDGET ? 'dépasse' : 'respecte'}`,\n);\n",
+      "expectedOutput": "fib(20) naïf: 21891 appels\nfib(20) mémoïsé: 39 appels\nBudget 100 appels: naïf dépasse, mémoïsé respecte"
     }
   ],
   "quiz": [

@@ -46,10 +46,10 @@
   "exercises": [
     {
       "code": "TYPESCRIPT-06-E1",
-      "title": "Valider tableaux, tuples et données readonly",
-      "statement": "Conserve l'invariant et produis exactement : TYPESCRIPT-06: preuve validée",
-      "starterCode": "// TODO 1 : définis un type Evidence en lecture seule (Readonly) avec concept: string et validated: boolean\n// TODO 2 : crée une preuve pour le concept 'TYPESCRIPT-READONLY', marquée comme validée\n// TODO 3 : lance une Error('preuve invalide') si elle n'est pas validée\n// TODO 4 : affiche 'TYPESCRIPT-06: preuve validée' avec console.log\n",
-      "expectedOutput": "TYPESCRIPT-06: preuve validée"
+      "title": "Travailler sur des tableaux readonly et des tuples",
+      "statement": "Un paramètre readonly number[] promet de ne pas modifier le tableau reçu. Écris minMax (qui retourne un tuple [min, max]), sortedCopy (qui trie une copie sans toucher à l'original) et distance (qui prend un point readonly [x, y]), puis vérifie que le tableau d'origine est resté intact.",
+      "starterCode": "export {};\n\nfunction minMax(values: readonly number[]): [number, number] {\n  // TODO 1 : retourne [plus petite valeur, plus grande valeur] sans modifier le tableau\n  return [0, 0];\n}\n\nfunction sortedCopy(values: readonly number[]): number[] {\n  // TODO 2 : retourne une COPIE triée par ordre croissant (le tableau reçu ne doit pas changer)\n  return [];\n}\n\nfunction distance(point: readonly [number, number]): number {\n  // TODO 3 : retourne la distance du point à l'origine (Math.hypot)\n  return 0;\n}\n\nconst data: readonly number[] = [9, 2, 4];\nconst [min, max] = minMax(data);\nconsole.log(`Min/Max: ${min} / ${max}`);\nconsole.log(`Trié: ${sortedCopy(data).join(',')}`);\nconsole.log(`Original inchangé: ${data.join(',')}`);\nconsole.log(`Distance: ${distance([3, 4])}`);\n",
+      "expectedOutput": "Min/Max: 2 / 9\nTrié: 2,4,9\nOriginal inchangé: 9,2,4\nDistance: 5"
     }
   ],
   "quiz": [

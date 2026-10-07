@@ -46,10 +46,10 @@
   "exercises": [
     {
       "code": "SQL-04-E1",
-      "title": "Valider agrégations et fonctions fenêtre",
-      "statement": "Conserve l'invariant et produis exactement : SQL-04: preuve validée",
-      "starterCode": "import sqlite3\n\nconnection = sqlite3.connect(\":memory:\")\n# TODO 1 : crée une table evidence(id, concept, validated) ;\n#          validated vaut 0 ou 1 (contrainte check)\n# TODO 2 : insère deux lignes : ('SQL-ANALYTICS', 1) et ('contrôle', 0)\n# TODO 3 : compte avec une requête SQL les lignes validées\n# TODO 4 : vérifie avec assert qu'il y en a exactement une, puis affiche \"SQL-04: preuve validée\"\nconnection.close()\n",
-      "expectedOutput": "SQL-04: preuve validée"
+      "title": "Agréger par région et calculer un cumul avec une fenêtre",
+      "statement": "À partir des ventes mensuelles, écris deux requêtes : le total par région pour celles qui dépassent 150 (GROUP BY + HAVING, du plus grand au plus petit), puis le cumul mensuel de la région Nord avec une fonction fenêtre SUM() OVER.",
+      "starterCode": "import sqlite3\n\nconnection = sqlite3.connect(\":memory:\")\nconnection.executescript(\n    \"\"\"\n    CREATE TABLE sales (region TEXT, month INTEGER, amount INTEGER);\n    INSERT INTO sales VALUES\n      ('Nord', 1, 100), ('Nord', 2, 150),\n      ('Sud', 1, 80), ('Sud', 2, 100),\n      ('Est', 1, 60);\n    \"\"\"\n)\n\n# TODO 1 : total par région, seulement si le total dépasse 150, trié par total décroissant\ntotals = \"SELECT region, SUM(amount) FROM sales GROUP BY region\"\n# TODO 2 : cumul mensuel de la région Nord : SUM(amount) OVER (ORDER BY month), trié par mois\nrunning = \"SELECT amount FROM sales WHERE region = 'Nord' ORDER BY month\"\n\nprint(\"Régions > 150:\", \", \".join(f\"{region}={total}\" for region, total in connection.execute(totals)))\nprint(\"Cumul Nord:\", \", \".join(str(row[0]) for row in connection.execute(running)))\n",
+      "expectedOutput": "Régions > 150: Nord=250, Sud=180\nCumul Nord: 100, 250"
     }
   ],
   "quiz": [

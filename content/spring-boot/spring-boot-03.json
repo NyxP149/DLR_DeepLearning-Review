@@ -46,10 +46,10 @@
   "exercises": [
     {
       "code": "SPRING_BOOT-03-E1",
-      "title": "Valider architecture en couches et ports métier",
-      "statement": "Conserve l'invariant et produis exactement : SPRING_BOOT-03: preuve validée",
-      "starterCode": "// TODO 1 : définis un record Evidence(String concept, boolean validated)\n\npublic class Main {\n    public static void main(String[] args) {\n        // TODO 2 : crée une preuve pour le concept \"SPRING-LAYERS\", marquée comme validée\n        // TODO 3 : lance une IllegalStateException(\"preuve invalide\") si elle n'est pas validée\n        // TODO 4 : affiche \"SPRING_BOOT-03: preuve validée\"\n    }\n}\n",
-      "expectedOutput": "SPRING_BOOT-03: preuve validée"
+      "title": "Isoler la logique métier derrière un port",
+      "statement": "Applique l'architecture en couches : le service métier ne dépend que du port OrderRepository, jamais de son implémentation. Complète l'adaptateur en mémoire (identifiants incrémentaux) et la règle du service (une commande doit contenir au moins un article).",
+      "starterCode": "import java.util.ArrayList;\nimport java.util.List;\n\nrecord Order(Integer id, List<String> items) {}\n\ninterface OrderRepository {\n    Order save(Order order);\n\n    int count();\n}\n\nclass InMemoryOrderRepository implements OrderRepository {\n    private final List<Order> stored = new ArrayList<>();\n\n    public Order save(Order order) {\n        // TODO 1 : attribue l'identifiant stored.size() + 1, mémorise la commande et retourne-la\n        return order;\n    }\n\n    public int count() {\n        return stored.size();\n    }\n}\n\nclass OrderService {\n    private final OrderRepository repository;\n\n    OrderService(OrderRepository repository) {\n        this.repository = repository;\n    }\n\n    Order create(List<String> items) {\n        // TODO 2 : refuse une liste vide avec new IllegalArgumentException(\"la commande doit contenir au moins un article\")\n        // TODO 3 : enregistre la commande (id null) via le port et retourne le résultat\n        return new Order(null, items);\n    }\n}\n\npublic class Main {\n    public static void main(String[] args) {\n        var repository = new InMemoryOrderRepository();\n        var service = new OrderService(repository);\n\n        var order = service.create(List.of(\"clavier\", \"souris\", \"écran\"));\n        System.out.println(\"Commande \" + order.id() + \" créée: \" + order.items().size() + \" articles\");\n        try {\n            service.create(List.of());\n        } catch (IllegalArgumentException error) {\n            System.out.println(\"Refusée: \" + error.getMessage());\n        }\n        System.out.println(\"Persistées: \" + repository.count());\n    }\n}\n",
+      "expectedOutput": "Commande 1 créée: 3 articles\nRefusée: la commande doit contenir au moins un article\nPersistées: 1"
     }
   ],
   "quiz": [

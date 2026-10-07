@@ -46,10 +46,10 @@
   "exercises": [
     {
       "code": "SQL-06-E1",
-      "title": "Valider index, explain et coût des requêtes",
-      "statement": "Conserve l'invariant et produis exactement : SQL-06: preuve validée",
-      "starterCode": "import sqlite3\n\nconnection = sqlite3.connect(\":memory:\")\n# TODO 1 : crée une table evidence(id, concept, validated) ;\n#          validated vaut 0 ou 1 (contrainte check)\n# TODO 2 : insère deux lignes : ('SQL-INDEXES', 1) et ('contrôle', 0)\n# TODO 3 : compte avec une requête SQL les lignes validées\n# TODO 4 : vérifie avec assert qu'il y en a exactement une, puis affiche \"SQL-06: preuve validée\"\nconnection.close()\n",
-      "expectedOutput": "SQL-06: preuve validée"
+      "title": "Lire un plan d'exécution et créer le bon index",
+      "statement": "Sur une table de mille utilisateurs, compare le plan d'exécution d'une recherche par e-mail avant et après la création d'un index. Écris ensuite la variante lower(email) = ? et constate qu'une fonction appliquée à la colonne empêche l'index de servir.",
+      "starterCode": "import sqlite3\n\nconnection = sqlite3.connect(\":memory:\")\nconnection.execute(\"CREATE TABLE user (id INTEGER PRIMARY KEY, email TEXT NOT NULL)\")\nconnection.executemany(\n    \"INSERT INTO user (email) VALUES (?)\",\n    [(f\"user{number}@dlr.dev\",) for number in range(1000)],\n)\n\nTARGET = \"user42@dlr.dev\"\n\n\ndef plan(sql: str) -> str:\n    rows = connection.execute(\"EXPLAIN QUERY PLAN \" + sql, (TARGET,)).fetchall()\n    detail = \" \".join(row[3] for row in rows)\n    return \"recherche par index\" if \"SEARCH\" in detail else \"SCAN complet\"\n\n\nexact = \"SELECT id FROM user WHERE email = ?\"\nprint(\"Avant index:\", plan(exact))\n\n# TODO 1 : crée l'index idx_user_email sur user(email)\nprint(\"Après index:\", plan(exact))\n\n# TODO 2 : écris la requête qui compare lower(email) à ? au lieu de email\nlowered = \"SELECT id FROM user WHERE email = ?\"\nprint(\"Avec lower(email):\", plan(lowered))\n\nfound = connection.execute(exact, (TARGET,)).fetchall()\nprint(\"Lignes trouvées:\", len(found))\n",
+      "expectedOutput": "Avant index: SCAN complet\nAprès index: recherche par index\nAvec lower(email): SCAN complet\nLignes trouvées: 1"
     }
   ],
   "quiz": [

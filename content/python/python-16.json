@@ -46,10 +46,10 @@
   "exercises": [
     {
       "code": "PYTHON-16-E1",
-      "title": "Valider sql, transactions et couches de persistance",
-      "statement": "Conserve l'invariant et produis exactement : PYTHON-16: preuve validée",
-      "starterCode": "from dataclasses import dataclass\n\n# TODO 1 : définis une dataclass immuable Evidence (frozen=True, slots=True)\n#          avec les champs concept: str et validated: bool\n\n# TODO 2 : crée une preuve pour le concept \"PYTHON-PERSISTENCE\", marquée comme validée\n# TODO 3 : vérifie avec assert que la preuve est validée\n# TODO 4 : affiche \"PYTHON-16: preuve validée\"\n",
-      "expectedOutput": "PYTHON-16: preuve validée"
+      "title": "Écrire un repository SQLite avec lot atomique",
+      "statement": "Écris un UserRepository au-dessus de sqlite3 : requêtes paramétrées, et une méthode add_many atomique (un lot qui contient un doublon d'e-mail est entièrement annulé grâce au gestionnaire de contexte de la connexion) qui traduit l'erreur d'intégrité en ValueError métier.",
+      "starterCode": "import sqlite3\n\n\nclass UserRepository:\n    def __init__(self, connection: sqlite3.Connection) -> None:\n        self.connection = connection\n        connection.execute(\n            \"CREATE TABLE IF NOT EXISTS user (id INTEGER PRIMARY KEY, name TEXT NOT NULL, email TEXT NOT NULL UNIQUE)\"\n        )\n\n    def add_many(self, users: list[tuple[str, str]]) -> int:\n        # TODO 1 : insère tous les (nom, e-mail) avec executemany DANS un bloc `with self.connection:`\n        #          (validation ou annulation automatique) ; sur sqlite3.IntegrityError lève\n        #          ValueError(\"email déjà utilisé\") ; retourne le nombre d'utilisateurs insérés\n        return 0\n\n    def count(self) -> int:\n        # TODO 2 : retourne le nombre de lignes de la table\n        return 0\n\n    def find_by_email(self, email: str) -> tuple[str, str] | None:\n        # TODO 3 : retourne (nom, e-mail) de l'utilisateur ou None (requête paramétrée)\n        return None\n\n\nrepository = UserRepository(sqlite3.connect(\":memory:\"))\n\nprint(f\"Lot 1: {repository.add_many([('Ada', 'ada@dlr.dev'), ('Linus', 'linus@dlr.dev')])} ajouté(s)\")\ntry:\n    repository.add_many([(\"Grace\", \"grace@dlr.dev\"), (\"Ada bis\", \"ada@dlr.dev\")])\nexcept ValueError as error:\n    print(f\"Lot 2 annulé: {error}\")\n\nprint(f\"Total en base: {repository.count()}\")\nfound = repository.find_by_email(\"ada@dlr.dev\")\nprint(\"Trouvé:\", f\"{found[0]} <{found[1]}>\" if found else \"aucun\")\n",
+      "expectedOutput": "Lot 1: 2 ajouté(s)\nLot 2 annulé: email déjà utilisé\nTotal en base: 2\nTrouvé: Ada <ada@dlr.dev>"
     }
   ],
   "quiz": [

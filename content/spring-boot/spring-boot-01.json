@@ -46,10 +46,10 @@
   "exercises": [
     {
       "code": "SPRING_BOOT-01-E1",
-      "title": "Valider démarrage, auto-configuration et configuration typée",
-      "statement": "Conserve l'invariant et produis exactement : SPRING_BOOT-01: preuve validée",
-      "starterCode": "// TODO 1 : définis un record Evidence(String concept, boolean validated)\n\npublic class Main {\n    public static void main(String[] args) {\n        // TODO 2 : crée une preuve pour le concept \"SPRING-BOOTSTRAP\", marquée comme validée\n        // TODO 3 : lance une IllegalStateException(\"preuve invalide\") si elle n'est pas validée\n        // TODO 4 : affiche \"SPRING_BOOT-01: preuve validée\"\n    }\n}\n",
-      "expectedOutput": "SPRING_BOOT-01: preuve validée"
+      "title": "Lier et valider une configuration typée au démarrage",
+      "statement": "Simule le @ConfigurationProperties de Spring Boot : lie une map de propriétés à un record DbProperties, refuse le démarrage si une propriété obligatoire manque ou si une valeur est invalide, puis affiche le résultat pour une configuration correcte et pour une configuration avec une faute de frappe (dbTimeout au lieu de timeout).",
+      "starterCode": "import java.util.List;\nimport java.util.Map;\n\nrecord DbProperties(String url, int timeout, int maxPoolSize) {\n    static DbProperties bind(Map<String, String> props) {\n        // TODO 1 : lis \"url\" et \"timeout\" (obligatoires) ; si l'une manque ou est vide,\n        //          lance new IllegalStateException(\"propriété manquante <clé>\")\n        // TODO 2 : lis \"maxPoolSize\" avec la valeur par défaut 10\n        // TODO 3 : si timeout < 1, lance new IllegalStateException(\"timeout doit être >= 1\")\n        // TODO 4 : retourne le record rempli\n        return null;\n    }\n}\n\npublic class Main {\n    public static void main(String[] args) {\n        var prod = Map.of(\"url\", \"jdbc:postgresql://prod-db:5432/orders\", \"timeout\", \"5\", \"maxPoolSize\", \"20\");\n        var typo = Map.of(\"url\", \"jdbc:postgresql://prod-db:5432/orders\", \"dbTimeout\", \"5\");\n        for (var props : List.of(prod, typo)) {\n            try {\n                var config = DbProperties.bind(props);\n                // TODO 5 : affiche \"Config chargée: <url> timeout=<timeout> pool=<pool>\"\n            } catch (IllegalStateException error) {\n                // TODO 6 : affiche \"Démarrage refusé: <message>\"\n            }\n        }\n    }\n}\n",
+      "expectedOutput": "Config chargée: jdbc:postgresql://prod-db:5432/orders timeout=5 pool=20\nDémarrage refusé: propriété manquante timeout"
     }
   ],
   "quiz": [

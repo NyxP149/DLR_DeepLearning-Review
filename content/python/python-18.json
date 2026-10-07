@@ -46,10 +46,10 @@
   "exercises": [
     {
       "code": "PYTHON-18-E1",
-      "title": "Valider profilage, mémoire et optimisation mesurée",
-      "statement": "Conserve l'invariant et produis exactement : PYTHON-18: preuve validée",
-      "starterCode": "from dataclasses import dataclass\n\n# TODO 1 : définis une dataclass immuable Evidence (frozen=True, slots=True)\n#          avec les champs concept: str et validated: bool\n\n# TODO 2 : crée une preuve pour le concept \"PYTHON-PERFORMANCE\", marquée comme validée\n# TODO 3 : vérifie avec assert que la preuve est validée\n# TODO 4 : affiche \"PYTHON-18: preuve validée\"\n",
-      "expectedOutput": "PYTHON-18: preuve validée"
+      "title": "Mesurer le pic mémoire d'une liste et d'un générateur",
+      "statement": "Écris deux versions de la somme des carrés de 0 à n : l'une construit une liste complète, l'autre utilise une expression génératrice. Mesure le pic mémoire de chacune avec tracemalloc et vérifie que les résultats sont identiques alors que l'empreinte est très différente.",
+      "starterCode": "import tracemalloc\n\nN = 100_000\n\n\ndef sum_squares_list(n: int) -> int:\n    # TODO 1 : construis d'abord la liste complète des carrés (list comprehension) puis additionne-la\n    return 0\n\n\ndef sum_squares_generator(n: int) -> int:\n    # TODO 2 : additionne les carrés avec une expression génératrice (sans liste intermédiaire)\n    return 0\n\n\ndef peak(func, n: int) -> tuple[int, int]:\n    # TODO 3 : démarre tracemalloc, appelle func(n), lis le pic avec tracemalloc.get_traced_memory()[1],\n    #          arrête tracemalloc et retourne (résultat, pic en octets)\n    return 0, 0\n\n\nresult_list, peak_list = peak(sum_squares_list, N)\nresult_generator, peak_generator = peak(sum_squares_generator, N)\nprint(f\"Résultats identiques: {result_list == result_generator}\")\nprint(f\"Pic liste > 500 Ko: {peak_list > 500_000}\")\nprint(f\"Pic générateur < 10 Ko: {peak_generator < 10_000}\")\n",
+      "expectedOutput": "Résultats identiques: True\nPic liste > 500 Ko: True\nPic générateur < 10 Ko: True"
     }
   ],
   "quiz": [

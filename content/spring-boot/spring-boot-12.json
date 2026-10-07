@@ -46,10 +46,10 @@
   "exercises": [
     {
       "code": "SPRING_BOOT-12-E1",
-      "title": "Valider revue d’architecture et durcissement final",
-      "statement": "Conserve l'invariant et produis exactement : SPRING_BOOT-12: preuve validée",
-      "starterCode": "// TODO 1 : définis un record Evidence(String concept, boolean validated)\n\npublic class Main {\n    public static void main(String[] args) {\n        // TODO 2 : crée une preuve pour le concept \"SPRING-CHALLENGE\", marquée comme validée\n        // TODO 3 : lance une IllegalStateException(\"preuve invalide\") si elle n'est pas validée\n        // TODO 4 : affiche \"SPRING_BOOT-12: preuve validée\"\n    }\n}\n",
-      "expectedOutput": "SPRING_BOOT-12: preuve validée"
+      "title": "Auditer une configuration avant la mise en production",
+      "statement": "Écris un audit de durcissement : chaque règle repère une propriété dangereuse (actuator exposé en entier, CORS ouvert à tous, debug actif, mot de passe en clair), l'audit liste les violations triées par propriété avec le conseil associé, puis donne le verdict REFUSÉ ou ACCEPTÉ.",
+      "starterCode": "import java.util.List;\nimport java.util.Map;\nimport java.util.TreeMap;\n\nrecord Rule(String key, String forbidden, String advice) {}\n\npublic class Main {\n    static final List<Rule> RULES = List.of(\n        new Rule(\"actuator.exposure\", \"*\", \"expose uniquement health,info\"),\n        new Rule(\"cors.allowed-origins\", \"*\", \"liste les origines autorisées\"),\n        new Rule(\"debug\", \"true\", \"désactive le debug en production\"),\n        new Rule(\"db.password\", \"admin\", \"lis le mot de passe depuis un secret\"));\n\n    static List<String> audit(Map<String, String> config) {\n        // TODO 1 : pour chaque règle, si la valeur de la propriété égale la valeur interdite,\n        //          ajoute \"<propriété>=<valeur> : <conseil>\"\n        // TODO 2 : retourne les violations triées par ordre alphabétique\n        return List.of();\n    }\n\n    public static void main(String[] args) {\n        var config = new TreeMap<>(Map.of(\n            \"actuator.exposure\", \"*\", \"cors.allowed-origins\", \"*\", \"debug\", \"true\",\n            \"db.password\", \"s3cr3t\", \"server.port\", \"8080\"));\n        var violations = audit(config);\n        // TODO 3 : affiche \"Violations: <nombre>\", une ligne \"- <violation>\" par violation,\n        //          puis \"Verdict: REFUSÉ\" s'il y en a, sinon \"Verdict: ACCEPTÉ\"\n    }\n}\n",
+      "expectedOutput": "Violations: 3\n- actuator.exposure=* : expose uniquement health,info\n- cors.allowed-origins=* : liste les origines autorisées\n- debug=true : désactive le debug en production\nVerdict: REFUSÉ"
     }
   ],
   "quiz": [

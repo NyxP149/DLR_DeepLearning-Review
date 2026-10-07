@@ -46,10 +46,10 @@
   "exercises": [
     {
       "code": "TYPESCRIPT-15-E1",
-      "title": "Valider node.js, fichiers et flux",
-      "statement": "Conserve l'invariant et produis exactement : TYPESCRIPT-15: preuve validée",
-      "starterCode": "// TODO 1 : définis un type Evidence en lecture seule (Readonly) avec concept: string et validated: boolean\n// TODO 2 : crée une preuve pour le concept 'TYPESCRIPT-NODE', marquée comme validée\n// TODO 3 : lance une Error('preuve invalide') si elle n'est pas validée\n// TODO 4 : affiche 'TYPESCRIPT-15: preuve validée' avec console.log\n",
-      "expectedOutput": "TYPESCRIPT-15: preuve validée"
+      "title": "Reconstituer des lignes à partir d'un flux de morceaux",
+      "statement": "Un flux (fichier, socket) arrive en morceaux qui coupent les lignes n'importe où. Écris le générateur asynchrone lines qui consomme un AsyncIterable<string>, accumule un tampon, produit chaque ligne complète dès qu'elle est terminée et n'oublie pas le dernier morceau sans saut de ligne final.",
+      "starterCode": "export {};\n\nasync function* chunks(): AsyncGenerator<string> {\n  for (const part of ['alp', 'ha\\nbe', 'ta\\ngam', 'ma']) {\n    yield part;\n  }\n}\n\nasync function* lines(source: AsyncIterable<string>): AsyncGenerator<string> {\n  // TODO : garde un tampon ; pour chaque morceau reçu (for await), ajoute-le au tampon, découpe-le sur \"\\n\",\n  //        conserve le dernier fragment (incomplet) dans le tampon et fais yield des lignes complètes ;\n  //        à la fin, yield le tampon s'il n'est pas vide\n}\n\nasync function main(): Promise<void> {\n  let count = 0;\n  for await (const line of lines(chunks())) {\n    count++;\n    console.log(`Ligne: ${line}`);\n  }\n  console.log(`Lignes: ${count}`);\n}\n\nmain();\n",
+      "expectedOutput": "Ligne: alpha\nLigne: beta\nLigne: gamma\nLignes: 3"
     }
   ],
   "quiz": [

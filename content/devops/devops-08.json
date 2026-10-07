@@ -46,10 +46,10 @@
   "exercises": [
     {
       "code": "DEVOPS-08-E1",
-      "title": "Valider incident final : diagnostiquer et restaurer",
-      "statement": "Conserve l'invariant et produis exactement : DEVOPS-08: preuve validée",
-      "starterCode": "from dataclasses import dataclass\n\n# TODO 1 : définis une dataclass immuable DeliveryCheck (frozen=True)\n#          avec les champs control: str et passed: bool\n\n# TODO 2 : crée un contrôle pour \"DEVOPS-CHALLENGE\", marqué comme réussi\n# TODO 3 : vérifie avec assert que le contrôle est réussi\n# TODO 4 : affiche \"DEVOPS-08: preuve validée\"\n",
-      "expectedOutput": "DEVOPS-08: preuve validée"
+      "title": "Diagnostiquer un incident à partir des journaux",
+      "statement": "Analyse les journaux d'une panne : repère la première erreur, compte les erreurs par service, remonte la chaîne de dépendances pour trouver la cause probable (le service en erreur dont la dépendance ne l'est pas), puis déduis le plan de restauration : redémarrer la cause puis vérifier les services qui en dépendent.",
+      "starterCode": "LOGS = \"\"\"10:02:11 INFO web requête /orders\n10:02:12 ERROR db connexion refusée\n10:02:13 ERROR api timeout vers db\n10:02:14 ERROR api timeout vers db\n10:02:15 ERROR web 502 depuis api\n10:02:16 ERROR api timeout vers db\n10:02:17 ERROR web 502 depuis api\"\"\"\n\nDEPENDS_ON = {\"web\": \"api\", \"api\": \"db\"}\n\n\ndef parse(logs: str) -> list[tuple[str, str, str, str]]:\n    # TODO 1 : retourne des tuples (heure, niveau, service, message) en découpant chaque ligne\n    #          en 4 morceaux (split(\" \", 3))\n    return []\n\n\nentries = parse(LOGS)\nerrors = [entry for entry in entries if entry[1] == \"ERROR\"]\n\n# TODO 2 : affiche \"Premier incident: <heure> <service> <message>\" pour la première erreur\n# TODO 3 : affiche \"Erreurs: \" suivi du nombre d'erreurs par service, triés par nom (api=3, db=1, web=2)\n\n# TODO 4 : la cause probable est le service en erreur dont la dépendance n'est pas en erreur\n#          (db ici) : affiche \"Cause probable: <service>\"\n# TODO 5 : affiche \"Plan: redémarrer <cause> -> vérifier <service qui en dépend> -> ...\" en remontant\n#          la chaîne des dépendants (db, puis api, puis web)\n",
+      "expectedOutput": "Premier incident: 10:02:12 db connexion refusée\nErreurs: api=3, db=1, web=2\nCause probable: db\nPlan: redémarrer db -> vérifier api -> vérifier web"
     }
   ],
   "quiz": [

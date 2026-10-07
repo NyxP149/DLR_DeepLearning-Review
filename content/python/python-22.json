@@ -46,10 +46,10 @@
   "exercises": [
     {
       "code": "PYTHON-22-E1",
-      "title": "Valider observabilité, conteneurisation et exploitation",
-      "statement": "Conserve l'invariant et produis exactement : PYTHON-22: preuve validée",
-      "starterCode": "from dataclasses import dataclass\n\n# TODO 1 : définis une dataclass immuable Evidence (frozen=True, slots=True)\n#          avec les champs concept: str et validated: bool\n\n# TODO 2 : crée une preuve pour le concept \"PYTHON-OBSERVABILITY\", marquée comme validée\n# TODO 3 : vérifie avec assert que la preuve est validée\n# TODO 4 : affiche \"PYTHON-22: preuve validée\"\n",
-      "expectedOutput": "PYTHON-22: preuve validée"
+      "title": "Produire des journaux JSON corrélés et des métriques",
+      "statement": "Rends un service observable : écris log(level, event, **fields) qui imprime une ligne JSON (clés triées, accents conservés), handle qui traite une demande en journalisant son issue avec un identifiant de corrélation et en comptant requêtes et erreurs, puis report qui affiche le taux d'erreurs en pourcentage arrondi.",
+      "starterCode": "import json\n\nmetrics = {\"requests\": 0, \"errors\": 0}\n\n\ndef log(level: str, event: str, **fields) -> None:\n    # TODO 1 : imprime json.dumps({\"level\": level, \"event\": event, **fields}, sort_keys=True, ensure_ascii=False)\n    pass\n\n\ndef handle(correlation_id: str, order_id: int, balance: int, price: int) -> None:\n    # TODO 2 : compte la requête ; si balance >= price journalise INFO \"commande créée\" avec correlation_id et order_id ;\n    #          sinon compte l'erreur et journalise ERROR \"paiement refusé\" avec correlation_id et\n    #          reason=\"fonds insuffisants\"\n    pass\n\n\ndef report() -> str:\n    # TODO 3 : retourne \"metrics: requests=<n> errors=<n> error_rate=<pourcentage arrondi>%\"\n    return \"\"\n\n\nhandle(\"req-1\", 42, balance=100, price=60)\nhandle(\"req-2\", 43, balance=10, price=60)\nprint(report())\n",
+      "expectedOutput": "{\"correlation_id\": \"req-1\", \"event\": \"commande créée\", \"level\": \"INFO\", \"order_id\": 42}\n{\"correlation_id\": \"req-2\", \"event\": \"paiement refusé\", \"level\": \"ERROR\", \"reason\": \"fonds insuffisants\"}\nmetrics: requests=2 errors=1 error_rate=50%"
     }
   ],
   "quiz": [

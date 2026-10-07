@@ -46,10 +46,10 @@
   "exercises": [
     {
       "code": "TYPESCRIPT-05-E1",
-      "title": "Valider fonctions, surcharges et paramètres sûrs",
-      "statement": "Conserve l'invariant et produis exactement : TYPESCRIPT-05: preuve validée",
-      "starterCode": "// TODO 1 : définis un type Evidence en lecture seule (Readonly) avec concept: string et validated: boolean\n// TODO 2 : crée une preuve pour le concept 'TYPESCRIPT-FUNCTIONS', marquée comme validée\n// TODO 3 : lance une Error('preuve invalide') si elle n'est pas validée\n// TODO 4 : affiche 'TYPESCRIPT-05: preuve validée' avec console.log\n",
-      "expectedOutput": "TYPESCRIPT-05: preuve validée"
+      "title": "Écrire des surcharges, un paramètre rest et une valeur par défaut",
+      "statement": "Écris trois fonctions aux signatures sûres : split avec deux surcharges (texte à découper sur la virgule, ou tableau déjà découpé), sum avec un paramètre rest, et retryDelay dont la base vaut 100 par défaut et double à chaque tentative (base x 2 puissance tentative).",
+      "starterCode": "export {};\n\nfunction split(value: string): string[];\nfunction split(value: string[]): string[];\nfunction split(value: string | string[]): string[] {\n  // TODO 1 : un tableau est retourné tel quel ; un texte est découpé sur la virgule\n  return [];\n}\n\nfunction sum(...values: number[]): number {\n  // TODO 2 : additionne tous les arguments (0 s'il n'y en a aucun)\n  return -1;\n}\n\nfunction retryDelay(attempt: number, base?: number): number {\n  // TODO 3 : base vaut 100 quand elle est absente ; retourne base * 2 ** attempt\n  return 0;\n}\n\nconsole.log(`split(\"a,b,c\") = ${split('a,b,c').join('|')}`);\nconsole.log(`split([\"x\",\"y\"]) = ${split(['x', 'y']).join('|')}`);\nconsole.log(`sum() = ${sum()}`);\nconsole.log(`sum(1, 2, 3) = ${sum(1, 2, 3)}`);\nconsole.log(`retryDelay(2) = ${retryDelay(2)}`);\nconsole.log(`retryDelay(2, 50) = ${retryDelay(2, 50)}`);\n",
+      "expectedOutput": "split(\"a,b,c\") = a|b|c\nsplit([\"x\",\"y\"]) = x|y\nsum() = 0\nsum(1, 2, 3) = 6\nretryDelay(2) = 400\nretryDelay(2, 50) = 200"
     }
   ],
   "quiz": [

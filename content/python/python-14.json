@@ -46,10 +46,10 @@
   "exercises": [
     {
       "code": "PYTHON-14-E1",
-      "title": "Valider configuration, journalisation et diagnostic",
-      "statement": "Conserve l'invariant et produis exactement : PYTHON-14: preuve validée",
-      "starterCode": "from dataclasses import dataclass\n\n# TODO 1 : définis une dataclass immuable Evidence (frozen=True, slots=True)\n#          avec les champs concept: str et validated: bool\n\n# TODO 2 : crée une preuve pour le concept \"PYTHON-LOGGING\", marquée comme validée\n# TODO 3 : vérifie avec assert que la preuve est validée\n# TODO 4 : affiche \"PYTHON-14: preuve validée\"\n",
-      "expectedOutput": "PYTHON-14: preuve validée"
+      "title": "Charger la configuration depuis l'environnement et configurer les logs",
+      "statement": "Écris load_config qui lit PORT et DEBUG dans un dictionnaire d'environnement avec des valeurs par défaut (8000 et faux) et convertit les types, puis setup_logging qui configure logging avec le format « NIVEAU nom: message » sur la sortie standard. Le niveau DEBUG n'est actif qu'en mode debug.",
+      "starterCode": "import logging\nimport sys\n\n\ndef load_config(env: dict) -> dict:\n    # TODO 1 : port = int(PORT), 8000 par défaut ; debug vrai si DEBUG vaut \"1\", \"true\" ou \"yes\" (insensible à la casse) ;\n    #          level = \"DEBUG\" en mode debug, sinon \"INFO\"\n    return {\"port\": 0, \"debug\": False, \"level\": \"INFO\"}\n\n\ndef setup_logging(level: str) -> logging.Logger:\n    # TODO 2 : logging.basicConfig avec le niveau, le format \"%(levelname)s %(name)s: %(message)s\",\n    #          stream=sys.stdout et force=True ; retourne logging.getLogger(\"app\")\n    return logging.getLogger(\"app\")\n\n\nfor env in ({\"PORT\": \"8080\", \"DEBUG\": \"true\"}, {}):\n    config = load_config(env)\n    print(f\"Config: port={config['port']} debug={config['debug']} level={config['level']}\")\n    logger = setup_logging(config[\"level\"])\n    logger.debug(\"diagnostic\")\n    logger.info(\"démarrage\")\n    logger.warning(\"attention\")\n",
+      "expectedOutput": "Config: port=8080 debug=True level=DEBUG\nDEBUG app: diagnostic\nINFO app: démarrage\nWARNING app: attention\nConfig: port=8000 debug=False level=INFO\nINFO app: démarrage\nWARNING app: attention"
     }
   ],
   "quiz": [

@@ -46,10 +46,10 @@
   "exercises": [
     {
       "code": "TYPESCRIPT-07-E1",
-      "title": "Valider classes, visibilité et abstraction",
-      "statement": "Conserve l'invariant et produis exactement : TYPESCRIPT-07: preuve validée",
-      "starterCode": "// TODO 1 : définis un type Evidence en lecture seule (Readonly) avec concept: string et validated: boolean\n// TODO 2 : crée une preuve pour le concept 'TYPESCRIPT-CLASSES', marquée comme validée\n// TODO 3 : lance une Error('preuve invalide') si elle n'est pas validée\n// TODO 4 : affiche 'TYPESCRIPT-07: preuve validée' avec console.log\n",
-      "expectedOutput": "TYPESCRIPT-07: preuve validée"
+      "title": "Modéliser des comptes avec une classe abstraite",
+      "statement": "Écris une classe abstraite Account qui encapsule son solde (protected) et son historique (private) et impose à ses sous-classes de déclarer leurs frais. withdraw retire le montant plus les frais, refuse un retrait impossible avec l'erreur « solde insuffisant » et journalise l'opération. Complète ensuite les comptes Checking (frais de 1) et Savings (sans frais).",
+      "starterCode": "export {};\n\nabstract class Account {\n  protected balance: number;\n  private history: string[] = [];\n\n  constructor(initial: number) {\n    this.balance = initial;\n  }\n\n  abstract fee(): number;\n\n  withdraw(amount: number): void {\n    // TODO : le coût est amount + fee() ; s'il dépasse le solde lance new Error('solde insuffisant') ;\n    //        sinon retire-le du solde et ajoute `retrait ${amount}` à l'historique\n  }\n\n  summary(): string {\n    return `solde ${this.balance} (frais ${this.fee()})`;\n  }\n\n  log(): string {\n    return this.history.join(', ');\n  }\n}\n\nclass Checking extends Account {\n  fee(): number {\n    // TODO : frais de 1\n    return 0;\n  }\n}\n\nclass Savings extends Account {\n  fee(): number {\n    // TODO : aucun frais\n    return 0;\n  }\n}\n\nconst checking = new Checking(100);\nconst savings = new Savings(100);\nchecking.withdraw(10);\nsavings.withdraw(10);\nconsole.log(`Courant: ${checking.summary()}`);\nconsole.log(`Épargne: ${savings.summary()}`);\nconsole.log(`Historique courant: ${checking.log()}`);\ntry {\n  savings.withdraw(500);\n} catch (error) {\n  console.log(`Refus: ${(error as Error).message}`);\n}\n",
+      "expectedOutput": "Courant: solde 89 (frais 1)\nÉpargne: solde 90 (frais 0)\nHistorique courant: retrait 10\nRefus: solde insuffisant"
     }
   ],
   "quiz": [

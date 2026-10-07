@@ -46,10 +46,10 @@
   "exercises": [
     {
       "code": "PYTHON-19-E1",
-      "title": "Valider sécurité, secrets et validation des entrées",
-      "statement": "Conserve l'invariant et produis exactement : PYTHON-19: preuve validée",
-      "starterCode": "from dataclasses import dataclass\n\n# TODO 1 : définis une dataclass immuable Evidence (frozen=True, slots=True)\n#          avec les champs concept: str et validated: bool\n\n# TODO 2 : crée une preuve pour le concept \"PYTHON-SECURITY\", marquée comme validée\n# TODO 3 : vérifie avec assert que la preuve est validée\n# TODO 4 : affiche \"PYTHON-19: preuve validée\"\n",
-      "expectedOutput": "PYTHON-19: preuve validée"
+      "title": "Bloquer path traversal et injection SQL, masquer les secrets",
+      "statement": "Sécurise trois points d'entrée : un chemin fourni par l'utilisateur ne doit pas sortir du dossier reports, une recherche SQL doit utiliser une requête paramétrée (compare avec la concaténation dangereuse), et un secret ne doit apparaître dans les journaux que masqué, sauf ses quatre derniers caractères.",
+      "starterCode": "import sqlite3\nfrom pathlib import Path\n\nBASE = Path(\"reports\").resolve()\n\n\ndef safe_path(user_path: str) -> Path:\n    candidate = (BASE / user_path).resolve()\n    # TODO 1 : si candidate n'est pas à l'intérieur de BASE (is_relative_to), lève ValueError(\"sortie du dossier\")\n    return candidate\n\n\ndef find_user(connection: sqlite3.Connection, name: str) -> list:\n    # TODO 2 : retourne les lignes de \"SELECT id FROM user WHERE name = ?\" avec un paramètre lié\n    return []\n\n\ndef mask(secret: str) -> str:\n    # TODO 3 : retourne \"****\" suivi des 4 derniers caractères du secret\n    return \"\"\n\n\nfor user_path in (\"../../etc/passwd\", \"q1.csv\"):\n    try:\n        safe_path(user_path)\n        print(f\"{user_path}: accepté\")\n    except ValueError as error:\n        print(f\"{user_path}: refusé ({error})\")\n\nconnection = sqlite3.connect(\":memory:\")\nconnection.execute(\"CREATE TABLE user (id INTEGER PRIMARY KEY, name TEXT)\")\nconnection.execute(\"INSERT INTO user (name) VALUES ('Ada')\")\npayload = \"x' OR '1'='1\"\nunsafe = connection.execute(\"SELECT id FROM user WHERE name = '\" + payload + \"'\").fetchall()\nprint(f\"Concaténation (à ne jamais faire): {len(unsafe)} ligne(s)\")\nprint(f\"Requête paramétrée: {len(find_user(connection, payload))} ligne(s)\")\nprint(f\"Secret masqué: {mask('sk-live-abcdef')}\")\n",
+      "expectedOutput": "../../etc/passwd: refusé (sortie du dossier)\nq1.csv: accepté\nConcaténation (à ne jamais faire): 1 ligne(s)\nRequête paramétrée: 0 ligne(s)\nSecret masqué: ****cdef"
     }
   ],
   "quiz": [

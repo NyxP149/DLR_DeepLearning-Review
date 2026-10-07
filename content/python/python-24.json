@@ -46,10 +46,10 @@
   "exercises": [
     {
       "code": "PYTHON-24-E1",
-      "title": "Valider défi final python adaptatif",
-      "statement": "Conserve l'invariant et produis exactement : PYTHON-24: preuve validée",
-      "starterCode": "from dataclasses import dataclass\n\n# TODO 1 : définis une dataclass immuable Evidence (frozen=True, slots=True)\n#          avec les champs concept: str et validated: bool\n\n# TODO 2 : crée une preuve pour le concept \"PYTHON-CHALLENGE\", marquée comme validée\n# TODO 3 : vérifie avec assert que la preuve est validée\n# TODO 4 : affiche \"PYTHON-24: preuve validée\"\n",
-      "expectedOutput": "PYTHON-24: preuve validée"
+      "title": "Limiter un débit avec un token bucket testable",
+      "statement": "Écris un limiteur de débit à seau de jetons : capacité de 3 jetons, un jeton regagné par seconde, une requête consomme un jeton. L'horloge est injectée (le temps est passé en paramètre) pour que le comportement soit déterministe et testable sans attendre.",
+      "starterCode": "class TokenBucket:\n    def __init__(self, capacity: int, refill_per_second: float) -> None:\n        self.capacity = capacity\n        self.refill_per_second = refill_per_second\n        self.tokens = float(capacity)\n        self.last = 0.0\n\n    def allow(self, now: float) -> bool:\n        # TODO 1 : ajoute les jetons regagnés depuis le dernier appel ((now - last) * refill_per_second),\n        #          sans dépasser la capacité, et mémorise now comme dernier instant\n        # TODO 2 : s'il reste au moins 1 jeton, consomme-le et retourne True ; sinon retourne False\n        return False\n\n\nbucket = TokenBucket(capacity=3, refill_per_second=1.0)\nallowed = 0\ntimes = [0.0, 0.0, 0.0, 0.0, 1.0, 1.5, 2.5]\nfor now in times:\n    decision = bucket.allow(now)\n    allowed += decision\n    print(f\"t={now}: {'autorisée' if decision else 'refusée'}\")\nprint(f\"Autorisées: {allowed}/{len(times)}\")\n",
+      "expectedOutput": "t=0.0: autorisée\nt=0.0: autorisée\nt=0.0: autorisée\nt=0.0: refusée\nt=1.0: autorisée\nt=1.5: refusée\nt=2.5: autorisée\nAutorisées: 5/7"
     }
   ],
   "quiz": [

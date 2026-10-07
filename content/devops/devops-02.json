@@ -46,10 +46,10 @@
   "exercises": [
     {
       "code": "DEVOPS-02-E1",
-      "title": "Valider compose, réseaux, volumes et santé",
-      "statement": "Conserve l'invariant et produis exactement : DEVOPS-02: preuve validée",
-      "starterCode": "from dataclasses import dataclass\n\n# TODO 1 : définis une dataclass immuable DeliveryCheck (frozen=True)\n#          avec les champs control: str et passed: bool\n\n# TODO 2 : crée un contrôle pour \"DEVOPS-COMPOSE\", marqué comme réussi\n# TODO 3 : vérifie avec assert que le contrôle est réussi\n# TODO 4 : affiche \"DEVOPS-02: preuve validée\"\n",
-      "expectedOutput": "DEVOPS-02: preuve validée"
+      "title": "Calculer l'ordre de démarrage d'une pile Compose",
+      "statement": "À partir des depends_on d'un fichier Compose, calcule l'ordre de démarrage des services, détecte les dépendances circulaires, et signale les services qui attendent un service « healthy » alors que celui-ci n'a pas de healthcheck.",
+      "starterCode": "services_ok = {\n    \"web\": {\"healthcheck\": False, \"depends_on\": {\"api\": \"service_healthy\"}},\n    \"api\": {\"healthcheck\": True, \"depends_on\": {\"db\": \"service_healthy\"}},\n    \"db\": {\"healthcheck\": True, \"depends_on\": {}},\n}\nservices_cycle = {\n    \"a\": {\"healthcheck\": True, \"depends_on\": {\"b\": \"service_started\"}},\n    \"b\": {\"healthcheck\": True, \"depends_on\": {\"a\": \"service_started\"}},\n}\nservices_fragile = {\n    \"worker\": {\"healthcheck\": False, \"depends_on\": {\"cache\": \"service_healthy\"}},\n    \"cache\": {\"healthcheck\": False, \"depends_on\": {}},\n}\n\n\ndef start_order(services: dict) -> list[str]:\n    # TODO 1 : parcours en profondeur (services triés par nom) : une dépendance démarre avant le service qui l'utilise\n    # TODO 2 : si tu retombes sur un service déjà en cours de visite, lève\n    #          ValueError(\"cycle: a -> b -> a\") avec le chemin du cycle\n    return []\n\n\ndef missing_health(services: dict) -> list[str]:\n    # TODO 3 : pour chaque service (trié) et chaque dépendance dont la condition est \"service_healthy\",\n    #          si la dépendance n'a pas de healthcheck, ajoute \"<service> attend <dépendance> sans healthcheck\"\n    return []\n\n\nfor services in (services_ok, services_cycle, services_fragile):\n    try:\n        print(\"Ordre:\", \", \".join(start_order(services)))\n    except ValueError as error:\n        print(\"Erreur:\", error)\n    problems = missing_health(services)\n    print(\"Santé:\", \"; \".join(problems) if problems else \"OK\")\n",
+      "expectedOutput": "Ordre: db, api, web\nSanté: OK\nErreur: cycle: a -> b -> a\nSanté: OK\nOrdre: cache, worker\nSanté: worker attend cache sans healthcheck"
     }
   ],
   "quiz": [

@@ -46,10 +46,10 @@
   "exercises": [
     {
       "code": "SQL-03-E1",
-      "title": "Valider jointures et relations métier",
-      "statement": "Conserve l'invariant et produis exactement : SQL-03: preuve validée",
-      "starterCode": "import sqlite3\n\nconnection = sqlite3.connect(\":memory:\")\n# TODO 1 : crée une table evidence(id, concept, validated) ;\n#          validated vaut 0 ou 1 (contrainte check)\n# TODO 2 : insère deux lignes : ('SQL-JOINS', 1) et ('contrôle', 0)\n# TODO 3 : compte avec une requête SQL les lignes validées\n# TODO 4 : vérifie avec assert qu'il y en a exactement une, puis affiche \"SQL-03: preuve validée\"\nconnection.close()\n",
-      "expectedOutput": "SQL-03: preuve validée"
+      "title": "Choisir entre INNER JOIN et LEFT JOIN",
+      "statement": "Avec des clients et des commandes, écris trois requêtes : les clients qui ont commandé (INNER JOIN), le nombre de commandes de chaque client y compris ceux qui n'en ont aucune (LEFT JOIN), et les clients sans commande (LEFT JOIN filtré sur l'absence de correspondance).",
+      "starterCode": "import sqlite3\n\nconnection = sqlite3.connect(\":memory:\")\nconnection.executescript(\n    \"\"\"\n    CREATE TABLE customer (id INTEGER PRIMARY KEY, name TEXT);\n    CREATE TABLE orders (id INTEGER PRIMARY KEY, customer_id INTEGER, amount INTEGER);\n    INSERT INTO customer VALUES (1, 'Ada'), (2, 'Linus'), (3, 'Grace');\n    INSERT INTO orders VALUES (1, 1, 100), (2, 1, 50), (3, 2, 70);\n    \"\"\"\n)\n\n# TODO 1 : noms DISTINCTS des clients qui ont au moins une commande, triés par nom (INNER JOIN)\nordered = \"SELECT name FROM customer ORDER BY name\"\n# TODO 2 : nom et nombre de commandes de chaque client, y compris 0, trié par nom (LEFT JOIN + GROUP BY)\ncounts = \"SELECT name, 0 FROM customer ORDER BY name\"\n# TODO 3 : noms des clients sans aucune commande (LEFT JOIN ... WHERE o.id IS NULL)\nwithout = \"SELECT name FROM customer ORDER BY name\"\n\nprint(\"Ont commandé:\", \", \".join(row[0] for row in connection.execute(ordered)))\nprint(\"Commandes:\", \", \".join(f\"{name}={total}\" for name, total in connection.execute(counts)))\nprint(\"Sans commande:\", \", \".join(row[0] for row in connection.execute(without)))\n",
+      "expectedOutput": "Ont commandé: Ada, Linus\nCommandes: Ada=2, Grace=0, Linus=1\nSans commande: Grace"
     }
   ],
   "quiz": [

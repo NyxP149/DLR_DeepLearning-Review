@@ -46,10 +46,10 @@
   "exercises": [
     {
       "code": "TYPESCRIPT-19-E1",
-      "title": "Valider événements, files de tâches et concurrence",
-      "statement": "Conserve l'invariant et produis exactement : TYPESCRIPT-19: preuve validée",
-      "starterCode": "// TODO 1 : définis un type Evidence en lecture seule (Readonly) avec concept: string et validated: boolean\n// TODO 2 : crée une preuve pour le concept 'TYPESCRIPT-EVENTS', marquée comme validée\n// TODO 3 : lance une Error('preuve invalide') si elle n'est pas validée\n// TODO 4 : affiche 'TYPESCRIPT-19: preuve validée' avec console.log\n",
-      "expectedOutput": "TYPESCRIPT-19: preuve validée"
+      "title": "Typer un bus d'événements et sérialiser une file de tâches",
+      "statement": "Écris un EventBus générique dont les noms d'événements et leurs charges utiles sont typés par une table de types (on retourne la fonction de désabonnement), puis une TaskQueue qui exécute des tâches asynchrones strictement l'une après l'autre, même si une tâche plus tardive est plus rapide.",
+      "starterCode": "export {};\n\ninterface Events {\n  created: { id: number };\n  deleted: { id: number };\n}\n\nclass EventBus<E> {\n  private handlers = new Map<keyof E, Array<(payload: any) => void>>();\n\n  on<K extends keyof E>(event: K, handler: (payload: E[K]) => void): () => void {\n    // TODO 1 : ajoute le gestionnaire à la liste de l'événement et retourne une fonction qui le retire\n    return () => {};\n  }\n\n  emit<K extends keyof E>(event: K, payload: E[K]): void {\n    // TODO 2 : appelle chaque gestionnaire enregistré pour cet événement\n  }\n}\n\nclass TaskQueue {\n  private chain: Promise<void> = Promise.resolve();\n\n  push(task: () => Promise<void>): void {\n    // TODO 3 : enchaîne la tâche après les précédentes (this.chain.then)\n    void task();\n  }\n\n  idle(): Promise<void> {\n    // TODO 4 : retourne la promesse de fin de la chaîne\n    return Promise.resolve();\n  }\n}\n\nconst sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));\n\nasync function main(): Promise<void> {\n  const bus = new EventBus<Events>();\n  let received = 0;\n  const off = bus.on('created', (payload) => {\n    received++;\n    console.log(`reçu: created #${payload.id}`);\n  });\n  bus.emit('created', { id: 1 });\n  bus.emit('created', { id: 2 });\n  off();\n  bus.emit('created', { id: 3 });\n  console.log(`Appels reçus: ${received}`);\n\n  const queue = new TaskQueue();\n  for (const [name, delay] of [['tâche 1', 20], ['tâche 2', 5], ['tâche 3', 1]] as const) {\n    queue.push(async () => {\n      await sleep(delay);\n      console.log(`${name} terminée`);\n    });\n  }\n  await queue.idle();\n}\n\nmain();\n",
+      "expectedOutput": "reçu: created #1\nreçu: created #2\nAppels reçus: 2\ntâche 1 terminée\ntâche 2 terminée\ntâche 3 terminée"
     }
   ],
   "quiz": [

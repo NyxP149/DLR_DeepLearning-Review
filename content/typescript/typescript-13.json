@@ -46,10 +46,10 @@
   "exercises": [
     {
       "code": "TYPESCRIPT-13-E1",
-      "title": "Valider promises, async/await et concurrence",
-      "statement": "Conserve l'invariant et produis exactement : TYPESCRIPT-13: preuve validée",
-      "starterCode": "// TODO 1 : définis un type Evidence en lecture seule (Readonly) avec concept: string et validated: boolean\n// TODO 2 : crée une preuve pour le concept 'TYPESCRIPT-ASYNC', marquée comme validée\n// TODO 3 : lance une Error('preuve invalide') si elle n'est pas validée\n// TODO 4 : affiche 'TYPESCRIPT-13: preuve validée' avec console.log\n",
-      "expectedOutput": "TYPESCRIPT-13: preuve validée"
+      "title": "Limiter la concurrence d'un traitement asynchrone",
+      "statement": "Écris mapWithLimit qui applique un worker asynchrone à chaque élément en n'exécutant jamais plus de limit tâches en même temps, tout en rendant les résultats dans l'ordre d'origine. Le programme mesure la concurrence réellement atteinte.",
+      "starterCode": "export {};\n\nasync function mapWithLimit<T, R>(items: T[], limit: number, worker: (item: T) => Promise<R>): Promise<R[]> {\n  // TODO : lance `limit` « coureurs » ; chacun prend le prochain indice libre, attend worker(items[indice])\n  //        et range le résultat à la bonne position, jusqu'à épuisement des éléments (Promise.all)\n  return [];\n}\n\nconst sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));\n\nlet inFlight = 0;\nlet maxInFlight = 0;\n\nasync function double(value: number): Promise<number> {\n  inFlight++;\n  maxInFlight = Math.max(maxInFlight, inFlight);\n  await sleep(10);\n  inFlight--;\n  return value * 2;\n}\n\nasync function main(): Promise<void> {\n  const results = await mapWithLimit([1, 2, 3, 4, 5], 2, double);\n  console.log(`Résultats: ${JSON.stringify(results)}`);\n  console.log(`Concurrence maximale: ${maxInFlight}`);\n}\n\nmain();\n",
+      "expectedOutput": "Résultats: [2,4,6,8,10]\nConcurrence maximale: 2"
     }
   ],
   "quiz": [

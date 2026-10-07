@@ -46,10 +46,10 @@
   "exercises": [
     {
       "code": "TYPESCRIPT-04-E1",
-      "title": "Valider objets, interfaces et compatibilité structurelle",
-      "statement": "Conserve l'invariant et produis exactement : TYPESCRIPT-04: preuve validée",
-      "starterCode": "// TODO 1 : définis un type Evidence en lecture seule (Readonly) avec concept: string et validated: boolean\n// TODO 2 : crée une preuve pour le concept 'TYPESCRIPT-INTERFACES', marquée comme validée\n// TODO 3 : lance une Error('preuve invalide') si elle n'est pas validée\n// TODO 4 : affiche 'TYPESCRIPT-04: preuve validée' avec console.log\n",
-      "expectedOutput": "TYPESCRIPT-04: preuve validée"
+      "title": "Exploiter la compatibilité structurelle des interfaces",
+      "statement": "TypeScript compare les formes, pas les noms : une classe qui possède les bonnes propriétés satisfait une interface sans la déclarer. Complète l'interface Contact avec une propriété email optionnelle et la fonction label, puis constate qu'un objet Robot (qui n'a pas d'e-mail) est accepté partout où un Contact est attendu.",
+      "starterCode": "export {};\n\ninterface Contact {\n  name: string;\n  // TODO 1 : ajoute une propriété email optionnelle de type string\n}\n\nfunction label(contact: Contact): string {\n  // TODO 2 : retourne \"<nom> <<email>>\" en remplaçant un e-mail absent par \"inconnu\"\n  return contact.name;\n}\n\nclass Robot {\n  name: string;\n  model: string;\n\n  constructor(name: string, model: string) {\n    this.name = name;\n    this.model = model;\n  }\n}\n\nconst ada = { name: 'Ada', email: 'ada@dlr.dev' };\nconst linus = { name: 'Linus' };\nconst robot = new Robot('R2', 'astromech');\n\nfor (const contact of [ada, linus, robot]) {\n  console.log(label(contact));\n}\n",
+      "expectedOutput": "Ada <ada@dlr.dev>\nLinus <inconnu>\nR2 <inconnu>"
     }
   ],
   "quiz": [

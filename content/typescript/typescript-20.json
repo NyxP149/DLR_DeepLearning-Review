@@ -46,10 +46,10 @@
   "exercises": [
     {
       "code": "TYPESCRIPT-20-E1",
-      "title": "Valider sécurité web et validation des données",
-      "statement": "Conserve l'invariant et produis exactement : TYPESCRIPT-20: preuve validée",
-      "starterCode": "// TODO 1 : définis un type Evidence en lecture seule (Readonly) avec concept: string et validated: boolean\n// TODO 2 : crée une preuve pour le concept 'TYPESCRIPT-SECURITY', marquée comme validée\n// TODO 3 : lance une Error('preuve invalide') si elle n'est pas validée\n// TODO 4 : affiche 'TYPESCRIPT-20: preuve validée' avec console.log\n",
-      "expectedOutput": "TYPESCRIPT-20: preuve validée"
+      "title": "Échapper le HTML et restreindre les redirections",
+      "statement": "Deux défenses web classiques : escapeHtml neutralise les caractères & < > \" ' (le & d'abord) pour empêcher l'injection de script, et isSafeRedirect n'accepte qu'un chemin interne commençant par un seul « / » (refuser les URL absolues, les adresses « // » et « /\\ » que les navigateurs interprètent comme un autre site).",
+      "starterCode": "export {};\n\nfunction escapeHtml(value: string): string {\n  // TODO 1 : remplace & par &amp;, < par &lt;, > par &gt;, \" par &quot; et ' par &#39; (le & en premier)\n  return value;\n}\n\nfunction isSafeRedirect(target: string): boolean {\n  // TODO 2 : n'accepte qu'un chemin qui commence par \"/\" mais PAS par \"//\" ni par \"/\\\"\n  return true;\n}\n\nconsole.log(escapeHtml('<script>alert(1)</script>'));\nconsole.log(escapeHtml(`\"x\" & 'y'`));\nfor (const target of ['/dashboard', 'https://evil.example/phish', '//evil.example', '/\\\\evil.example']) {\n  console.log(`${target}: redirection ${isSafeRedirect(target) ? 'autorisée' : 'refusée'}`);\n}\n",
+      "expectedOutput": "&lt;script&gt;alert(1)&lt;/script&gt;\n&quot;x&quot; &amp; &#39;y&#39;\n/dashboard: redirection autorisée\nhttps://evil.example/phish: redirection refusée\n//evil.example: redirection refusée\n/\\evil.example: redirection refusée"
     }
   ],
   "quiz": [

@@ -46,10 +46,10 @@
   "exercises": [
     {
       "code": "ANGULAR-09-E1",
-      "title": "Valider projet professionnel : dashboard métier",
-      "statement": "Conserve l'invariant et produis exactement : ANGULAR-09: preuve validée",
-      "starterCode": "// TODO 1 : définis un type Evidence en lecture seule (Readonly) avec concept: string et validated: boolean\n// TODO 2 : crée une preuve pour le concept 'ANGULAR-PROJECT', marquée comme validée\n// TODO 3 : lance une Error('preuve invalide') si elle n'est pas validée\n// TODO 4 : affiche 'ANGULAR-09: preuve validée' avec console.log\n",
-      "expectedOutput": "ANGULAR-09: preuve validée"
+      "title": "Calculer les indicateurs d'un dashboard métier",
+      "statement": "Alimente un tableau de bord de commandes avec des fonctions pures et typées : chiffre d'affaires des commandes payées, panier moyen arrondi, nombre de commandes par statut (dans l'ordre PAID, PENDING, CANCELLED) et meilleur client en chiffre d'affaires payé.",
+      "starterCode": "export {};\n\ntype OrderStatus = 'PAID' | 'PENDING' | 'CANCELLED';\n\ninterface Order {\n  customer: string;\n  amount: number;\n  status: OrderStatus;\n}\n\nconst orders: Order[] = [\n  { customer: 'Ada', amount: 120, status: 'PAID' },\n  { customer: 'Linus', amount: 60, status: 'PAID' },\n  { customer: 'Ada', amount: 80, status: 'PAID' },\n  { customer: 'Grace', amount: 200, status: 'PENDING' },\n  { customer: 'Linus', amount: 40, status: 'CANCELLED' },\n];\n\nfunction revenue(list: Order[]): number {\n  // TODO 1 : somme des montants des commandes PAID\n  return 0;\n}\n\nfunction averageBasket(list: Order[]): number {\n  // TODO 2 : moyenne des montants des commandes PAID, arrondie à l'entier (0 s'il n'y en a pas)\n  return 0;\n}\n\nfunction countByStatus(list: Order[]): Record<OrderStatus, number> {\n  // TODO 3 : nombre de commandes pour chaque statut\n  return { PAID: 0, PENDING: 0, CANCELLED: 0 };\n}\n\nfunction bestCustomer(list: Order[]): [string, number] {\n  // TODO 4 : client au plus grand chiffre d'affaires PAID, avec ce chiffre\n  return ['', 0];\n}\n\nconst counts = countByStatus(orders);\nconst [customer, amount] = bestCustomer(orders);\nconsole.log(`Chiffre d'affaires: ${revenue(orders)}`);\nconsole.log(`Panier moyen: ${averageBasket(orders)}`);\nconsole.log(`Par statut: PAID=${counts.PAID}, PENDING=${counts.PENDING}, CANCELLED=${counts.CANCELLED}`);\nconsole.log(`Meilleur client: ${customer} (${amount})`);\n",
+      "expectedOutput": "Chiffre d'affaires: 260\nPanier moyen: 87\nPar statut: PAID=3, PENDING=1, CANCELLED=1\nMeilleur client: Ada (200)"
     }
   ],
   "quiz": [

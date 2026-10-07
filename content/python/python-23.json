@@ -46,10 +46,10 @@
   "exercises": [
     {
       "code": "PYTHON-23-E1",
-      "title": "Valider projet professionnel : service de données python",
-      "statement": "Conserve l'invariant et produis exactement : PYTHON-23: preuve validée",
-      "starterCode": "from dataclasses import dataclass\n\n# TODO 1 : définis une dataclass immuable Evidence (frozen=True, slots=True)\n#          avec les champs concept: str et validated: bool\n\n# TODO 2 : crée une preuve pour le concept \"PYTHON-PROJECT\", marquée comme validée\n# TODO 3 : vérifie avec assert que la preuve est validée\n# TODO 4 : affiche \"PYTHON-23: preuve validée\"\n",
-      "expectedOutput": "PYTHON-23: preuve validée"
+      "title": "Nettoyer un CSV et agréger les montants par pays",
+      "statement": "Écris le cœur d'un service de données : lis un CSV, rejette chaque ligne invalide en gardant son numéro (pays manquant, montant illisible ou négatif), garde les autres avec des montants Decimal, puis calcule le total par pays trié par nom.",
+      "starterCode": "import csv\nimport io\nfrom decimal import Decimal, InvalidOperation\n\nRAW = \"\"\"pays,client,montant\nFR,Ada,100.50\nDE,Linus,80\nFR,Grace,abc\n,Alan,20\nFR,Hedy,50\nDE,Ken,-5\"\"\"\n\n\ndef parse_rows(raw: str) -> tuple[list[tuple[str, Decimal]], list[str]]:\n    valid: list[tuple[str, Decimal]] = []\n    rejected: list[str] = []\n    reader = csv.DictReader(io.StringIO(raw))\n    for line, row in enumerate(reader, start=2):\n        # TODO 1 : pays vide -> rejette \"ligne <n>: pays manquant\"\n        # TODO 2 : montant non décimal (InvalidOperation) -> \"ligne <n>: montant invalide\" ;\n        #          montant négatif -> \"ligne <n>: montant négatif\"\n        # TODO 3 : sinon ajoute (pays, montant) à valid\n        pass\n    return valid, rejected\n\n\ndef totals(rows: list[tuple[str, Decimal]]) -> dict[str, Decimal]:\n    # TODO 4 : additionne les montants par pays\n    return {}\n\n\nvalid, rejected = parse_rows(RAW)\nprint(f\"Lignes lues: {len(valid) + len(rejected)}\")\nprint(f\"Rejetées: {len(rejected)} ({', '.join(rejected)})\")\nprint(\"Total par pays:\", \", \".join(f\"{country}={total:.2f}\" for country, total in sorted(totals(valid).items())))\n",
+      "expectedOutput": "Lignes lues: 6\nRejetées: 3 (ligne 4: montant invalide, ligne 5: pays manquant, ligne 7: montant négatif)\nTotal par pays: DE=80.00, FR=150.50"
     }
   ],
   "quiz": [

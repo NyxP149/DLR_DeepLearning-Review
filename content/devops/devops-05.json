@@ -46,10 +46,10 @@
   "exercises": [
     {
       "code": "DEVOPS-05-E1",
-      "title": "Valider quality gates, artefacts et traçabilité",
-      "statement": "Conserve l'invariant et produis exactement : DEVOPS-05: preuve validée",
-      "starterCode": "from dataclasses import dataclass\n\n# TODO 1 : définis une dataclass immuable DeliveryCheck (frozen=True)\n#          avec les champs control: str et passed: bool\n\n# TODO 2 : crée un contrôle pour \"DEVOPS-QUALITY\", marqué comme réussi\n# TODO 3 : vérifie avec assert que le contrôle est réussi\n# TODO 4 : affiche \"DEVOPS-05: preuve validée\"\n",
-      "expectedOutput": "DEVOPS-05: preuve validée"
+      "title": "Appliquer un quality gate avant de publier un artefact",
+      "statement": "Écris un quality gate : couverture minimale de 80 %, aucune vulnérabilité critique, duplication de 5 % au plus, aucun test en échec. L'artefact n'est publié que si toutes les règles passent, et son nom contient la version et les 7 premiers caractères du commit pour rester traçable.",
+      "starterCode": "RULES = {\n    \"coverage\": (\"min\", 80),\n    \"critical_vulns\": (\"max\", 0),\n    \"duplication\": (\"max\", 5),\n    \"failed_tests\": (\"max\", 0),\n}\n\n\ndef check(name: str, value: int) -> tuple[bool, str]:\n    kind, limit = RULES[name]\n    # TODO 1 : règle \"min\" : réussie si value >= limit, ligne \"<nom>: <valeur> >= <limite> -> OK\"\n    #          ou \"<nom>: <valeur> < <limite> -> ÉCHEC\"\n    #          règle \"max\" : réussie si value <= limit, ligne \"<nom>: <valeur> <= <limite> -> OK\"\n    #          ou \"<nom>: <valeur> > <limite> -> ÉCHEC\"\n    return True, \"\"\n\n\ndef artifact_name(version: str, commit: str) -> str:\n    # TODO 2 : retourne \"dlr-api-<version>+<7 premiers caractères du commit>\"\n    return \"\"\n\n\ndef run(commit: str, metrics: dict) -> None:\n    print(f\"Build {commit[:7]}\")\n    failures = 0\n    for name in RULES:\n        ok, line = check(name, metrics[name])\n        print(line)\n        if not ok:\n            failures += 1\n    # TODO 3 : s'il y a des échecs, affiche \"Gate: REFUSÉ (<n> échec(s)) - artefact non publié\"\n    #          sinon \"Gate: ACCEPTÉ - artefact <nom> publié\"\n\n\nrun(\"a1b2c3d4e5f6\", {\"coverage\": 72, \"critical_vulns\": 0, \"duplication\": 7, \"failed_tests\": 0})\nrun(\"9f8e7d6c5b4a\", {\"coverage\": 85, \"critical_vulns\": 0, \"duplication\": 3, \"failed_tests\": 0})\n",
+      "expectedOutput": "Build a1b2c3d\ncoverage: 72 < 80 -> ÉCHEC\ncritical_vulns: 0 <= 0 -> OK\nduplication: 7 > 5 -> ÉCHEC\nfailed_tests: 0 <= 0 -> OK\nGate: REFUSÉ (2 échec(s)) - artefact non publié\nBuild 9f8e7d6\ncoverage: 85 >= 80 -> OK\ncritical_vulns: 0 <= 0 -> OK\nduplication: 3 <= 5 -> OK\nfailed_tests: 0 <= 0 -> OK\nGate: ACCEPTÉ - artefact dlr-api-1.4.0+9f8e7d6 publié"
     }
   ],
   "quiz": [

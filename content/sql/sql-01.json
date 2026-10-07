@@ -44,10 +44,10 @@
   "exercises": [
     {
       "code": "SQL-01-E1",
-      "title": "Valider modélisation relationnelle et ddl",
-      "statement": "Conserve l'invariant et produis exactement : SQL-01: preuve validée",
-      "starterCode": "import sqlite3\n\nconnection = sqlite3.connect(\":memory:\")\n# TODO 1 : crée une table evidence(id, concept, validated) ;\n#          validated vaut 0 ou 1 (contrainte check)\n# TODO 2 : insère deux lignes : ('SQL-MODELING', 1) et ('contrôle', 0)\n# TODO 3 : compte avec une requête SQL les lignes validées\n# TODO 4 : vérifie avec assert qu'il y en a exactement une, puis affiche \"SQL-01: preuve validée\"\nconnection.close()\n",
-      "expectedOutput": "SQL-01: preuve validée"
+      "title": "Écrire le schéma client et commandes avec ses clés",
+      "statement": "Modélise deux tables reliées : customer (clé primaire, e-mail obligatoire et unique) et orders (clé primaire, client obligatoire référençant customer, total en centimes obligatoire). Le programme inspecte ensuite le schéma et tente d'insérer une commande pour un client qui n'existe pas : la base doit la refuser.",
+      "starterCode": "import sqlite3\n\nconnection = sqlite3.connect(\":memory:\")\nconnection.execute(\"PRAGMA foreign_keys = ON\")\n\n# TODO 1 : crée la table customer(id entier clé primaire, email texte obligatoire et unique)\n# TODO 2 : crée la table orders(id entier clé primaire, customer_id entier obligatoire\n#          qui référence customer(id), total_cents entier obligatoire)\n\nfor table in (\"customer\", \"orders\"):\n    columns = [row[1] for row in connection.execute(f\"PRAGMA table_info({table})\")]\n    print(f\"{table}: {', '.join(columns)}\")\n\nfor row in connection.execute(\"PRAGMA foreign_key_list(orders)\"):\n    print(f\"Clé étrangère: orders.{row[3]} -> {row[2]}.{row[4]}\")\n\ntry:\n    connection.execute(\"INSERT INTO orders (customer_id, total_cents) VALUES (99, 1000)\")\nexcept sqlite3.Error as error:\n    print(f\"Insertion orpheline refusée: {error}\")\n",
+      "expectedOutput": "customer: id, email\norders: id, customer_id, total_cents\nClé étrangère: orders.customer_id -> customer.id\nInsertion orpheline refusée: FOREIGN KEY constraint failed"
     }
   ],
   "quiz": [
