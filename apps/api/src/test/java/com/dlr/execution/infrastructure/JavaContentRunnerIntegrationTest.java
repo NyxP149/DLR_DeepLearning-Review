@@ -36,12 +36,29 @@ class JavaContentRunnerIntegrationTest {
                     SubmissionOrigin.EDITOR, Instant.now());
             var result = runner.run(submission);
             assertThat(result.status()).as(lab.code() + ": " + result.errorOutput()).isEqualTo(ExecutionStatus.SUCCESS);
-            // JAVA-01 à JAVA-06 sont les exercices guidés historiques : leur starter
-            // contient volontairement le travail à compléter. JAVA-07 à JAVA-24
-            // fournissent un exemple exécutable dont la sortie sert de contrat.
+            // Tous les starters sont des squelettes à compléter : ils compilent
+            // mais ne produisent pas encore la sortie attendue.
+            assertThat(result.standardOutput().strip()).as(lab.code() + " ne doit pas donner la solution")
+                    .isNotEqualTo(exercise.expectedOutput().strip());
+
             if (lab.number() >= 7) {
-                assertThat(result.standardOutput().strip()).as(lab.code()).isEqualTo(exercise.expectedOutput());
+                var solution = new Submission(
+                        UUID.randomUUID(), UUID.randomUUID(), "JAVA", referenceSolution(exercise.code()),
+                        SubmissionOrigin.EDITOR, Instant.now());
+                var solved = runner.run(solution);
+                assertThat(solved.status()).as(lab.code() + ": " + solved.errorOutput()).isEqualTo(ExecutionStatus.SUCCESS);
+                assertThat(solved.standardOutput().strip()).as(lab.code() + " solution de référence")
+                        .isEqualTo(exercise.expectedOutput().strip());
             }
+        }
+    }
+
+    private static String referenceSolution(String exerciseCode) {
+        try (var stream = JavaContentRunnerIntegrationTest.class.getResourceAsStream("/java-solutions/" + exerciseCode + ".java")) {
+            assertThat(stream).as("solution de référence " + exerciseCode).isNotNull();
+            return new String(stream.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8);
+        } catch (java.io.IOException exception) {
+            throw new IllegalStateException(exception);
         }
     }
 }

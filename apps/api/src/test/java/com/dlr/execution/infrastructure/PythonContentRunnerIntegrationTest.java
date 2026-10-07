@@ -35,8 +35,26 @@ class PythonContentRunnerIntegrationTest {
                     UUID.randomUUID(), UUID.randomUUID(), "PYTHON", exercise.starterCode(),
                     SubmissionOrigin.EDITOR, Instant.now());
             var result = runner.run(submission);
-            assertThat(result.status()).as(lab.code()).isEqualTo(ExecutionStatus.SUCCESS);
-            assertThat(result.standardOutput().strip()).as(lab.code()).isEqualTo(exercise.expectedOutput());
+            assertThat(result.status()).as(lab.code() + ": " + result.errorOutput()).isEqualTo(ExecutionStatus.SUCCESS);
+            assertThat(result.standardOutput().strip()).as(lab.code() + " ne doit pas donner la solution")
+                    .isNotEqualTo(exercise.expectedOutput().strip());
+
+            var solved = runner.run(new Submission(
+                    UUID.randomUUID(), UUID.randomUUID(), "PYTHON", referenceSolution("python", exercise.code(), "py"),
+                    SubmissionOrigin.EDITOR, Instant.now()));
+            assertThat(solved.status()).as(lab.code() + ": " + solved.errorOutput()).isEqualTo(ExecutionStatus.SUCCESS);
+            assertThat(solved.standardOutput().strip()).as(lab.code() + " solution de référence")
+                    .isEqualTo(exercise.expectedOutput().strip());
+        }
+    }
+
+    private static String referenceSolution(String folder, String exerciseCode, String extension) {
+        try (var stream = PythonContentRunnerIntegrationTest.class.getResourceAsStream("/" + folder + "-solutions/" + exerciseCode + "." + extension)) {
+            assertThat(stream).as("solution de référence " + exerciseCode).isNotNull();
+            return new String(stream.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8);
+        } catch (java.io.IOException exception) {
+            throw new IllegalStateException(exception);
         }
     }
 }
+

@@ -48,7 +48,7 @@
       "code": "SQL-06-E1",
       "title": "Valider index, explain et coût des requêtes",
       "statement": "Conserve l'invariant et produis exactement : SQL-06: preuve validée",
-      "starterCode": "import sqlite3\n\nconnection = sqlite3.connect(\":memory:\")\nconnection.executescript(\"\"\"\ncreate table evidence(id integer primary key, concept text not null, validated integer not null check(validated in (0, 1)));\ninsert into evidence(concept, validated) values ('SQL-INDEXES', 1), ('contrôle', 0);\n\"\"\")\nvalidated = connection.execute(\"select count(*) from evidence where validated = 1\").fetchone()[0]\nassert validated == 1\nprint(\"SQL-06: preuve validée\")\nconnection.close()\n",
+      "starterCode": "import sqlite3\n\nconnection = sqlite3.connect(\":memory:\")\n# TODO 1 : crée une table evidence(id, concept, validated) ;\n#          validated vaut 0 ou 1 (contrainte check)\n# TODO 2 : insère deux lignes : ('SQL-INDEXES', 1) et ('contrôle', 0)\n# TODO 3 : compte avec une requête SQL les lignes validées\n# TODO 4 : vérifie avec assert qu'il y en a exactement une, puis affiche \"SQL-06: preuve validée\"\nconnection.close()\n",
       "expectedOutput": "SQL-06: preuve validée"
     }
   ],

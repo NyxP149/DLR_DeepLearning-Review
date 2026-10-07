@@ -29,6 +29,16 @@ class ExpandedContentRunnerIntegrationTest {
             "ARCHITECTURE-", 24,
             "LLM-", 12);
 
+    // Parcours dont l'exercice est une démonstration à exécuter puis à expliquer : le code fourni donne la sortie attendue.
+    private static final java.util.Set<String> DEMONSTRATIONS = java.util.Set.of("ARCHITECTURE-", "LLM-");
+
+    private static final Map<String, String> SOLUTION_FOLDERS = Map.of(
+            "TYPESCRIPT-", "typescript",
+            "SPRING_BOOT-", "spring-boot",
+            "ANGULAR-", "angular",
+            "SQL-", "sql",
+            "DEVOPS-", "devops");
+
     @Autowired private CodeRunner runner;
     @Autowired private LabCatalog catalog;
 
@@ -44,8 +54,36 @@ class ExpandedContentRunnerIntegrationTest {
                         SubmissionOrigin.EDITOR, Instant.now());
                 var result = runner.run(submission);
                 assertThat(result.status()).as(lab.code() + ": " + result.errorOutput()).isEqualTo(ExecutionStatus.SUCCESS);
-                assertThat(result.standardOutput().strip()).as(lab.code()).isEqualTo(exercise.expectedOutput());
+                if (DEMONSTRATIONS.contains(prefix)) {
+                    assertThat(result.standardOutput().strip()).as(lab.code()).isEqualTo(exercise.expectedOutput());
+                    continue;
+                }
+                assertThat(result.standardOutput().strip()).as(lab.code() + " ne doit pas donner la solution")
+                        .isNotEqualTo(exercise.expectedOutput().strip());
+
+                String extension = switch (lab.language()) {
+                    case "JAVA" -> "java";
+                    case "PYTHON" -> "py";
+                    default -> "ts";
+                };
+                var solved = runner.run(new Submission(
+                        UUID.randomUUID(), UUID.randomUUID(), lab.language(),
+                        referenceSolution(SOLUTION_FOLDERS.get(prefix), exercise.code(), extension),
+                        SubmissionOrigin.EDITOR, Instant.now()));
+                assertThat(solved.status()).as(lab.code() + ": " + solved.errorOutput()).isEqualTo(ExecutionStatus.SUCCESS);
+                assertThat(solved.standardOutput().strip()).as(lab.code() + " solution de référence")
+                        .isEqualTo(exercise.expectedOutput().strip());
             }
         });
     }
+
+    private static String referenceSolution(String folder, String exerciseCode, String extension) {
+        try (var stream = ExpandedContentRunnerIntegrationTest.class.getResourceAsStream("/" + folder + "-solutions/" + exerciseCode + "." + extension)) {
+            assertThat(stream).as("solution de référence " + exerciseCode).isNotNull();
+            return new String(stream.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8);
+        } catch (java.io.IOException exception) {
+            throw new IllegalStateException(exception);
+        }
+    }
 }
+

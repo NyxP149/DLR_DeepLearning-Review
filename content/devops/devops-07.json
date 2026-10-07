@@ -48,7 +48,7 @@
       "code": "DEVOPS-07-E1",
       "title": "Valider projet professionnel : chaîne de livraison",
       "statement": "Conserve l'invariant et produis exactement : DEVOPS-07: preuve validée",
-      "starterCode": "from dataclasses import dataclass\n\n@dataclass(frozen=True)\nclass DeliveryCheck:\n    control: str\n    passed: bool\n\ncheck = DeliveryCheck(\"DEVOPS-PROJECT\", True)\nassert check.passed\nprint(\"DEVOPS-07: preuve validée\")\n",
+      "starterCode": "from dataclasses import dataclass\n\n# TODO 1 : définis une dataclass immuable DeliveryCheck (frozen=True)\n#          avec les champs control: str et passed: bool\n\n# TODO 2 : crée un contrôle pour \"DEVOPS-PROJECT\", marqué comme réussi\n# TODO 3 : vérifie avec assert que le contrôle est réussi\n# TODO 4 : affiche \"DEVOPS-07: preuve validée\"\n",
       "expectedOutput": "DEVOPS-07: preuve validée"
     }
   ],

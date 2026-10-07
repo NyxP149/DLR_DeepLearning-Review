@@ -48,7 +48,7 @@
       "code": "ANGULAR-03-E1",
       "title": "Valider composants, inputs, outputs et composition",
       "statement": "Conserve l'invariant et produis exactement : ANGULAR-03: preuve validée",
-      "starterCode": "type Evidence = Readonly<{ concept: string; validated: boolean }>;\nconst evidence: Evidence = { concept: 'ANGULAR-COMPONENTS', validated: true };\nif (!evidence.validated) throw new Error('preuve invalide');\nconsole.log('ANGULAR-03: preuve validée');\n",
+      "starterCode": "// TODO 1 : définis un type Evidence en lecture seule (Readonly) avec concept: string et validated: boolean\n// TODO 2 : crée une preuve pour le concept 'ANGULAR-COMPONENTS', marquée comme validée\n// TODO 3 : lance une Error('preuve invalide') si elle n'est pas validée\n// TODO 4 : affiche 'ANGULAR-03: preuve validée' avec console.log\n",
       "expectedOutput": "ANGULAR-03: preuve validée"
     }
   ],

@@ -48,7 +48,7 @@
       "code": "SPRING_BOOT-01-E1",
       "title": "Valider démarrage, auto-configuration et configuration typée",
       "statement": "Conserve l'invariant et produis exactement : SPRING_BOOT-01: preuve validée",
-      "starterCode": "record Evidence(String concept, boolean validated) {}\npublic class Main {\n    public static void main(String[] args) {\n        var evidence = new Evidence(\"SPRING-BOOTSTRAP\", true);\n        if (!evidence.validated()) throw new IllegalStateException(\"preuve invalide\");\n        System.out.println(\"SPRING_BOOT-01: preuve validée\");\n    }\n}\n",
+      "starterCode": "// TODO 1 : définis un record Evidence(String concept, boolean validated)\n\npublic class Main {\n    public static void main(String[] args) {\n        // TODO 2 : crée une preuve pour le concept \"SPRING-BOOTSTRAP\", marquée comme validée\n        // TODO 3 : lance une IllegalStateException(\"preuve invalide\") si elle n'est pas validée\n        // TODO 4 : affiche \"SPRING_BOOT-01: preuve validée\"\n    }\n}\n",
       "expectedOutput": "SPRING_BOOT-01: preuve validée"
     }
   ],

@@ -48,7 +48,7 @@
       "code": "DEVOPS-06-E1",
       "title": "Valider observabilité, déploiement et rollback",
       "statement": "Conserve l'invariant et produis exactement : DEVOPS-06: preuve validée",
-      "starterCode": "from dataclasses import dataclass\n\n@dataclass(frozen=True)\nclass DeliveryCheck:\n    control: str\n    passed: bool\n\ncheck = DeliveryCheck(\"DEVOPS-OPERATIONS\", True)\nassert check.passed\nprint(\"DEVOPS-06: preuve validée\")\n",
+      "starterCode": "from dataclasses import dataclass\n\n# TODO 1 : définis une dataclass immuable DeliveryCheck (frozen=True)\n#          avec les champs control: str et passed: bool\n\n# TODO 2 : crée un contrôle pour \"DEVOPS-OPERATIONS\", marqué comme réussi\n# TODO 3 : vérifie avec assert que le contrôle est réussi\n# TODO 4 : affiche \"DEVOPS-06: preuve validée\"\n",
       "expectedOutput": "DEVOPS-06: preuve validée"
     }
   ],

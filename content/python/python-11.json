@@ -48,7 +48,7 @@
       "code": "PYTHON-11-E1",
       "title": "Valider tests avec pytest, doublures et couverture utile",
       "statement": "Conserve l'invariant et produis exactement : PYTHON-11: preuve validée",
-      "starterCode": "from dataclasses import dataclass\n\n@dataclass(frozen=True, slots=True)\nclass Evidence:\n    concept: str\n    validated: bool\n\nevidence = Evidence(\"PYTHON-TESTS\", True)\nassert evidence.validated\nprint(\"PYTHON-11: preuve validée\")\n",
+      "starterCode": "from dataclasses import dataclass\n\n# TODO 1 : définis une dataclass immuable Evidence (frozen=True, slots=True)\n#          avec les champs concept: str et validated: bool\n\n# TODO 2 : crée une preuve pour le concept \"PYTHON-TESTS\", marquée comme validée\n# TODO 3 : vérifie avec assert que la preuve est validée\n# TODO 4 : affiche \"PYTHON-11: preuve validée\"\n",
       "expectedOutput": "PYTHON-11: preuve validée"
     }
   ],

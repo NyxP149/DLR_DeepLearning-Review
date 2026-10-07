@@ -48,7 +48,7 @@
       "code": "TYPESCRIPT-20-E1",
       "title": "Valider sécurité web et validation des données",
       "statement": "Conserve l'invariant et produis exactement : TYPESCRIPT-20: preuve validée",
-      "starterCode": "type Evidence = Readonly<{ concept: string; validated: boolean }>;\nconst evidence: Evidence = { concept: 'TYPESCRIPT-SECURITY', validated: true };\nif (!evidence.validated) throw new Error('preuve invalide');\nconsole.log('TYPESCRIPT-20: preuve validée');\n",
+      "starterCode": "// TODO 1 : définis un type Evidence en lecture seule (Readonly) avec concept: string et validated: boolean\n// TODO 2 : crée une preuve pour le concept 'TYPESCRIPT-SECURITY', marquée comme validée\n// TODO 3 : lance une Error('preuve invalide') si elle n'est pas validée\n// TODO 4 : affiche 'TYPESCRIPT-20: preuve validée' avec console.log\n",
       "expectedOutput": "TYPESCRIPT-20: preuve validée"
     }
   ],

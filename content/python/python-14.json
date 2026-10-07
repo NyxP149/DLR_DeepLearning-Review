@@ -48,7 +48,7 @@
       "code": "PYTHON-14-E1",
       "title": "Valider configuration, journalisation et diagnostic",
       "statement": "Conserve l'invariant et produis exactement : PYTHON-14: preuve validée",
-      "starterCode": "from dataclasses import dataclass\n\n@dataclass(frozen=True, slots=True)\nclass Evidence:\n    concept: str\n    validated: bool\n\nevidence = Evidence(\"PYTHON-LOGGING\", True)\nassert evidence.validated\nprint(\"PYTHON-14: preuve validée\")\n",
+      "starterCode": "from dataclasses import dataclass\n\n# TODO 1 : définis une dataclass immuable Evidence (frozen=True, slots=True)\n#          avec les champs concept: str et validated: bool\n\n# TODO 2 : crée une preuve pour le concept \"PYTHON-LOGGING\", marquée comme validée\n# TODO 3 : vérifie avec assert que la preuve est validée\n# TODO 4 : affiche \"PYTHON-14: preuve validée\"\n",
       "expectedOutput": "PYTHON-14: preuve validée"
     }
   ],
