@@ -49,7 +49,7 @@
 - [x] Coach adaptatif : une proposition acceptée n'affiche plus de boutons qui échouaient, « Autre proposition » et « Ignorer » restent possibles (V3.19)
 - [x] Exercices guidés : 106 codes de départ convertis en squelettes à compléter (Java 7-24, Spring Boot, Python, TypeScript, Angular, SQL, DevOps) au lieu de donner la solution (V3.20)
 - [x] Architecture (24) et LLM (12) convertis aussi en squelettes à compléter, énoncés réécrits : 142 exercices sur 148 ne donnent plus la solution (V3.21)
-- [ ] Rédiger des exercices à compléter propres à chaque sujet pour les parcours dont le gabarit « preuve » était identique (Spring Boot, Angular, SQL, DevOps, Python et TypeScript)
+- [x] Exercices à compléter propres à chaque sujet rédigés pour les 81 laboratoires qui partageaient le gabarit « preuve » : Spring Boot (12), Angular (10), SQL (10), DevOps (8), Python 7 à 24 (18) et TypeScript 2 à 24 (23) (V3.22)
 
 ## Déploiement cloud
 

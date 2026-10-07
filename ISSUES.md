@@ -377,3 +377,16 @@ Dans les laboratoires Java 7 et 8, l'exercice guidé s'ouvrait avec un code de d
 
 **Solution**
 106 codes de départ (Java 7 à 24, Spring Boot, Python, TypeScript, Angular, SQL, DevOps) sont remplacés par des squelettes à compléter avec des consignes `TODO` numérotées ; les solutions d'origine sont conservées en ressources de test, et les tests Docker exigent désormais que le départ ne passe pas et que la solution passe. Architecture et LLM, d'abord laissés tels quels car leur énoncé demandait d'exécuter une démonstration puis de l'expliquer, sont convertis ensuite de la même façon avec des énoncés réécrits (« Complète… ») : 142 exercices sur 148 sont désormais des squelettes.
+
+---
+
+## Les exercices à compléter étaient identiques d'un sujet à l'autre
+- severity: medium
+- date: 2026-10
+- tags: Pédagogie, Contenu, Laboratoires
+
+**Problème**
+Après la conversion des solutions toutes faites en squelettes, 81 laboratoires (Spring Boot, Angular, SQL, DevOps, Python 7 à 24, TypeScript 2 à 24) gardaient le même exercice : définir un `Evidence`, le valider, afficher « preuve validée ». Il était donc possible de réussir sans rien comprendre du sujet du laboratoire (transactions, guards de routeur, jointures, quality gates…).
+
+**Solution**
+Chacun de ces 81 laboratoires a maintenant un exercice qui simule son mécanisme en code standard (par exemple un `@Transactional` avec rollback, un routeur avec guard et chargement différé, un LEFT JOIN, un chemin critique de pipeline), avec un squelette à compléter, une sortie de plusieurs lignes et une solution de référence. Les tests Docker vérifient que le squelette ne passe pas et que la solution passe ; le TypeScript est compilé en `--strict` comme dans le runner.
