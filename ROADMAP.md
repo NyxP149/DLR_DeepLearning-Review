@@ -48,6 +48,7 @@
 - [x] Révisions : score toujours relu en direct, doublons de révision nettoyés (migration V19) et boutons verrouillés pendant l'envoi (V3.19)
 - [x] Coach adaptatif : une proposition acceptée n'affiche plus de boutons qui échouaient, « Autre proposition » et « Ignorer » restent possibles (V3.19)
 - [x] Exercices guidés : 106 codes de départ convertis en squelettes à compléter (Java 7-24, Spring Boot, Python, TypeScript, Angular, SQL, DevOps) au lieu de donner la solution (V3.20)
+- [x] Architecture (24) et LLM (12) convertis aussi en squelettes à compléter, énoncés réécrits : 142 exercices sur 148 ne donnent plus la solution (V3.21)
 - [ ] Rédiger des exercices à compléter propres à chaque sujet pour les parcours dont le gabarit « preuve » était identique (Spring Boot, Angular, SQL, DevOps, Python et TypeScript)
 
 ## Déploiement cloud
