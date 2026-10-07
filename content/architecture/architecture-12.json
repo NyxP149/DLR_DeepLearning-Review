@@ -51,8 +51,8 @@
     {
       "code": "ARCHITECTURE-12-E1",
       "title": "Promouvoir le même artefact entre environnements sans embarquer de secret",
-      "statement": "Exécute la preuve, conserve la sortie attendue, puis explique la décision, une alternative et le signal de production qui validerait ton choix.",
-      "starterCode": "artifact = \"dlr-api:1.4.0\"\nenvironments = {\"staging\": \"stg-db\", \"production\": \"prod-db\"}\nfor env, database in environments.items():\n    print(f\"{env}: {artifact} -> {database}\")\nprint(\"Secrets dans image: 0\")\n",
+      "statement": "Complète la preuve pour produire exactement la sortie attendue, puis explique la décision, une alternative et le signal de production qui validerait ton choix.",
+      "starterCode": "artifact = \"dlr-api:1.4.0\"\nenvironments = {\"staging\": \"stg-db\", \"production\": \"prod-db\"}\n# TODO 1 : pour chaque environnement, affiche \"<env>: <artefact> -> <base de données>\"\n# TODO 2 : affiche \"Secrets dans image: 0\"\n",
       "expectedOutput": "staging: dlr-api:1.4.0 -> stg-db\nproduction: dlr-api:1.4.0 -> prod-db\nSecrets dans image: 0"
     }
   ],

@@ -47,8 +47,8 @@
     {
       "code": "LLM-08-E1",
       "title": "Classer des documents avec une métrique explicite",
-      "statement": "Exécute l’expérience et conserve exactement la sortie attendue. Explique ensuite quelle partie serait remplacée par un modèle réel.",
-      "starterCode": "query = {\"java\", \"jvm\"}\ndocuments = {\"A\": {\"java\", \"bytecode\", \"jvm\"}, \"B\": {\"python\", \"interpréteur\"}, \"C\": {\"java\", \"spring\"}}\nranked = sorted(documents, key=lambda key: len(query & documents[key]), reverse=True)\nprint(\"Classement:\", \" > \".join(ranked))\nprint(\"Premier score:\", len(query & documents[ranked[0]]))\n",
+      "statement": "Complète l’expérience pour produire exactement la sortie attendue. Explique ensuite quelle partie serait remplacée par un modèle réel.",
+      "starterCode": "query = {\"java\", \"jvm\"}\ndocuments = {\"A\": {\"java\", \"bytecode\", \"jvm\"}, \"B\": {\"python\", \"interpréteur\"}, \"C\": {\"java\", \"spring\"}}\n# TODO 1 : classe les documents par nombre de mots communs avec la requête (ordre décroissant)\n# TODO 2 : affiche \"Classement: \" suivi des identifiants séparés par \" > \"\n# TODO 3 : affiche \"Premier score: \" suivi du score du meilleur document\n",
       "expectedOutput": "Classement: A > C > B\nPremier score: 2"
     }
   ],

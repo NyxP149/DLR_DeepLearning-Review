@@ -51,8 +51,8 @@
     {
       "code": "ARCHITECTURE-19-E1",
       "title": "Relier une requête utilisateur à ses signaux techniques et métier",
-      "statement": "Exécute la preuve, conserve la sortie attendue, puis explique la décision, une alternative et le signal de production qui validerait ton choix.",
-      "starterCode": "trace = {\"id\": \"abc-42\", \"spans\": [18, 42, 25], \"errors\": 0}\nprint(\"Trace:\", trace[\"id\"])\nprint(\"Durée:\", sum(trace[\"spans\"]), \"ms\")\nprint(\"Statut:\", \"OK\" if trace[\"errors\"] == 0 else \"ERROR\")\n",
+      "statement": "Complète la preuve pour produire exactement la sortie attendue, puis explique la décision, une alternative et le signal de production qui validerait ton choix.",
+      "starterCode": "trace = {\"id\": \"abc-42\", \"spans\": [18, 42, 25], \"errors\": 0}\n# TODO 1 : affiche \"Trace: \" suivi de l'identifiant\n# TODO 2 : affiche \"Durée: \" suivi de la somme des spans puis de \"ms\"\n# TODO 3 : affiche \"Statut: OK\" s'il n'y a aucune erreur, \"Statut: ERROR\" sinon\n",
       "expectedOutput": "Trace: abc-42\nDurée: 85 ms\nStatut: OK"
     }
   ],

@@ -51,8 +51,8 @@
     {
       "code": "ARCHITECTURE-02-E1",
       "title": "Transformer un parcours utilisateur en capacités, endpoints et critères vérifiables",
-      "statement": "Exécute la preuve, conserve la sortie attendue, puis explique la décision, une alternative et le signal de production qui validerait ton choix.",
-      "starterCode": "story = \"Créer une commande\"\ncontract = {\"method\": \"POST\", \"path\": \"/orders\", \"success\": 201}\nprint(\"Besoin:\", story)\nprint(f\"Contrat: {contract['method']} {contract['path']} -> {contract['success']}\")\n",
+      "statement": "Complète la preuve pour produire exactement la sortie attendue, puis explique la décision, une alternative et le signal de production qui validerait ton choix.",
+      "starterCode": "story = \"Créer une commande\"\ncontract = {\"method\": \"POST\", \"path\": \"/orders\", \"success\": 201}\n# TODO 1 : affiche \"Besoin:\" suivi de la story\n# TODO 2 : affiche \"Contrat: <méthode> <chemin> -> <code de succès>\" à partir du dictionnaire contract\n",
       "expectedOutput": "Besoin: Créer une commande\nContrat: POST /orders -> 201"
     }
   ],

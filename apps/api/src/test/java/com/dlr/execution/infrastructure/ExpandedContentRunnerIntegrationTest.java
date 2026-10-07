@@ -29,15 +29,14 @@ class ExpandedContentRunnerIntegrationTest {
             "ARCHITECTURE-", 24,
             "LLM-", 12);
 
-    // Parcours dont l'exercice est une démonstration à exécuter puis à expliquer : le code fourni donne la sortie attendue.
-    private static final java.util.Set<String> DEMONSTRATIONS = java.util.Set.of("ARCHITECTURE-", "LLM-");
-
     private static final Map<String, String> SOLUTION_FOLDERS = Map.of(
             "TYPESCRIPT-", "typescript",
             "SPRING_BOOT-", "spring-boot",
             "ANGULAR-", "angular",
             "SQL-", "sql",
-            "DEVOPS-", "devops");
+            "DEVOPS-", "devops",
+            "ARCHITECTURE-", "architecture",
+            "LLM-", "llm");
 
     @Autowired private CodeRunner runner;
     @Autowired private LabCatalog catalog;
@@ -54,10 +53,6 @@ class ExpandedContentRunnerIntegrationTest {
                         SubmissionOrigin.EDITOR, Instant.now());
                 var result = runner.run(submission);
                 assertThat(result.status()).as(lab.code() + ": " + result.errorOutput()).isEqualTo(ExecutionStatus.SUCCESS);
-                if (DEMONSTRATIONS.contains(prefix)) {
-                    assertThat(result.standardOutput().strip()).as(lab.code()).isEqualTo(exercise.expectedOutput());
-                    continue;
-                }
                 assertThat(result.standardOutput().strip()).as(lab.code() + " ne doit pas donner la solution")
                         .isNotEqualTo(exercise.expectedOutput().strip());
 

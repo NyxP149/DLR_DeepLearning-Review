@@ -47,8 +47,8 @@
     {
       "code": "LLM-06-E1",
       "title": "Calculer une similarité locale et expliquer ses limites",
-      "statement": "Exécute l’expérience et conserve exactement la sortie attendue. Explique ensuite quelle partie serait remplacée par un modèle réel.",
-      "starterCode": "from math import sqrt\n\ndef cosine(a: list[float], b: list[float]) -> float:\n    dot = sum(x * y for x, y in zip(a, b))\n    return dot / (sqrt(sum(x*x for x in a)) * sqrt(sum(y*y for y in b)))\n\nprint(f\"Similarité: {cosine([1, 1, 0], [1, 0.5, 0]):.3f}\")\n",
+      "statement": "Complète l’expérience pour produire exactement la sortie attendue. Explique ensuite quelle partie serait remplacée par un modèle réel.",
+      "starterCode": "from math import sqrt\n\ndef cosine(a: list[float], b: list[float]) -> float:\n    # TODO : retourne la similarité cosinus : produit scalaire / (norme de a x norme de b)\n    return 0.0\n\nprint(f\"Similarité: {cosine([1, 1, 0], [1, 0.5, 0]):.3f}\")\n",
       "expectedOutput": "Similarité: 0.949"
     }
   ],

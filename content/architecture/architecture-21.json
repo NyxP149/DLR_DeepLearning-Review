@@ -51,8 +51,8 @@
     {
       "code": "ARCHITECTURE-21-E1",
       "title": "Combiner délais, retries bornés, circuit breaker, sauvegarde et objectifs de reprise",
-      "statement": "Exécute la preuve, conserve la sortie attendue, puis explique la décision, une alternative et le signal de production qui validerait ton choix.",
-      "starterCode": "attempts = [False, False, True]\nfor number, success in enumerate(attempts, 1):\n    print(f\"Tentative {number}: {'OK' if success else 'RETRY'}\")\n    if success:\n        break\nprint(\"RPO: 5 min | RTO: 30 min\")\n",
+      "statement": "Complète la preuve pour produire exactement la sortie attendue, puis explique la décision, une alternative et le signal de production qui validerait ton choix.",
+      "starterCode": "attempts = [False, False, True]\n# TODO 1 : parcours les tentatives (numérotées à partir de 1) : affiche \"Tentative <n>: OK\"\n#          en cas de succès (et arrête la boucle), sinon \"Tentative <n>: RETRY\"\n# TODO 2 : affiche \"RPO: 5 min | RTO: 30 min\"\n",
       "expectedOutput": "Tentative 1: RETRY\nTentative 2: RETRY\nTentative 3: OK\nRPO: 5 min | RTO: 30 min"
     }
   ],

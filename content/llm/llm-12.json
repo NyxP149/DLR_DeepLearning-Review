@@ -47,8 +47,8 @@
     {
       "code": "LLM-12-E1",
       "title": "Choisir une stratégie à partir de qualité, coût et traçabilité",
-      "statement": "Exécute l’expérience et conserve exactement la sortie attendue. Explique ensuite quelle partie serait remplacée par un modèle réel.",
-      "starterCode": "strategies = {\n    \"contexte_complet\": {\"quality\": 0.90, \"tokens\": 900, \"citations\": 1},\n    \"rag_ciblé\": {\"quality\": 0.88, \"tokens\": 240, \"citations\": 3},\n}\nfor values in strategies.values():\n    values[\"score\"] = values[\"quality\"] + values[\"citations\"] * 0.05 - values[\"tokens\"] / 5000\nwinner = max(strategies, key=lambda name: strategies[name][\"score\"])\nprint(\"Stratégie retenue:\", winner)\nprint(\"Réduction tokens: 73%\")\n",
+      "statement": "Complète l’expérience pour produire exactement la sortie attendue. Explique ensuite quelle partie serait remplacée par un modèle réel.",
+      "starterCode": "strategies = {\n    \"contexte_complet\": {\"quality\": 0.90, \"tokens\": 900, \"citations\": 1},\n    \"rag_ciblé\": {\"quality\": 0.88, \"tokens\": 240, \"citations\": 3},\n}\n# TODO 1 : ajoute à chaque stratégie un score = quality + citations x 0.05 - tokens / 5000\n# TODO 2 : retiens la stratégie au meilleur score\n# TODO 3 : affiche \"Stratégie retenue: <nom>\" puis \"Réduction tokens: 73%\"\n",
       "expectedOutput": "Stratégie retenue: rag_ciblé\nRéduction tokens: 73%"
     }
   ],

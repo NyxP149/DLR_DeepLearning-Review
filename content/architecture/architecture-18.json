@@ -51,8 +51,8 @@
     {
       "code": "ARCHITECTURE-18-E1",
       "title": "Séparer métadonnées, contenu binaire, contrôle d’accès et durée de conservation",
-      "statement": "Exécute la preuve, conserve la sortie attendue, puis explique la décision, une alternative et le signal de production qui validerait ton choix.",
-      "starterCode": "file = {\"key\": \"exports/42.pdf\", \"owner\": 7, \"sha256\": \"a1b2\", \"size\": 2048}\nurl_ttl_seconds = 300\nprint(\"Objet:\", file[\"key\"])\nprint(\"Métadonnées:\", file[\"sha256\"], file[\"size\"])\nprint(\"URL temporaire:\", url_ttl_seconds, \"s\")\n",
+      "statement": "Complète la preuve pour produire exactement la sortie attendue, puis explique la décision, une alternative et le signal de production qui validerait ton choix.",
+      "starterCode": "file = {\"key\": \"exports/42.pdf\", \"owner\": 7, \"sha256\": \"a1b2\", \"size\": 2048}\nurl_ttl_seconds = 300\n# TODO 1 : affiche \"Objet: \" suivi de la clé du fichier\n# TODO 2 : affiche \"Métadonnées: \" suivi du sha256 et de la taille\n# TODO 3 : affiche \"URL temporaire: \" suivi de la durée puis de \"s\"\n",
       "expectedOutput": "Objet: exports/42.pdf\nMétadonnées: a1b2 2048\nURL temporaire: 300 s"
     }
   ],

@@ -51,8 +51,8 @@
     {
       "code": "ARCHITECTURE-07-E1",
       "title": "Assembler modèle, service, contrat HTTP et représentation UI dans une tranche livrable",
-      "statement": "Exécute la preuve, conserve la sortie attendue, puis explique la décision, une alternative et le signal de production qui validerait ton choix.",
-      "starterCode": "rows = []\ndef post(name: str) -> dict:\n    item = {\"id\": len(rows) + 1, \"name\": name.strip()}\n    rows.append(item)\n    return item\ncreated = post(\"  Architecture DLR  \")\nprint(f\"POST /items -> 201 #{created['id']}\")\nprint(\"Vue:\", rows[0][\"name\"])\n",
+      "statement": "Complète la preuve pour produire exactement la sortie attendue, puis explique la décision, une alternative et le signal de production qui validerait ton choix.",
+      "starterCode": "rows = []\n\ndef post(name: str) -> dict:\n    # TODO : crée un item avec un id incrémental (len(rows) + 1) et le nom nettoyé (strip),\n    #        ajoute-le à rows puis retourne-le\n    return {\"id\": 0, \"name\": \"\"}\n\ncreated = post(\"  Architecture DLR  \")\n# TODO : affiche \"POST /items -> 201 #<id>\" puis \"Vue: <nom de la première ligne>\"\n",
       "expectedOutput": "POST /items -> 201 #1\nVue: Architecture DLR"
     }
   ],

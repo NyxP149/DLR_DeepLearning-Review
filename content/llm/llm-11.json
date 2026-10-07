@@ -47,8 +47,8 @@
     {
       "code": "LLM-11-E1",
       "title": "Construire un assistant local avec recherche, citations et évaluation",
-      "statement": "Exécute l’expérience et conserve exactement la sortie attendue. Explique ensuite quelle partie serait remplacée par un modèle réel.",
-      "starterCode": "from dataclasses import dataclass\n\n@dataclass(frozen=True)\nclass Answer:\n    text: str\n    source: str\n\ncorpus = {\"JVM\": \"La JVM exécute le bytecode\", \"JDK\": \"Le JDK compile le code\"}\nanswer = Answer(corpus[\"JVM\"], \"JVM\")\nassert \"bytecode\" in answer.text and answer.source in corpus\nprint(f\"Réponse: {answer.text} [{answer.source}]\")\nprint(\"Évaluation: 2/2\")\n",
+      "statement": "Complète l’expérience pour produire exactement la sortie attendue. Explique ensuite quelle partie serait remplacée par un modèle réel.",
+      "starterCode": "from dataclasses import dataclass\n\n# TODO 1 : définis une dataclass immuable Answer (frozen=True) avec text: str et source: str\n\ncorpus = {\"JVM\": \"La JVM exécute le bytecode\", \"JDK\": \"Le JDK compile le code\"}\n# TODO 2 : crée la réponse à partir du texte du corpus \"JVM\" et de la source \"JVM\"\n# TODO 3 : vérifie avec assert que le texte contient \"bytecode\" et que la source existe dans le corpus\n# TODO 4 : affiche \"Réponse: <texte> [<source>]\" puis \"Évaluation: 2/2\"\n",
       "expectedOutput": "Réponse: La JVM exécute le bytecode [JVM]\nÉvaluation: 2/2"
     }
   ],

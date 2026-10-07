@@ -51,8 +51,8 @@
     {
       "code": "ARCHITECTURE-10-E1",
       "title": "Répartir les preuves entre tests unitaires, intégration, contrat et end-to-end",
-      "statement": "Exécute la preuve, conserve la sortie attendue, puis explique la décision, une alternative et le signal de production qui validerait ton choix.",
-      "starterCode": "suite = {\"unitaires\": 42, \"intégration\": 12, \"contrats\": 6, \"e2e\": 3}\nprint(\"Tests:\", sum(suite.values()))\nprint(\"Couverture:\", \" -> \".join(suite))\n",
+      "statement": "Complète la preuve pour produire exactement la sortie attendue, puis explique la décision, une alternative et le signal de production qui validerait ton choix.",
+      "starterCode": "suite = {\"unitaires\": 42, \"intégration\": 12, \"contrats\": 6, \"e2e\": 3}\n# TODO 1 : affiche \"Tests: \" suivi du nombre total de tests\n# TODO 2 : affiche \"Couverture: \" suivi des niveaux de la pyramide séparés par \" -> \"\n",
       "expectedOutput": "Tests: 63\nCouverture: unitaires -> intégration -> contrats -> e2e"
     }
   ],

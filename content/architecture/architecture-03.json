@@ -51,8 +51,8 @@
     {
       "code": "ARCHITECTURE-03-E1",
       "title": "Partir des invariants de données pour construire repository, service, API et écran",
-      "statement": "Exécute la preuve, conserve la sortie attendue, puis explique la décision, une alternative et le signal de production qui validerait ton choix.",
-      "starterCode": "layers = [\"PostgreSQL\", \"Repository\", \"Service\", \"API REST\", \"Interface\"]\nfor index, layer in enumerate(layers, 1):\n    print(f\"{index}. {layer}\")\n",
+      "statement": "Complète la preuve pour produire exactement la sortie attendue, puis explique la décision, une alternative et le signal de production qui validerait ton choix.",
+      "starterCode": "layers = [\"PostgreSQL\", \"Repository\", \"Service\", \"API REST\", \"Interface\"]\n# TODO : affiche les couches de bas en haut, numérotées à partir de 1,\n#        au format \"1. PostgreSQL\" (une par ligne)\n",
       "expectedOutput": "1. PostgreSQL\n2. Repository\n3. Service\n4. API REST\n5. Interface"
     }
   ],

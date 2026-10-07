@@ -51,8 +51,8 @@
     {
       "code": "ARCHITECTURE-22-E1",
       "title": "Relier charge, capacité, saturation et stratégie de mise à l’échelle",
-      "statement": "Exécute la preuve, conserve la sortie attendue, puis explique la décision, une alternative et le signal de production qui validerait ton choix.",
-      "starterCode": "requests_per_second = 720\ncapacity_per_instance = 250\ninstances = -(-requests_per_second // capacity_per_instance)\nheadroom = instances * capacity_per_instance - requests_per_second\nprint(\"Instances:\", instances)\nprint(\"Marge:\", headroom, \"req/s\")\n",
+      "statement": "Complète la preuve pour produire exactement la sortie attendue, puis explique la décision, une alternative et le signal de production qui validerait ton choix.",
+      "starterCode": "requests_per_second = 720\ncapacity_per_instance = 250\n# TODO 1 : calcule le nombre d'instances nécessaires (arrondi à l'entier supérieur)\n# TODO 2 : calcule la marge restante en req/s\n# TODO 3 : affiche \"Instances: <n>\" puis \"Marge: <marge> req/s\"\n",
       "expectedOutput": "Instances: 3\nMarge: 30 req/s"
     }
   ],

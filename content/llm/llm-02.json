@@ -47,8 +47,8 @@
     {
       "code": "LLM-02-E1",
       "title": "Comparer une sélection déterministe et une sélection plus exploratoire",
-      "statement": "Exécute l’expérience et conserve exactement la sortie attendue. Explique ensuite quelle partie serait remplacée par un modèle réel.",
-      "starterCode": "scores = {\"clair\": 0.55, \"précis\": 0.30, \"créatif\": 0.15}\nranked = sorted(scores.items(), key=lambda item: item[1], reverse=True)\nprint(\"Choix déterministe:\", ranked[0][0])\nprint(\"Top-2:\", \", \".join(word for word, _ in ranked[:2]))\n",
+      "statement": "Complète l’expérience pour produire exactement la sortie attendue. Explique ensuite quelle partie serait remplacée par un modèle réel.",
+      "starterCode": "scores = {\"clair\": 0.55, \"précis\": 0.30, \"créatif\": 0.15}\n# TODO 1 : trie les mots par score décroissant\n# TODO 2 : affiche \"Choix déterministe: \" suivi du mot au meilleur score\n# TODO 3 : affiche \"Top-2: \" suivi des deux meilleurs mots séparés par \", \"\n",
       "expectedOutput": "Choix déterministe: clair\nTop-2: clair, précis"
     }
   ],

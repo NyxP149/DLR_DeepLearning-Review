@@ -51,8 +51,8 @@
     {
       "code": "ARCHITECTURE-15-E1",
       "title": "Définir SLI, budgets de latence et mesures par couche",
-      "statement": "Exécute la preuve, conserve la sortie attendue, puis explique la décision, une alternative et le signal de production qui validerait ton choix.",
-      "starterCode": "latencies = {\"db\": 35, \"api\": 20, \"network\": 45, \"ui\": 30}\ntotal = sum(latencies.values())\nbudget = 150\nprint(\"Latence totale:\", total, \"ms\")\nprint(\"Budget restant:\", budget - total, \"ms\")\n",
+      "statement": "Complète la preuve pour produire exactement la sortie attendue, puis explique la décision, une alternative et le signal de production qui validerait ton choix.",
+      "starterCode": "latencies = {\"db\": 35, \"api\": 20, \"network\": 45, \"ui\": 30}\nbudget = 150\n# TODO 1 : calcule la latence totale\n# TODO 2 : affiche \"Latence totale: <total> ms\"\n# TODO 3 : affiche \"Budget restant: <budget - total> ms\"\n",
       "expectedOutput": "Latence totale: 130 ms\nBudget restant: 20 ms"
     }
   ],

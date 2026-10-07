@@ -51,8 +51,8 @@
     {
       "code": "ARCHITECTURE-06-E1",
       "title": "Rendre les commandes répétables et les erreurs compréhensibles par tous les clients",
-      "statement": "Exécute la preuve, conserve la sortie attendue, puis explique la décision, une alternative et le signal de production qui validerait ton choix.",
-      "starterCode": "seen = set()\ndef create(key: str) -> tuple[int, str]:\n    if key in seen:\n        return 200, \"rejouée\"\n    seen.add(key)\n    return 201, \"créée\"\nprint(*create(\"cmd-42\"))\nprint(*create(\"cmd-42\"))\n",
+      "statement": "Complète la preuve pour produire exactement la sortie attendue, puis explique la décision, une alternative et le signal de production qui validerait ton choix.",
+      "starterCode": "seen = set()\n\ndef create(key: str) -> tuple[int, str]:\n    # TODO : si la clé a déjà été vue, retourne (200, \"rejouée\") ;\n    #        sinon mémorise-la et retourne (201, \"créée\")\n    return 0, \"\"\n\nprint(*create(\"cmd-42\"))\nprint(*create(\"cmd-42\"))\n",
       "expectedOutput": "201 créée\n200 rejouée"
     }
   ],

@@ -49,8 +49,8 @@
     {
       "code": "ARCHITECTURE-01-E1",
       "title": "Identifier acteurs, responsabilités, données et frontières avant de choisir une technologie",
-      "statement": "Exécute la preuve, conserve la sortie attendue, puis explique la décision, une alternative et le signal de production qui validerait ton choix.",
-      "starterCode": "system = {\"client\": \"Angular\", \"api\": \"Spring Boot\", \"data\": \"PostgreSQL\"}\nfor responsibility, component in system.items():\n    print(f\"{responsibility} -> {component}\")\n",
+      "statement": "Complète la preuve pour produire exactement la sortie attendue, puis explique la décision, une alternative et le signal de production qui validerait ton choix.",
+      "starterCode": "system = {\"client\": \"Angular\", \"api\": \"Spring Boot\", \"data\": \"PostgreSQL\"}\n# TODO : parcours le dictionnaire et affiche une ligne par responsabilité\n#        au format \"<responsabilité> -> <composant>\"\n",
       "expectedOutput": "client -> Angular\napi -> Spring Boot\ndata -> PostgreSQL"
     }
   ],

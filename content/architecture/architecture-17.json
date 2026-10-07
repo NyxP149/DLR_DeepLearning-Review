@@ -51,8 +51,8 @@
     {
       "code": "ARCHITECTURE-17-E1",
       "title": "Modéliser publication, consommation, reprise et idempotence",
-      "statement": "Exécute la preuve, conserve la sortie attendue, puis explique la décision, une alternative et le signal de production qui validerait ton choix.",
-      "starterCode": "events = [\"order:42\", \"order:42\", \"order:43\"]\nprocessed = set()\nfor event in events:\n    if event in processed:\n        print(event, \"IGNORÉ\")\n    else:\n        processed.add(event)\n        print(event, \"TRAITÉ\")\n",
+      "statement": "Complète la preuve pour produire exactement la sortie attendue, puis explique la décision, une alternative et le signal de production qui validerait ton choix.",
+      "starterCode": "events = [\"order:42\", \"order:42\", \"order:43\"]\nprocessed = set()\n# TODO : pour chaque événement, affiche \"<événement> IGNORÉ\" s'il a déjà été traité (idempotence) ;\n#        sinon mémorise-le et affiche \"<événement> TRAITÉ\"\n",
       "expectedOutput": "order:42 TRAITÉ\norder:42 IGNORÉ\norder:43 TRAITÉ"
     }
   ],

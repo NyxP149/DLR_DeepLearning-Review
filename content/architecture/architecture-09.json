@@ -51,8 +51,8 @@
     {
       "code": "ARCHITECTURE-09-E1",
       "title": "Choisir une frontière transactionnelle et empêcher les mises à jour perdues",
-      "statement": "Exécute la preuve, conserve la sortie attendue, puis explique la décision, une alternative et le signal de production qui validerait ton choix.",
-      "starterCode": "account = {\"balance\": 100, \"version\": 3}\ndef debit(amount: int, expected_version: int) -> str:\n    if expected_version != account[\"version\"]:\n        return \"CONFLIT\"\n    account[\"balance\"] -= amount\n    account[\"version\"] += 1\n    return \"OK\"\nprint(debit(30, 3), account)\nprint(debit(20, 3), account)\n",
+      "statement": "Complète la preuve pour produire exactement la sortie attendue, puis explique la décision, une alternative et le signal de production qui validerait ton choix.",
+      "starterCode": "account = {\"balance\": 100, \"version\": 3}\n\ndef debit(amount: int, expected_version: int) -> str:\n    # TODO : si expected_version ne correspond pas à la version du compte, retourne \"CONFLIT\" ;\n    #        sinon débite le montant, incrémente la version et retourne \"OK\"\n    return \"\"\n\nprint(debit(30, 3), account)\nprint(debit(20, 3), account)\n",
       "expectedOutput": "OK {'balance': 70, 'version': 4}\nCONFLIT {'balance': 70, 'version': 4}"
     }
   ],

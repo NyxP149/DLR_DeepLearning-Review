@@ -32,7 +32,24 @@ class LearnLlmContentRunnerIntegrationTest {
                     SubmissionOrigin.EDITOR, Instant.now());
             var result = runner.run(submission);
             assertThat(result.status()).as(lab.code() + ": " + result.errorOutput()).isEqualTo(ExecutionStatus.SUCCESS);
-            assertThat(result.standardOutput().strip()).as(lab.code()).isEqualTo(exercise.expectedOutput());
+            assertThat(result.standardOutput().strip()).as(lab.code() + " ne doit pas donner la solution")
+                    .isNotEqualTo(exercise.expectedOutput().strip());
+
+            var solved = runner.run(new Submission(
+                    UUID.randomUUID(), UUID.randomUUID(), lab.language(), referenceSolution(exercise.code()),
+                    SubmissionOrigin.EDITOR, Instant.now()));
+            assertThat(solved.status()).as(lab.code() + ": " + solved.errorOutput()).isEqualTo(ExecutionStatus.SUCCESS);
+            assertThat(solved.standardOutput().strip()).as(lab.code() + " solution de référence")
+                    .isEqualTo(exercise.expectedOutput().strip());
+        }
+    }
+
+    private static String referenceSolution(String exerciseCode) {
+        try (var stream = LearnLlmContentRunnerIntegrationTest.class.getResourceAsStream("/llm-solutions/" + exerciseCode + ".py")) {
+            assertThat(stream).as("solution de référence " + exerciseCode).isNotNull();
+            return new String(stream.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8);
+        } catch (java.io.IOException exception) {
+            throw new IllegalStateException(exception);
         }
     }
 }

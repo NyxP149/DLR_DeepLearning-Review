@@ -47,8 +47,8 @@
     {
       "code": "LLM-04-E1",
       "title": "Valider une réponse JSON avant de la transmettre au métier",
-      "statement": "Exécute l’expérience et conserve exactement la sortie attendue. Explique ensuite quelle partie serait remplacée par un modèle réel.",
-      "starterCode": "import json\n\ndef validate(raw: str) -> dict:\n    value = json.loads(raw)\n    if set(value) != {\"answer\", \"confidence\"} or not 0 <= value[\"confidence\"] <= 1:\n        raise ValueError(\"réponse invalide\")\n    return value\n\nresult = validate('{\"answer\":\"JVM\",\"confidence\":0.92}')\nprint(f\"{result['answer']} ({result['confidence']:.0%})\")\n",
+      "statement": "Complète l’expérience pour produire exactement la sortie attendue. Explique ensuite quelle partie serait remplacée par un modèle réel.",
+      "starterCode": "import json\n\ndef validate(raw: str) -> dict:\n    # TODO 1 : décode le JSON\n    # TODO 2 : lève ValueError(\"réponse invalide\") si les clés ne sont pas exactement\n    #          \"answer\" et \"confidence\", ou si confidence n'est pas comprise entre 0 et 1\n    return {}\n\nresult = validate('{\"answer\":\"JVM\",\"confidence\":0.92}')\n# TODO 3 : affiche la réponse suivie de la confiance en pourcentage, par exemple \"JVM (92%)\"\n",
       "expectedOutput": "JVM (92%)"
     }
   ],

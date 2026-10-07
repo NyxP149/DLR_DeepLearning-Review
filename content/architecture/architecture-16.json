@@ -51,8 +51,8 @@
     {
       "code": "ARCHITECTURE-16-E1",
       "title": "Choisir clé, durée de vie et stratégie d’invalidation autour de la source de vérité",
-      "statement": "Exécute la preuve, conserve la sortie attendue, puis explique la décision, une alternative et le signal de production qui validerait ton choix.",
-      "starterCode": "cache = {\"product:7\": (\"Clavier\", 2)}\ndef tick(key: str):\n    value, ttl = cache[key]\n    ttl -= 1\n    if ttl == 0:\n        del cache[key]\n        return \"MISS\"\n    cache[key] = (value, ttl)\n    return \"HIT\"\nprint(tick(\"product:7\"))\nprint(tick(\"product:7\"))\n",
+      "statement": "Complète la preuve pour produire exactement la sortie attendue, puis explique la décision, une alternative et le signal de production qui validerait ton choix.",
+      "starterCode": "cache = {\"product:7\": (\"Clavier\", 2)}\n\ndef tick(key: str):\n    # TODO : décrémente le TTL de l'entrée ; s'il atteint 0, supprime l'entrée et retourne \"MISS\" ;\n    #        sinon enregistre la nouvelle valeur et retourne \"HIT\"\n    return None\n\nprint(tick(\"product:7\"))\nprint(tick(\"product:7\"))\n",
       "expectedOutput": "HIT\nMISS"
     }
   ],

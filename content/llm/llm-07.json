@@ -47,8 +47,8 @@
     {
       "code": "LLM-07-E1",
       "title": "Découper un corpus en unités traçables pour la recherche",
-      "statement": "Exécute l’expérience et conserve exactement la sortie attendue. Explique ensuite quelle partie serait remplacée par un modèle réel.",
-      "starterCode": "def chunks(words: list[str], size: int, overlap: int) -> list[list[str]]:\n    step = size - overlap\n    return [words[i:i+size] for i in range(0, len(words), step) if words[i:i+size]]\n\nparts = chunks(\"un deux trois quatre cinq six\".split(), 3, 1)\nprint(\" | \".join(\" \".join(part) for part in parts))\n",
+      "statement": "Complète l’expérience pour produire exactement la sortie attendue. Explique ensuite quelle partie serait remplacée par un modèle réel.",
+      "starterCode": "def chunks(words: list[str], size: int, overlap: int) -> list[list[str]]:\n    # TODO : découpe words en morceaux de `size` mots qui se chevauchent de `overlap` mots\n    #        (le pas vaut size - overlap) en ignorant les morceaux vides\n    return []\n\nparts = chunks(\"un deux trois quatre cinq six\".split(), 3, 1)\nprint(\" | \".join(\" \".join(part) for part in parts))\n",
       "expectedOutput": "un deux trois | trois quatre cinq | cinq six"
     }
   ],

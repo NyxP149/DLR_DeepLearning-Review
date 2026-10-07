@@ -47,8 +47,8 @@
     {
       "code": "LLM-03-E1",
       "title": "Construire une consigne stable sans confondre instructions et données",
-      "statement": "Exécute l’expérience et conserve exactement la sortie attendue. Explique ensuite quelle partie serait remplacée par un modèle réel.",
-      "starterCode": "def prompt(task: str, data: str) -> str:\n    return f\"TÂCHE: {task}\\nDONNÉES:\\n<data>{data}</data>\\nFORMAT: JSON\"\n\nvalue = prompt(\"résumer\", \"Java utilise la JVM\")\nprint(value)\n",
+      "statement": "Complète l’expérience pour produire exactement la sortie attendue. Explique ensuite quelle partie serait remplacée par un modèle réel.",
+      "starterCode": "def prompt(task: str, data: str) -> str:\n    # TODO : retourne un prompt sur 4 lignes : \"TÂCHE: <tâche>\", \"DONNÉES:\",\n    #        les données encadrées par <data>...</data>, puis \"FORMAT: JSON\"\n    return \"\"\n\nvalue = prompt(\"résumer\", \"Java utilise la JVM\")\nprint(value)\n",
       "expectedOutput": "TÂCHE: résumer\nDONNÉES:\n<data>Java utilise la JVM</data>\nFORMAT: JSON"
     }
   ],

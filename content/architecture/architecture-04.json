@@ -51,8 +51,8 @@
     {
       "code": "ARCHITECTURE-04-E1",
       "title": "Comparer des stacks selon les contraintes plutôt que selon les préférences",
-      "statement": "Exécute la preuve, conserve la sortie attendue, puis explique la décision, une alternative et le signal de production qui validerait ton choix.",
-      "starterCode": "stacks = {\n    \"Spring-Angular\": {\"team\": 5, \"speed\": 3, \"ops\": 4},\n    \"FastAPI-TypeScript\": {\"team\": 3, \"speed\": 5, \"ops\": 3},\n}\nweights = {\"team\": 2, \"speed\": 1, \"ops\": 2}\nscores = {name: sum(values[key] * weights[key] for key in weights) for name, values in stacks.items()}\nwinner = max(scores, key=scores.get)\nprint(\"Choix:\", winner)\nprint(\"Score:\", scores[winner])\n",
+      "statement": "Complète la preuve pour produire exactement la sortie attendue, puis explique la décision, une alternative et le signal de production qui validerait ton choix.",
+      "starterCode": "stacks = {\n    \"Spring-Angular\": {\"team\": 5, \"speed\": 3, \"ops\": 4},\n    \"FastAPI-TypeScript\": {\"team\": 3, \"speed\": 5, \"ops\": 3},\n}\nweights = {\"team\": 2, \"speed\": 1, \"ops\": 2}\n# TODO 1 : calcule le score pondéré de chaque stack (somme valeur x poids)\n# TODO 2 : retiens la stack au meilleur score\n# TODO 3 : affiche \"Choix: <stack>\" puis \"Score: <score>\"\n",
       "expectedOutput": "Choix: Spring-Angular\nScore: 21"
     }
   ],

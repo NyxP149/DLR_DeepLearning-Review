@@ -51,8 +51,8 @@
     {
       "code": "ARCHITECTURE-13-E1",
       "title": "Créer des modules métier cohésifs avant d’envisager des microservices",
-      "statement": "Exécute la preuve, conserve la sortie attendue, puis explique la décision, une alternative et le signal de production qui validerait ton choix.",
-      "starterCode": "modules = {\"catalogue\": {\"product\"}, \"commandes\": {\"order\"}, \"identité\": {\"user\"}}\nowners = {entity: module for module, entities in modules.items() for entity in entities}\nprint(\"Propriétaire order:\", owners[\"order\"])\nprint(\"Modules:\", len(modules))\n",
+      "statement": "Complète la preuve pour produire exactement la sortie attendue, puis explique la décision, une alternative et le signal de production qui validerait ton choix.",
+      "starterCode": "modules = {\"catalogue\": {\"product\"}, \"commandes\": {\"order\"}, \"identité\": {\"user\"}}\n# TODO 1 : construis un dictionnaire entité -> module propriétaire\n# TODO 2 : affiche \"Propriétaire order: \" suivi du module propriétaire de \"order\"\n# TODO 3 : affiche \"Modules: \" suivi du nombre de modules\n",
       "expectedOutput": "Propriétaire order: commandes\nModules: 3"
     }
   ],

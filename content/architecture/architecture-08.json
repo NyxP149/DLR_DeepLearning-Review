@@ -51,8 +51,8 @@
     {
       "code": "ARCHITECTURE-08-E1",
       "title": "Séparer identité, session, permissions et décisions métier",
-      "statement": "Exécute la preuve, conserve la sortie attendue, puis explique la décision, une alternative et le signal de production qui validerait ton choix.",
-      "starterCode": "permissions = {\"reader\": {\"read\"}, \"editor\": {\"read\", \"write\"}}\ndef authorize(role: str, action: str) -> int:\n    return 200 if action in permissions.get(role, set()) else 403\nprint(\"reader/write:\", authorize(\"reader\", \"write\"))\nprint(\"editor/write:\", authorize(\"editor\", \"write\"))\n",
+      "statement": "Complète la preuve pour produire exactement la sortie attendue, puis explique la décision, une alternative et le signal de production qui validerait ton choix.",
+      "starterCode": "permissions = {\"reader\": {\"read\"}, \"editor\": {\"read\", \"write\"}}\n\ndef authorize(role: str, action: str) -> int:\n    # TODO : retourne 200 si le rôle possède l'action, sinon 403 (un rôle inconnu obtient 403)\n    return 0\n\nprint(\"reader/write:\", authorize(\"reader\", \"write\"))\nprint(\"editor/write:\", authorize(\"editor\", \"write\"))\n",
       "expectedOutput": "reader/write: 403\neditor/write: 200"
     }
   ],

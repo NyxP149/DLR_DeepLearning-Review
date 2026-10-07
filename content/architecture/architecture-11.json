@@ -51,8 +51,8 @@
     {
       "code": "ARCHITECTURE-11-E1",
       "title": "Définir services, réseaux, volumes, santé et ordre de disponibilité",
-      "statement": "Exécute la preuve, conserve la sortie attendue, puis explique la décision, une alternative et le signal de production qui validerait ton choix.",
-      "starterCode": "services = {\"web\": [\"api\"], \"api\": [\"db\"], \"db\": []}\nhealthy = {\"db\"}\nfor name in (\"db\", \"api\", \"web\"):\n    if all(dep in healthy for dep in services[name]):\n        healthy.add(name)\n        print(name, \"HEALTHY\")\n",
+      "statement": "Complète la preuve pour produire exactement la sortie attendue, puis explique la décision, une alternative et le signal de production qui validerait ton choix.",
+      "starterCode": "services = {\"web\": [\"api\"], \"api\": [\"db\"], \"db\": []}\nhealthy = {\"db\"}\n# TODO : parcours les services dans l'ordre db, api, web ; un service devient sain\n#        quand toutes ses dépendances le sont déjà ; affiche \"<nom> HEALTHY\" à ce moment-là\n",
       "expectedOutput": "db HEALTHY\napi HEALTHY\nweb HEALTHY"
     }
   ],

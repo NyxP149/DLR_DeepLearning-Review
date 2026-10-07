@@ -51,8 +51,8 @@
     {
       "code": "ARCHITECTURE-05-E1",
       "title": "Définir identités, relations, contraintes et historique avant la persistance",
-      "statement": "Exécute la preuve, conserve la sortie attendue, puis explique la décision, une alternative et le signal de production qui validerait ton choix.",
-      "starterCode": "order = {\"id\": 42, \"customer_id\": 7, \"lines\": [25, 15], \"status\": \"DRAFT\"}\nassert order[\"lines\"] and all(price > 0 for price in order[\"lines\"])\nprint(\"Total:\", sum(order[\"lines\"]))\nprint(\"Invariant: valide\")\n",
+      "statement": "Complète la preuve pour produire exactement la sortie attendue, puis explique la décision, une alternative et le signal de production qui validerait ton choix.",
+      "starterCode": "order = {\"id\": 42, \"customer_id\": 7, \"lines\": [25, 15], \"status\": \"DRAFT\"}\n# TODO 1 : vérifie avec assert que la commande a des lignes et que tous les prix sont positifs\n# TODO 2 : affiche \"Total: \" suivi de la somme des lignes\n# TODO 3 : affiche \"Invariant: valide\"\n",
       "expectedOutput": "Total: 40\nInvariant: valide"
     }
   ],

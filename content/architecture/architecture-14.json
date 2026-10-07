@@ -51,8 +51,8 @@
     {
       "code": "ARCHITECTURE-14-E1",
       "title": "Combiner modules, contrôle d’accès, transaction et audit dans une livraison testable",
-      "statement": "Exécute la preuve, conserve la sortie attendue, puis explique la décision, une alternative et le signal de production qui validerait ton choix.",
-      "starterCode": "audit = []\ndef approve(role: str, order_id: int) -> str:\n    if role != \"manager\":\n        audit.append((order_id, \"DENIED\"))\n        return \"403\"\n    audit.append((order_id, \"APPROVED\"))\n    return \"200\"\nprint(\"Employé:\", approve(\"employee\", 42))\nprint(\"Manager:\", approve(\"manager\", 42))\nprint(\"Audit:\", audit)\n",
+      "statement": "Complète la preuve pour produire exactement la sortie attendue, puis explique la décision, une alternative et le signal de production qui validerait ton choix.",
+      "starterCode": "audit = []\n\ndef approve(role: str, order_id: int) -> str:\n    # TODO : si le rôle n'est pas \"manager\", journalise (order_id, \"DENIED\") et retourne \"403\" ;\n    #        sinon journalise (order_id, \"APPROVED\") et retourne \"200\"\n    return \"\"\n\nprint(\"Employé:\", approve(\"employee\", 42))\nprint(\"Manager:\", approve(\"manager\", 42))\nprint(\"Audit:\", audit)\n",
       "expectedOutput": "Employé: 403\nManager: 200\nAudit: [(42, 'DENIED'), (42, 'APPROVED')]"
     }
   ],

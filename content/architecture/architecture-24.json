@@ -51,8 +51,8 @@
     {
       "code": "ARCHITECTURE-24-E1",
       "title": "Arbitrer coût, fiabilité, sécurité et délai puis défendre une architecture déployable",
-      "statement": "Exécute la preuve, conserve la sortie attendue, puis explique la décision, une alternative et le signal de production qui validerait ton choix.",
-      "starterCode": "options = {\n    \"monolithe_modulaire\": {\"delivery\": 5, \"reliability\": 4, \"cost\": 5},\n    \"microservices\": {\"delivery\": 2, \"reliability\": 3, \"cost\": 2},\n}\nweights = {\"delivery\": 3, \"reliability\": 2, \"cost\": 2}\nscores = {name: sum(values[key] * weights[key] for key in weights) for name, values in options.items()}\nchoice = max(scores, key=scores.get)\nprint(\"Décision:\", choice)\nprint(\"Score:\", scores[choice])\nprint(\"Condition de réévaluation: limites mesurées\")\n",
+      "statement": "Complète la preuve pour produire exactement la sortie attendue, puis explique la décision, une alternative et le signal de production qui validerait ton choix.",
+      "starterCode": "options = {\n    \"monolithe_modulaire\": {\"delivery\": 5, \"reliability\": 4, \"cost\": 5},\n    \"microservices\": {\"delivery\": 2, \"reliability\": 3, \"cost\": 2},\n}\nweights = {\"delivery\": 3, \"reliability\": 2, \"cost\": 2}\n# TODO 1 : calcule le score pondéré de chaque option\n# TODO 2 : retiens l'option au meilleur score\n# TODO 3 : affiche \"Décision: <option>\" puis \"Score: <score>\"\n# TODO 4 : affiche \"Condition de réévaluation: limites mesurées\"\n",
       "expectedOutput": "Décision: monolithe_modulaire\nScore: 33\nCondition de réévaluation: limites mesurées"
     }
   ],

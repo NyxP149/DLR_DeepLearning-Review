@@ -47,8 +47,8 @@
     {
       "code": "LLM-05-E1",
       "title": "Mesurer une stratégie sur plusieurs cas plutôt que sur une démonstration",
-      "statement": "Exécute l’expérience et conserve exactement la sortie attendue. Explique ensuite quelle partie serait remplacée par un modèle réel.",
-      "starterCode": "cases = [(\"JVM\", \"JVM\"), (\"bytecode\", \"bytecode\"), (\"JDK\", \"JRE\")]\ncorrect = sum(expected == actual for expected, actual in cases)\nprint(f\"Exactitude: {correct}/{len(cases)}\")\nprint(f\"Taux: {correct / len(cases):.0%}\")\n",
+      "statement": "Complète l’expérience pour produire exactement la sortie attendue. Explique ensuite quelle partie serait remplacée par un modèle réel.",
+      "starterCode": "cases = [(\"JVM\", \"JVM\"), (\"bytecode\", \"bytecode\"), (\"JDK\", \"JRE\")]\n# TODO 1 : compte les cas où la valeur attendue est égale à la valeur obtenue\n# TODO 2 : affiche \"Exactitude: <corrects>/<total>\"\n# TODO 3 : affiche \"Taux: \" suivi du pourcentage arrondi à l'entier\n",
       "expectedOutput": "Exactitude: 2/3\nTaux: 67%"
     }
   ],

@@ -51,8 +51,8 @@
     {
       "code": "ARCHITECTURE-23-E1",
       "title": "Concevoir une plateforme avec frontières métier, événements, observabilité et déploiement progressif",
-      "statement": "Exécute la preuve, conserve la sortie attendue, puis explique la décision, une alternative et le signal de production qui validerait ton choix.",
-      "starterCode": "services = {\"gateway\": \"healthy\", \"orders\": \"healthy\", \"billing\": \"degraded\"}\nrelease = {\"version\": \"2.0\", \"traffic_percent\": 10}\nready = all(state == \"healthy\" for state in services.values())\nprint(\"Canary:\", release[\"traffic_percent\"], \"%\")\nprint(\"Promotion:\", \"GO\" if ready else \"STOP\")\nprint(\"Service à traiter:\", next(name for name, state in services.items() if state != \"healthy\"))\n",
+      "statement": "Complète la preuve pour produire exactement la sortie attendue, puis explique la décision, une alternative et le signal de production qui validerait ton choix.",
+      "starterCode": "services = {\"gateway\": \"healthy\", \"orders\": \"healthy\", \"billing\": \"degraded\"}\nrelease = {\"version\": \"2.0\", \"traffic_percent\": 10}\n# TODO 1 : détermine si tous les services sont \"healthy\"\n# TODO 2 : affiche \"Canary: <pourcentage> %\"\n# TODO 3 : affiche \"Promotion: GO\" si tout est sain, \"Promotion: STOP\" sinon\n# TODO 4 : affiche \"Service à traiter: \" suivi du premier service qui n'est pas sain\n",
       "expectedOutput": "Canary: 10 %\nPromotion: STOP\nService à traiter: billing"
     }
   ],

@@ -51,8 +51,8 @@
     {
       "code": "ARCHITECTURE-20-E1",
       "title": "Appliquer validation, moindre privilège, chiffrement et audit à chaque couche",
-      "statement": "Exécute la preuve, conserve la sortie attendue, puis explique la décision, une alternative et le signal de production qui validerait ton choix.",
-      "starterCode": "controls = [\"TLS\", \"validation\", \"RBAC\", \"secrets\", \"audit\"]\nrequired = {\"TLS\", \"validation\", \"RBAC\", \"secrets\", \"audit\"}\nprint(\"Contrôles:\", len(controls))\nprint(\"Prêt:\", set(controls) >= required)\n",
+      "statement": "Complète la preuve pour produire exactement la sortie attendue, puis explique la décision, une alternative et le signal de production qui validerait ton choix.",
+      "starterCode": "controls = [\"TLS\", \"validation\", \"RBAC\", \"secrets\", \"audit\"]\nrequired = {\"TLS\", \"validation\", \"RBAC\", \"secrets\", \"audit\"}\n# TODO 1 : affiche \"Contrôles: \" suivi du nombre de contrôles\n# TODO 2 : affiche \"Prêt: \" suivi de True si tous les contrôles requis sont présents, sinon False\n",
       "expectedOutput": "Contrôles: 5\nPrêt: True"
     }
   ],
