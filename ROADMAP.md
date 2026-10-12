@@ -50,6 +50,7 @@
 - [x] Exercices guidés : 106 codes de départ convertis en squelettes à compléter (Java 7-24, Spring Boot, Python, TypeScript, Angular, SQL, DevOps) au lieu de donner la solution (V3.20)
 - [x] Architecture (24) et LLM (12) convertis aussi en squelettes à compléter, énoncés réécrits : 142 exercices sur 148 ne donnent plus la solution (V3.21)
 - [x] Exercices à compléter propres à chaque sujet rédigés pour les 81 laboratoires qui partageaient le gabarit « preuve » : Spring Boot (12), Angular (10), SQL (10), DevOps (8), Python 7 à 24 (18) et TypeScript 2 à 24 (23) (V3.22)
+- [x] Parcours « Terminal et IA en ligne de commande » (24 activités, sans prérequis) : bash, PowerShell, Git, automatisation et pilotage d'un projet avec Claude Code, exécutés dans un nouveau runner `dlr/shell-runner:1` ; catalogue à 172 activités sur dix parcours (V3.23)
 
 ## Déploiement cloud
 

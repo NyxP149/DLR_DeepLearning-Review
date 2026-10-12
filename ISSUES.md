@@ -390,3 +390,16 @@ Après la conversion des solutions toutes faites en squelettes, 81 laboratoires 
 
 **Solution**
 Chacun de ces 81 laboratoires a maintenant un exercice qui simule son mécanisme en code standard (par exemple un `@Transactional` avec rollback, un routeur avec guard et chargement différé, un LEFT JOIN, un chemin critique de pipeline), avec un squelette à compléter, une sortie de plusieurs lignes et une solution de référence. Les tests Docker vérifient que le squelette ne passe pas et que la solution passe ; le TypeScript est compilé en `--strict` comme dans le runner.
+
+---
+
+## Les scripts shell ne pouvaient pas s'exécuter dans le runner Docker
+- severity: medium
+- date: 2026-10
+- tags: Runner, Docker, Terminal
+
+**Problème**
+Pour le parcours Terminal, les premiers essais échouaient : `./deploy.sh` répondait « Permission denied » parce qu'un `tmpfs` Docker est monté `noexec` par défaut, PowerShell plantait (core dump) sans `HOME` inscriptible, et chaque commande affichait des avertissements `setlocale`. Le runner Java, Python et TypeScript n'avait jamais eu besoin d'exécuter un fichier du répertoire de travail. Par ailleurs, l'état du Runner ne vérifiait que trois images : l'interface annonçait « prêt » même si l'image shell était absente.
+
+**Solution**
+Le répertoire de travail des langages shell est monté avec `exec` (les langages compilés gardent `noexec`), `HOME` et les variables `XDG_*` pointent vers `/work`, et l'image fixe `LC_ALL=C.UTF-8`. `DockerRunnerAvailability` et `start-hybrid.ps1` contrôlent maintenant les quatre images. Tous les exercices ont été rejoués dans le vrai conteneur ; `DockerJavaRunnerTest` verrouille les options de montage.

@@ -7,7 +7,7 @@ DLR est une application locale d'apprentissage de la programmation, avec évalua
 - API Spring Boot Java 21 ;
 - application Angular standalone en thème sombre ;
 - persistance PostgreSQL versionnée par Flyway ;
-- 148 activités disponibles : Java 24, Python 24, TypeScript 24, Spring Boot 12, Angular 10, SQL 10, Docker/CI-CD 8, Learn LLMs 12 et Architecture Système 24 ;
+- 172 activités disponibles : Java 24, Python 24, TypeScript 24, Spring Boot 12, Angular 10, SQL 10, Docker/CI-CD 8, Learn LLMs 12, Architecture Système 24 et Terminal et IA en ligne de commande 24 ;
 - parcours, laboratoire, éditeur CodeMirror, reprise de brouillon, quiz, checklist et import `.java` ;
 - exécution Docker isolée, assertions privées et score déterministe ;
 - tableau de bord, concepts clés, révisions espacées et planning ;
@@ -22,7 +22,7 @@ DLR est une application locale d'apprentissage de la programmation, avec évalua
 - synchronisation V2 par appareils appairés, journal idempotent et conflits sans perte.
 - recommandations adaptatives expliquées, analytics d'autonomie et professeur Ollama à cinq rôles ;
 - portfolio privé avec aperçu Markdown, export ZIP GitHub-ready et filtrage des secrets ;
-- catalogue extensible avec neuf parcours complets, projets portfolio et défis de synthèse.
+- catalogue extensible avec dix parcours complets, projets portfolio et défis de synthèse.
 - carnet personnel par laboratoire, page de notes groupée par langage et autosauvegarde des réponses de réflexion ;
 - analyses Ollama persistantes sous chaque réponse, avec suppression explicite ;
 - éditeur simple en alternative à CodeMirror, téléchargement du fichier pour un IDE externe et brouillon conservé au rechargement.
@@ -83,7 +83,7 @@ La mise en ligne utilise [`render.yaml`](render.yaml) : Render crée `dlr-api` e
 
 `compose.yaml` prépare PostgreSQL. Docker Desktop doit être démarré. Si la commande `docker` n'est pas dans le `PATH`, le script détecte automatiquement l'installation utilisateur de Docker Desktop.
 
-Construire les images isolées des runners Java, Python et TypeScript :
+Construire les images isolées des runners Java, Python, TypeScript et shell (bash et PowerShell) :
 
 ```powershell
 .\infrastructure\scripts\build-runners.ps1
@@ -119,7 +119,7 @@ Les programmes Java s'exécutent dans `/work`, un espace temporaire inscriptible
 
 Les parcours professionnels disposent maintenant de leur progression complète : Python et TypeScript sur 24 activités, Spring Boot et Learn LLMs sur 12, Angular et SQL sur 10, Docker/CI-CD sur 8. Chaque séquence termine par un projet portfolio puis un défi final.
 
-La page **Mon parcours** charge les neuf progressions mais n'affiche qu'une grille sélectionnée à la fois. Cette organisation maintient le DOM léger malgré les 148 contenus. Les cartes du catalogue servent de sélecteur et conservent les états disponible, en cours, verrouillé, projet et défi.
+La page **Mon parcours** charge les dix progressions mais n'affiche qu'une grille sélectionnée à la fois. Cette organisation maintient le DOM léger malgré les 172 contenus. Les cartes du catalogue servent de sélecteur et conservent les états disponible, en cours, verrouillé, projet et défi.
 
 ### V3.1 — Learn LLMs et projets framework
 
@@ -134,6 +134,12 @@ Les preuves Spring Boot utilisent Java 21, les preuves Angular utilisent TypeScr
 `ARCHITECTURE-01` à `ARCHITECTURE-24` forment le parcours culminant de DLR. La séquence apprend à construire une application **top-down**, depuis le besoin et les contrats, puis **bottom-up**, depuis les invariants PostgreSQL jusqu'à l'interface et au déploiement. Elle couvre choix de stack, API, sécurité, transactions, tests, Docker, configuration, modularité, cache, événements, fichiers, observabilité, résilience et scalabilité.
 
 Trois projets jalonnent la progression : une tranche CRUD verticale (`ARCHITECTURE-07`), un système modulaire sécurisé (`ARCHITECTURE-14`) et une plateforme multi-services observable (`ARCHITECTURE-23`). `ARCHITECTURE-24` impose un arbitrage final sous contraintes de coût, délai, fiabilité et sécurité. Les modèles exécutables utilisent Python pour rendre les décisions déterministes ; les productions attendues réemploient Spring Boot, Angular, SQL et Docker.
+
+## Parcours Terminal et IA en ligne de commande
+
+`TERMINAL-01` à `TERMINAL-24` forment un parcours indépendant, sans prérequis : bash sous Linux (`TERMINAL-01` à `07`), PowerShell sous Windows (`08` à `12`), scripts robustes, traitement de texte, Git et `make` (`13` à `17`), passage de bash à PowerShell (`18`), puis pilotage d'un projet avec un assistant IA en ligne de commande (`19` à `22`). Claude Code sert de fil conducteur ; les idées (contexte durable, garde-fous, revue des diffs, commits atomiques) se transposent à d'autres assistants. `TERMINAL-07` et `TERMINAL-23` sont des projets, `TERMINAL-24` est le défi final.
+
+Les exercices s'exécutent vraiment, dans l'image `dlr/shell-runner:1` (Debian, bash, PowerShell 7, Git, jq, gawk, make), avec les mêmes restrictions que les autres runners : sans réseau, système de fichiers en lecture seule, utilisateur non privilégié, limites CPU, mémoire et processus. Les exercices manipulent donc de vrais fichiers dans un répertoire de travail éphémère.
 
 ## Sauvegarde locale
 
@@ -161,7 +167,7 @@ Le site Angular peut rester sur Render tandis que l'API, Docker et Ollama tourne
 .\infrastructure\scripts\start-hybrid.ps1 -FrontendOrigin "https://dlr-web.onrender.com"
 ```
 
-Reporter ensuite l'URL HTTPS affichée par `tailscale serve status` dans `DLR_HYBRID_API_BASE_URL` sur le service statique Render, puis redéployer celui-ci. Le navigateur doit être connecté au même tailnet. Le bouton Runner s'active seulement lorsque `GET /api/execution/status` confirme que Docker et les trois images sont prêts. Le guide complet se trouve dans `docs/DLR_Deploye.md`.
+Reporter ensuite l'URL HTTPS affichée par `tailscale serve status` dans `DLR_HYBRID_API_BASE_URL` sur le service statique Render, puis redéployer celui-ci. Le navigateur doit être connecté au même tailnet. Le bouton Runner s'active seulement lorsque `GET /api/execution/status` confirme que Docker et les quatre images sont prêts. Le guide complet se trouve dans `docs/DLR_Deploye.md`.
 
 Pour réutiliser Neon au lieu de PostgreSQL local, ajouter `-DatabaseUrl` (au format JDBC) et `-DatabaseUser` ; le mot de passe est alors demandé de façon masquée.
 
