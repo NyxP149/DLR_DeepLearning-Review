@@ -1,0 +1,115 @@
+{
+  "code": "TERMINAL-11",
+  "language": "POWERSHELL",
+  "number": 11,
+  "slug": "variables-d-environnement-path-et-profil-sous-windows",
+  "title": "Variables d'environnement, PATH et profil sous Windows",
+  "difficulty": "INTERMEDIAIRE",
+  "threshold": 75,
+  "activityType": "LAB",
+  "prerequisites": [
+    "TERMINAL-10"
+  ],
+  "objectives": [
+    "Lire, définir et supprimer des variables d'environnement avec $env: et l'API .NET [Environment]",
+    "Manipuler PATH comme une liste (séparateur dépendant de la plateforme) sans le corrompre",
+    "Distinguer les portées Process, User et Machine, et le rôle du profil PowerShell et de la politique d'exécution"
+  ],
+  "sections": [
+    {
+      "title": "Le lecteur Env: et $env:",
+      "conceptCodes": [
+        "TERMINAL-POWERSHELL-ENVIRONMENT"
+      ],
+      "content": "PowerShell expose les variables d'environnement comme un lecteur : Get-ChildItem Env: les liste, $env:USERPROFILE lit l'une d'elles, $env:APP_ENV = 'prod' la définit pour le processus courant et ses enfants, Remove-Item Env:APP_ENV la supprime. Une variable définie ainsi disparaît à la fermeture de la session : c'est la portée Process. Les variables PowerShell ordinaires ($nom = 'Ada') n'appartiennent pas à l'environnement et ne sont pas visibles des programmes lancés."
+    },
+    {
+      "title": "PATH est une liste, pas un texte",
+      "content": "PATH est une chaîne de dossiers séparés par ; sous Windows et par : sous Linux. [IO.Path]::PathSeparator donne le bon caractère : $env:PATH -split [IO.Path]::PathSeparator produit un tableau que l'on peut compter, filtrer ou dédoublonner, puis on le recompose avec -join. Pour préfixer un dossier : $env:PATH = \"$dir$([IO.Path]::PathSeparator)$env:PATH\". Évite d'écraser PATH sans en reprendre l'ancien contenu : tu perdrais l'accès aux commandes système."
+    },
+    {
+      "title": "Portées permanentes, profil et politique d'exécution",
+      "content": "Pour qu'une variable survive, on l'écrit dans la portée User ou Machine : [Environment]::SetEnvironmentVariable('APP_ENV', 'prod', 'User') (ou setx). Les terminaux déjà ouverts ne voient pas le changement. Le profil PowerShell ($PROFILE) est un script exécuté à chaque démarrage : il sert à définir des alias, des fonctions et à ajuster PATH. Sous Windows, la politique d'exécution (Get-ExecutionPolicy) décide si un script .ps1 peut s'exécuter : RemoteSigned, réglable pour l'utilisateur courant avec Set-ExecutionPolicy RemoteSigned -Scope CurrentUser, autorise les scripts locaux. Elle protège contre les clics accidentels, ce n'est pas une barrière de sécurité."
+    }
+  ],
+  "keyConcepts": [
+    {
+      "code": "TERMINAL-POWERSHELL-ENVIRONMENT",
+      "name": "Environnement, PATH et portées sous PowerShell",
+      "definition": "Les variables d'environnement se lisent et s'écrivent via $env: pour le processus courant, et via [Environment]::SetEnvironmentVariable pour les portées persistantes User et Machine ; PATH est une liste de dossiers à manipuler comme telle.",
+      "whyExists": "Les programmes lancés par PowerShell héritent d'un environnement ; la configuration (outils installés, mode, adresses) y circule.",
+      "whyImportant": "Un PATH mal modifié rend les commandes introuvables, et une variable posée dans la mauvaise portée est soit éphémère, soit globale à toute la machine.",
+      "minimalExample": "$env:APP_ENV = 'prod' ; Remove-Item Env:APP_ENV supprime la variable pour la session.",
+      "professionalExample": "Après l'installation d'un nouveau SDK, les développeurs obtiennent « commande introuvable » car l'installateur a modifié PATH dans la portée Machine, mais leurs terminaux ouverts gardent l'ancienne valeur. La procédure de l'équipe : fermer et rouvrir le terminal, vérifier avec Get-Command, et en cas de besoin recharger PATH depuis les portées Machine et User dans le profil pour tout nouveau terminal.",
+      "codeExample": "$sep = [IO.Path]::PathSeparator\n$dir = Join-Path (Get-Location) 'tools'\n$env:PATH = \"$dir$sep$env:PATH\"            # priorité à tools\n($env:PATH -split $sep).Count                 # nombre d'entrées\n[Environment]::SetEnvironmentVariable('APP_ENV','prod','User')   # persistant",
+      "commonMistake": "Remplacer PATH au lieu de le compléter, ou croire qu'une variable de la portée User est visible immédiatement dans un terminal déjà ouvert.",
+      "masteryQuestion": "Quelle différence entre $env:X = 1 et [Environment]::SetEnvironmentVariable('X','1','User') ?",
+      "masteryProof": "Définir, lire et supprimer une variable d'environnement, puis préfixer PATH en prouvant qu'une seule entrée a été ajoutée."
+    }
+  ],
+  "exercises": [
+    {
+      "code": "TERMINAL-11-E1",
+      "title": "Manipuler une variable d'environnement et PATH",
+      "statement": "Définis APP_ENV pour le processus, lis-la, puis préfixe PATH avec un dossier tools du répertoire courant en prouvant qu'une seule entrée a été ajoutée et qu'elle est en première position. Supprime enfin la variable et vérifie qu'elle a disparu, y compris via l'API .NET.",
+      "starterCode": "$sep = [IO.Path]::PathSeparator\n$tools = Join-Path (Get-Location).Path 'tools'\nNew-Item -ItemType Directory -Path $tools -Force | Out-Null\n\n# TODO 1 : définis $env:APP_ENV à 'prod' puis affiche \"APP_ENV=\" suivi de sa valeur\n# TODO 2 : range dans $before le nombre d'entrées de PATH ($env:PATH -split $sep).Count\n# TODO 3 : préfixe PATH avec $tools : $env:PATH = \"$tools$sep$env:PATH\"\n# TODO 4 : affiche \"Entrées ajoutées: \" suivi de la différence entre le nombre d'entrées après et $before\n# TODO 5 : affiche \"Première entrée: \" suivi du NOM du premier dossier de PATH (Split-Path -Leaf)\n# TODO 6 : supprime la variable (Remove-Item Env:APP_ENV) puis affiche \"Supprimée: \" suivi de\n#          [Environment]::GetEnvironmentVariable('APP_ENV', 'Process') -eq $null\n",
+      "expectedOutput": "APP_ENV=prod\nEntrées ajoutées: 1\nPremière entrée: tools\nSupprimée: True"
+    }
+  ],
+  "quiz": [
+    {
+      "code": "TERMINAL-11-Q1",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Quelle syntaxe définit une variable d'environnement pour le processus courant ?",
+      "choices": [
+        "$env:APP_ENV = 'prod'",
+        "$APP_ENV = 'prod'",
+        "set-variable APP_ENV"
+      ],
+      "correctChoice": 0,
+      "expectedKeywords": []
+    },
+    {
+      "code": "TERMINAL-11-Q2",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Comment obtenir le bon séparateur de PATH quelle que soit la plateforme ?",
+      "choices": [
+        "[IO.Path]::PathSeparator",
+        "Toujours le point-virgule",
+        "Toujours le deux-points"
+      ],
+      "correctChoice": 0,
+      "expectedKeywords": []
+    },
+    {
+      "code": "TERMINAL-11-Q3",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Que fait Set-ExecutionPolicy RemoteSigned -Scope CurrentUser ?",
+      "choices": [
+        "Autorise les scripts locaux pour l'utilisateur courant, les scripts téléchargés devant être signés",
+        "Chiffre tous les scripts de la machine",
+        "Désactive PowerShell"
+      ],
+      "correctChoice": 0,
+      "expectedKeywords": []
+    },
+    {
+      "code": "TERMINAL-11-Q4",
+      "type": "FREE_TEXT",
+      "prompt": "Une variable posée avec setx est introuvable dans le terminal ouvert. Explique pourquoi et ce que tu fais.",
+      "choices": [],
+      "correctChoice": null,
+      "expectedKeywords": [
+        "portée",
+        "terminal",
+        "redémarrer"
+      ]
+    }
+  ],
+  "checklist": [
+    "Je lis, définis et supprime une variable avec $env: et Remove-Item Env:",
+    "Je manipule PATH comme une liste avec -split et -join",
+    "Je distingue les portées Process, User et Machine",
+    "Je sais à quoi servent $PROFILE et la politique d'exécution"
+  ]
+}

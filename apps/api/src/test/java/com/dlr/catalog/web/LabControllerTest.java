@@ -44,7 +44,7 @@ class LabControllerTest {
     void exposesAllCompletedProfessionalPaths() throws Exception {
         mockMvc.perform(get("/api/labs"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.length()").value(148))
+                .andExpect(jsonPath("$.length()").value(172))
                 .andExpect(jsonPath("$[?(@.code == 'JAVA-23' && @.activityType == 'PROJECT')]").exists())
                 .andExpect(jsonPath("$[?(@.code == 'JAVA-24' && @.activityType == 'CHALLENGE')]").exists())
                 .andExpect(jsonPath("$[?(@.code == 'PYTHON-01')]").exists())
@@ -89,6 +89,23 @@ class LabControllerTest {
         assertPath("SQL", 10);
         assertPath("DEVOPS", 8);
         assertPath("ARCHITECTURE", 24);
+        assertPath("TERMINAL", 24);
+    }
+
+    @Test
+    void startsTheTerminalPathWithBashThenMixesPowershellLabsInOrder() throws Exception {
+        mockMvc.perform(get("/api/paths/TERMINAL/progress"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.nextLabCode").value("TERMINAL-01"))
+                .andExpect(jsonPath("$.labs[0].prerequisites").isEmpty())
+                .andExpect(jsonPath("$.labs[7].code").value("TERMINAL-08"))
+                .andExpect(jsonPath("$.labs[12].code").value("TERMINAL-13"));
+        mockMvc.perform(get("/api/labs/TERMINAL-08"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.language").value("POWERSHELL"));
+        mockMvc.perform(get("/api/labs/TERMINAL-13"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.language").value("BASH"));
     }
 
     @Test
@@ -105,7 +122,7 @@ class LabControllerTest {
     void exposesExtensibleProfessionalPathDescriptors() throws Exception {
         mockMvc.perform(get("/api/paths/catalog"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.length()").value(9))
+                .andExpect(jsonPath("$.length()").value(10))
                 .andExpect(jsonPath("$[0].code").value("JAVA"))
                 .andExpect(jsonPath("$[1].code").value("PYTHON"))
                 .andExpect(jsonPath("$[2].code").value("TYPESCRIPT"))
@@ -113,7 +130,9 @@ class LabControllerTest {
                 .andExpect(jsonPath("$[3].prerequisites[0]").value("PYTHON"))
                 .andExpect(jsonPath("$[3].portfolioSkills.length()").isNotEmpty())
                 .andExpect(jsonPath("$[8].code").value("ARCHITECTURE"))
-                .andExpect(jsonPath("$[8].expectedActivityCount").value(24));
+                .andExpect(jsonPath("$[8].expectedActivityCount").value(24))
+                .andExpect(jsonPath("$[9].code").value("TERMINAL"))
+                .andExpect(jsonPath("$[9].prerequisites").isEmpty());
     }
 
     private void assertPath(String code, int total) throws Exception {

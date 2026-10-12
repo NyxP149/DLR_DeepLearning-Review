@@ -1,0 +1,115 @@
+{
+  "code": "TERMINAL-06",
+  "language": "BASH",
+  "number": 6,
+  "slug": "variables-d-environnement-path-et-guillemets",
+  "title": "Variables d'environnement, PATH et guillemets",
+  "difficulty": "BASE",
+  "threshold": 70,
+  "activityType": "LAB",
+  "prerequisites": [
+    "TERMINAL-05"
+  ],
+  "objectives": [
+    "Définir une variable shell, l'exporter et comprendre ce que voient les programmes lancés",
+    "Expliquer le rôle de PATH et ajouter un dossier d'outils personnels",
+    "Utiliser correctement les guillemets autour des variables, notamment avec des espaces"
+  ],
+  "sections": [
+    {
+      "title": "Variables shell et variables d'environnement",
+      "conceptCodes": [
+        "TERMINAL-ENVIRONMENT"
+      ],
+      "content": "NOM=Ada crée une variable du shell (sans espace autour du =) ; echo \"$NOM\" l'affiche. Cette variable reste locale au shell : un programme lancé ne la voit pas. export NOM le place dans l'environnement, que tous les processus enfants héritent. env liste l'environnement. Les variables d'environnement transportent la configuration (langue, mode, adresses) sans toucher au code, comme le préconise la méthode des douze facteurs ; les secrets y passent aussi, avec la précaution de ne jamais les écrire dans un fichier versionné."
+    },
+    {
+      "title": "PATH : comment le shell trouve les commandes",
+      "content": "Quand tu tapes hello, le shell parcourt, dans l'ordre, les dossiers listés dans PATH (séparés par : sous Linux, par ; sous Windows) et lance le premier exécutable nommé hello. command -v hello (ou which) indique lequel. Pour ajouter tes outils : export PATH=\"$HOME/bin:$PATH\" (au début, ton dossier prime). Pour que le changement survive à la fermeture du terminal, on l'écrit dans ~/.bashrc ou ~/.profile ; sous Windows, il se règle dans les variables d'environnement du système ou via $env:PATH et le profil PowerShell."
+    },
+    {
+      "title": "Guillemets : le piège des espaces",
+      "content": "Sans guillemets, le shell découpe une variable sur les espaces et développe les jokers : si NOM=\"Ada Lovelace\", touch $NOM crée deux fichiers, alors que touch \"$NOM\" en crée un seul. Règle simple : toujours écrire \"$variable\" entre guillemets doubles. Les guillemets simples '...' n'interprètent rien : echo '$NOM' affiche littéralement $NOM. Une substitution de commande $(commande) insère la sortie d'une commande."
+    }
+  ],
+  "keyConcepts": [
+    {
+      "code": "TERMINAL-ENVIRONMENT",
+      "name": "Environnement, PATH et guillemets",
+      "definition": "L'environnement est l'ensemble des variables transmises aux processus lancés par le shell ; PATH en est la plus importante, car elle détermine où le shell cherche les commandes.",
+      "whyExists": "Configurer un programme sans modifier son code, et retrouver des commandes sans écrire leur chemin complet, demande un mécanisme hérité par tous les processus.",
+      "whyImportant": "« Ça marche sur ma machine » vient souvent d'un PATH ou d'une variable différente ; des variables mal citées corrompent des chemins contenant des espaces.",
+      "minimalExample": "export GREETING=salut ; bash -c 'echo $GREETING' affiche salut, alors que sans export il affiche une ligne vide.",
+      "professionalExample": "Un script de build passe sur le poste d'un développeur mais échoue en intégration continue : il appelle node, introuvable car le PATH du serveur ne contient pas le dossier de l'outil installé via un gestionnaire de versions. La correction fixe le PATH explicitement dans le pipeline et le script affiche command -v node au démarrage, ce qui rend le diagnostic immédiat.",
+      "codeExample": "export PATH=\"$HOME/bin:$PATH\"\ncommand -v hello           # /home/ada/bin/hello\nNOM=\"Ada Lovelace\"\ntouch \"$NOM\"                # un seul fichier, grâce aux guillemets",
+      "commonMistake": "Écrire NOM = Ada avec des espaces (le shell cherche une commande NOM), oublier export, ou omettre les guillemets autour d'une variable contenant des espaces.",
+      "masteryQuestion": "Pourquoi une variable définie sans export n'est-elle pas visible d'un script lancé depuis ce shell ?",
+      "masteryProof": "Montrer qu'une variable exportée est vue d'un sous-shell et pas une variable locale, puis ajouter un dossier au PATH et lancer une commande par son nom."
+    }
+  ],
+  "exercises": [
+    {
+      "code": "TERMINAL-06-E1",
+      "title": "Exporter, étendre le PATH et citer correctement",
+      "statement": "Le script crée un petit outil bin/hello. Montre la différence entre variable exportée et non exportée (vue depuis un sous-shell bash -c), ajoute bin au PATH pour lancer hello par son nom, puis crée un fichier dont le nom contient une espace en citant correctement la variable.",
+      "starterCode": "#!/usr/bin/env bash\nmkdir -p bin\nprintf '#!/usr/bin/env bash\\necho bonjour\\n' > bin/hello\nchmod +x bin/hello\n\nGREETING=salut\nLOCAL=prive\n# TODO 1 : exporte GREETING seulement (pas LOCAL)\n# TODO 2 : affiche \"Exporté: \" suivi de la valeur de GREETING vue par un sous-shell (bash -c 'echo $GREETING')\n# TODO 3 : affiche \"Non exporté: \" suivi de la valeur de LOCAL vue par un sous-shell (vide), avec un texte \"(vide)\" si la valeur est vide\n# TODO 4 : ajoute le dossier bin du répertoire courant au DÉBUT du PATH (export PATH=\"$PWD/bin:$PATH\")\n# TODO 5 : affiche \"Commande: \" suivi de command -v hello, puis exécute hello par son nom\n# TODO 6 : avec NOM=\"Ada Lovelace\", crée le fichier \"$NOM.txt\" et affiche \"Nom: \" suivi de la liste des fichiers .txt du dossier courant (ls *.txt)\ntrue\n",
+      "expectedOutput": "Exporté: salut\nNon exporté: (vide)\nCommande: /work/bin/hello\nbonjour\nNom: Ada Lovelace.txt"
+    }
+  ],
+  "quiz": [
+    {
+      "code": "TERMINAL-06-Q1",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Quelle commande rend une variable visible des programmes lancés depuis le shell ?",
+      "choices": [
+        "export NOM",
+        "set NOM",
+        "echo NOM"
+      ],
+      "correctChoice": 0,
+      "expectedKeywords": []
+    },
+    {
+      "code": "TERMINAL-06-Q2",
+      "type": "SINGLE_CHOICE",
+      "prompt": "À quoi sert la variable PATH ?",
+      "choices": [
+        "À indiquer les dossiers où le shell cherche les commandes",
+        "À mémoriser le dernier dossier visité",
+        "À stocker le mot de passe de l'utilisateur"
+      ],
+      "correctChoice": 0,
+      "expectedKeywords": []
+    },
+    {
+      "code": "TERMINAL-06-Q3",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Que produit touch $NOM si NOM=\"Ada Lovelace\" ?",
+      "choices": [
+        "Deux fichiers, Ada et Lovelace",
+        "Un seul fichier « Ada Lovelace »",
+        "Une erreur de syntaxe"
+      ],
+      "correctChoice": 0,
+      "expectedKeywords": []
+    },
+    {
+      "code": "TERMINAL-06-Q4",
+      "type": "FREE_TEXT",
+      "prompt": "Un script marche sur ton poste mais échoue en intégration continue avec « command not found ». Quelles causes liées à l'environnement vérifies-tu ?",
+      "choices": [],
+      "correctChoice": null,
+      "expectedKeywords": [
+        "PATH",
+        "variable",
+        "command -v"
+      ]
+    }
+  ],
+  "checklist": [
+    "Je distingue variable shell et variable d'environnement exportée",
+    "J'explique comment le shell résout une commande grâce à PATH",
+    "Je mets systématiquement \"$variable\" entre guillemets doubles",
+    "Je sais où rendre un changement de PATH permanent sous Linux et sous Windows"
+  ]
+}

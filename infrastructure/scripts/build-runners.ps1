@@ -16,6 +16,7 @@ $repositoryRoot = Resolve-Path (Join-Path $PSScriptRoot '../..')
 $javaRunner = Join-Path $repositoryRoot 'runners/java-runner'
 $pythonRunner = Join-Path $repositoryRoot 'runners/python-runner'
 $typescriptRunner = Join-Path $repositoryRoot 'runners/typescript-runner'
+$shellRunner = Join-Path $repositoryRoot 'runners/shell-runner'
 
 & $dockerPath build --tag 'dlr/java-runner:21' $javaRunner
 if ($LASTEXITCODE -ne 0) {
@@ -30,4 +31,7 @@ if ($LASTEXITCODE -ne 0) { throw 'La construction de dlr/python-runner:3.13 a é
 & $dockerPath build --tag 'dlr/typescript-runner:22' $typescriptRunner
 if ($LASTEXITCODE -ne 0) { throw 'La construction de dlr/typescript-runner:22 a échoué.' }
 
-Write-Host 'Images Java, Python et TypeScript construites avec succès.'
+& $dockerPath build --tag 'dlr/shell-runner:1' $shellRunner
+if ($LASTEXITCODE -ne 0) { throw 'La construction de dlr/shell-runner:1 a échoué.' }
+
+Write-Host 'Images Java, Python, TypeScript et Shell (bash + PowerShell) construites avec succès.'

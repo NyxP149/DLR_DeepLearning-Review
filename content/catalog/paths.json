@@ -73,5 +73,16 @@
     "project": "Plateforme multi-services observable", "challenge": "Concevoir une architecture complète sous contraintes",
     "portfolioSkills": ["architecture système", "full-stack", "PostgreSQL", "API", "sécurité", "cloud"],
     "expectedActivityCount": 24
+  },
+  {
+    "code": "TERMINAL", "title": "Terminal et IA en ligne de commande", "status": "AVAILABLE",
+    "professionalObjectives": ["Travailler efficacement dans un terminal Linux (bash) et Windows (PowerShell), puis piloter un projet avec un assistant IA en ligne de commande en gardant le contrôle"],
+    "prerequisites": [],
+    "keyConcepts": ["navigation", "pipes et redirections", "permissions", "scripts", "PowerShell", "Git", "contexte IA", "garde-fous", "revue de diffs"],
+    "activityTypes": ["LAB", "PROJECT", "CHALLENGE"], "executionEnvironment": "docker-shell-bash-powershell",
+    "assessmentStrategy": "Scripts bash et PowerShell exécutés dans un bac à sable, sorties déterministes, projet de bout en bout et défi sous contraintes",
+    "project": "Dépôt de projet piloté au terminal avec un assistant IA", "challenge": "Reprendre un projet en désordre, le fiabiliser et le livrer avec un assistant IA sous garde-fous",
+    "portfolioSkills": ["bash", "PowerShell", "Git", "automatisation", "assistants IA en terminal", "revue de code"],
+    "expectedActivityCount": 24
   }
 ]

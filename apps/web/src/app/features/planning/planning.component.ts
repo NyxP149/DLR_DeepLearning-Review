@@ -74,7 +74,7 @@ export class PlanningComponent {
     { code: 'TYPESCRIPT', label: 'TypeScript' }, { code: 'LEARN_LLM', label: 'Learn LLMs' },
     { code: 'SPRING_BOOT', label: 'Spring Boot' }, { code: 'ANGULAR', label: 'Angular' },
     { code: 'SQL', label: 'SQL' }, { code: 'DEVOPS', label: 'Docker et CI/CD' },
-    { code: 'ARCHITECTURE', label: 'Architecture Système' }
+    { code: 'ARCHITECTURE', label: 'Architecture Système' }, { code: 'TERMINAL', label: 'Terminal et IA' }
   ];
   readonly minutes: Record<string, number> = {};
   readonly rewards: Record<string, string> = {};

@@ -1,0 +1,115 @@
+{
+  "code": "TERMINAL-17",
+  "language": "BASH",
+  "number": 17,
+  "slug": "automatiser-un-projet-avec-make-et-des-scripts",
+  "title": "Automatiser un projet avec make et des scripts",
+  "difficulty": "INTERMEDIAIRE",
+  "threshold": 75,
+  "activityType": "LAB",
+  "prerequisites": [
+    "TERMINAL-16"
+  ],
+  "objectives": [
+    "Décrire des tâches de projet (build, test, clean) dans un Makefile avec leurs dépendances",
+    "Expliquer comment make décide de reconstruire un fichier (dates de modification) et à quoi servent les cibles .PHONY",
+    "Offrir à l'équipe une interface unique et reproductible pour lancer le projet, sans connaître ses outils internes"
+  ],
+  "sections": [
+    {
+      "title": "Pourquoi un point d'entrée unique",
+      "conceptCodes": [
+        "TERMINAL-TASK-RUNNER"
+      ],
+      "content": "Chaque projet a ses commandes (npm test, mvn verify, pytest, docker build…) que personne ne retient toutes. Un Makefile les rassemble sous des noms stables : make test, make build, make clean. Un nouveau développeur, l'intégration continue et un assistant IA lancent alors les mêmes commandes, avec les mêmes options. Dans CLAUDE.md ou un README, écrire « lance make test » est plus fiable que de recopier une longue ligne de commande."
+    },
+    {
+      "title": "Cibles, dépendances et recettes",
+      "content": "Une règle s'écrit cible: dépendances suivie de la recette (les commandes). make reconstruit la cible seulement si elle est absente ou plus ancienne qu'une dépendance : dist/app.txt: src/app.txt copie le fichier uniquement quand la source change. Les cibles qui ne produisent pas de fichier (test, clean, all) se déclarent avec .PHONY pour ne pas être confondues avec un fichier du même nom. Les lignes de recette commencent par une tabulation, pas par des espaces ; la variable spéciale .RECIPEPREFIX permet de choisir un autre caractère (par exemple >) quand les tabulations posent problème dans un éditeur."
+    },
+    {
+      "title": "Variables, make -q et alternatives",
+      "content": "Des variables (BUILD_DIR := dist) évitent de répéter les chemins ; $@ désigne la cible et $< la première dépendance. make -n affiche ce qui serait exécuté sans le faire, make -q répond par son code de sortie à la question « tout est-il à jour ? », make -s réduit le bruit. Sous Windows, make n'est pas installé par défaut : on utilise WSL, Git Bash, ou des équivalents (just, Taskfile, scripts npm, ou un fichier build.ps1). L'important est le principe : un point d'entrée documenté, idempotent et vérifiable."
+    }
+  ],
+  "keyConcepts": [
+    {
+      "code": "TERMINAL-TASK-RUNNER",
+      "name": "Exécuteur de tâches et reconstruction conditionnelle",
+      "definition": "Un exécuteur de tâches comme make décrit des cibles, leurs dépendances et leurs recettes, et ne reconstruit que ce qui est périmé.",
+      "whyExists": "Les projets enchaînent des étapes dont l'ordre et les dépendances sont connus ; les décrire une fois évite les oublis et les étapes inutiles.",
+      "whyImportant": "Un projet que l'on ne peut pas construire et tester avec une commande connue est difficile à reprendre, à intégrer en continu et à confier à un assistant IA.",
+      "minimalExample": "make test construit la dépendance puis lance le test ; relancé sans changement, make n'a rien à reconstruire.",
+      "professionalExample": "Une équipe documente dans le README une séquence de six commandes pour préparer l'environnement ; chacun l'exécute légèrement différemment et les builds divergent. Elle la remplace par make setup, make test et make ci, utilisés aussi par le pipeline : les écarts disparaissent, et l'assistant IA qui reprend le dépôt sait quelle commande lancer pour vérifier son travail.",
+      "codeExample": ".RECIPEPREFIX = >\n.PHONY: all test clean\nall: dist/app.txt\ndist/app.txt: src/app.txt\n> mkdir -p dist\n> cp src/app.txt dist/app.txt\ntest: dist/app.txt\n> grep -q contenu dist/app.txt && echo \"test ok\"\nclean:\n> rm -rf dist",
+      "commonMistake": "Mettre des espaces au lieu d'une tabulation dans une recette, oublier .PHONY pour test ou clean, ou documenter des commandes qui ne sont pas celles que l'équipe lance vraiment.",
+      "masteryQuestion": "Dans quels cas make ne reconstruit-il pas une cible, et comment le prouver sans l'exécuter ?",
+      "masteryProof": "Écrire un Makefile à trois cibles, vérifier qu'il est à jour avec make -q, forcer une reconstruction en touchant la source puis nettoyer."
+    }
+  ],
+  "exercises": [
+    {
+      "code": "TERMINAL-17-E1",
+      "title": "Écrire un Makefile build, test et clean",
+      "statement": "Complète le Makefile (le préfixe de recette est > pour éviter les tabulations) : all dépend de dist/app.txt, qui est copié depuis src/app.txt et affiche « construit » ; test vérifie le contenu et affiche « test ok » ; clean supprime dist. Le script montre ensuite que make ne reconstruit rien quand tout est à jour et reconstruit (ce qui réaffiche « construit ») quand la source change.",
+      "starterCode": "#!/usr/bin/env bash\nmkdir -p src\necho \"contenu\" > src/app.txt\n\ncat > Makefile <<'MAKE'\n.RECIPEPREFIX = >\n.PHONY: all test clean\n# TODO 1 : la cible all dépend de dist/app.txt\n# TODO 2 : la règle dist/app.txt dépend de src/app.txt ; sa recette crée dist (mkdir -p dist),\n#          copie src/app.txt vers dist/app.txt (cp) puis affiche construit (echo construit)\n# TODO 3 : la cible test dépend de dist/app.txt ; sa recette fait : grep -q contenu dist/app.txt && echo \"test ok\"\n# TODO 4 : la cible clean supprime le dossier dist (rm -rf dist)\nMAKE\n\nmake -s all 2>/dev/null || true\nmake -q all 2>/dev/null && echo \"À jour\" || echo \"À reconstruire\"\ntouch -d 'now + 2 seconds' src/app.txt\nmake -q all 2>/dev/null && echo \"À jour\" || echo \"À reconstruire\"\nmake -s test 2>/dev/null || true\nmake -s clean 2>/dev/null || true\n[ -d dist ] && echo \"dist présent\" || echo \"dist supprimé\"\ntrue\n",
+      "expectedOutput": "construit\nÀ jour\nÀ reconstruire\nconstruit\ntest ok\ndist supprimé"
+    }
+  ],
+  "quiz": [
+    {
+      "code": "TERMINAL-17-Q1",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Quand make reconstruit-il une cible fichier ?",
+      "choices": [
+        "Quand elle est absente ou plus ancienne qu'une dépendance",
+        "À chaque exécution, sans condition",
+        "Seulement si on utilise l'option -f"
+      ],
+      "correctChoice": 0,
+      "expectedKeywords": []
+    },
+    {
+      "code": "TERMINAL-17-Q2",
+      "type": "SINGLE_CHOICE",
+      "prompt": "À quoi sert .PHONY: test clean ?",
+      "choices": [
+        "À indiquer que ce sont des tâches et non des fichiers",
+        "À rendre les cibles plus rapides",
+        "À cacher les cibles dans make --help"
+      ],
+      "correctChoice": 0,
+      "expectedKeywords": []
+    },
+    {
+      "code": "TERMINAL-17-Q3",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Pourquoi un Makefile aide-t-il un assistant IA qui reprend un projet ?",
+      "choices": [
+        "Il fournit des commandes stables pour construire et vérifier",
+        "Il remplace le besoin de tests",
+        "Il gère automatiquement les secrets"
+      ],
+      "correctChoice": 0,
+      "expectedKeywords": []
+    },
+    {
+      "code": "TERMINAL-17-Q4",
+      "type": "FREE_TEXT",
+      "prompt": "Sous Windows sans make, comment offrir le même point d'entrée unique à l'équipe ?",
+      "choices": [],
+      "correctChoice": null,
+      "expectedKeywords": [
+        "WSL",
+        "script",
+        "tâche"
+      ]
+    }
+  ],
+  "checklist": [
+    "J'écris des règles cible, dépendances et recette, et je déclare les tâches avec .PHONY",
+    "J'explique la reconstruction conditionnelle selon les dates de modification",
+    "J'utilise make -n, -q et -s pour simuler, vérifier et réduire le bruit",
+    "Je documente les commandes de vérification du projet sous des noms stables"
+  ]
+}

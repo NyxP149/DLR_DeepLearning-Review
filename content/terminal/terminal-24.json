@@ -1,0 +1,115 @@
+{
+  "code": "TERMINAL-24",
+  "language": "BASH",
+  "number": 24,
+  "slug": "defi-final-reprendre-un-projet-en-desordre-sous-garde-fous",
+  "title": "Défi final : reprendre un projet en désordre sous garde-fous",
+  "difficulty": "DEFI",
+  "threshold": 90,
+  "activityType": "CHALLENGE",
+  "prerequisites": [
+    "TERMINAL-23"
+  ],
+  "objectives": [
+    "Reprendre un projet en désordre et le mettre sous contrôle avec Git, .gitignore, un hook, un Makefile et des fichiers pour l'assistant",
+    "Prouver chaque garantie (secrets protégés, garde-fou actif, tests exécutables, historique atomique) par une vérification automatique",
+    "Produire un rapport final reproductible qu'un assistant IA ou un collègue peut relire"
+  ],
+  "sections": [
+    {
+      "title": "Le défi",
+      "conceptCodes": [
+        "TERMINAL-AI-READINESS"
+      ],
+      "content": "Tu hérites d'un dossier de projet sans historique : du code, un test, des notes, des données, un fichier .env contenant un secret et un journal de build. Avant de laisser un assistant IA y travailler, tu dois le mettre sous garde-fous. Il faut : ignorer les secrets et les journaux, initialiser Git avec des commits atomiques, installer un hook qui refuse les secrets, fournir un point d'entrée de vérification (make test), écrire les instructions de l'assistant (CLAUDE.md) et ses permissions (réglages JSON avec .env protégé), puis prouver que tout tient avec un rapport."
+    },
+    {
+      "title": "Démarche conseillée",
+      "content": "Commence par la protection (.gitignore puis hook), car c'est ce qui évite l'accident irréversible pendant la suite. Fais ensuite des commits atomiques : le code et .gitignore, la documentation, les données, puis les garde-fous. Vérifie chaque garantie par une commande plutôt que par ta mémoire : git check-ignore pour les fichiers ignorés, une tentative de commit qui doit échouer pour le hook, make -s test pour la vérification, jq pour les permissions, git status pour la propreté. Écris le rapport en dernier : chaque ligne doit être le résultat d'une commande."
+    },
+    {
+      "title": "Critères de réussite",
+      "content": "Le défi est réussi quand toutes les lignes du rapport final sont exactes et reproductibles : fichiers ignorés, garde-fou actif, test exécutable, nombre de commits, rubriques du fichier d'instructions, protection du secret dans les permissions et dépôt propre. Relis ton script comme un reviewer : est-il relançable dans un dossier neuf ? ne contient-il aucune hypothèse cachée ? un collègue peut-il comprendre chaque garde-fou en le lisant ?"
+    }
+  ],
+  "keyConcepts": [
+    {
+      "code": "TERMINAL-AI-READINESS",
+      "name": "Mettre un projet sous garde-fous avant d'y lancer un assistant",
+      "definition": "Rendre un projet prêt pour un assistant IA consiste à protéger les secrets, tracer l'historique, automatiser un contrôle de vérification et documenter les règles, chaque garantie étant prouvée par une vérification automatique.",
+      "whyExists": "Un assistant amplifie ce qu'il trouve : dans un projet désordonné, il propage le désordre et peut exposer des données sensibles.",
+      "whyImportant": "Les garde-fous posés avant le premier prompt coûtent peu ; les poser après un incident coûte cher. Un projet vérifiable est aussi plus simple à reprendre pour un humain.",
+      "minimalExample": "Un projet avec .gitignore (.env, *.log), un hook pre-commit, make test, un CLAUDE.md court et un réglage qui interdit Read(./.env).",
+      "professionalExample": "Une équipe confie à un assistant la reprise d'un vieux dépôt. Avant la première session, elle exécute un script de mise en conformité : secrets ignorés et vérifiés, hook installé et testé, Makefile avec un test minimal, CLAUDE.md, permissions. Le rapport final, ajouté à la description de la première PR, montre que les garanties tiennent ; lors d'un essai, l'assistant tente de commiter une clé et le hook l'arrête.",
+      "codeExample": "git check-ignore .env build.log\n! git commit -m x            # doit échouer avec le hook\nmake -s test\njq -e '.permissions.deny | index(\"Read(./.env)\")' .claude/settings.json\ntest -z \"$(git status --short)\" && echo propre",
+      "commonMistake": "Poser les garde-fous après avoir commencé à travailler, déclarer une protection sans la tester, ou laisser le dépôt dans un état sale après la mise en conformité.",
+      "masteryQuestion": "Comment prouves-tu qu'un garde-fou est réellement actif plutôt que simplement configuré ?",
+      "masteryProof": "Réaliser la mise en conformité complète d'un projet en désordre et produire un rapport où chaque ligne est le résultat d'une vérification."
+    }
+  ],
+  "exercises": [
+    {
+      "code": "TERMINAL-24-E1",
+      "title": "Mettre un projet en désordre sous garde-fous et le prouver",
+      "statement": "Dans le dossier reprise, protège le secret (.gitignore), installe le hook anti-secret, crée quatre commits atomiques (code, documentation, données, garde-fous dont Makefile, CLAUDE.md et réglages), puis affiche un rapport de sept lignes dont chacune résulte d'une vérification réelle.",
+      "starterCode": "#!/usr/bin/env bash\ngit config --global user.name \"Ada\"\ngit config --global user.email \"ada@dlr.dev\"\ngit config --global init.defaultBranch main\nmkdir reprise && cd reprise\nprintf 'def add(a, b):\\n    return a + b\\n' > app.py\nprintf 'from app import add\\nassert add(1, 2) == 3\\n' > test_app.py\necho \"Notes de reprise\" > notes.txt\necho \"TOKEN=sk-live-9999\" > .env\necho \"log\" > build.log\nprintf 'a,b\\n1,2\\n' > data.csv\ngit init -q\n\n# TODO 1 : écris .gitignore avec les motifs .env et *.log\n# TODO 2 : installe .git/hooks/pre-commit (exécutable) qui refuse (exit 1, message sur stderr) un commit dont les lignes\n#          ajoutées contiennent sk-live-\n# TODO 3 : commit 1 \"Ajoute le code et .gitignore\" (app.py test_app.py .gitignore) ; commit 2 \"Ajoute la documentation\" (notes.txt) ;\n#          commit 3 \"Ajoute les données\" (data.csv)\n# TODO 4 : crée Makefile (préfixe de recette >) avec la cible test : grep -q \"def add\" app.py && echo \"test ok\"\n# TODO 5 : écris CLAUDE.md avec exactement trois rubriques : \"## Commandes\" (make test), \"## Architecture\", \"## Interdits\"\n# TODO 6 : écris .claude/settings.json avec permissions.deny contenant \"Read(./.env)\"\n# TODO 7 : commit 4 \"Ajoute les garde-fous du projet\" (Makefile CLAUDE.md .claude/settings.json)\n\n# TODO 8 : affiche le rapport final, une ligne chacune, chaque valeur étant calculée :\n#   \"Ignorés: \" + git check-ignore .env build.log sur une ligne\n#   \"Garde-fou: actif\" si un commit forcé de .env (git add -f .env) est refusé, sinon \"Garde-fou: inactif\" ; retire .env de l'index ensuite\n#   \"Vérification: \" + make -s test\n#   \"Commits: \" + nombre de commits (git log --format=%s | wc -l)\n#   \"CLAUDE.md: \" + nombre de rubriques \"## \" + \" sections\"\n#   \"Permissions: .env protégé\" si jq trouve Read(./.env) dans deny, sinon \"Permissions: .env exposé\"\n#   \"Statut Git: propre\" si git status --short est vide, sinon \"Statut Git: modifié\"\ntrue\n",
+      "expectedOutput": "Ignorés: .env build.log\nGarde-fou: actif\nVérification: test ok\nCommits: 4\nCLAUDE.md: 3 sections\nPermissions: .env protégé\nStatut Git: propre"
+    }
+  ],
+  "quiz": [
+    {
+      "code": "TERMINAL-24-Q1",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Quelle est la première chose à mettre en place avant de laisser un assistant travailler sur un projet hérité ?",
+      "choices": [
+        "La protection des secrets et de l'historique (.gitignore, hook, Git)",
+        "Un refactoring complet",
+        "La désactivation des tests"
+      ],
+      "correctChoice": 0,
+      "expectedKeywords": []
+    },
+    {
+      "code": "TERMINAL-24-Q2",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Comment prouver qu'un hook anti-secret est vraiment actif ?",
+      "choices": [
+        "Tenter un commit qui doit être refusé et constater l'échec",
+        "Lire son code attentivement",
+        "Vérifier qu'il existe dans le dossier"
+      ],
+      "correctChoice": 0,
+      "expectedKeywords": []
+    },
+    {
+      "code": "TERMINAL-24-Q3",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Pourquoi chaque ligne du rapport final doit-elle être le résultat d'une commande ?",
+      "choices": [
+        "Pour que le rapport soit reproductible et vérifiable, pas déclaratif",
+        "Pour qu'il soit plus long",
+        "Pour éviter d'utiliser Git"
+      ],
+      "correctChoice": 0,
+      "expectedKeywords": []
+    },
+    {
+      "code": "TERMINAL-24-Q4",
+      "type": "FREE_TEXT",
+      "prompt": "Un collègue veut démarrer une session d'assistant IA immédiatement sur un dépôt hérité contenant un fichier .env. Que lui réponds-tu et que mets-tu en place d'abord ?",
+      "choices": [],
+      "correctChoice": null,
+      "expectedKeywords": [
+        "gitignore",
+        "hook",
+        "permissions"
+      ]
+    }
+  ],
+  "checklist": [
+    "J'ai protégé les secrets (.gitignore, hook, permissions) avant tout travail assisté",
+    "Mon historique est fait de commits atomiques et mon dépôt est propre",
+    "Une commande unique (make test) vérifie le projet et un fichier d'instructions guide l'assistant",
+    "Mon rapport final est reproductible : chaque ligne vient d'une vérification"
+  ]
+}

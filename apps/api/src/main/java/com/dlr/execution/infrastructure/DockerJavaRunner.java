@@ -30,11 +30,19 @@ public class DockerJavaRunner implements CodeRunner {
 
     private static final int MAX_OUTPUT_BYTES = 64 * 1024;
     private static final int COMPILATION_ERROR_EXIT_CODE = 20;
+    // Les compilateurs n'exécutent que ce qu'ils produisent : /work reste non exécutable.
+    private static final String DEFAULT_WORK_OPTIONS = "rw,noexec,nosuid,size=32m";
+    // Un terminal doit pouvoir lancer ses propres scripts (chmod +x puis ./script.sh) ; le conteneur reste isolé
+    // (sans réseau, système en lecture seule, sans capacités, utilisateur non privilégié).
+    private static final String SHELL_WORK_OPTIONS = "rw,exec,nosuid,size=32m";
+    private static final String SHELL_ENVIRONMENT =
+            "export HOME=/work XDG_CACHE_HOME=/work/.cache XDG_DATA_HOME=/work/.local XDG_CONFIG_HOME=/work/.config; ";
 
     private final String dockerCli;
     private final String image;
     private final String pythonImage;
     private final String typescriptImage;
+    private final String shellImage;
     private final Duration timeout;
     private final Clock clock;
 
@@ -44,9 +52,10 @@ public class DockerJavaRunner implements CodeRunner {
             @Value("${dlr.execution.java-image:dlr/java-runner:21}") String image,
             @Value("${dlr.execution.python-image:dlr/python-runner:3.13}") String pythonImage,
             @Value("${dlr.execution.typescript-image:dlr/typescript-runner:22}") String typescriptImage,
+            @Value("${dlr.execution.shell-image:dlr/shell-runner:1}") String shellImage,
             @Value("${dlr.execution.timeout-seconds:10}") long timeoutSeconds
     ) {
-        this(resolveDockerCli(dockerCli), image, pythonImage, typescriptImage, Duration.ofSeconds(timeoutSeconds), Clock.systemUTC());
+        this(resolveDockerCli(dockerCli), image, pythonImage, typescriptImage, shellImage, Duration.ofSeconds(timeoutSeconds), Clock.systemUTC());
     }
 
     DockerJavaRunner(String dockerCli, String image, Duration timeout, Clock clock) {
@@ -54,10 +63,18 @@ public class DockerJavaRunner implements CodeRunner {
     }
 
     DockerJavaRunner(String dockerCli, String image, String pythonImage, String typescriptImage, Duration timeout, Clock clock) {
+        this(dockerCli, image, pythonImage, typescriptImage, "dlr/shell-runner:1", timeout, clock);
+    }
+
+    DockerJavaRunner(
+            String dockerCli, String image, String pythonImage, String typescriptImage, String shellImage,
+            Duration timeout, Clock clock
+    ) {
         this.dockerCli = dockerCli;
         this.image = image;
         this.pythonImage = pythonImage;
         this.typescriptImage = typescriptImage;
+        this.shellImage = shellImage;
         this.timeout = timeout;
         this.clock = clock;
     }
@@ -150,7 +167,7 @@ public class DockerJavaRunner implements CodeRunner {
                 "--cpus", "0.50",
                 "--pids-limit", "64",
                 "--read-only",
-                "--tmpfs", "/work:rw,noexec,nosuid,size=32m",
+                "--tmpfs", "/work:" + spec.workOptions(),
                 "--cap-drop", "ALL",
                 "--security-opt", "no-new-privileges",
                 "--user", "10001:10001",
@@ -234,6 +251,8 @@ public class DockerJavaRunner implements CodeRunner {
             Files.deleteIfExists(workspace.resolve("Main.java"));
             Files.deleteIfExists(workspace.resolve("main.py"));
             Files.deleteIfExists(workspace.resolve("main.ts"));
+            Files.deleteIfExists(workspace.resolve("main.sh"));
+            Files.deleteIfExists(workspace.resolve("main.ps1"));
             Files.deleteIfExists(workspace);
         } catch (IOException exception) {
             workspace.toFile().deleteOnExit();
@@ -276,9 +295,19 @@ public class DockerJavaRunner implements CodeRunner {
                     "cp /workspace/main.py /work/main.py; cd /work; python -m py_compile main.py || exit 20; python -B main.py");
             case "TYPESCRIPT" -> new RunnerSpec("TYPESCRIPT", "main.ts", typescriptImage,
                     "tsc --strict --skipLibCheck --target ES2022 --module commonjs --outDir /work /workspace/main.ts || exit 20; node /work/main.js");
+            case "BASH" -> new RunnerSpec("BASH", "main.sh", shellImage,
+                    SHELL_ENVIRONMENT + "cp /workspace/main.sh /work/main.sh; cd /work; bash -n main.sh || exit 20; bash main.sh",
+                    SHELL_WORK_OPTIONS);
+            case "POWERSHELL" -> new RunnerSpec("POWERSHELL", "main.ps1", shellImage,
+                    SHELL_ENVIRONMENT + "cp /workspace/main.ps1 /work/main.ps1; cd /work; pwsh -NoProfile -NonInteractive -File main.ps1",
+                    SHELL_WORK_OPTIONS);
             default -> throw new IllegalArgumentException("Runner indisponible pour le langage : " + language);
         };
     }
 
-    record RunnerSpec(String language, String sourceFile, String image, String command) {}
+    record RunnerSpec(String language, String sourceFile, String image, String command, String workOptions) {
+        RunnerSpec(String language, String sourceFile, String image, String command) {
+            this(language, sourceFile, image, command, DEFAULT_WORK_OPTIONS);
+        }
+    }
 }

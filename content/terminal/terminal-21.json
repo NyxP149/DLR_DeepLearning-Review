@@ -1,0 +1,115 @@
+{
+  "code": "TERMINAL-21",
+  "language": "BASH",
+  "number": 21,
+  "slug": "permissions-et-garde-fous-pour-un-assistant-ia",
+  "title": "Permissions et garde-fous pour un assistant IA",
+  "difficulty": "PROFESSIONNEL",
+  "threshold": 80,
+  "activityType": "LAB",
+  "prerequisites": [
+    "TERMINAL-20"
+  ],
+  "objectives": [
+    "Expliquer le modèle d'autorisation d'un assistant en terminal (demander, autoriser, interdire) et ses modes",
+    "Écrire et auditer un fichier de permissions avec des règles allow et deny, et le corriger avec jq",
+    "Appliquer la défense en profondeur : permissions, .gitignore, isolation et revue"
+  ],
+  "sections": [
+    {
+      "title": "Le modèle : demander, autoriser, interdire",
+      "conceptCodes": [
+        "TERMINAL-AI-GUARDRAILS"
+      ],
+      "content": "Par défaut, un assistant demande ton accord avant de modifier un fichier ou de lancer une commande. Les permissions réduisent ces interruptions sans renoncer au contrôle : des règles allow autorisent à l'avance des actions sûres et répétitives (lancer les tests, lire le code), des règles deny interdisent des actions ou des fichiers, et tout le reste reste soumis à confirmation. Avec Claude Code, les règles s'écrivent dans des fichiers de réglages JSON sous la forme Outil(motif), par exemple Bash(npm test:*) ou Read(./.env), et une règle deny l'emporte sur une règle allow. Des modes (par défaut, plan, acceptation automatique des éditions, contournement total) règlent le niveau global de confiance : le contournement total n'est à envisager que dans un environnement jetable et isolé. Les noms exacts des commandes et des options évoluent vite : vérifie toujours la documentation de la version que tu utilises."
+    },
+    {
+      "title": "Où vivent les règles et lesquelles écrire",
+      "content": "Les réglages d'équipe sont versionnés dans le dépôt (.claude/settings.json), les réglages personnels restent locaux (.claude/settings.local.json, ignoré par Git) et ceux de l'utilisateur sont dans son dossier personnel. Règles de base : autoriser la lecture, les tests et les commandes Git de lecture (git diff, git status) ; interdire la lecture des secrets (Read(./.env), les clés), les suppressions récursives (Bash(rm -rf:*)) et les publications (Bash(git push:*)) tant que tu veux les décider toi-même ; ne jamais autoriser « tout » (Bash(*)), qui annule l'intérêt du dispositif. Revois ces règles comme du code : un audit automatique avec jq détecte les règles trop larges."
+    },
+    {
+      "title": "Défense en profondeur",
+      "content": "Les permissions ne sont qu'une couche. Ajoute .gitignore pour ne jamais suivre de secrets, un hook de pré-commit qui refuse les clés, une branche dédiée ou un worktree pour isoler les changements, la revue du diff avant tout merge, et, pour les actions risquées, un conteneur ou une machine virtuelle jetable. Ne colle pas de secrets dans les prompts : tout ce que l'assistant lit peut être envoyé au service. Enfin, reste attentif aux instructions cachées dans les fichiers ou pages que l'assistant lit (injection de prompt) : une consigne trouvée dans un document n'a pas ton autorité."
+    }
+  ],
+  "keyConcepts": [
+    {
+      "code": "TERMINAL-AI-GUARDRAILS",
+      "name": "Permissions, deny prioritaire et défense en profondeur",
+      "definition": "Un assistant en terminal agit sous un régime d'autorisations : des règles allow, ask et deny décident ce qu'il peut faire seul ; la sécurité réelle vient de la superposition de plusieurs garde-fous indépendants.",
+      "whyExists": "Un agent qui exécute des commandes peut, par erreur ou par manipulation, supprimer des données, publier du code ou lire des secrets.",
+      "whyImportant": "Un seul garde-fou finit par être contourné ou mal configuré ; plusieurs couches indépendantes limitent l'impact d'une erreur de l'une d'elles.",
+      "minimalExample": "deny : Read(./.env) et Bash(git push:*) ; allow : Bash(npm test:*) et Read.",
+      "professionalExample": "Un stagiaire autorise Bash(*) « pour ne plus être dérangé ». Quelques jours plus tard, l'assistant lit un fichier .env pendant un diagnostic puis pousse une branche. L'équipe ajoute un audit automatique du fichier de réglages en intégration continue (refus de Bash(*), présence obligatoire de Read(./.env) en deny) et un hook de pré-commit qui bloque les clés : deux couches indépendantes au lieu d'une promesse de bonne volonté.",
+      "codeExample": "{\n  \"permissions\": {\n    \"allow\": [\"Read\", \"Bash(npm test:*)\", \"Bash(git diff:*)\"],\n    \"deny\": [\"Read(./.env)\", \"Bash(rm -rf:*)\", \"Bash(git push:*)\"]\n  }\n}",
+      "commonMistake": "Autoriser Bash(*) pour éviter les confirmations, oublier de protéger .env, ou croire que les permissions suffisent sans revue ni isolation.",
+      "masteryQuestion": "Pourquoi une règle deny doit-elle l'emporter sur une règle allow, et pourquoi ne faut-il pas se reposer sur une seule couche ?",
+      "masteryProof": "Auditer un fichier de permissions avec jq, corriger ses défauts et prouver qu'il ne reste aucun problème."
+    }
+  ],
+  "exercises": [
+    {
+      "code": "TERMINAL-21-E1",
+      "title": "Auditer et corriger un fichier de permissions avec jq",
+      "statement": "Un fichier .claude/settings.json autorise Bash(*) et oublie de protéger .env et git push. Écris la fonction audit qui détecte ces trois problèmes avec jq et affiche leur nombre, puis produis une version corrigée (settings.fixed.json) et vérifie qu'elle ne contient plus aucun problème.",
+      "starterCode": "#!/usr/bin/env bash\nmkdir -p .claude\ncat > .claude/settings.json <<'JSON'\n{\n  \"permissions\": {\n    \"allow\": [\"Bash(*)\", \"Read\", \"Bash(npm test:*)\"],\n    \"deny\": [\"Bash(rm -rf:*)\"]\n  }\n}\nJSON\n\naudit() {\n  local file=$1 n=0\n  # TODO 1 : si allow contient \"Bash(*)\" (jq -e '.permissions.allow | index(\"Bash(*)\")'), affiche\n  #          \"Problème: allow trop large (Bash(*))\" et incrémente n\n  # TODO 2 : si deny ne contient PAS \"Read(./.env)\", affiche \"Problème: .env non protégé\"\n  # TODO 3 : si deny ne contient PAS \"Bash(git push:*)\", affiche \"Problème: git push non interdit\"\n  echo \"Problèmes: $n\"\n}\n\naudit .claude/settings.json\n\n# TODO 4 : produis .claude/settings.fixed.json avec jq : retire \"Bash(*)\" de allow (- [\"Bash(*)\"]) et ajoute\n#          \"Read(./.env)\" et \"Bash(git push:*)\" à deny (+= [...])\n[ -f .claude/settings.fixed.json ] && audit .claude/settings.fixed.json\ntrue\n",
+      "expectedOutput": "Problème: allow trop large (Bash(*))\nProblème: .env non protégé\nProblème: git push non interdit\nProblèmes: 3\nProblèmes: 0"
+    }
+  ],
+  "quiz": [
+    {
+      "code": "TERMINAL-21-Q1",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Si une règle allow et une règle deny concernent la même action, laquelle l'emporte ?",
+      "choices": [
+        "deny",
+        "allow",
+        "La plus récente dans le fichier"
+      ],
+      "correctChoice": 0,
+      "expectedKeywords": []
+    },
+    {
+      "code": "TERMINAL-21-Q2",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Quel fichier de réglages est destiné à rester personnel et hors du dépôt ?",
+      "choices": [
+        ".claude/settings.local.json",
+        ".claude/settings.json",
+        "README.md"
+      ],
+      "correctChoice": 0,
+      "expectedKeywords": []
+    },
+    {
+      "code": "TERMINAL-21-Q3",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Pourquoi ne pas autoriser Bash(*) ?",
+      "choices": [
+        "Il annule le contrôle : toute commande devient permise",
+        "Il est trop lent",
+        "Il est réservé à Windows"
+      ],
+      "correctChoice": 0,
+      "expectedKeywords": []
+    },
+    {
+      "code": "TERMINAL-21-Q4",
+      "type": "FREE_TEXT",
+      "prompt": "Décris trois couches de protection indépendantes à mettre en place avant de laisser un assistant travailler sur un dépôt contenant un fichier .env.",
+      "choices": [],
+      "correctChoice": null,
+      "expectedKeywords": [
+        "deny",
+        "gitignore",
+        "isolation"
+      ]
+    }
+  ],
+  "checklist": [
+    "Je distingue allow, ask et deny et je sais que deny l'emporte",
+    "Je protège les secrets (Read(./.env)) et les actions irréversibles ou publiques",
+    "J'audite le fichier de permissions avec jq et je le corrige",
+    "J'empile plusieurs couches : permissions, .gitignore, hook, isolation et revue"
+  ]
+}

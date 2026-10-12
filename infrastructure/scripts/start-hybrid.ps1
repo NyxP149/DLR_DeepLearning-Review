@@ -73,7 +73,7 @@ else {
     Write-Host 'Base PostgreSQL locale sélectionnée.' -ForegroundColor Green
 }
 
-$runnerImages = @('dlr/java-runner:21', 'dlr/python-runner:3.13', 'dlr/typescript-runner:22')
+$runnerImages = @('dlr/java-runner:21', 'dlr/python-runner:3.13', 'dlr/typescript-runner:22', 'dlr/shell-runner:1')
 $missingRunner = $false
 foreach ($runnerImage in $runnerImages) {
     & $dockerPath image inspect $runnerImage *> $null

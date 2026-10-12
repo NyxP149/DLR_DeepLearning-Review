@@ -1,0 +1,115 @@
+{
+  "code": "TERMINAL-12",
+  "language": "POWERSHELL",
+  "number": 12,
+  "slug": "ecrire-des-fonctions-et-des-scripts-powershell-fiables",
+  "title": "Écrire des fonctions et des scripts PowerShell fiables",
+  "difficulty": "INTERMEDIAIRE",
+  "threshold": 75,
+  "activityType": "LAB",
+  "prerequisites": [
+    "TERMINAL-11"
+  ],
+  "objectives": [
+    "Écrire une fonction avec un bloc param, des types et des attributs de validation",
+    "Gérer les erreurs avec throw, try/catch et $ErrorActionPreference",
+    "Produire une sortie stable (objets ou texte) utilisable par d'autres scripts"
+  ],
+  "sections": [
+    {
+      "title": "Fonctions et paramètres typés",
+      "conceptCodes": [
+        "TERMINAL-POWERSHELL-SCRIPTS"
+      ],
+      "content": "Une fonction PowerShell se déclare function Nom-Chose { param(...) ... }. Le bloc param définit des paramètres typés ([long]$Bytes), obligatoires ([Parameter(Mandatory)]) ou avec une valeur par défaut. [CmdletBinding()] donne à la fonction le comportement d'une vraie cmdlet : paramètres communs (-Verbose, -ErrorAction), messages d'erreur cohérents. Les attributs [ValidateRange(0,100)], [ValidateSet('a','b')] et [ValidateNotNullOrEmpty()] rejettent les valeurs invalides avant même d'exécuter le corps."
+    },
+    {
+      "title": "Sortie et erreurs",
+      "content": "Tout ce qu'une fonction n'affecte pas à une variable ou ne redirige pas devient sa sortie : c'est le piège numéro un, un appel inattendu comme $liste.Add(1) pollue la valeur retournée. Utilise return pour être explicite et [void] ou | Out-Null pour jeter une sortie. Pour les erreurs, throw lève une exception, try { } catch { } la rattrape ($_ contient l'erreur, $_.Exception.Message le texte), et $ErrorActionPreference = 'Stop' transforme les erreurs non bloquantes en exceptions rattrapables."
+    },
+    {
+      "title": "Scripts réutilisables",
+      "content": "Un fichier .ps1 peut commencer par un bloc param pour recevoir des arguments (./script.ps1 -Dossier docs). Nomme tes fonctions avec un verbe approuvé (Get-Verb liste ceux qui existent), documente-les avec un commentaire d'aide (.SYNOPSIS) et garde-les petites et testables. Pour un test simple, appelle-les avec des valeurs limites : zéro, négatif, très grand. Sous Windows, n'oublie pas la politique d'exécution pour lancer un .ps1."
+    }
+  ],
+  "keyConcepts": [
+    {
+      "code": "TERMINAL-POWERSHELL-SCRIPTS",
+      "name": "Fonctions, validation et gestion d'erreurs",
+      "definition": "Une fonction PowerShell encapsule un comportement derrière des paramètres typés et validés, et signale ses échecs par des exceptions que l'appelant rattrape avec try/catch.",
+      "whyExists": "Les scripts d'administration vivent longtemps et sont lancés par d'autres personnes : ils doivent refuser les entrées invalides et échouer proprement.",
+      "whyImportant": "Un script qui continue silencieusement après une erreur peut supprimer, déployer ou configurer à tort. Valider et échouer tôt est la base de la fiabilité.",
+      "minimalExample": "function ConvertTo-Size { param([long]$Bytes) if ($Bytes -lt 0) { throw 'octets négatifs' } ... }",
+      "professionalExample": "Un script de nettoyage de disques reçoit le seuil d'espace libre à garder. Une fois, une valeur négative saisie par erreur lui a fait supprimer tous les fichiers anciens. La version corrigée utilise [ValidateRange(1,100)], $ErrorActionPreference = 'Stop', un -WhatIf par défaut en production et un try/catch qui journalise l'échec avec un code de retour non nul.",
+      "codeExample": "function ConvertTo-Size {\n    [CmdletBinding()]\n    param([Parameter(Mandatory)][long]$Bytes)\n    if ($Bytes -lt 0) { throw 'octets négatifs' }\n    if ($Bytes -lt 1KB) { return \"$Bytes B\" }\n    return '{0:N1} KB' -f ($Bytes / 1KB)\n}\ntry { ConvertTo-Size -Bytes -1 } catch { \"Erreur: $($_.Exception.Message)\" }",
+      "commonMistake": "Laisser une fonction polluer sa sortie avec des valeurs inattendues, ou ignorer les erreurs non bloquantes faute de $ErrorActionPreference = 'Stop'.",
+      "masteryQuestion": "Pourquoi la sortie d'une fonction PowerShell peut-elle contenir plus que sa valeur de retour ?",
+      "masteryProof": "Écrire une fonction validée, l'appeler avec des valeurs nominales et limites, et afficher proprement l'erreur d'une entrée invalide."
+    }
+  ],
+  "exercises": [
+    {
+      "code": "TERMINAL-12-E1",
+      "title": "Convertir des octets en taille lisible avec validation",
+      "statement": "Complète la fonction ConvertTo-Size : elle refuse un nombre d'octets négatif avec throw, retourne « N B » sous 1 Ko, « x.x KB » sous 1 Mo et « x.x MB » au-delà (une décimale, séparateur point). La boucle affiche le résultat ou « Erreur: » et le message.",
+      "starterCode": "function ConvertTo-Size {\n    [CmdletBinding()]\n    param([Parameter(Mandatory)][long]$Bytes)\n    # TODO 1 : si $Bytes est négatif, lance throw 'octets négatifs'\n    # TODO 2 : sous 1KB retourne \"<n> B\"\n    # TODO 3 : sous 1MB retourne la taille en KB avec une décimale : [string]::Format([cultureinfo]::InvariantCulture, '{0:N1} KB', $Bytes / 1KB)\n    # TODO 4 : sinon retourne la taille en MB avec une décimale, même formatage\n    return ''\n}\n\nforeach ($value in 512, 1536, 2097152, -1) {\n    try {\n        ConvertTo-Size -Bytes $value\n    }\n    catch {\n        \"Erreur: $($_.Exception.Message)\"\n    }\n}\n",
+      "expectedOutput": "512 B\n1.5 KB\n2.0 MB\nErreur: octets négatifs"
+    }
+  ],
+  "quiz": [
+    {
+      "code": "TERMINAL-12-Q1",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Que fait [CmdletBinding()] sur une fonction ?",
+      "choices": [
+        "Lui donne le comportement d'une cmdlet : paramètres communs et erreurs cohérentes",
+        "La rend plus rapide",
+        "La rend privée"
+      ],
+      "correctChoice": 0,
+      "expectedKeywords": []
+    },
+    {
+      "code": "TERMINAL-12-Q2",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Comment rattraper une exception levée par throw ?",
+      "choices": [
+        "try { ... } catch { ... }",
+        "if ($error) { ... }",
+        "On-Error { ... }"
+      ],
+      "correctChoice": 0,
+      "expectedKeywords": []
+    },
+    {
+      "code": "TERMINAL-12-Q3",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Pourquoi une fonction peut-elle retourner plus que sa valeur de retour ?",
+      "choices": [
+        "Toute sortie non capturée à l'intérieur de la fonction est incluse dans son résultat",
+        "Parce que return est facultatif",
+        "Parce que PowerShell duplique les valeurs"
+      ],
+      "correctChoice": 0,
+      "expectedKeywords": []
+    },
+    {
+      "code": "TERMINAL-12-Q4",
+      "type": "FREE_TEXT",
+      "prompt": "Explique comment tu empêches un script de poursuivre après une erreur non bloquante et pourquoi c'est important avant une opération destructive.",
+      "choices": [],
+      "correctChoice": null,
+      "expectedKeywords": [
+        "ErrorActionPreference",
+        "Stop",
+        "try"
+      ]
+    }
+  ],
+  "checklist": [
+    "Je déclare des paramètres typés, obligatoires et validés",
+    "Je lève des erreurs avec throw et je les rattrape avec try/catch",
+    "Je maîtrise la sortie d'une fonction (return, Out-Null)",
+    "Je teste mes fonctions avec des valeurs limites"
+  ]
+}

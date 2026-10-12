@@ -1,0 +1,115 @@
+{
+  "code": "TERMINAL-15",
+  "language": "BASH",
+  "number": 15,
+  "slug": "git-en-terminal-suivre-l-historique-d-un-projet",
+  "title": "Git en terminal : suivre l'historique d'un projet",
+  "difficulty": "INTERMEDIAIRE",
+  "threshold": 75,
+  "activityType": "LAB",
+  "prerequisites": [
+    "TERMINAL-14"
+  ],
+  "objectives": [
+    "Initialiser un dépôt et suivre le cycle modifier, indexer, valider avec git status, add et commit",
+    "Lire les différences et l'historique avec git diff et git log",
+    "Écrire des messages de commit utiles et comprendre ce que Git enregistre réellement"
+  ],
+  "sections": [
+    {
+      "title": "Les trois zones de Git",
+      "conceptCodes": [
+        "TERMINAL-GIT-BASICS"
+      ],
+      "content": "Git organise le travail en trois zones : le répertoire de travail (tes fichiers), l'index ou « staging area » (ce que tu prépares pour le prochain commit) et le dépôt (l'historique validé). git add déplace des modifications vers l'index, git commit enregistre l'index sous forme d'instantané avec un message, git status montre où en sont les fichiers (git status --short en donne une version compacte : M modifié, ?? non suivi). Comprendre ces zones explique pourquoi un fichier modifié n'est pas dans le commit tant qu'il n'a pas été ajouté."
+    },
+    {
+      "title": "Lire les changements et l'historique",
+      "content": "git diff montre les modifications non indexées, git diff --staged celles de l'index, et git diff --numstat résume le nombre de lignes ajoutées et supprimées par fichier. git log --oneline liste les commits, git log --format=%s n'affiche que les titres, git log -p y ajoute les différences. Chaque commit a un identifiant (hash) unique : ne le copie pas dans un script qui doit être reproductible, il change avec le contenu, l'auteur et la date. Avant de valider, relis toujours git diff : c'est la première revue de ton propre travail."
+    },
+    {
+      "title": "Bons commits",
+      "content": "Un commit raconte un changement cohérent : « Ajoute la validation du montant », pas « modifs ». Le titre fait environ 50 caractères, à l'impératif ou au présent ; un corps facultatif explique le pourquoi. Des commits petits et ciblés rendent la revue, le retour en arrière (git revert) et la recherche d'un bug (git bisect) possibles. Configure ton identité une fois (git config --global user.name et user.email) et ignore ce qui ne doit pas être versionné (secrets, dépendances, fichiers générés) avec .gitignore."
+    }
+  ],
+  "keyConcepts": [
+    {
+      "code": "TERMINAL-GIT-BASICS",
+      "name": "Cycle de travail Git : répertoire, index et dépôt",
+      "definition": "Git enregistre l'historique d'un projet sous forme d'instantanés ; le cycle de base consiste à modifier des fichiers, à choisir ce qui part au prochain commit (index) puis à le valider avec un message.",
+      "whyExists": "Sans historique, impossible de revenir en arrière, de comparer deux versions ou de travailler à plusieurs sans s'écraser mutuellement.",
+      "whyImportant": "Git est la mémoire du projet et le support de la revue de code ; il est aussi le filet de sécurité indispensable quand un assistant IA modifie beaucoup de fichiers.",
+      "minimalExample": "git add -A && git commit -m \"Ajoute la validation\" valide toutes les modifications ; git log --format=%s liste les titres.",
+      "professionalExample": "Un développeur découvre qu'un calcul de TVA est faux depuis deux semaines. Grâce à un historique en commits ciblés, git log -p -- src/tva.py montre en une minute le commit fautif, git revert l'annule proprement, et le message du commit d'origine révèle l'intention (un arrondi demandé par la finance) qui évite de corriger le bug de travers.",
+      "codeExample": "git status --short\ngit diff                      # relire avant de valider\ngit add -A\ngit commit -m \"Corrige l'arrondi de la TVA\"\ngit log --format=%s | head -5",
+      "commonMistake": "Valider avec git add -A sans relire git diff, mélanger plusieurs changements dans un commit, ou versionner un secret.",
+      "masteryQuestion": "Pourquoi un fichier modifié n'apparaît-il pas dans le commit alors que git status le signale ?",
+      "masteryProof": "Réaliser deux commits cohérents et prouver l'état du dépôt avec status, diff et un historique lisible."
+    }
+  ],
+  "exercises": [
+    {
+      "code": "TERMINAL-15-E1",
+      "title": "Faire deux commits et relire le dépôt",
+      "statement": "Configure l'identité Git, initialise un dépôt, valide un premier commit, modifie app.txt et ajoute notes.txt, affiche le statut compact et le résumé du diff, valide le second commit puis affiche l'historique des titres et les fichiers suivis.",
+      "starterCode": "#!/usr/bin/env bash\ngit config --global user.name \"Ada\"\ngit config --global user.email \"ada@dlr.dev\"\ngit config --global init.defaultBranch main\nmkdir projet && cd projet\ngit init -q\necho \"v1\" > app.txt\n\n# TODO 1 : indexe app.txt et valide avec le message \"Ajoute app\" (git add, git commit -q -m)\necho \"v2\" > app.txt\necho \"notes\" > notes.txt\n# TODO 2 : affiche \"Statut:\" puis git status --short\n# TODO 3 : affiche \"Diff: \" suivi de \"+<ajouts> -<suppressions> <fichier>\" pour app.txt (git diff --numstat | awk '{print \"+\"$1\" -\"$2\" \"$3}')\n# TODO 4 : indexe tout (git add -A) et valide avec le message \"Met à jour app et ajoute notes\"\n# TODO 5 : affiche \"Historique:\" puis les titres des commits du plus récent au plus ancien (git log --format=%s)\n# TODO 6 : affiche \"Fichiers suivis: \" suivi de git ls-files sur une ligne (xargs)\ntrue\n",
+      "expectedOutput": "Statut:\n M app.txt\n?? notes.txt\nDiff: +1 -1 app.txt\nHistorique:\nMet à jour app et ajoute notes\nAjoute app\nFichiers suivis: app.txt notes.txt"
+    }
+  ],
+  "quiz": [
+    {
+      "code": "TERMINAL-15-Q1",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Quelle commande montre ce qui sera inclus dans le prochain commit ?",
+      "choices": [
+        "git diff --staged",
+        "git log",
+        "git status --ignored"
+      ],
+      "correctChoice": 0,
+      "expectedKeywords": []
+    },
+    {
+      "code": "TERMINAL-15-Q2",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Que signifie « ?? » dans git status --short ?",
+      "choices": [
+        "Le fichier n'est pas suivi par Git",
+        "Le fichier est supprimé",
+        "Le fichier est en conflit"
+      ],
+      "correctChoice": 0,
+      "expectedKeywords": []
+    },
+    {
+      "code": "TERMINAL-15-Q3",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Pourquoi éviter de recopier un hash de commit dans un script reproductible ?",
+      "choices": [
+        "Il change avec le contenu, l'auteur et la date",
+        "Il est secret",
+        "Il est limité à 7 caractères"
+      ],
+      "correctChoice": 0,
+      "expectedKeywords": []
+    },
+    {
+      "code": "TERMINAL-15-Q4",
+      "type": "FREE_TEXT",
+      "prompt": "Quelles habitudes adoptes-tu avant chaque commit pour garder un historique exploitable ?",
+      "choices": [],
+      "correctChoice": null,
+      "expectedKeywords": [
+        "git diff",
+        "message",
+        "cohérent"
+      ]
+    }
+  ],
+  "checklist": [
+    "Je nomme les trois zones : répertoire de travail, index, dépôt",
+    "Je relis git diff avant chaque commit",
+    "J'écris des messages qui expliquent le changement",
+    "J'ignore secrets et fichiers générés avec .gitignore"
+  ]
+}

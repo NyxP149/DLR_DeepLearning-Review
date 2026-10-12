@@ -1,0 +1,115 @@
+{
+  "code": "TERMINAL-04",
+  "language": "BASH",
+  "number": 4,
+  "slug": "redirections-et-pipes-relier-les-commandes",
+  "title": "Redirections et pipes : relier les commandes",
+  "difficulty": "BASE",
+  "threshold": 70,
+  "activityType": "LAB",
+  "prerequisites": [
+    "TERMINAL-03"
+  ],
+  "objectives": [
+    "Distinguer la sortie standard (stdout), la sortie d'erreur (stderr) et l'entrée standard",
+    "Rediriger avec >, >>, 2> et 2>&1 et chaîner des commandes avec le pipe |",
+    "Construire un petit traitement en pipeline et en vérifier chaque étape"
+  ],
+  "sections": [
+    {
+      "title": "Trois flux standard",
+      "conceptCodes": [
+        "TERMINAL-STREAMS"
+      ],
+      "content": "Chaque programme dispose de trois canaux : l'entrée standard (stdin, numéro 0), la sortie standard (stdout, 1) pour les résultats et la sortie d'erreur (stderr, 2) pour les messages d'erreur. Par défaut, stdout et stderr s'affichent tous les deux à l'écran, ce qui les rend indiscernables ; les séparer permet de garder les résultats propres et de journaliser les erreurs à part."
+    },
+    {
+      "title": "Redirections",
+      "content": "commande > fichier écrase le fichier avec la sortie, commande >> fichier ajoute à la fin, commande 2> erreurs.txt redirige uniquement stderr, commande > tout.txt 2>&1 envoie les deux flux au même endroit (l'ordre compte : 2>&1 vient après la redirection de stdout). /dev/null est le « trou noir » : commande 2>/dev/null ignore les erreurs. Sous PowerShell, > et >> existent aussi, avec des flux supplémentaires (*>, 2>&1) et Out-File pour contrôler l'encodage."
+    },
+    {
+      "title": "Pipes et philosophie des petits outils",
+      "content": "Le pipe | branche la sortie d'une commande sur l'entrée de la suivante : sort fichier | uniq -c | sort -rn | head compte et classe des valeurs sans fichier intermédiaire. Chaque outil fait une seule chose ; la puissance vient de la composition. Pour déboguer un pipeline, exécute-le étape par étape en ajoutant une commande à la fois. Attention : sous bash, le code de sortie d'un pipeline est celui de la dernière commande, sauf avec set -o pipefail. PowerShell, lui, transmet des objets plutôt que du texte entre les commandes."
+    }
+  ],
+  "keyConcepts": [
+    {
+      "code": "TERMINAL-STREAMS",
+      "name": "Flux standard, redirections et pipes",
+      "definition": "Un programme lit son entrée standard et écrit sur deux sorties distinctes, stdout et stderr ; les redirections choisissent leur destination et le pipe relie la sortie d'un programme à l'entrée d'un autre.",
+      "whyExists": "Séparer résultats et erreurs, et composer des programmes simples, évite d'écrire un outil spécialisé pour chaque traitement.",
+      "whyImportant": "Les scripts, les tâches planifiées et l'intégration continue reposent sur la capture correcte des sorties : un journal d'erreurs mélangé aux résultats est inexploitable.",
+      "minimalExample": "commande > out.txt 2> err.txt range résultats et erreurs dans deux fichiers ; commande > tout.txt 2>&1 les fusionne.",
+      "professionalExample": "Une tâche planifiée de sauvegarde envoie un e-mail à chaque exécution parce qu'elle écrit sa progression sur stderr. L'équipe redirige la progression vers un journal (>> backup.log 2>&1) et ne conserve que les vraies erreurs pour l'alerte : le bruit disparaît et les échecs réels deviennent visibles.",
+      "codeExample": "./backup.sh > backup.out 2> backup.err    # séparer\n./backup.sh >> backup.log 2>&1             # tout dans un journal\ngrep ERROR backup.log | sort | uniq -c    # pipeline de synthèse",
+      "commonMistake": "Écrire 2>&1 > fichier (qui laisse stderr à l'écran) au lieu de > fichier 2>&1, ou écraser un journal avec > au lieu de l'allonger avec >>.",
+      "masteryQuestion": "Quelle différence entre > et >> et entre 2> et 2>&1 ?",
+      "masteryProof": "Capturer séparément stdout et stderr d'une commande, les fusionner, puis compter les lignes de chaque fichier."
+    }
+  ],
+  "exercises": [
+    {
+      "code": "TERMINAL-04-E1",
+      "title": "Séparer stdout et stderr, puis les fusionner",
+      "statement": "La fonction emit écrit deux lignes sur stdout et deux sur stderr. Capture chaque flux dans son fichier, affiche le nombre de lignes de chacun, puis refais une exécution qui fusionne les deux flux dans un seul fichier et compte ses lignes.",
+      "starterCode": "#!/usr/bin/env bash\nemit() {\n  echo \"ok 1\"\n  echo \"erreur 1\" >&2\n  echo \"ok 2\"\n  echo \"erreur 2\" >&2\n}\n\n# TODO 1 : exécute emit en envoyant stdout dans out.txt et stderr dans err.txt (> et 2>)\n# TODO 2 : affiche \"stdout: <n> lignes\" avec n = nombre de lignes de out.txt (wc -l < out.txt)\n# TODO 3 : affiche \"stderr: <n> lignes\" avec le nombre de lignes de err.txt\n# TODO 4 : exécute emit en envoyant les DEUX flux dans tout.txt (> tout.txt 2>&1)\n# TODO 5 : affiche \"fusion: <n> lignes\" avec le nombre de lignes de tout.txt\ntrue\n",
+      "expectedOutput": "stdout: 2 lignes\nstderr: 2 lignes\nfusion: 4 lignes"
+    }
+  ],
+  "quiz": [
+    {
+      "code": "TERMINAL-04-Q1",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Quelle commande range les erreurs dans err.txt sans toucher à l'affichage normal ?",
+      "choices": [
+        "commande 2> err.txt",
+        "commande > err.txt",
+        "commande | err.txt"
+      ],
+      "correctChoice": 0,
+      "expectedKeywords": []
+    },
+    {
+      "code": "TERMINAL-04-Q2",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Quelle forme envoie stdout ET stderr dans le même fichier ?",
+      "choices": [
+        "commande > tout.txt 2>&1",
+        "commande 2>&1 > tout.txt",
+        "commande >> tout.txt 1"
+      ],
+      "correctChoice": 0,
+      "expectedKeywords": []
+    },
+    {
+      "code": "TERMINAL-04-Q3",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Que fait le pipe | ?",
+      "choices": [
+        "Envoie la sortie d'une commande vers l'entrée de la suivante",
+        "Écrit la sortie dans un fichier",
+        "Exécute deux commandes en même temps sans lien"
+      ],
+      "correctChoice": 0,
+      "expectedKeywords": []
+    },
+    {
+      "code": "TERMINAL-04-Q4",
+      "type": "FREE_TEXT",
+      "prompt": "Pourquoi sépare-t-on souvent stdout et stderr dans une tâche planifiée ?",
+      "choices": [],
+      "correctChoice": null,
+      "expectedKeywords": [
+        "erreur",
+        "journal",
+        "résultat"
+      ]
+    }
+  ],
+  "checklist": [
+    "Je nomme les trois flux standard et leurs numéros 0, 1 et 2",
+    "Je choisis entre >, >>, 2> et 2>&1 selon le besoin",
+    "Je construis un pipeline étape par étape pour le déboguer",
+    "Je sais que PowerShell passe des objets dans le pipeline et non du texte"
+  ]
+}

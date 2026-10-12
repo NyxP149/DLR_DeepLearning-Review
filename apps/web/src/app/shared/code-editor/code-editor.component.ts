@@ -13,6 +13,8 @@ interface CodeMirrorModules {
   java: typeof import('@codemirror/lang-java');
   python: typeof import('@codemirror/lang-python');
   javascript: typeof import('@codemirror/lang-javascript');
+  shell: typeof import('@codemirror/legacy-modes/mode/shell');
+  powershell: typeof import('@codemirror/legacy-modes/mode/powershell');
 }
 
 @Component({
@@ -77,7 +79,7 @@ export class CodeEditorComponent implements AfterViewInit, OnChanges, OnDestroy 
     }
 
     try {
-      const [view, state, commands, language, search, autocomplete, highlight, java, python, javascript] = await Promise.all([
+      const [view, state, commands, language, search, autocomplete, highlight, java, python, javascript, shell, powershell] = await Promise.all([
         import('@codemirror/view'),
         import('@codemirror/state'),
         import('@codemirror/commands'),
@@ -87,10 +89,12 @@ export class CodeEditorComponent implements AfterViewInit, OnChanges, OnDestroy 
         import('@lezer/highlight'),
         import('@codemirror/lang-java'),
         import('@codemirror/lang-python'),
-        import('@codemirror/lang-javascript')
+        import('@codemirror/lang-javascript'),
+        import('@codemirror/legacy-modes/mode/shell'),
+        import('@codemirror/legacy-modes/mode/powershell')
       ]);
       if (!this.host) return;
-      this.cm = { view, state, commands, language, search, autocomplete, highlight, java, python, javascript };
+      this.cm = { view, state, commands, language, search, autocomplete, highlight, java, python, javascript, shell, powershell };
       this.dynamicSettings = new state.Compartment();
       this.view = new view.EditorView({
         parent: this.host.nativeElement,
@@ -166,11 +170,14 @@ export class CodeEditorComponent implements AfterViewInit, OnChanges, OnDestroy 
   }
 
   private languageSettings(): Extension {
-    const { view, java, python, javascript } = this.cm!;
+    const { view, language, java, python, javascript, shell, powershell } = this.cm!;
     const syntax = ({
       JAVA: () => java.java(),
       PYTHON: () => python.python(),
-      TYPESCRIPT: () => javascript.javascript({ typescript: true })
+      TYPESCRIPT: () => javascript.javascript({ typescript: true }),
+      // legacy-modes embarque ses propres déclarations de types (@codemirror/streamparser) : mêmes objets à l'exécution.
+      BASH: () => language.StreamLanguage.define(shell.shell as never),
+      POWERSHELL: () => language.StreamLanguage.define(powershell.powerShell as never)
     } as Record<string, () => Extension>)[this.language.toUpperCase()];
     return [
       syntax ? syntax() : [],

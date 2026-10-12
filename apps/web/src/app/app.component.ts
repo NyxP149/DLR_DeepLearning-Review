@@ -34,7 +34,7 @@ import { ThemeService } from './core/theme/theme.service';
         </nav>
           <div class="side-goal">
             <small>Objectif V2</small>
-        <strong>148 activités disponibles</strong>
+        <strong>172 activités disponibles</strong>
             <span><i [style.width.%]="goalProgress()"></i></span>
           </div>
           <p class="build-label">DLR V2 · local-first</p>

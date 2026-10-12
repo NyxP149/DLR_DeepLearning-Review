@@ -1,0 +1,115 @@
+{
+  "code": "TERMINAL-16",
+  "language": "BASH",
+  "number": 16,
+  "slug": "branches-fusions-et-conflits-avec-git",
+  "title": "Branches, fusions et conflits avec Git",
+  "difficulty": "INTERMEDIAIRE",
+  "threshold": 75,
+  "activityType": "LAB",
+  "prerequisites": [
+    "TERMINAL-15"
+  ],
+  "objectives": [
+    "Créer et changer de branche avec git switch et fusionner avec git merge",
+    "Reconnaître, comprendre et résoudre un conflit de fusion",
+    "Utiliser .gitignore et git stash pour garder un répertoire de travail propre"
+  ],
+  "sections": [
+    {
+      "title": "Pourquoi des branches",
+      "conceptCodes": [
+        "TERMINAL-GIT-BRANCHING"
+      ],
+      "content": "Une branche est un pointeur léger vers un commit : en créer une ne copie rien et ne coûte presque rien. Elle permet de développer une fonctionnalité ou de laisser un assistant IA travailler sans toucher à la branche principale : git switch -c feature crée et active la branche, git switch main revient, git branch liste. Une branche par tâche, courte et ciblée, est la base d'un travail en équipe et d'une revue facile."
+    },
+    {
+      "title": "Fusionner et résoudre un conflit",
+      "content": "git merge feature intègre la branche feature dans la branche courante. Si les deux branches ont modifié les mêmes lignes, Git ne peut pas choisir : il s'arrête, marque le fichier avec <<<<<<<, ======= et >>>>>>> et attend ta décision. Résoudre un conflit, c'est éditer le fichier pour garder la bonne version (celle de l'une, de l'autre ou une combinaison), supprimer les marqueurs, puis git add et git commit. git merge --abort annule la fusion. git diff --name-only --diff-filter=U liste les fichiers en conflit. Un conflit n'est pas une erreur : c'est Git qui demande une décision humaine."
+    },
+    {
+      "title": "Garder un espace propre : .gitignore et stash",
+      "content": ".gitignore liste les motifs de fichiers à ne jamais suivre (*.log, node_modules/, .env) ; git check-ignore -v fichier explique pourquoi un fichier est ignoré. Attention : ignorer un fichier déjà suivi ne l'enlève pas du dépôt (git rm --cached le fait). git stash met de côté des modifications en cours pour changer de branche, git stash pop les rapplique. Historique propre : git log --first-parent suit la ligne de la branche principale sans les détails des branches fusionnées."
+    }
+  ],
+  "keyConcepts": [
+    {
+      "code": "TERMINAL-GIT-BRANCHING",
+      "name": "Branches, fusions et résolution de conflits",
+      "definition": "Une branche isole une ligne de développement ; la fusion la réintègre, et un conflit survient quand deux lignes ont modifié les mêmes lignes d'un fichier, exigeant une décision explicite.",
+      "whyExists": "Plusieurs personnes (ou agents) travaillent en parallèle ; il faut pouvoir expérimenter sans casser la base commune et réconcilier ensuite.",
+      "whyImportant": "Les conflits arrivent forcément ; savoir les lire évite de perdre du travail ou de valider des marqueurs de conflit dans le code.",
+      "minimalExample": "git switch -c feature ; (commits) ; git switch main ; git merge feature.",
+      "professionalExample": "Deux développeurs modifient la même ligne de configuration (mode=test et mode=prod). La fusion s'arrête sur un conflit. Plutôt que de choisir au hasard, ils lisent les deux commits avec git log -p, constatent que prod est la valeur attendue pour la livraison, résolvent, relancent les tests et documentent le choix dans le message du commit de fusion.",
+      "codeExample": "git switch -c feature\n# ... commit sur feature ...\ngit switch main\ngit merge feature || git diff --name-only --diff-filter=U\n# éditer le fichier, supprimer les marqueurs\ngit add config.txt && git commit -m \"Fusionne feature\"",
+      "commonMistake": "Valider un fichier qui contient encore des marqueurs <<<<<<<, ou résoudre un conflit sans comprendre l'intention des deux changements.",
+      "masteryQuestion": "Que contiennent les marqueurs de conflit et comment décide-t-on quelle version garder ?",
+      "masteryProof": "Provoquer volontairement un conflit, le résoudre, fusionner et prouver l'état final avec l'historique principal et les branches."
+    }
+  ],
+  "exercises": [
+    {
+      "code": "TERMINAL-16-E1",
+      "title": "Provoquer, résoudre et fusionner un conflit",
+      "statement": "Crée un conflit entre main et feature sur config.txt, constate que la fusion s'arrête, liste le fichier en conflit, résous-le en gardant mode=prod, valide la fusion, puis affiche l'historique de la branche principale, les branches existantes et le fichier ignoré.",
+      "starterCode": "#!/usr/bin/env bash\ngit config --global user.name \"Ada\"\ngit config --global user.email \"ada@dlr.dev\"\ngit config --global init.defaultBranch main\nmkdir projet && cd projet\ngit init -q\necho \"mode=dev\" > config.txt\ngit add config.txt && git commit -q -m \"Initial\"\n\ngit switch -q -c feature\necho \"mode=prod\" > config.txt\ngit commit -q -am \"Passe en prod\"\n\ngit switch -q main\necho \"mode=test\" > config.txt\ngit commit -q -am \"Passe en test\"\n\n# TODO 1 : lance la fusion de feature dans main ; elle échoue (conflit), ajoute || true pour continuer\n# TODO 2 : affiche \"Conflit: \" suivi du fichier en conflit (git diff --name-only --diff-filter=U)\n# TODO 3 : résous le conflit : réécris config.txt avec la ligne mode=prod, indexe-le et valide avec le message \"Fusionne feature\"\n# TODO 4 : affiche \"Résolu: \" suivi du contenu de config.txt\n# TODO 5 : affiche \"Historique: \" suivi des titres de la ligne principale séparés par des virgules SANS espace (git log --first-parent --format=%s | paste -sd, -)\n# TODO 6 : affiche \"Branches: \" suivi des noms de branches sur une ligne (git branch --format='%(refname:short)' | xargs)\n# TODO 7 : crée .gitignore avec le motif *.log, crée build.log, puis affiche \"Ignoré: \" suivi de git check-ignore build.log\ntrue\n",
+      "expectedOutput": "Conflit: config.txt\nRésolu: mode=prod\nHistorique: Fusionne feature,Passe en test,Initial\nBranches: feature main\nIgnoré: build.log"
+    }
+  ],
+  "quiz": [
+    {
+      "code": "TERMINAL-16-Q1",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Que fait git switch -c feature ?",
+      "choices": [
+        "Crée la branche feature et s'y place",
+        "Supprime la branche feature",
+        "Fusionne feature dans main"
+      ],
+      "correctChoice": 0,
+      "expectedKeywords": []
+    },
+    {
+      "code": "TERMINAL-16-Q2",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Que faire après avoir résolu les fichiers en conflit ?",
+      "choices": [
+        "git add des fichiers puis git commit",
+        "git push --force",
+        "Supprimer le dépôt et recommencer"
+      ],
+      "correctChoice": 0,
+      "expectedKeywords": []
+    },
+    {
+      "code": "TERMINAL-16-Q3",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Que fait git merge --abort pendant un conflit ?",
+      "choices": [
+        "Annule la fusion et revient à l'état d'avant",
+        "Valide automatiquement la version de l'autre branche",
+        "Supprime la branche fusionnée"
+      ],
+      "correctChoice": 0,
+      "expectedKeywords": []
+    },
+    {
+      "code": "TERMINAL-16-Q4",
+      "type": "FREE_TEXT",
+      "prompt": "Une fusion s'arrête sur un conflit dans un fichier de configuration. Décris ta démarche avant de choisir quelle version garder.",
+      "choices": [],
+      "correctChoice": null,
+      "expectedKeywords": [
+        "comprendre",
+        "commit",
+        "tests"
+      ]
+    }
+  ],
+  "checklist": [
+    "Je crée une branche par tâche et je reviens sur main avec git switch",
+    "Je reconnais les marqueurs de conflit et je les supprime avant de valider",
+    "J'utilise git merge --abort si je veux repartir de zéro",
+    "Je sais que .gitignore n'enlève pas un fichier déjà suivi"
+  ]
+}

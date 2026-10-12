@@ -45,4 +45,29 @@ class DockerJavaRunnerTest {
         assertThat(typescript).contains("typescript-image");
         assertThat(typescript.getLast()).contains("tsc --strict").contains("node /work/main.js");
     }
+
+    @Test
+    void routesBashAndPowershellToTheShellImageWithAnExecutableWorkDirectory() {
+        DockerJavaRunner runner = new DockerJavaRunner(
+                "docker", "java-image", "python-image", "typescript-image", "shell-image", Duration.ofSeconds(10), Clock.systemUTC());
+        var bash = runner.buildCommand(Path.of("C:/tmp/dlr-bash"), "dlr-bash", runner.spec("BASH"));
+        var powershell = runner.buildCommand(Path.of("C:/tmp/dlr-ps"), "dlr-ps", runner.spec("POWERSHELL"));
+
+        assertThat(bash).contains("shell-image").containsSubsequence("--network", "none").contains("--read-only");
+        assertThat(bash.getLast()).contains("bash -n main.sh").contains("bash main.sh").contains("export HOME=/work");
+        assertThat(powershell).contains("shell-image");
+        assertThat(powershell.getLast()).contains("pwsh -NoProfile -NonInteractive -File main.ps1");
+        // Un terminal doit pouvoir lancer ses propres scripts : /work y est exécutable (exec explicite, Docker monte noexec par défaut).
+        assertThat(bash).contains("/work:rw,exec,nosuid,size=32m");
+        assertThat(powershell).contains("/work:rw,exec,nosuid,size=32m");
+    }
+
+    @Test
+    void keepsTheWorkDirectoryNonExecutableForCompiledLanguages() {
+        DockerJavaRunner runner = new DockerJavaRunner("docker", "java-image", Duration.ofSeconds(10), Clock.systemUTC());
+        assertThat(runner.buildCommand(Path.of("C:/tmp/dlr-java"), "dlr-java", runner.spec("JAVA")))
+                .contains("/work:rw,noexec,nosuid,size=32m");
+        assertThat(runner.buildCommand(Path.of("C:/tmp/dlr-python"), "dlr-python", runner.spec("PYTHON")))
+                .contains("/work:rw,noexec,nosuid,size=32m");
+    }
 }

@@ -1,0 +1,115 @@
+{
+  "code": "TERMINAL-10",
+  "language": "POWERSHELL",
+  "number": 10,
+  "slug": "fichiers-et-texte-avec-powershell",
+  "title": "Fichiers et texte avec PowerShell",
+  "difficulty": "INTERMEDIAIRE",
+  "threshold": 75,
+  "activityType": "LAB",
+  "prerequisites": [
+    "TERMINAL-09"
+  ],
+  "objectives": [
+    "Lire, écrire et ajouter du texte avec Get-Content, Set-Content et Add-Content",
+    "Chercher et remplacer avec Select-String et l'opérateur -replace",
+    "Copier, supprimer et tester l'existence avec Copy-Item, Remove-Item et Test-Path, en construisant les chemins avec Join-Path"
+  ],
+  "sections": [
+    {
+      "title": "Lire et écrire du texte",
+      "conceptCodes": [
+        "TERMINAL-POWERSHELL-FILES"
+      ],
+      "content": "Get-Content lit un fichier ligne par ligne et retourne un tableau de chaînes (Get-Content -Raw retourne tout en une seule chaîne). Set-Content écrit en remplaçant le contenu, Add-Content ajoute à la fin, Out-File et l'opérateur > écrivent aussi. Précise -Encoding utf8 quand le fichier sera lu par d'autres outils : Windows PowerShell 5.1 écrit par défaut en UTF-16 ou en ANSI selon la cmdlet, alors que PowerShell 7 écrit en UTF-8 sans BOM, ce qui est une source classique de caractères accentués illisibles."
+    },
+    {
+      "title": "Chercher et transformer",
+      "content": "Select-String -Path fichier -Pattern 'ERROR' est le grep de PowerShell : il retourne des objets MatchInfo (numéro de ligne, ligne, fichier). L'opérateur -replace applique une expression régulière : (Get-Content app.log) -replace 'ERROR', 'ALERTE' transforme toutes les lignes d'un coup, sans boucle. -match teste une correspondance et remplit $Matches, -like accepte les jokers (*.log). Les trois sont insensibles à la casse sauf si on utilise -cmatch, -creplace ou -clike."
+    },
+    {
+      "title": "Fichiers, chemins et prudence",
+      "content": "Join-Path logs app.log construit un chemin avec le bon séparateur pour la plateforme. Test-Path teste l'existence d'un fichier ou d'un dossier, ce qui permet de protéger une opération : if (Test-Path $f) { Remove-Item $f }. Copy-Item, Move-Item et Remove-Item sont les équivalents de cp, mv et rm ; -Recurse s'applique aux dossiers et -WhatIf simule l'opération sans la faire, une habitude précieuse avant toute suppression. Comme sous bash, il n'y a pas de corbeille pour Remove-Item."
+    }
+  ],
+  "keyConcepts": [
+    {
+      "code": "TERMINAL-POWERSHELL-FILES",
+      "name": "Fichiers texte, recherche et remplacement",
+      "definition": "PowerShell lit et écrit des fichiers texte sous forme de tableaux de lignes, cherche avec Select-String, transforme avec -replace et protège ses opérations avec Test-Path et -WhatIf.",
+      "whyExists": "Les fichiers de configuration, de journaux et de données sont le support de l'automatisation ; il faut pouvoir les lire et les transformer de façon fiable.",
+      "whyImportant": "L'encodage et les chemins sont les deux sources majeures de scripts qui marchent sur un poste et pas sur un autre ; -WhatIf évite les suppressions regrettées.",
+      "minimalExample": "(Get-Content app.log) -replace 'ERROR', 'ALERTE' | Set-Content alertes.log",
+      "professionalExample": "Un script de migration doit remplacer une URL dans 300 fichiers de configuration. L'équipe exécute d'abord Get-ChildItem -Recurse *.config | Select-String 'ancien.example' pour mesurer l'impact, puis le remplacement avec -WhatIf sur la copie, puis pour de bon en conservant une sauvegarde. Un test final avec Select-String vérifie qu'il ne reste aucune occurrence.",
+      "codeExample": "$log = Join-Path 'logs' 'app.log'\nAdd-Content $log 'INFO arrêt'\n(Select-String -Path $log -Pattern 'ERROR').Count\n(Get-Content $log) -replace 'ERROR', 'ALERTE' | Set-Content alertes.log\nif (Test-Path $log) { Remove-Item $log -WhatIf }",
+      "commonMistake": "Oublier l'encodage, confondre -replace (expression régulière) avec un remplacement littéral, ou supprimer sans avoir simulé avec -WhatIf.",
+      "masteryQuestion": "Pourquoi (Get-Content f) -replace ... | Set-Content f peut-il être risqué, et comment s'en protéger ?",
+      "masteryProof": "Ajouter, compter, remplacer et tester l'existence dans des fichiers, en construisant les chemins avec Join-Path."
+    }
+  ],
+  "exercises": [
+    {
+      "code": "TERMINAL-10-E1",
+      "title": "Traiter un journal avec les cmdlets de fichiers",
+      "statement": "Crée un journal logs/app.log de quatre lignes, ajoute-y une ligne, compte les lignes et les erreurs, produis une copie où ERROR devient ALERTE et vérifie ce qu'elle contient, puis teste l'existence de fichiers avant et après une suppression.",
+      "starterCode": "New-Item -ItemType Directory -Path logs -Force | Out-Null\n$log = Join-Path 'logs' 'app.log'\nSet-Content -Path $log -Value @('INFO démarrage', 'ERROR disque plein', 'INFO reprise', 'ERROR timeout')\n\n# TODO 1 : ajoute la ligne 'INFO arrêt' à la fin du journal (Add-Content)\n# TODO 2 : affiche \"Lignes: \" suivi du nombre de lignes du journal (Get-Content ... ).Count\n# TODO 3 : affiche \"Erreurs: \" suivi du nombre de lignes qui contiennent ERROR (Select-String)\n# TODO 4 : écris dans logs/alertes.log le journal où ERROR est remplacé par ALERTE (-replace, Set-Content)\n#          puis affiche \"Alertes: \" suivi du nombre de lignes de alertes.log qui contiennent ALERTE\n# TODO 5 : affiche \"Existe: \" suivi de Test-Path sur le journal, \" / \" et Test-Path sur logs/absent.log\n# TODO 6 : copie le journal en logs/backup.log, supprime le journal (Remove-Item), puis affiche \"Après suppression: \" suivi de Test-Path sur le journal\n",
+      "expectedOutput": "Lignes: 5\nErreurs: 2\nAlertes: 2\nExiste: True / False\nAprès suppression: False"
+    }
+  ],
+  "quiz": [
+    {
+      "code": "TERMINAL-10-Q1",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Quelle cmdlet ajoute une ligne à la fin d'un fichier sans l'écraser ?",
+      "choices": [
+        "Add-Content",
+        "Set-Content",
+        "Clear-Content"
+      ],
+      "correctChoice": 0,
+      "expectedKeywords": []
+    },
+    {
+      "code": "TERMINAL-10-Q2",
+      "type": "SINGLE_CHOICE",
+      "prompt": "À quoi sert le paramètre -WhatIf ?",
+      "choices": [
+        "Simuler l'opération sans l'exécuter",
+        "Forcer l'opération sans confirmation",
+        "Afficher l'aide de la commande"
+      ],
+      "correctChoice": 0,
+      "expectedKeywords": []
+    },
+    {
+      "code": "TERMINAL-10-Q3",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Pourquoi construire un chemin avec Join-Path ?",
+      "choices": [
+        "Pour utiliser le bon séparateur selon la plateforme",
+        "Pour chiffrer le chemin",
+        "Pour accélérer la lecture du fichier"
+      ],
+      "correctChoice": 0,
+      "expectedKeywords": []
+    },
+    {
+      "code": "TERMINAL-10-Q4",
+      "type": "FREE_TEXT",
+      "prompt": "Un script écrit sous Windows PowerShell 5.1 produit des accents illisibles lorsqu'un autre outil lit le fichier. Quelle est la cause probable et le correctif ?",
+      "choices": [],
+      "correctChoice": null,
+      "expectedKeywords": [
+        "encodage",
+        "utf8",
+        "Encoding"
+      ]
+    }
+  ],
+  "checklist": [
+    "Je lis avec Get-Content et j'écris avec Set-Content ou Add-Content en précisant l'encodage utile",
+    "Je cherche avec Select-String et je transforme avec -replace",
+    "Je construis les chemins avec Join-Path et je teste avec Test-Path",
+    "Je simule une suppression avec -WhatIf avant de l'exécuter"
+  ]
+}

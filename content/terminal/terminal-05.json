@@ -1,0 +1,115 @@
+{
+  "code": "TERMINAL-05",
+  "language": "BASH",
+  "number": 5,
+  "slug": "permissions-et-execution-de-scripts",
+  "title": "Permissions et exécution de scripts",
+  "difficulty": "BASE",
+  "threshold": 70,
+  "activityType": "LAB",
+  "prerequisites": [
+    "TERMINAL-04"
+  ],
+  "objectives": [
+    "Lire et interpréter les permissions rwx (utilisateur, groupe, autres) et leur écriture octale",
+    "Rendre un script exécutable avec chmod et comprendre l'erreur « Permission denied »",
+    "Appliquer le principe du moindre privilège aux fichiers sensibles (clés, secrets)"
+  ],
+  "sections": [
+    {
+      "title": "Lire les permissions",
+      "conceptCodes": [
+        "TERMINAL-PERMISSIONS"
+      ],
+      "content": "ls -l affiche, pour chaque fichier, une chaîne comme -rwxr-xr-- : le premier caractère est le type (- fichier, d dossier), puis trois groupes de trois droits pour le propriétaire, le groupe et les autres. r permet de lire, w de modifier, x d'exécuter (ou de traverser, pour un dossier). En octal : r=4, w=2, x=1, donc rwx=7, r-x=5, r--=4 et rwxr-xr-- s'écrit 754. stat -c %a fichier affiche directement la valeur octale."
+    },
+    {
+      "title": "Modifier les permissions",
+      "content": "chmod 755 script.sh fixe les droits en octal ; chmod +x script.sh ajoute le droit d'exécution ; chmod u+x,g-w modifie un groupe précis (u propriétaire, g groupe, o autres, a tous). Un script téléchargé ou créé avec un éditeur n'est pas exécutable par défaut : ./script.sh échoue avec « Permission denied » (code 126) tant qu'on n'a pas fait chmod +x, alors que bash script.sh fonctionne car c'est bash, déjà exécutable, qui lit le fichier. umask définit les droits retirés aux fichiers nouvellement créés (022 donne 644 pour un fichier)."
+    },
+    {
+      "title": "Moindre privilège et équivalent Windows",
+      "content": "Une clé privée SSH doit être en 600 (lisible uniquement par son propriétaire) : ssh refuse d'ailleurs de l'utiliser si elle est trop ouverte. Évite chmod 777, qui donne tous les droits à tout le monde et masque souvent un vrai problème de propriétaire. Sous Windows, les droits reposent sur des listes de contrôle d'accès (ACL) consultées avec icacls ou Get-Acl ; l'extension du fichier (.ps1, .exe) et la politique d'exécution PowerShell remplacent le bit x. Sous Linux, sudo exécute une commande avec les droits d'un autre utilisateur : à utiliser avec discernement."
+    }
+  ],
+  "keyConcepts": [
+    {
+      "code": "TERMINAL-PERMISSIONS",
+      "name": "Permissions et moindre privilège",
+      "definition": "Les permissions d'un fichier précisent, pour son propriétaire, son groupe et les autres, qui peut le lire, le modifier ou l'exécuter ; le moindre privilège consiste à n'accorder que les droits strictement nécessaires.",
+      "whyExists": "Un système multi-utilisateurs doit empêcher un programme ou une personne d'altérer ce qu'il ne devrait pas.",
+      "whyImportant": "Des droits trop larges exposent des secrets et permettent l'exécution de code non prévu ; des droits trop étroits cassent les déploiements. Comprendre l'octal et chmod évite les deux.",
+      "minimalExample": "Un script en 644 échoue avec ./deploy.sh (code 126) ; après chmod 755 il s'exécute.",
+      "professionalExample": "Un déploiement échoue en production avec « Permission denied » car le script de démarrage a été copié depuis un poste Windows sans bit d'exécution. L'équipe ajoute le droit dans le dépôt (git update-index --chmod=+x) et vérifie en intégration continue avec un test qui contrôle le mode : le même incident ne peut plus passer inaperçu.",
+      "codeExample": "ls -l deploy.sh              # -rw-r--r--\nchmod 755 deploy.sh          # rwxr-xr-x\nstat -c %a deploy.sh         # 755\nchmod 600 ~/.ssh/id_ed25519  # clé privée : propriétaire seul",
+      "commonMistake": "Corriger un « Permission denied » avec chmod 777, ou croire que le bit x suffit sans vérifier que le shebang du script est correct.",
+      "masteryQuestion": "Pourquoi bash script.sh fonctionne-t-il alors que ./script.sh échoue sur un script non exécutable ?",
+      "masteryProof": "Rendre un script exécutable, prouver le changement par sa valeur octale avant/après et verrouiller un fichier secret en 600."
+    }
+  ],
+  "exercises": [
+    {
+      "code": "TERMINAL-05-E1",
+      "title": "Rendre un script exécutable et protéger un secret",
+      "statement": "Le script prépare deploy.sh (sans droit d'exécution) et secret.txt. Affiche son mode octal, constate que l'exécuter directement échoue (code 126), donne-lui les droits 755, exécute-le, puis réduis secret.txt à 600.",
+      "starterCode": "#!/usr/bin/env bash\numask 022\nprintf '#!/usr/bin/env bash\\necho \"déploiement ok\"\\n' > deploy.sh\necho \"mot-de-passe\" > secret.txt\n\n# TODO 1 : affiche \"Avant: \" suivi du mode octal de deploy.sh (stat -c %a deploy.sh)\n# TODO 2 : essaie ./deploy.sh en ignorant l'erreur (2>/dev/null), puis affiche \"Exécution refusée: code \" suivi de $?\n# TODO 3 : donne les droits 755 à deploy.sh (chmod)\n# TODO 4 : affiche \"Après: \" suivi du mode octal, puis \"Résultat: \" suivi de la sortie de ./deploy.sh\n# TODO 5 : réduis secret.txt à 600 et affiche \"Secret: \" suivi de son mode octal\ntrue\n",
+      "expectedOutput": "Avant: 644\nExécution refusée: code 126\nAprès: 755\nRésultat: déploiement ok\nSecret: 600"
+    }
+  ],
+  "quiz": [
+    {
+      "code": "TERMINAL-05-Q1",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Que représente le mode octal 754 ?",
+      "choices": [
+        "rwxr-xr-- (propriétaire rwx, groupe r-x, autres r--)",
+        "rw-r-xr-x",
+        "rwxrwxr--"
+      ],
+      "correctChoice": 0,
+      "expectedKeywords": []
+    },
+    {
+      "code": "TERMINAL-05-Q2",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Quelle commande rend un script exécutable pour son propriétaire ?",
+      "choices": [
+        "chmod u+x script.sh",
+        "chown +x script.sh",
+        "chmod 000 script.sh"
+      ],
+      "correctChoice": 0,
+      "expectedKeywords": []
+    },
+    {
+      "code": "TERMINAL-05-Q3",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Pourquoi chmod 777 est-il déconseillé ?",
+      "choices": [
+        "Il donne tous les droits à tout le monde et masque souvent le vrai problème",
+        "Il supprime le fichier",
+        "Il ne fonctionne que sous Windows"
+      ],
+      "correctChoice": 0,
+      "expectedKeywords": []
+    },
+    {
+      "code": "TERMINAL-05-Q4",
+      "type": "FREE_TEXT",
+      "prompt": "Une clé privée est refusée car « permissions too open ». Quelle valeur de chmod appliques-tu et pourquoi ?",
+      "choices": [],
+      "correctChoice": null,
+      "expectedKeywords": [
+        "600",
+        "propriétaire",
+        "privilège"
+      ]
+    }
+  ],
+  "checklist": [
+    "Je lis une chaîne rwxr-xr-- et sa valeur octale",
+    "Je rends un script exécutable avec chmod et je comprends le code 126",
+    "Je limite les fichiers sensibles à 600 et j'évite chmod 777",
+    "Je sais que Windows utilise des ACL et la politique d'exécution plutôt que le bit x"
+  ]
+}

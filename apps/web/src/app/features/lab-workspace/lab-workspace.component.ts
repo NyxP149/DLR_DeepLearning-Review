@@ -118,6 +118,7 @@ export class LabWorkspaceComponent implements OnDestroy {
     if (code.startsWith('ANGULAR-')) return 'ANGULAR';
     if (code.startsWith('DEVOPS-')) return 'DOCKER & CI/CD';
     if (code.startsWith('ARCHITECTURE-')) return 'ARCHITECTURE SYSTÈME';
+    if (code.startsWith('TERMINAL-')) return 'TERMINAL ET IA';
     if (code.startsWith('SQL-')) return 'SQL';
     if (code.startsWith('PYTHON-')) return 'PYTHON';
     if (code.startsWith('LLM-')) return 'LEARN LLMS';
@@ -606,10 +607,10 @@ export class LabWorkspaceComponent implements OnDestroy {
   }
 
   fileExtension(language: string): string {
-    return ({ JAVA: '.java', PYTHON: '.py', TYPESCRIPT: '.ts' } as Record<string, string>)[language.toUpperCase()] ?? '.txt';
+    return ({ JAVA: '.java', PYTHON: '.py', TYPESCRIPT: '.ts', BASH: '.sh', POWERSHELL: '.ps1' } as Record<string, string>)[language.toUpperCase()] ?? '.txt';
   }
 
   fileAccept(language: string): string {
-    return ({ JAVA: '.java,text/x-java-source', PYTHON: '.py,text/x-python', TYPESCRIPT: '.ts,text/typescript' } as Record<string, string>)[language.toUpperCase()] ?? 'text/plain';
+    return ({ JAVA: '.java,text/x-java-source', PYTHON: '.py,text/x-python', TYPESCRIPT: '.ts,text/typescript', BASH: '.sh,text/x-shellscript', POWERSHELL: '.ps1,text/plain' } as Record<string, string>)[language.toUpperCase()] ?? 'text/plain';
   }
 }

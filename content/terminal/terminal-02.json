@@ -1,0 +1,115 @@
+{
+  "code": "TERMINAL-02",
+  "language": "BASH",
+  "number": 2,
+  "slug": "creer-copier-deplacer-et-supprimer-des-fichiers",
+  "title": "Créer, copier, déplacer et supprimer des fichiers",
+  "difficulty": "BASE",
+  "threshold": 70,
+  "activityType": "LAB",
+  "prerequisites": [
+    "TERMINAL-01"
+  ],
+  "objectives": [
+    "Créer des dossiers et des fichiers avec mkdir -p et touch",
+    "Copier, déplacer et renommer avec cp et mv, y compris avec des jokers (*.txt)",
+    "Supprimer avec rm en mesurant le risque, et vérifier le résultat avec find"
+  ],
+  "sections": [
+    {
+      "title": "Créer et organiser",
+      "conceptCodes": [
+        "TERMINAL-FILE-OPERATIONS"
+      ],
+      "content": "mkdir crée un dossier, et mkdir -p crée toute la chaîne sans erreur si elle existe déjà : c'est la forme à utiliser dans les scripts. touch crée un fichier vide (ou met à jour sa date). Les noms sans espace ni accent sont plus simples à manipuler ; si un nom contient des espaces, il faut le mettre entre guillemets : cp \"mon fichier.txt\" copie/."
+    },
+    {
+      "title": "Copier, déplacer, renommer",
+      "content": "cp source destination copie un fichier ; cp -r copie un dossier et son contenu. mv source destination déplace, et renomme si la destination est dans le même dossier : mv ancien.txt nouveau.txt. Les jokers sont développés par le shell avant l'exécution : *.txt devient la liste des fichiers .txt du dossier courant. Attention : si la destination existe déjà, cp et mv l'écrasent silencieusement, sauf avec l'option -i qui demande confirmation."
+    },
+    {
+      "title": "Supprimer sans regret",
+      "content": "rm supprime définitivement : il n'y a pas de corbeille au terminal. rm -r supprime un dossier et tout ce qu'il contient, rm -f supprime sans poser de question. La combinaison rm -rf avec un chemin mal construit (une variable vide, un joker trop large) a détruit des projets entiers. Réflexes : afficher d'abord la liste avec ls ou echo, utiliser rm -i quand tu hésites, et vérifier le résultat avec find . -type f | sort. Sous PowerShell, les équivalents sont New-Item, Copy-Item, Move-Item et Remove-Item."
+    }
+  ],
+  "keyConcepts": [
+    {
+      "code": "TERMINAL-FILE-OPERATIONS",
+      "name": "Opérations sur les fichiers et leur réversibilité",
+      "definition": "Créer, copier, déplacer et supprimer sont des opérations qui modifient le système de fichiers ; au terminal, la suppression et l'écrasement sont immédiats et sans corbeille.",
+      "whyExists": "Ces commandes sont les briques de toute automatisation : ranger, archiver, nettoyer, préparer un environnement.",
+      "whyImportant": "Une erreur sur un joker ou une variable vide supprime ou écrase des données sans avertissement. Vérifier avant d'agir est la compétence centrale.",
+      "minimalExample": "mkdir -p archive/2024 && cp notes/*.txt archive/2024/ copie tous les .txt dans une archive datée.",
+      "professionalExample": "Un script de nettoyage exécute rm -rf \"$BUILD_DIR\"/* ; un jour la variable BUILD_DIR est vide à cause d'une faute de frappe et la commande devient rm -rf /*. La version corrigée utilise set -u (erreur si variable non définie), la forme \"${BUILD_DIR:?variable obligatoire}\" et affiche la liste des fichiers visés avant de les supprimer.",
+      "codeExample": "set -u\nrm -rf -- \"${BUILD_DIR:?BUILD_DIR doit être défini}\"/*\n# avant : ls -- \"$BUILD_DIR\" pour vérifier ce qui sera supprimé",
+      "commonMistake": "Lancer rm -rf avec une variable ou un joker non vérifié, ou croire que mv demande confirmation avant d'écraser une destination existante.",
+      "masteryQuestion": "Comment réduire le risque d'une suppression par script quand le chemin dépend d'une variable ?",
+      "masteryProof": "Réorganiser un dossier (créer, copier, déplacer, supprimer) puis prouver l'état final avec une liste triée des fichiers."
+    }
+  ],
+  "exercises": [
+    {
+      "code": "TERMINAL-02-E1",
+      "title": "Réorganiser des notes puis vérifier l'arborescence",
+      "statement": "Le dossier notes contient a.txt, b.txt, c.log et tmp.tmp. Crée archive/2024, copie-y les .txt, déplace c.log dans archive, supprime le fichier temporaire, puis affiche la liste triée de tous les fichiers.",
+      "starterCode": "#!/usr/bin/env bash\nmkdir -p tp && cd tp\nmkdir -p notes\ntouch notes/a.txt notes/b.txt notes/c.log notes/tmp.tmp\n\n# TODO 1 : crée le dossier archive/2024 (mkdir -p)\n# TODO 2 : copie tous les fichiers .txt de notes dans archive/2024 (joker *.txt)\n# TODO 3 : DÉPLACE notes/c.log dans archive/\n# TODO 4 : supprime notes/tmp.tmp\n# TODO 5 : affiche la liste triée de tous les fichiers : find . -type f | sort\ntrue\n",
+      "expectedOutput": "./archive/2024/a.txt\n./archive/2024/b.txt\n./archive/c.log\n./notes/a.txt\n./notes/b.txt"
+    }
+  ],
+  "quiz": [
+    {
+      "code": "TERMINAL-02-Q1",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Quelle commande crée archive/2024 même si archive n'existe pas encore ?",
+      "choices": [
+        "mkdir -p archive/2024",
+        "mkdir archive/2024",
+        "touch archive/2024"
+      ],
+      "correctChoice": 0,
+      "expectedKeywords": []
+    },
+    {
+      "code": "TERMINAL-02-Q2",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Que se passe-t-il avec mv a.txt b.txt si b.txt existe déjà ?",
+      "choices": [
+        "b.txt est écrasé sans avertissement (sauf option -i)",
+        "mv refuse toujours",
+        "Les deux fichiers sont fusionnés"
+      ],
+      "correctChoice": 0,
+      "expectedKeywords": []
+    },
+    {
+      "code": "TERMINAL-02-Q3",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Quelle est la meilleure habitude avant un rm avec un joker ?",
+      "choices": [
+        "Afficher d'abord la liste des fichiers visés (ls ou echo)",
+        "Ajouter -f pour éviter les questions",
+        "Lancer la commande en administrateur"
+      ],
+      "correctChoice": 0,
+      "expectedKeywords": []
+    },
+    {
+      "code": "TERMINAL-02-Q4",
+      "type": "FREE_TEXT",
+      "prompt": "Explique pourquoi rm -rf \"$DOSSIER\"/* est dangereux dans un script et comment tu t'en protèges.",
+      "choices": [],
+      "correctChoice": null,
+      "expectedKeywords": [
+        "variable",
+        "vide",
+        "set -u"
+      ]
+    }
+  ],
+  "checklist": [
+    "Je crée des arborescences avec mkdir -p et des fichiers avec touch",
+    "Je distingue copier (cp), déplacer (mv) et renommer",
+    "Je sais que rm est définitif et je vérifie la cible avant de supprimer",
+    "Je contrôle le résultat final avec find ... | sort"
+  ]
+}

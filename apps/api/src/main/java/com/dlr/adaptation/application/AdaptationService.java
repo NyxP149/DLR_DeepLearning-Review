@@ -175,7 +175,8 @@ public class AdaptationService {
         if (concept.labCode().startsWith("PYTHON-")) return 1;
         if (concept.labCode().startsWith("TYPESCRIPT-")) return 2;
         if (concept.labCode().startsWith("LLM-")) return 3;
-        return 4;
+        if (concept.labCode().startsWith("TERMINAL-")) return 4;
+        return 5;
     }
 
     private Recommendation find(UUID id) {

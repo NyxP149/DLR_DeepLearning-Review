@@ -1,0 +1,115 @@
+{
+  "code": "TERMINAL-23",
+  "language": "BASH",
+  "number": 23,
+  "slug": "projet-professionnel-piloter-un-projet-avec-un-assistant-ia-et-des-garde-fous",
+  "title": "Projet professionnel : piloter un projet avec un assistant IA et des garde-fous",
+  "difficulty": "PROJET",
+  "threshold": 85,
+  "activityType": "PROJECT",
+  "prerequisites": [
+    "TERMINAL-22"
+  ],
+  "objectives": [
+    "Organiser un projet de bout en bout avec un assistant IA : spécification, plan, tâches courtes, vérification, fusion",
+    "Installer un hook Git qui refuse automatiquement un commit dangereux, indépendamment de la bonne volonté de l'assistant",
+    "Comprendre les hooks, commandes personnalisées et skills d'un assistant comme moyens de rendre un workflow reproductible"
+  ],
+  "sections": [
+    {
+      "title": "Cahier des charges du projet",
+      "conceptCodes": [
+        "TERMINAL-AI-WORKFLOW"
+      ],
+      "content": "Tu pilotes une petite application avec un assistant : le travail se déroule en boucles courtes. 1) Spécifier : écrire l'objectif et les critères d'acceptation. 2) Planifier : demander un plan en mode plan, le relire et le corriger. 3) Exécuter par tâches de la taille d'un commit, sur une branche. 4) Vérifier : lancer les tests, relire le diff avec le script de revue. 5) Fusionner et documenter. Le projet de ce laboratoire met en place le garde-fou central de ce workflow : un hook de pré-commit qui bloque les secrets et les fichiers interdits."
+    },
+    {
+      "title": "Hooks : automatiser ce qui ne doit jamais dépendre de la bonne volonté",
+      "content": "Un hook est un script exécuté automatiquement à un moment précis. Git en propose (pre-commit, commit-msg, pre-push) dans .git/hooks : si le script sort avec un code non nul, l'opération est refusée. Les assistants proposent leurs propres hooks : avec Claude Code, des commandes configurées dans les réglages se déclenchent avant ou après un appel d'outil (PreToolUse, PostToolUse), à la soumission d'un prompt ou à la fin d'une réponse ; elles reçoivent un descriptif JSON de l'action sur leur entrée standard et peuvent la bloquer (un code de sortie 2 renvoie le message d'erreur à l'assistant, qui corrige). La différence avec une instruction écrite dans CLAUDE.md : un hook est déterministe, il s'exécute toujours, alors qu'une consigne est une demande que l'assistant peut mal suivre. Réserve donc les hooks aux règles qui ne souffrent aucune exception. Les noms exacts des commandes et des options évoluent vite : vérifie toujours la documentation de la version que tu utilises."
+    },
+    {
+      "title": "Capitaliser : commandes, skills et revue",
+      "content": "Quand un workflow se répète (préparer une tâche, lancer la revue, rédiger la description d'une PR), encode-le : des commandes personnalisées ou des skills (des dossiers contenant des instructions et des scripts que l'assistant charge à la demande) rendent la démarche reproductible et partageable avec l'équipe via le dépôt. Des sous-agents isolent des tâches annexes (recherche, relecture) pour ne pas encombrer la conversation principale. Chaque élément automatisé doit lui-même être revu comme du code : un hook ou un skill erroné se propage à tout le projet."
+    }
+  ],
+  "keyConcepts": [
+    {
+      "code": "TERMINAL-AI-WORKFLOW",
+      "name": "Workflow piloté avec garde-fous déterministes",
+      "definition": "Un workflow piloté enchaîne spécification, plan, tâches courtes, vérification et fusion, avec des garde-fous déterministes (hooks) qui appliquent les règles non négociables quoi que fasse l'assistant.",
+      "whyExists": "Plus l'assistant est autonome, plus il faut de points de contrôle fiables, sinon l'erreur d'une étape se propage à toutes les suivantes.",
+      "whyImportant": "La confiance dans un travail assisté repose sur des vérifications mécaniques et une traçabilité (commits, revues), pas sur l'intention affichée de l'assistant.",
+      "minimalExample": "Un hook pre-commit qui refuse tout commit dont les lignes ajoutées contiennent sk-live- et tout fichier .env indexé.",
+      "professionalExample": "Pendant un sprint, l'assistant ajoute une clé de test dans un fichier de configuration puis commite. Sans garde-fou, la clé aurait atteint le dépôt partagé. Le hook de pré-commit installé par l'équipe refuse le commit et renvoie « secret détecté » ; l'assistant corrige en lisant la clé depuis l'environnement, et le commit suivant passe. La règle écrite dans CLAUDE.md n'avait pas suffi, le hook, lui, s'exécute toujours.",
+      "codeExample": "#!/usr/bin/env bash\n# .git/hooks/pre-commit\nif git diff --cached --name-only | grep -qx '.env'; then\n  echo \"fichier .env interdit\" >&2; exit 1\nfi\nif git diff --cached -U0 | grep -q '^+.*sk-live-'; then\n  echo \"secret détecté\" >&2; exit 1\nfi",
+      "commonMistake": "Se contenter d'une consigne écrite pour une règle critique, ou installer un hook sans le tester avec un cas qui doit être refusé.",
+      "masteryQuestion": "Quelle différence entre une consigne dans CLAUDE.md et un hook, et dans quel cas choisir l'un ou l'autre ?",
+      "masteryProof": "Installer un hook pre-commit, prouver qu'il refuse un secret et un fichier .env, puis qu'un commit corrigé passe."
+    }
+  ],
+  "exercises": [
+    {
+      "code": "TERMINAL-23-E1",
+      "title": "Installer un hook pre-commit qui bloque secrets et .env",
+      "statement": "Écris .git/hooks/pre-commit : il refuse (code 1, message sur stderr) un commit qui indexe un fichier .env (« fichier .env interdit ») ou dont les lignes ajoutées contiennent sk-live- (« secret détecté »). Le script tente ensuite trois commits pour prouver le comportement.",
+      "starterCode": "#!/usr/bin/env bash\ngit config --global user.name \"Ada\"\ngit config --global user.email \"ada@dlr.dev\"\ngit config --global init.defaultBranch main\nmkdir projet && cd projet\ngit init -q\n\n# TODO 1 : écris .git/hooks/pre-commit (heredoc) : refuse avec exit 1 si .env est indexé\n#          (git diff --cached --name-only | grep -qx '.env') en affichant \"fichier .env interdit\" sur stderr,\n#          puis refuse si une ligne ajoutée contient sk-live- (git diff --cached -U0 | grep -q '^+.*sk-live-')\n#          en affichant \"secret détecté\" sur stderr\n# TODO 2 : rends le hook exécutable (chmod +x)\n\n# Premier essai : une clé en clair\necho 'KEY = \"sk-live-abc\"' > config.py\ngit add config.py\ngit commit -q -m \"Ajoute la configuration\" 2>hook.err\necho \"Commit bloqué: code $?\"\necho \"Message du hook: $(cat hook.err)\"\n\n# Deuxième essai : la clé est corrigée, mais .env est indexé\necho 'KEY = os.environ[\"KEY\"]' > config.py\necho 'SECRET=x' > .env\ngit add config.py && git add -f .env\ngit commit -q -m \"Ajoute la configuration\" 2>hook.err\necho \"Commit bloqué: code $?\"\necho \"Message du hook: $(cat hook.err)\"\n\n# Troisième essai : .env retiré de l'index\ngit rm --cached -q .env\ngit commit -q -m \"Ajoute la configuration\" 2>hook.err && echo \"Commit accepté\"\necho \"Historique: $(git log --format=%s | paste -sd, -)\"\ntrue\n",
+      "expectedOutput": "Commit bloqué: code 1\nMessage du hook: secret détecté\nCommit bloqué: code 1\nMessage du hook: fichier .env interdit\nCommit accepté\nHistorique: Ajoute la configuration"
+    }
+  ],
+  "quiz": [
+    {
+      "code": "TERMINAL-23-Q1",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Que se passe-t-il quand un hook pre-commit se termine avec un code non nul ?",
+      "choices": [
+        "Git refuse le commit",
+        "Git ignore le hook",
+        "Git supprime les fichiers indexés"
+      ],
+      "correctChoice": 0,
+      "expectedKeywords": []
+    },
+    {
+      "code": "TERMINAL-23-Q2",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Quel avantage a un hook sur une consigne dans CLAUDE.md ?",
+      "choices": [
+        "Il s'exécute toujours, de façon déterministe",
+        "Il est plus facile à écrire",
+        "Il n'a pas besoin d'être testé"
+      ],
+      "correctChoice": 0,
+      "expectedKeywords": []
+    },
+    {
+      "code": "TERMINAL-23-Q3",
+      "type": "SINGLE_CHOICE",
+      "prompt": "À quoi servent des skills ou commandes personnalisées ?",
+      "choices": [
+        "À encoder un workflow répété pour le rendre reproductible et partageable",
+        "À désactiver les permissions",
+        "À accélérer le réseau"
+      ],
+      "correctChoice": 0,
+      "expectedKeywords": []
+    },
+    {
+      "code": "TERMINAL-23-Q4",
+      "type": "FREE_TEXT",
+      "prompt": "Décris les étapes d'une boucle de travail avec un assistant IA sur une fonctionnalité, de la spécification à la fusion, et les contrôles à chaque étape.",
+      "choices": [],
+      "correctChoice": null,
+      "expectedKeywords": [
+        "plan",
+        "test",
+        "revue"
+      ]
+    }
+  ],
+  "checklist": [
+    "J'organise le travail en boucles : spécifier, planifier, exécuter par petites tâches, vérifier, fusionner",
+    "J'installe un hook pour toute règle qui ne souffre aucune exception, et je le teste sur un cas refusé",
+    "J'encode les workflows répétés (commandes, skills) et je les relis comme du code",
+    "Je conserve la traçabilité par des commits atomiques et des messages clairs"
+  ]
+}

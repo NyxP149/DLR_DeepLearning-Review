@@ -1,0 +1,113 @@
+{
+  "code": "TERMINAL-01",
+  "language": "BASH",
+  "number": 1,
+  "slug": "se-reperer-dans-le-systeme-de-fichiers",
+  "title": "Se repérer dans le système de fichiers",
+  "difficulty": "BASE",
+  "threshold": 70,
+  "activityType": "LAB",
+  "prerequisites": [],
+  "objectives": [
+    "Distinguer chemins absolus et relatifs et s'en servir pour se déplacer sans se perdre",
+    "Utiliser pwd, ls et cd (avec ., .., ~ et -) pour explorer une arborescence de projet",
+    "Relier ces commandes à leurs équivalents PowerShell et à la notion de répertoire courant"
+  ],
+  "sections": [
+    {
+      "title": "Le terminal, le shell et le répertoire courant",
+      "conceptCodes": [
+        "TERMINAL-NAVIGATION"
+      ],
+      "content": "Un terminal est la fenêtre ; le shell (bash, zsh, PowerShell) est le programme qui lit tes commandes et les exécute. Chaque shell travaille toujours « quelque part » : son répertoire courant. Tout chemin relatif (src/main.py) est interprété à partir de cet endroit, ce qui explique la plupart des erreurs « No such file or directory » : la commande est correcte, mais tu n'es pas là où tu crois. pwd affiche le répertoire courant, ls liste son contenu, cd le change."
+    },
+    {
+      "title": "Chemins absolus, relatifs et raccourcis",
+      "content": "Un chemin absolu part de la racine (/ sous Linux, C:\\ sous Windows) et désigne toujours la même chose : /work/atelier/docs. Un chemin relatif part du répertoire courant : docs/guide.txt. Les raccourcis à connaître : . (ici), .. (le parent), ~ (ton dossier personnel) et cd - (revenir au dossier précédent). Sous Windows, PowerShell accepte aussi / et \\ ; sous Linux seul / sépare les dossiers, et les majuscules comptent : Docs et docs sont deux dossiers différents."
+    },
+    {
+      "title": "Bonnes pratiques de navigation",
+      "content": "Utilise la touche Tab pour compléter les noms (elle évite les fautes de frappe et révèle les noms exacts), la flèche haut pour rappeler une commande et ls -la pour voir aussi les fichiers cachés (ceux qui commencent par un point, comme .git). Avant toute commande qui modifie des fichiers, vérifie avec pwd où tu te trouves : c'est le réflexe le plus simple pour éviter de supprimer ou d'écraser le mauvais dossier."
+    }
+  ],
+  "keyConcepts": [
+    {
+      "code": "TERMINAL-NAVIGATION",
+      "name": "Répertoire courant et chemins",
+      "definition": "Le répertoire courant est l'emplacement à partir duquel le shell interprète les chemins relatifs ; un chemin absolu, lui, désigne le même élément quel que soit l'endroit où l'on se trouve.",
+      "whyExists": "Les systèmes de fichiers sont des arborescences : il faut un point de départ implicite pour ne pas écrire le chemin complet à chaque commande.",
+      "whyImportant": "Presque toutes les erreurs de débutant au terminal viennent d'une commande lancée depuis le mauvais dossier. Savoir où l'on est évite les erreurs et les suppressions accidentelles.",
+      "minimalExample": "cd src/app puis pwd affiche /work/atelier/src/app ; cd ../../docs remonte de deux niveaux puis redescend dans docs.",
+      "professionalExample": "Une équipe lance un script de déploiement depuis le dossier scripts/ au lieu de la racine du dépôt : le chemin relatif config/prod.yml n'existe pas et le script, mal écrit, continue avec une configuration par défaut. La correction a deux volets : le script fait cd \"$(dirname \"$0\")/..\" pour se placer lui-même à la racine, et il échoue explicitement si le fichier de configuration est introuvable.",
+      "codeExample": "# Se placer à la racine du dépôt, où que le script soit lancé\ncd \"$(dirname \"$0\")/..\"\npwd\n[ -f config/prod.yml ] || { echo 'config/prod.yml introuvable' >&2; exit 1; }",
+      "commonMistake": "Supposer que le terminal s'ouvre dans le dossier du projet, ou lancer une commande destructive sans avoir vérifié le répertoire courant avec pwd.",
+      "masteryQuestion": "Pourquoi un script qui marche depuis la racine du projet peut-il échouer lorsqu'on le lance depuis un autre dossier ?",
+      "masteryProof": "Écrire une suite de cd relatifs qui aboutit à un dossier précis et vérifier le résultat avec pwd, sans jamais écrire de chemin absolu."
+    }
+  ],
+  "exercises": [
+    {
+      "code": "TERMINAL-01-E1",
+      "title": "Naviguer dans un projet avec des chemins relatifs",
+      "statement": "Le script prépare l'arborescence atelier/{src/app,docs,tests}. Déplace-toi uniquement avec des chemins relatifs (cd), affiche le répertoire courant après chaque déplacement, puis liste le contenu du dossier du projet sur une seule ligne.",
+      "starterCode": "#!/usr/bin/env bash\n# Prépare l'arborescence du projet\nmkdir -p atelier/src/app atelier/docs atelier/tests\ntouch atelier/src/app/main.txt atelier/docs/guide.txt\n\ncd atelier\n# TODO 1 : descends dans src/app avec un chemin RELATIF, puis affiche le répertoire courant (pwd)\n# TODO 2 : va dans docs avec un chemin relatif qui remonte de deux niveaux (../..), puis affiche pwd\n# TODO 3 : remonte d'un niveau avec .., puis affiche pwd\n# TODO 4 : affiche \"Contenu: \" suivi des noms du dossier courant sur UNE ligne (ls | xargs)\ntrue\n",
+      "expectedOutput": "/work/atelier/src/app\n/work/atelier/docs\n/work/atelier\nContenu: docs src tests"
+    }
+  ],
+  "quiz": [
+    {
+      "code": "TERMINAL-01-Q1",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Tu es dans /work/atelier/docs. Quelle commande te place dans /work/atelier/src ?",
+      "choices": [
+        "cd ../src",
+        "cd /src",
+        "cd src"
+      ],
+      "correctChoice": 0,
+      "expectedKeywords": []
+    },
+    {
+      "code": "TERMINAL-01-Q2",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Que désigne le raccourci « .. » dans un chemin ?",
+      "choices": [
+        "Le répertoire parent",
+        "Le répertoire courant",
+        "Le dossier personnel de l'utilisateur"
+      ],
+      "correctChoice": 0,
+      "expectedKeywords": []
+    },
+    {
+      "code": "TERMINAL-01-Q3",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Quelle différence entre un chemin absolu et un chemin relatif ?",
+      "choices": [
+        "Le chemin absolu part de la racine et ne dépend pas du répertoire courant",
+        "Le chemin absolu ne fonctionne que sous Windows",
+        "Le chemin relatif est toujours plus long"
+      ],
+      "correctChoice": 0,
+      "expectedKeywords": []
+    },
+    {
+      "code": "TERMINAL-01-Q4",
+      "type": "FREE_TEXT",
+      "prompt": "Une commande échoue avec « No such file or directory » alors que le fichier existe. Quelles vérifications fais-tu ?",
+      "choices": [],
+      "correctChoice": null,
+      "expectedKeywords": [
+        "pwd",
+        "chemin",
+        "répertoire"
+      ]
+    }
+  ],
+  "checklist": [
+    "Je sais afficher mon répertoire courant et lister son contenu, fichiers cachés compris",
+    "Je distingue un chemin absolu d'un chemin relatif et j'utilise ., .. et ~",
+    "Je vérifie où je suis avant une commande qui modifie ou supprime des fichiers",
+    "Je sais que Linux distingue majuscules et minuscules dans les noms"
+  ]
+}

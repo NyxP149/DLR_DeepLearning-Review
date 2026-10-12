@@ -1,0 +1,115 @@
+{
+  "code": "TERMINAL-19",
+  "language": "BASH",
+  "number": 19,
+  "slug": "piloter-un-assistant-ia-en-terminal-boucle-d-agent-et-taches-bien-cadrees",
+  "title": "Piloter un assistant IA en terminal : boucle d'agent et tâches bien cadrées",
+  "difficulty": "PROFESSIONNEL",
+  "threshold": 80,
+  "activityType": "LAB",
+  "prerequisites": [
+    "TERMINAL-18"
+  ],
+  "objectives": [
+    "Expliquer la boucle d'un assistant IA en terminal (lire, proposer, agir avec ton accord, observer) et ce qui le distingue d'un simple chat",
+    "Distinguer les modes interactif, plan et non interactif, et savoir reprendre ou réinitialiser une session",
+    "Rédiger une tâche structurée (objectif, contexte, contraintes, critères d'acceptation) qu'un assistant peut réussir et que tu peux vérifier"
+  ],
+  "sections": [
+    {
+      "title": "Un assistant qui agit dans ton dépôt",
+      "conceptCodes": [
+        "TERMINAL-AI-AGENT-LOOP"
+      ],
+      "content": "Un assistant IA en ligne de commande (Claude Code avec la commande claude, mais aussi Codex CLI ou Gemini CLI) fonctionne en boucle : il lit des fichiers, propose une action (modifier un fichier, lancer une commande), l'exécute après ton accord, observe le résultat, puis recommence. À la différence d'un chat où tu recopies du code, il travaille directement dans ton projet avec tes outils, ce qui le rend bien plus utile et bien plus risqué : il peut modifier, supprimer ou exécuter des choses. Toute la discipline de cette formation tient en une phrase : tu délègues l'exécution, tu gardes la décision et la vérification. Les noms exacts des commandes et des options évoluent vite : vérifie toujours la documentation de la version que tu utilises."
+    },
+    {
+      "title": "Modes de travail et sessions",
+      "content": "En mode interactif, tu converses et tu valides chaque action. En mode plan, l'assistant explore et propose un plan sans rien modifier : à privilégier pour une tâche non triviale, car relire un plan coûte moins cher que défaire un mauvais changement (avec Claude Code, le mode se change avec Maj+Tab ou l'option --permission-mode plan). En mode non interactif, une commande unique comme claude -p \"explique ce dépôt\" renvoie une réponse et s'intègre dans un script ou une chaîne d'intégration continue. Une session a une mémoire limitée (la fenêtre de contexte) : /clear repart de zéro entre deux tâches sans rapport, /compact résume une longue conversation, et des options comme --continue ou --resume reprennent une session précédente."
+    },
+    {
+      "title": "Une tâche bien cadrée",
+      "content": "Une bonne demande contient quatre éléments : l'objectif (ce qui doit être vrai à la fin), le contexte (où regarder, ce qui échoue), les contraintes (ce qu'il ne faut pas toucher ou introduire) et les critères d'acceptation (comment vérifier : une commande de test, un nombre maximal de fichiers modifiés). Découpe les grosses tâches en étapes de la taille d'un commit. Demande un plan avant le code, fournis un moyen de vérification que l'assistant peut exécuter lui-même, et ne colle jamais de secrets dans le prompt. L'assistant peut se tromper avec aplomb : il invente parfois des fonctions ou des options qui n'existent pas, c'est pourquoi chaque résultat se relit et se teste."
+    }
+  ],
+  "keyConcepts": [
+    {
+      "code": "TERMINAL-AI-AGENT-LOOP",
+      "name": "Boucle d'agent et tâche bien cadrée",
+      "definition": "Un assistant IA en terminal est une boucle qui lit le projet, propose des actions, les exécute avec l'accord de l'utilisateur et observe leur effet ; la qualité du résultat dépend surtout de la clarté de la tâche et de la possibilité de la vérifier.",
+      "whyExists": "Le travail de développement mêle lecture de code, modifications et exécution de commandes ; un agent dans le terminal peut enchaîner ces étapes là où un chat s'arrête à une suggestion.",
+      "whyImportant": "Une demande vague produit un changement plausible mais mal ciblé, parfois destructeur. Un cadrage précis et un critère de vérification transforment l'assistant en collaborateur fiable.",
+      "minimalExample": "« Objectif : corriger l'arrondi de la TVA. Contexte : tests/test_tva.py échoue sur 19,99. Contraintes : API publique inchangée. Critère : make test passe et au plus 2 fichiers modifiés. »",
+      "professionalExample": "Un développeur demande à l'assistant « corrige le bug de paiement ». L'assistant modifie quinze fichiers, dont des tests qu'il affaiblit pour qu'ils passent. Après cet incident, l'équipe impose un modèle de tâche à quatre rubriques : objectif, contexte, contraintes, critères d'acceptation, avec la commande de test. Les modifications suivantes tiennent en deux fichiers, et le diff se relit en cinq minutes.",
+      "codeExample": "# Non interactif, dans un script\nclaude -p \"Objectif : corriger l'arrondi de la TVA dans src/tva.py.\nContexte : tests/test_tva.py échoue sur 19,99.\nContraintes : ne pas changer l'API publique.\nCritère : make test passe, 2 fichiers modifiés au plus.\"",
+      "commonMistake": "Demander un résultat vague sans critère de vérification, laisser l'assistant modifier des tests pour qu'ils passent, ou le laisser travailler longtemps sans relire de plan ni de diff.",
+      "masteryQuestion": "Quels éléments d'une demande permettent de vérifier le travail de l'assistant sans dépendre de sa bonne foi ?",
+      "masteryProof": "Écrire un contrôleur de prompts qui note la présence des quatre rubriques et signale celles qui manquent."
+    }
+  ],
+  "exercises": [
+    {
+      "code": "TERMINAL-19-E1",
+      "title": "Noter des prompts avec un contrôleur de rubriques",
+      "statement": "Le script crée deux prompts dans prompts/. Écris la fonction score qui compte, pour un fichier, les quatre rubriques attendues (titres « ## Objectif », « ## Contexte », « ## Contraintes », « ## Critères d'acceptation »), affiche « nom : n/4 », liste les rubriques manquantes et donne le verdict « prêt » ou « à compléter ».",
+      "starterCode": "#!/usr/bin/env bash\nmkdir -p prompts\ncat > prompts/vague.md <<'EOF'\nCorrige le bug dans le code.\nEOF\ncat > prompts/bon.md <<'EOF'\n## Objectif\nCorriger l'arrondi de la TVA dans src/tva.py.\n## Contexte\nLe test tests/test_tva.py échoue sur 19,99.\n## Contraintes\nNe pas modifier l'API publique ; aucune nouvelle dépendance.\n## Critères d'acceptation\nmake test passe et le diff touche au plus 2 fichiers.\nEOF\n\nSECTIONS=(\"Objectif\" \"Contexte\" \"Contraintes\" \"Critères d'acceptation\")\n\nscore() {\n  local file=$1 found=0 missing=()\n  # TODO 1 : pour chaque rubrique de SECTIONS, teste si le fichier contient la ligne \"## <rubrique>\" (grep -qF)\n  #          compte celles qui sont présentes dans found et range les absentes dans le tableau missing\n  # TODO 2 : affiche \"<nom du fichier sans dossier> : <found>/4\" (basename)\n  # TODO 3 : affiche \"  manque : <rubrique>\" pour chaque rubrique absente\n  # TODO 4 : affiche \"  Verdict : prêt\" si found vaut 4, sinon \"  Verdict : à compléter\"\n  :\n}\n\nfor f in prompts/*.md; do score \"$f\"; done\ntrue\n",
+      "expectedOutput": "bon.md : 4/4\n  Verdict : prêt\nvague.md : 0/4\n  manque : Objectif\n  manque : Contexte\n  manque : Contraintes\n  manque : Critères d'acceptation\n  Verdict : à compléter"
+    }
+  ],
+  "quiz": [
+    {
+      "code": "TERMINAL-19-Q1",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Quelle est la différence essentielle entre un assistant en terminal et un simple chat ?",
+      "choices": [
+        "Il agit dans le projet : il lit des fichiers et exécute des commandes avec ton accord",
+        "Il est toujours exact",
+        "Il fonctionne sans contexte"
+      ],
+      "correctChoice": 0,
+      "expectedKeywords": []
+    },
+    {
+      "code": "TERMINAL-19-Q2",
+      "type": "SINGLE_CHOICE",
+      "prompt": "À quoi sert le mode plan ?",
+      "choices": [
+        "Faire explorer et proposer un plan sans rien modifier avant ta validation",
+        "Exécuter tous les tests automatiquement",
+        "Supprimer l'historique de la session"
+      ],
+      "correctChoice": 0,
+      "expectedKeywords": []
+    },
+    {
+      "code": "TERMINAL-19-Q3",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Quel élément d'une demande permet de vérifier le résultat ?",
+      "choices": [
+        "Les critères d'acceptation, par exemple une commande de test",
+        "Un ton poli",
+        "Une longue description du contexte historique"
+      ],
+      "correctChoice": 0,
+      "expectedKeywords": []
+    },
+    {
+      "code": "TERMINAL-19-Q4",
+      "type": "FREE_TEXT",
+      "prompt": "Un assistant modifie quinze fichiers alors que tu attendais un correctif ciblé. Quels éléments de ta demande et de ton processus corriges-tu ?",
+      "choices": [],
+      "correctChoice": null,
+      "expectedKeywords": [
+        "contraintes",
+        "plan",
+        "critère"
+      ]
+    }
+  ],
+  "checklist": [
+    "Je décris la boucle lire, proposer, agir avec accord, observer",
+    "Je distingue les modes interactif, plan et non interactif",
+    "J'écris mes demandes avec objectif, contexte, contraintes et critères d'acceptation",
+    "Je vérifie toujours le résultat par un test ou une relecture de diff"
+  ]
+}

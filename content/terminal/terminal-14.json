@@ -1,0 +1,115 @@
+{
+  "code": "TERMINAL-14",
+  "language": "BASH",
+  "number": 14,
+  "slug": "traiter-du-texte-sort-cut-awk-sed-et-jq",
+  "title": "Traiter du texte : sort, cut, awk, sed et jq",
+  "difficulty": "INTERMEDIAIRE",
+  "threshold": 75,
+  "activityType": "LAB",
+  "prerequisites": [
+    "TERMINAL-13"
+  ],
+  "objectives": [
+    "Découper, trier et dédoublonner du texte avec cut, sort et uniq",
+    "Agréger et transformer avec awk et sed, et interroger du JSON avec jq",
+    "Construire un rapport reproductible à partir de données brutes"
+  ],
+  "sections": [
+    {
+      "title": "Les outils de découpe : cut, sort, uniq, tr",
+      "conceptCodes": [
+        "TERMINAL-TEXT-PROCESSING"
+      ],
+      "content": "cut -d, -f1 extrait la première colonne d'un CSV, sort trie (sort -n pour les nombres, sort -r à l'envers, sort -u pour dédoublonner), uniq -c compte les doublons consécutifs (d'où le sort préalable), tr a-z A-Z convertit des caractères. head -n et tail -n +2 sélectionnent des lignes (tail -n +2 saute l'en-tête). Ces commandes se composent par pipes : cut -d, -f2 ventes.csv | sort | uniq -c | sort -rn donne le classement des valeurs les plus fréquentes."
+    },
+    {
+      "title": "awk et sed",
+      "content": "awk lit ligne par ligne, découpe en champs ($1, $2, …) et exécute un programme : awk -F, 'NR>1 {t[$1]+=$3} END {for (p in t) print p, t[p]}' somme la colonne 3 par pays (NR est le numéro de ligne, -F, fixe le séparateur). Les tableaux associatifs d'awk remplacent souvent un petit script. sed transforme le flux : sed 's/ancien/nouveau/g' remplace, sed -n '2,4p' affiche des lignes, sed -i modifie un fichier sur place (sauvegarde-le d'abord). L'ordre de sortie d'un tableau awk n'est pas garanti : on le trie ensuite avec sort."
+    },
+    {
+      "title": "JSON avec jq",
+      "content": "Le JSON n'est pas du texte à découper avec sed : jq l'analyse. jq -r '.nom' extrait un champ en texte brut, jq '[.commandes[].total] | add' somme une liste, jq 'select(.total > 100)' filtre. Le texte reste le format d'échange universel des outils Unix, mais dès qu'une donnée est structurée, utilise un outil qui comprend la structure. Sous PowerShell, ConvertFrom-Json et le pipeline d'objets jouent ce rôle."
+    }
+  ],
+  "keyConcepts": [
+    {
+      "code": "TERMINAL-TEXT-PROCESSING",
+      "name": "Traitement de texte en pipeline",
+      "definition": "Les outils cut, sort, uniq, awk, sed et jq lisent un flux, le transforment et le réécrivent, ce qui permet de produire un rapport à partir de données brutes sans écrire de programme.",
+      "whyExists": "Les données arrivent souvent en CSV, en journaux ou en JSON : des outils petits et composables répondent à la plupart des questions ponctuelles.",
+      "whyImportant": "Un indicateur obtenu en deux minutes au terminal peut éviter un développement ; encore faut-il connaître les pièges (en-tête, tri avant uniq, ordre non garanti).",
+      "minimalExample": "tail -n +2 ventes.csv | cut -d, -f1 | sort | uniq -c donne le nombre de lignes par pays.",
+      "professionalExample": "Pendant un audit, il faut savoir combien de clients de chaque pays ont passé commande ce mois-ci à partir d'un export de 200 000 lignes. Un pipeline awk/sort produit le tableau en quelques secondes, et un jq sur la réponse de l'API de facturation vérifie que le total par pays correspond. L'écart de 3 commandes mène à un doublon d'import, corrigé avant la clôture.",
+      "codeExample": "tail -n +2 ventes.csv | cut -d, -f1 | sort | uniq -c\nawk -F, 'NR>1 {t[$1]+=$3} END {for (p in t) print p\"=\"t[p]}' ventes.csv | sort\njq '[.commandes[].total] | add' client.json",
+      "commonMistake": "Appliquer uniq sans sort préalable, oublier l'en-tête du CSV dans les totaux, ou compter sur l'ordre de sortie d'un tableau awk.",
+      "masteryQuestion": "Pourquoi faut-il trier avant uniq -c, et pourquoi trier après awk ?",
+      "masteryProof": "Produire, à partir d'un CSV et d'un JSON, un rapport de comptes, de totaux et de valeurs distinctes, dans un ordre stable."
+    }
+  ],
+  "exercises": [
+    {
+      "code": "TERMINAL-14-E1",
+      "title": "Produire un rapport de ventes à partir d'un CSV et d'un JSON",
+      "statement": "Le script crée ventes.csv (avec en-tête) et client.json. Calcule le nombre de lignes par pays, le total des montants par pays, la liste triée des produits distincts, la somme des commandes du client avec jq et le nombre de lignes renommées par sed.",
+      "starterCode": "#!/usr/bin/env bash\ncat > ventes.csv <<'CSV'\npays,produit,montant\nFR,clavier,50\nDE,souris,20\nFR,souris,20\nFR,ecran,200\nDE,clavier,50\nCSV\ncat > client.json <<'JSON'\n{\"nom\":\"Ada\",\"commandes\":[{\"id\":1,\"total\":120},{\"id\":2,\"total\":80}]}\nJSON\n\n# TODO 1 : affiche \"Lignes par pays: \" suivi de \"DE=2 FR=3\" (tail -n +2 | cut -d, -f1 | sort | uniq -c | awk '{print $2\"=\"$1}' | xargs)\n# TODO 2 : affiche \"Total par pays: \" suivi de \"DE=70 FR=270\" (awk avec tableau associatif, puis sort et xargs)\n# TODO 3 : affiche \"Produits distincts: \" suivi des produits triés sans doublon sur une ligne (cut -d, -f2 | sort -u)\n# TODO 4 : affiche \"Total JSON: \" suivi de la somme des totaux de client.json (jq '[.commandes[].total] | add')\n# TODO 5 : affiche \"Renommés: \" suivi du nombre de lignes qui contiennent \"mouse\" après sed 's/souris/mouse/' ventes.csv\ntrue\n",
+      "expectedOutput": "Lignes par pays: DE=2 FR=3\nTotal par pays: DE=70 FR=270\nProduits distincts: clavier ecran souris\nTotal JSON: 200\nRenommés: 2"
+    }
+  ],
+  "quiz": [
+    {
+      "code": "TERMINAL-14-Q1",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Pourquoi faut-il sort avant uniq -c ?",
+      "choices": [
+        "uniq ne regroupe que les lignes identiques consécutives",
+        "sort accélère uniq",
+        "uniq refuse un fichier non trié"
+      ],
+      "correctChoice": 0,
+      "expectedKeywords": []
+    },
+    {
+      "code": "TERMINAL-14-Q2",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Que fait tail -n +2 ventes.csv ?",
+      "choices": [
+        "Affiche le fichier à partir de la deuxième ligne, donc sans l'en-tête",
+        "Affiche les deux dernières lignes",
+        "Affiche la deuxième ligne uniquement"
+      ],
+      "correctChoice": 0,
+      "expectedKeywords": []
+    },
+    {
+      "code": "TERMINAL-14-Q3",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Quel outil choisir pour sommer un champ d'un fichier JSON ?",
+      "choices": [
+        "jq",
+        "cut",
+        "uniq"
+      ],
+      "correctChoice": 0,
+      "expectedKeywords": []
+    },
+    {
+      "code": "TERMINAL-14-Q4",
+      "type": "FREE_TEXT",
+      "prompt": "Tu dois produire le total des ventes par pays à partir d'un CSV avec en-tête. Décris ton pipeline et les pièges que tu évites.",
+      "choices": [],
+      "correctChoice": null,
+      "expectedKeywords": [
+        "awk",
+        "en-tête",
+        "sort"
+      ]
+    }
+  ],
+  "checklist": [
+    "Je découpe avec cut, trie avec sort et compte avec uniq -c (après sort)",
+    "J'agrège avec awk et je trie sa sortie pour la rendre stable",
+    "Je transforme avec sed et je sauvegarde avant sed -i",
+    "J'interroge du JSON avec jq plutôt qu'avec des outils de texte"
+  ]
+}

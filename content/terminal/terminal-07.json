@@ -1,0 +1,115 @@
+{
+  "code": "TERMINAL-07",
+  "language": "BASH",
+  "number": 7,
+  "slug": "projet-1-ranger-un-dossier-de-projet-en-desordre",
+  "title": "Projet 1 : ranger un dossier de projet en désordre",
+  "difficulty": "PROJET",
+  "threshold": 80,
+  "activityType": "PROJECT",
+  "prerequisites": [
+    "TERMINAL-06"
+  ],
+  "objectives": [
+    "Combiner navigation, copie, déplacement, boucle et test pour automatiser un rangement",
+    "Écrire un script qui classe des fichiers par extension et produit un rapport vérifiable",
+    "Rendre le script sûr : aucune suppression, vérification de l'état final"
+  ],
+  "sections": [
+    {
+      "title": "Cahier des charges",
+      "conceptCodes": [
+        "TERMINAL-AUTOMATION"
+      ],
+      "content": "Un dossier vrac/ contient des fichiers de types variés : documents, images, données, scripts et fichiers sans extension. Le script doit les classer dans docs/, images/, data/, scripts/ et autres/, sans rien supprimer ni écraser, puis afficher le nombre de fichiers par catégorie et le total. L'ordre d'affichage doit être déterministe (alphabétique), pour qu'on puisse comparer deux exécutions."
+    },
+    {
+      "title": "Démarche : boucle, case et vérification",
+      "content": "Parcours les fichiers avec une boucle for f in vrac/*, ignore ce qui n'est pas un fichier ordinaire ([ -f \"$f\" ]), déduis l'extension (${f##*.} retire tout jusqu'au dernier point ; un fichier sans point renvoie son nom entier, à traiter à part) et choisis le dossier cible avec une instruction case. Utilise mkdir -p pour créer les catégories et mv pour déplacer ; cite toujours les variables. Termine par une vérification indépendante du classement : compte les fichiers de chaque dossier avec ls | wc -l et compare le total au nombre initial."
+    },
+    {
+      "title": "Revue professionnelle",
+      "content": "Un bon script d'automatisation est idempotent (le relancer ne casse rien), prévisible (même sortie pour la même entrée) et prudent (il déplace, il ne supprime pas, il refuse de continuer si une hypothèse est fausse). Avant de livrer, relis-le comme un reviewer : que se passe-t-il si un nom contient une espace ? si le dossier est vide ? si deux fichiers portent le même nom dans des catégories différentes ? Documente la décision prise pour les fichiers inclassables : ils vont dans autres/, jamais à la corbeille."
+    }
+  ],
+  "keyConcepts": [
+    {
+      "code": "TERMINAL-AUTOMATION",
+      "name": "Automatiser une tâche simple, sûre et vérifiable",
+      "definition": "Automatiser une tâche au terminal consiste à décrire dans un script les étapes que l'on ferait à la main, avec des garde-fous et une vérification du résultat.",
+      "whyExists": "Les tâches répétitives (ranger, renommer, archiver) sont sources d'erreurs quand on les fait à la main, et un script les rend rejouables.",
+      "whyImportant": "Un script mal conçu est pire qu'un travail manuel : il fait la même erreur, vite et sur beaucoup de fichiers. La prudence et la vérification font la différence.",
+      "minimalExample": "for f in vrac/*; do case \"${f##*.}\" in jpg|png) mkdir -p images; mv \"$f\" images/;; esac; done classe les images.",
+      "professionalExample": "Une équipe reçoit chaque semaine un export de 500 fichiers mélangés. Le script de rangement initial supprimait les doublons sans les comparer et a détruit des fichiers distincts de même nom. La nouvelle version ne supprime jamais : elle déplace, ajoute un suffixe en cas de collision et produit un rapport (compte par catégorie, liste des collisions) relu avant toute purge.",
+      "codeExample": "for f in vrac/*; do\n  [ -f \"$f\" ] || continue\n  case \"${f##*.}\" in\n    pdf|txt) dest=docs ;;\n    jpg|png) dest=images ;;\n    *) dest=autres ;;\n  esac\n  mkdir -p \"$dest\" && mv -n \"$f\" \"$dest/\"\ndone",
+      "commonMistake": "Écraser sans le vouloir (mv sans -n), ne pas prévoir les fichiers sans extension, ou ne pas vérifier le total après le rangement.",
+      "masteryQuestion": "Comment prouves-tu qu'un script de rangement n'a perdu aucun fichier ?",
+      "masteryProof": "Classer des fichiers par extension et démontrer, par un total, que le nombre de fichiers avant et après est identique."
+    }
+  ],
+  "exercises": [
+    {
+      "code": "TERMINAL-07-E1",
+      "title": "Classer les fichiers d'un dossier en désordre",
+      "statement": "Le dossier vrac contient 7 fichiers. Classe chaque fichier dans docs (pdf, txt), images (jpg), data (csv), scripts (sh) ou autres (sans extension connue), sans rien supprimer, puis affiche le nombre de fichiers de chaque catégorie par ordre alphabétique et le total.",
+      "starterCode": "#!/usr/bin/env bash\nmkdir -p vrac\ntouch vrac/rapport.pdf vrac/photo1.jpg vrac/photo2.jpg vrac/notes.txt vrac/donnees.csv vrac/build.sh vrac/LISEZMOI\n\nfor f in vrac/*; do\n  [ -f \"$f\" ] || continue\n  # TODO 1 : déduis l'extension : ext=\"${f##*.}\" (pour LISEZMOI, ext vaut le nom entier : c'est normal)\n  # TODO 2 : avec un case, choisis le dossier : pdf|txt -> docs, jpg -> images, csv -> data, sh -> scripts, sinon autres\n  # TODO 3 : crée le dossier (mkdir -p) et déplace-y le fichier sans écraser (mv -n)\n  :\ndone\n\n# TODO 4 : pour chaque catégorie dans l'ordre alphabétique (autres data docs images scripts),\n#          affiche \"<catégorie>: <nombre de fichiers>\" (ls \"$dir\" | wc -l)\n# TODO 5 : affiche \"Total: \" suivi de la somme des fichiers classés\ntrue\n",
+      "expectedOutput": "autres: 1\ndata: 1\ndocs: 2\nimages: 2\nscripts: 1\nTotal: 7"
+    }
+  ],
+  "quiz": [
+    {
+      "code": "TERMINAL-07-Q1",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Quelle option de mv évite d'écraser un fichier existant ?",
+      "choices": [
+        "-n",
+        "-f",
+        "-r"
+      ],
+      "correctChoice": 0,
+      "expectedKeywords": []
+    },
+    {
+      "code": "TERMINAL-07-Q2",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Que renvoie ${f##*.} pour f=vrac/rapport.pdf ?",
+      "choices": [
+        "pdf",
+        "vrac/rapport",
+        "rapport.pdf"
+      ],
+      "correctChoice": 0,
+      "expectedKeywords": []
+    },
+    {
+      "code": "TERMINAL-07-Q3",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Qu'est-ce qu'un script idempotent ?",
+      "choices": [
+        "Un script qu'on peut relancer sans changer le résultat final",
+        "Un script qui s'exécute plus vite",
+        "Un script qui ne produit aucune sortie"
+      ],
+      "correctChoice": 0,
+      "expectedKeywords": []
+    },
+    {
+      "code": "TERMINAL-07-Q4",
+      "type": "FREE_TEXT",
+      "prompt": "Quelles garanties vérifies-tu avant de livrer un script qui déplace des fichiers pour toute une équipe ?",
+      "choices": [],
+      "correctChoice": null,
+      "expectedKeywords": [
+        "écraser",
+        "total",
+        "vérification"
+      ]
+    }
+  ],
+  "checklist": [
+    "Mon script classe sans supprimer ni écraser",
+    "Il gère les fichiers sans extension et les noms avec espaces",
+    "Il se termine par une vérification du total et un rapport trié",
+    "Je peux le relancer sans changer le résultat (idempotence)"
+  ]
+}

@@ -26,10 +26,11 @@ public class DockerRunnerAvailability implements RunnerAvailability {
             @Value("${dlr.execution.docker-cli:docker}") String dockerCli,
             @Value("${dlr.execution.java-image:dlr/java-runner:21}") String javaImage,
             @Value("${dlr.execution.python-image:dlr/python-runner:3.13}") String pythonImage,
-            @Value("${dlr.execution.typescript-image:dlr/typescript-runner:22}") String typescriptImage
+            @Value("${dlr.execution.typescript-image:dlr/typescript-runner:22}") String typescriptImage,
+            @Value("${dlr.execution.shell-image:dlr/shell-runner:1}") String shellImage
     ) {
         this.dockerCli = DockerJavaRunner.resolveDockerCli(dockerCli);
-        this.images = List.of(javaImage, pythonImage, typescriptImage);
+        this.images = List.of(javaImage, pythonImage, typescriptImage, shellImage);
     }
 
     @Override

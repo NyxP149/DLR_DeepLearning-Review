@@ -1,0 +1,115 @@
+{
+  "code": "TERMINAL-13",
+  "language": "BASH",
+  "number": 13,
+  "slug": "ecrire-des-scripts-bash-robustes",
+  "title": "Écrire des scripts bash robustes",
+  "difficulty": "INTERMEDIAIRE",
+  "threshold": 75,
+  "activityType": "LAB",
+  "prerequisites": [
+    "TERMINAL-12"
+  ],
+  "objectives": [
+    "Écrire un script avec shebang, arguments, fonctions, conditions et codes de sortie explicites",
+    "Activer le mode strict (set -euo pipefail) et comprendre ce qu'il protège",
+    "Nettoyer proprement avec trap, quel que soit le résultat du script"
+  ],
+  "sections": [
+    {
+      "title": "Structure d'un script",
+      "conceptCodes": [
+        "TERMINAL-BASH-SCRIPTING"
+      ],
+      "content": "Un script commence par un shebang (#!/usr/bin/env bash) qui indique l'interpréteur, puis les définitions de fonctions, puis le programme principal. Les arguments sont dans $1, $2, … ; $# donne leur nombre, \"$@\" les transmet tous en préservant les espaces, $0 est le nom du script. Un script doit documenter son usage et le rappeler quand les arguments sont faux, sur stderr, avec un code de sortie non nul."
+    },
+    {
+      "title": "Codes de sortie et mode strict",
+      "content": "Chaque commande renvoie un code : 0 signifie succès, tout autre nombre un échec ; $? donne le dernier. if commande ; then utilise ce code, commande || action s'exécute en cas d'échec. Convention : 1 pour une erreur générale, 2 pour un mauvais usage, 126/127 pour commande non exécutable/introuvable. Le mode strict set -euo pipefail arrête le script à la première commande en échec (-e), refuse les variables non définies (-u) et fait échouer un pipeline si l'un de ses maillons échoue (pipefail). Il ne remplace pas de vrais contrôles, mais il évite qu'un script continue en terrain inconnu."
+    },
+    {
+      "title": "Fonctions, local et trap",
+      "content": "Les fonctions retournent un code (return 2), pas une valeur : pour « retourner » du texte, on l'affiche et l'appelant le capture avec $(...). Déclare local les variables internes pour ne pas polluer le script. trap 'commande' EXIT exécute un nettoyage (fichiers temporaires, verrous) à la fin du script, qu'il réussisse, échoue ou soit interrompu : c'est l'équivalent d'un finally. Teste tes scripts avec ShellCheck (outil d'analyse statique) et exécute-les avec bash -n pour vérifier leur syntaxe."
+    }
+  ],
+  "keyConcepts": [
+    {
+      "code": "TERMINAL-BASH-SCRIPTING",
+      "name": "Scripts bash fiables : arguments, codes de sortie et nettoyage",
+      "definition": "Un script bash fiable valide ses arguments, signale ses échecs par des codes de sortie, s'arrête sur l'inattendu grâce au mode strict et nettoie ses ressources avec trap.",
+      "whyExists": "Un script est un programme comme un autre : sans validation ni gestion d'erreurs, il agit sur de mauvaises hypothèses.",
+      "whyImportant": "Les scripts tournent dans l'intégration continue, les cron et les déploiements, souvent sans personne devant l'écran ; un échec silencieux y est invisible.",
+      "minimalExample": "sauvegarder() { [[ -d \"$1\" ]] || { echo 'dossier introuvable' >&2; return 3; }; ... }",
+      "professionalExample": "Un script de sauvegarde nocturne continuait après l'échec de la copie, puis supprimait les anciennes sauvegardes : en une nuit, plus aucune sauvegarde valide. La correction : set -euo pipefail, vérification de l'espace et du dossier source, suppression des anciennes copies uniquement si la nouvelle est vérifiée, et un trap qui supprime le dossier temporaire dans tous les cas.",
+      "codeExample": "#!/usr/bin/env bash\nset -euo pipefail\ncleanup() { rm -rf \"$tmp\"; }\ntmp=$(mktemp -d)\ntrap cleanup EXIT\n[[ $# -eq 1 ]] || { echo \"usage: $0 <dossier>\" >&2; exit 2; }",
+      "commonMistake": "Oublier de citer \"$@\", écrire un script sans contrôler ses arguments, ou compter sur set -e sans comprendre ses exceptions (conditions, listes ||).",
+      "masteryQuestion": "Que protègent respectivement set -e, set -u et pipefail ?",
+      "masteryProof": "Écrire une fonction qui valide ses arguments avec des codes de sortie distincts et prouver, par la sortie, que le nettoyage final s'exécute."
+    }
+  ],
+  "exercises": [
+    {
+      "code": "TERMINAL-13-E1",
+      "title": "Sauvegarder un dossier avec contrôles et nettoyage",
+      "statement": "Écris la fonction sauvegarder : elle exige un seul argument (code de retour 2 sinon), vérifie que c'est un dossier existant (code 3 sinon), copie son contenu dans sauvegarde et affiche le nombre de fichiers. Le script active le mode strict et affiche toujours « Nettoyage effectué » à la fin grâce à trap.",
+      "starterCode": "#!/usr/bin/env bash\n# TODO 1 : active le mode strict : set -euo pipefail\n# TODO 2 : définis une fonction cleanup qui affiche \"Nettoyage effectué\" et enregistre-la avec trap cleanup EXIT\n\nsauvegarder() {\n  # TODO 3 : si le nombre d'arguments n'est pas 1, affiche un message d'usage sur stderr et fais return 2\n  # TODO 4 : si \"$1\" n'est pas un dossier, affiche un message sur stderr et fais return 3\n  # TODO 5 : compte les fichiers de \"$1\" (find \"$1\" -type f | wc -l), copie le contenu dans le dossier sauvegarde\n  #          (mkdir -p sauvegarde && cp -r \"$1\"/. sauvegarde/) et affiche \"Sauvegarde: <n> fichiers\"\n  return 0\n}\n\nmkdir -p projet/src\ntouch projet/a.txt projet/b.txt projet/src/c.txt\n\nsauvegarder 2>/dev/null || echo \"Usage refusé: code $?\"\nsauvegarder absent 2>/dev/null || echo \"Dossier absent: code $?\"\nsauvegarder projet\n",
+      "expectedOutput": "Usage refusé: code 2\nDossier absent: code 3\nSauvegarde: 3 fichiers\nNettoyage effectué"
+    }
+  ],
+  "quiz": [
+    {
+      "code": "TERMINAL-13-Q1",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Que fait set -u ?",
+      "choices": [
+        "Provoque une erreur si on utilise une variable non définie",
+        "Désactive l'affichage des erreurs",
+        "Fait échouer le script en cas de pipe"
+      ],
+      "correctChoice": 0,
+      "expectedKeywords": []
+    },
+    {
+      "code": "TERMINAL-13-Q2",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Quand la commande définie par trap ... EXIT s'exécute-t-elle ?",
+      "choices": [
+        "À la fin du script, qu'il réussisse ou échoue",
+        "Seulement en cas de succès",
+        "Seulement si l'utilisateur appuie sur Ctrl+C"
+      ],
+      "correctChoice": 0,
+      "expectedKeywords": []
+    },
+    {
+      "code": "TERMINAL-13-Q3",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Que contient \"$@\" ?",
+      "choices": [
+        "Tous les arguments, chacun préservé tel quel",
+        "Le nom du script",
+        "Le code de sortie de la dernière commande"
+      ],
+      "correctChoice": 0,
+      "expectedKeywords": []
+    },
+    {
+      "code": "TERMINAL-13-Q4",
+      "type": "FREE_TEXT",
+      "prompt": "Un script de déploiement continue après l'échec d'une étape. Quelles mesures de robustesse ajoutes-tu ?",
+      "choices": [],
+      "correctChoice": null,
+      "expectedKeywords": [
+        "set -e",
+        "code de sortie",
+        "trap"
+      ]
+    }
+  ],
+  "checklist": [
+    "Mes scripts valident leurs arguments et rappellent leur usage sur stderr",
+    "J'utilise des codes de sortie distincts et documentés",
+    "J'active set -euo pipefail et je sais ce que chaque option protège",
+    "Je nettoie avec trap ... EXIT et je vérifie la syntaxe avec bash -n"
+  ]
+}

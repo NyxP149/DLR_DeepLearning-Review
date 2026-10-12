@@ -53,11 +53,18 @@ public class JsonLabCatalog implements LabCatalog {
             return Arrays.stream(resources)
                     .filter(resource -> !"paths.json".equals(resource.getFilename()))
                     .map(resource -> readLab(objectMapper, resource))
-                    .sorted(Comparator.comparing(LabContent::language).thenComparingInt(LabContent::number))
+                    .sorted(Comparator.comparing(JsonLabCatalog::sortGroup).thenComparingInt(LabContent::number))
                     .toList();
         } catch (IOException exception) {
             throw new IllegalStateException("Impossible de parcourir le contenu pédagogique", exception);
         }
+    }
+
+    // Les laboratoires du parcours Terminal mélangent BASH et POWERSHELL : ils forment un seul groupe pour
+    // que leur numéro, et non leur langage, décide de l'ordre.
+    private static String sortGroup(LabContent lab) {
+        String language = lab.language().toUpperCase();
+        return "BASH".equals(language) || "POWERSHELL".equals(language) ? "TERMINAL" : language;
     }
 
     private List<PathDescriptor> loadPaths(ObjectMapper objectMapper) {

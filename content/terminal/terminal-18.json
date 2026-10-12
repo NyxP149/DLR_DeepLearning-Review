@@ -1,0 +1,115 @@
+{
+  "code": "TERMINAL-18",
+  "language": "POWERSHELL",
+  "number": 18,
+  "slug": "passer-de-bash-a-powershell-equivalences-et-scripts-portables",
+  "title": "Passer de bash à PowerShell : équivalences et scripts portables",
+  "difficulty": "INTERMEDIAIRE",
+  "threshold": 75,
+  "activityType": "LAB",
+  "prerequisites": [
+    "TERMINAL-17"
+  ],
+  "objectives": [
+    "Traduire les commandes courantes entre bash et PowerShell (navigation, fichiers, texte, environnement)",
+    "Choisir entre PowerShell natif, WSL et Git Bash selon la situation sous Windows",
+    "Écrire un script PowerShell portable entre Windows et Linux (Join-Path, séparateurs, détection de plateforme)"
+  ],
+  "sections": [
+    {
+      "title": "Table de correspondance",
+      "conceptCodes": [
+        "TERMINAL-PORTABILITY"
+      ],
+      "content": "pwd devient Get-Location, ls Get-ChildItem, cd Set-Location, cat Get-Content, grep Select-String, mkdir New-Item -ItemType Directory, cp Copy-Item, mv Move-Item, rm Remove-Item, echo Write-Output, export X=1 $env:X = '1', which Get-Command, wc -l | Measure-Object -Line. L'idée est la même, mais PowerShell travaille sur des objets : là où bash enchaîne du texte avec cut et awk, PowerShell lit des propriétés (Where-Object Length -gt 100). Traduire, c'est donc moins remplacer des noms que repenser le pipeline."
+    },
+    {
+      "title": "Windows : PowerShell, WSL ou Git Bash ?",
+      "content": "PowerShell est l'outil natif pour administrer Windows (services, registre, fichiers, Active Directory). WSL (Windows Subsystem for Linux) fait tourner une vraie distribution Linux dans Windows : c'est le choix quand le projet cible Linux (conteneurs, scripts bash, outils Unix) car l'environnement est identique à la production. Git Bash fournit un bash minimal fourni avec Git for Windows, pratique pour de petits scripts. Règle pratique : travaille dans WSL pour le code destiné à Linux, garde PowerShell pour piloter Windows, et évite de mélanger les deux sur les mêmes fichiers sans comprendre les conversions de fin de ligne (CRLF contre LF) et de chemins (C:\\ contre /mnt/c)."
+    },
+    {
+      "title": "Écrire un script portable",
+      "content": "Construis les chemins avec Join-Path et non par concaténation de \\ ; teste la plateforme avec $IsWindows, $IsLinux et $IsMacOS (disponibles dans PowerShell 7) ; utilise [IO.Path]::DirectorySeparatorChar et [IO.Path]::PathSeparator quand c'est nécessaire ; évite les alias spécifiques à Windows (dir, type) dans un script partagé ; fixe l'encodage de sortie. Teste ton script sur les deux systèmes : l'intégration continue peut le faire automatiquement avec une matrice Windows/Linux. Un script portable est souvent plus simple, car il oblige à nommer précisément ce qu'il fait."
+    }
+  ],
+  "keyConcepts": [
+    {
+      "code": "TERMINAL-PORTABILITY",
+      "name": "Équivalences bash/PowerShell et portabilité",
+      "definition": "La portabilité d'un script tient à ne pas dépendre de la plateforme pour les chemins, les séparateurs, les fins de ligne et les commandes ; connaître les équivalences bash/PowerShell permet de changer d'outil sans perdre l'intention.",
+      "whyExists": "Les équipes mélangent postes Windows, serveurs Linux et intégration continue : un même automatisme doit fonctionner partout ou être clairement réservé à un système.",
+      "whyImportant": "La majorité des « ça marche chez moi » entre Windows et Linux viennent des chemins, des fins de ligne et des différences de commandes.",
+      "minimalExample": "Join-Path vrac 'a.txt' donne vrac/a.txt sous Linux et vrac\\a.txt sous Windows ; Get-ChildItem | Measure-Object remplace ls | wc -l.",
+      "professionalExample": "Un script de build écrit en bash par un développeur Linux échoue chez ses collègues sous Windows. Plutôt que de le réécrire, l'équipe standardise sur WSL pour la chaîne de build, ajoute un fichier .gitattributes qui force les fins de ligne LF pour les .sh, et ajoute à l'intégration continue une exécution sous Windows et Linux pour détecter immédiatement une régression de portabilité.",
+      "codeExample": "# bash : ls vrac | wc -l\n(Get-ChildItem vrac | Measure-Object).Count\n# bash : grep -c ERROR app.log\n(Select-String -Path app.log -Pattern ERROR).Count\n$path = Join-Path 'vrac' 'a.txt'     # portable",
+      "commonMistake": "Concaténer des chemins avec \\ ou /, supposer que dir, type ou ls existent partout, ou ignorer les fins de ligne CRLF dans un script bash.",
+      "masteryQuestion": "Dans quel cas choisis-tu WSL plutôt que PowerShell natif pour automatiser un projet ?",
+      "masteryProof": "Réécrire en PowerShell un traitement bash (comptage par extension), le rendre portable avec Join-Path et expliquer les différences."
+    }
+  ],
+  "exercises": [
+    {
+      "code": "TERMINAL-18-E1",
+      "title": "Réécrire un comptage par extension en PowerShell portable",
+      "statement": "Reprends le rangement du labo 3 en PowerShell : compte les fichiers de vrac par extension (l'absence d'extension s'affiche (aucune)), donne le total, vérifie que Join-Path produit le même chemin qu'une concaténation avec le séparateur de la plateforme, et affiche la table d'équivalences bash/PowerShell triée.",
+      "starterCode": "New-Item -ItemType Directory -Path vrac -Force | Out-Null\nforeach ($name in 'a.txt', 'b.txt', 'c.csv', 'd.sh', 'LISEZMOI') {\n    New-Item -ItemType File -Path (Join-Path 'vrac' $name) -Force | Out-Null\n}\n\n$equivalences = @{ 'ls' = 'Get-ChildItem'; 'cat' = 'Get-Content'; 'grep' = 'Select-String'; 'rm' = 'Remove-Item'; 'cd' = 'Set-Location' }\n\n# TODO 1 : affiche \"Extensions: \" suivi de \".csv=1, .sh=1, .txt=2, (aucune)=1\" : groupe les fichiers de vrac par extension\n#          (Group-Object Extension), remplace l'extension vide par (aucune), trie par nom d'extension vide à la fin\n# TODO 2 : affiche \"Fichiers: \" suivi du nombre de fichiers de vrac (Measure-Object)\n# TODO 3 : affiche \"Chemin portable: \" suivi de True si (Join-Path 'vrac' 'a.txt') est égal à \"vrac\" + séparateur + \"a.txt\"\n#          ([IO.Path]::DirectorySeparatorChar)\n# TODO 4 : affiche \"Équivalences:\" puis une ligne \"<bash> -> <PowerShell>\" par entrée de $equivalences, triée par nom\n",
+      "expectedOutput": "Extensions: .csv=1, .sh=1, .txt=2, (aucune)=1\nFichiers: 5\nChemin portable: True\nÉquivalences:\ncat -> Get-Content\ncd -> Set-Location\ngrep -> Select-String\nls -> Get-ChildItem\nrm -> Remove-Item"
+    }
+  ],
+  "quiz": [
+    {
+      "code": "TERMINAL-18-Q1",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Quel est l'équivalent PowerShell de grep -c ERROR app.log ?",
+      "choices": [
+        "(Select-String -Path app.log -Pattern ERROR).Count",
+        "Get-Content app.log -Count ERROR",
+        "Find-Text ERROR app.log"
+      ],
+      "correctChoice": 0,
+      "expectedKeywords": []
+    },
+    {
+      "code": "TERMINAL-18-Q2",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Dans quel cas WSL est-il particulièrement adapté ?",
+      "choices": [
+        "Quand le projet cible Linux (conteneurs, scripts bash, outils Unix)",
+        "Pour administrer le registre Windows",
+        "Pour exécuter des .exe uniquement"
+      ],
+      "correctChoice": 0,
+      "expectedKeywords": []
+    },
+    {
+      "code": "TERMINAL-18-Q3",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Comment construire un chemin portable en PowerShell ?",
+      "choices": [
+        "Join-Path dossier fichier",
+        "\"dossier\\fichier\"",
+        "\"dossier/\" + \"fichier\""
+      ],
+      "correctChoice": 0,
+      "expectedKeywords": []
+    },
+    {
+      "code": "TERMINAL-18-Q4",
+      "type": "FREE_TEXT",
+      "prompt": "Un script bash casse sous Windows chez tes collègues. Quelles causes de portabilité examines-tu ?",
+      "choices": [],
+      "correctChoice": null,
+      "expectedKeywords": [
+        "chemin",
+        "fin de ligne",
+        "WSL"
+      ]
+    }
+  ],
+  "checklist": [
+    "Je connais les équivalents PowerShell des commandes bash courantes",
+    "Je choisis entre PowerShell, WSL et Git Bash selon le contexte",
+    "Je construis les chemins avec Join-Path et je teste la plateforme avec $IsWindows/$IsLinux",
+    "Je traite le problème des fins de ligne CRLF/LF dans les dépôts partagés"
+  ]
+}

@@ -1,0 +1,115 @@
+{
+  "code": "TERMINAL-09",
+  "language": "POWERSHELL",
+  "number": 9,
+  "slug": "objets-et-pipeline-powershell-filtrer-trier-grouper",
+  "title": "Objets et pipeline PowerShell : filtrer, trier, grouper",
+  "difficulty": "INTERMEDIAIRE",
+  "threshold": 75,
+  "activityType": "LAB",
+  "prerequisites": [
+    "TERMINAL-08"
+  ],
+  "objectives": [
+    "Expliquer pourquoi le pipeline PowerShell transmet des objets et non du texte",
+    "Filtrer, trier, sélectionner, compter et grouper avec Where-Object, Sort-Object, Select-Object, Measure-Object et Group-Object",
+    "Inspecter les propriétés d'un objet avec Get-Member et écrire un pipeline lisible"
+  ],
+  "sections": [
+    {
+      "title": "Des objets, pas du texte",
+      "conceptCodes": [
+        "TERMINAL-POWERSHELL-PIPELINE"
+      ],
+      "content": "Quand Get-ChildItem produit des fichiers, il émet des objets FileInfo qui possèdent des propriétés (Name, Length, Extension, LastWriteTime). Le pipeline | transmet ces objets à la commande suivante, qui peut lire leurs propriétés directement : plus besoin de découper du texte avec cut ou awk. Get-ChildItem | Get-Member liste les propriétés et méthodes disponibles ; c'est l'outil pour comprendre ce que l'on manipule."
+    },
+    {
+      "title": "Les cinq verbes du pipeline",
+      "content": "Where-Object filtre (Where-Object Length -gt 100), Sort-Object trie (Sort-Object Length -Descending), Select-Object choisit des propriétés ou des lignes (Select-Object -First 3 Name), Measure-Object calcule des totaux (Measure-Object -Property Length -Sum) et Group-Object regroupe (Group-Object Extension). ForEach-Object applique un traitement à chaque élément ; $_ désigne l'élément courant. Les opérateurs de comparaison sont -eq, -ne, -gt, -lt, -like et -match, insensibles à la casse par défaut."
+    },
+    {
+      "title": "Lisibilité et performance",
+      "content": "Filtre tôt (Where-Object avant Sort-Object) pour réduire le volume traité. Écris un pipeline par ligne logique, avec un retour à la ligne après chaque | ; il se lit comme une phrase. N'utilise Format-Table et Format-List qu'en dernière étape, pour l'affichage : ils transforment les objets en texte de mise en forme et empêchent tout traitement ultérieur. Pour exporter ou échanger des données structurées, Export-Csv et ConvertTo-Json conservent la structure."
+    }
+  ],
+  "keyConcepts": [
+    {
+      "code": "TERMINAL-POWERSHELL-PIPELINE",
+      "name": "Pipeline d'objets",
+      "definition": "Le pipeline PowerShell transmet des objets typés d'une commande à l'autre, ce qui permet de filtrer, trier et agréger par propriétés plutôt que par analyse de texte.",
+      "whyExists": "Analyser du texte formaté est fragile : un changement d'espacement casse le script. Manipuler des propriétés nommées est robuste.",
+      "whyImportant": "Les scripts d'administration Windows reposent sur ce modèle ; comprendre qu'il s'agit d'objets explique à la fois sa puissance et le piège des commandes Format-* placées trop tôt.",
+      "minimalExample": "Get-ChildItem | Where-Object Length -gt 100 | Sort-Object Length -Descending | Select-Object -ExpandProperty Name",
+      "professionalExample": "Un administrateur doit identifier les dossiers de journaux qui dépassent 1 Go sur un serveur de fichiers. En un pipeline (Get-ChildItem -Recurse -File | Group-Object DirectoryName | ForEach-Object { [pscustomobject]@{ Dossier=$_.Name; Octets=($_.Group | Measure-Object Length -Sum).Sum } } | Where-Object Octets -gt 1GB | Sort-Object Octets -Descending), il obtient un rapport exportable en CSV, sans aucune analyse de texte.",
+      "codeExample": "Get-ChildItem data |\n  Where-Object Length -gt 100 |\n  Sort-Object Length -Descending |\n  Select-Object -ExpandProperty Name\n\nGet-ChildItem data | Measure-Object -Property Length -Sum",
+      "commonMistake": "Placer Format-Table au milieu d'un pipeline (la suite reçoit des objets de mise en forme) ou comparer du texte là où une propriété numérique existe.",
+      "masteryQuestion": "Pourquoi un pipeline PowerShell est-il plus robuste qu'un pipeline de texte pour extraire une taille de fichier ?",
+      "masteryProof": "Filtrer, trier, totaliser et grouper des fichiers par propriétés, et afficher les résultats de façon déterministe."
+    }
+  ],
+  "exercises": [
+    {
+      "code": "TERMINAL-09-E1",
+      "title": "Interroger des fichiers par leurs propriétés",
+      "statement": "Le script crée cinq fichiers de tailles connues dans data. Affiche les fichiers de plus de 100 octets du plus gros au plus petit, le total des tailles, le nombre de fichiers par extension (triés par extension) et le plus petit fichier.",
+      "starterCode": "New-Item -ItemType Directory -Path data -Force | Out-Null\n$sizes = @{ 'a.txt' = 10; 'b.txt' = 20; 'report.csv' = 300; 'data.csv' = 50; 'data.json' = 200 }\nforeach ($name in $sizes.Keys) {\n    Set-Content -Path \"data/$name\" -Value ('x' * $sizes[$name]) -NoNewline\n}\n$files = Get-ChildItem data\n\n# TODO 1 : affiche \"Gros fichiers: \" suivi des noms des fichiers de plus de 100 octets, du plus gros au plus petit, séparés par \", \"\n#          (Where-Object, Sort-Object -Descending, ForEach-Object Name, -join)\n# TODO 2 : affiche \"Total octets: \" suivi de la somme des tailles (Measure-Object -Property Length -Sum)\n# TODO 3 : affiche \"Par extension: \" suivi de \".csv=2, .json=1, ...\" : groupe par Extension (Group-Object), trie par Name\n# TODO 4 : affiche \"Plus petit: \" suivi du nom et de la taille entre parenthèses, par exemple a.txt (10)\n",
+      "expectedOutput": "Gros fichiers: report.csv, data.json\nTotal octets: 580\nPar extension: .csv=2, .json=1, .txt=2\nPlus petit: a.txt (10)"
+    }
+  ],
+  "quiz": [
+    {
+      "code": "TERMINAL-09-Q1",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Que transmet le pipeline entre deux cmdlets PowerShell ?",
+      "choices": [
+        "Des objets avec leurs propriétés",
+        "Uniquement du texte",
+        "Uniquement des nombres"
+      ],
+      "correctChoice": 0,
+      "expectedKeywords": []
+    },
+    {
+      "code": "TERMINAL-09-Q2",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Quelle cmdlet permet de totaliser une propriété numérique ?",
+      "choices": [
+        "Measure-Object -Property Length -Sum",
+        "Count-Object",
+        "Sum-Object"
+      ],
+      "correctChoice": 0,
+      "expectedKeywords": []
+    },
+    {
+      "code": "TERMINAL-09-Q3",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Pourquoi placer Format-Table en toute dernière étape ?",
+      "choices": [
+        "Il convertit les objets en mise en forme, inutilisable ensuite",
+        "Il est plus lent s'il est placé en dernier",
+        "Il supprime les doublons"
+      ],
+      "correctChoice": 0,
+      "expectedKeywords": []
+    },
+    {
+      "code": "TERMINAL-09-Q4",
+      "type": "FREE_TEXT",
+      "prompt": "Compare la manière de trouver les cinq plus gros fichiers d'un dossier avec un pipeline bash et avec un pipeline PowerShell.",
+      "choices": [],
+      "correctChoice": null,
+      "expectedKeywords": [
+        "objet",
+        "propriété",
+        "Sort-Object"
+      ]
+    }
+  ],
+  "checklist": [
+    "J'explique que PowerShell transmet des objets et non du texte",
+    "J'enchaîne Where-Object, Sort-Object, Select-Object, Measure-Object et Group-Object",
+    "J'inspecte un objet avec Get-Member",
+    "Je réserve Format-Table et Format-List à l'affichage final"
+  ]
+}

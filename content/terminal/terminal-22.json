@@ -1,0 +1,115 @@
+{
+  "code": "TERMINAL-22",
+  "language": "BASH",
+  "number": 22,
+  "slug": "reviser-le-travail-de-l-ia-diffs-tests-et-commits-atomiques",
+  "title": "Réviser le travail de l'IA : diffs, tests et commits atomiques",
+  "difficulty": "PROFESSIONNEL",
+  "threshold": 80,
+  "activityType": "LAB",
+  "prerequisites": [
+    "TERMINAL-21"
+  ],
+  "objectives": [
+    "Relire un diff produit par un assistant avec une checklist de revue précise",
+    "Automatiser les contrôles répétitifs (secrets, TODO, suppressions massives, périmètre) avec git et grep",
+    "Organiser le travail en branches et commits atomiques pour pouvoir annuler sans douleur"
+  ],
+  "sections": [
+    {
+      "title": "Relire comme un collègue pressé qui a produit trop vite",
+      "conceptCodes": [
+        "TERMINAL-AI-REVIEW"
+      ],
+      "content": "Le code d'un assistant est plausible : il compile, il ressemble au reste. C'est précisément ce qui rend l'erreur difficile à voir. Relis son diff comme celui d'un collègue talentueux mais pressé. Pose-toi les mêmes questions à chaque fois : seuls les fichiers attendus sont-ils modifiés ? des suppressions sont-elles inattendues ? un secret ou une dépendance est-il apparu ? des tests ont-ils été supprimés ou affaiblis pour passer ? des TODO ont-ils été laissés ? Exécute les tests toi-même : un « tout passe » rapporté par l'assistant n'est pas une preuve."
+    },
+    {
+      "title": "Automatiser le premier tri",
+      "content": "Les contrôles mécaniques s'écrivent en quelques lignes : git diff --cached --name-only liste les fichiers touchés, git diff --cached --numstat donne les lignes ajoutées et supprimées par fichier, git diff --cached -U0 | grep '^+.*TODO' repère les TODO ajoutés, git grep --cached -lE 'motif' cherche un secret dans l'index. Un script de revue qui échoue sur un secret ou une suppression massive donne un premier verdict objectif avant ta lecture ; il ne remplace pas la revue humaine, il la concentre sur ce qui compte."
+    },
+    {
+      "title": "Commits atomiques et retour arrière",
+      "content": "Fais travailler l'assistant sur une branche dédiée et valide par petites étapes : un commit par changement cohérent, avec un message qui explique l'intention. git add -p permet de choisir des morceaux de fichier pour couper un changement en deux commits. Un historique propre rend git revert, git bisect et la revue possibles ; un commit géant « refactorisation par l'IA » est invérifiable. Pour essayer plusieurs approches en parallèle sans mélanger les changements, git worktree crée des répertoires de travail séparés sur des branches différentes."
+    }
+  ],
+  "keyConcepts": [
+    {
+      "code": "TERMINAL-AI-REVIEW",
+      "name": "Revue de diff et contrôles automatiques",
+      "definition": "La revue d'un changement produit par une IA consiste à vérifier son périmètre, ses suppressions, ses secrets, ses tests et son comportement ; des contrôles automatiques effectuent le premier tri sur le diff.",
+      "whyExists": "Un assistant produit vite et de façon convaincante ; la fiabilité ne vient pas de sa confiance en lui mais de la vérification indépendante de son travail.",
+      "whyImportant": "Les erreurs les plus coûteuses sont les plus discrètes : un test affaibli, une clé commitée, un bloc de code supprimé. Une revue systématique les attrape avant la fusion.",
+      "minimalExample": "git diff --cached --numstat | awk '{d+=$2} END {print d+0}' donne le nombre total de lignes supprimées par le changement indexé.",
+      "professionalExample": "Un assistant corrige un test instable en supprimant l'assertion qui échouait : l'intégration continue passe au vert, le bug reste. L'équipe ajoute un contrôle de revue qui signale toute suppression d'assertion ou de test dans un diff et exige une justification ; le script de revue bloque aussi les clés détectées dans les lignes ajoutées. La revue humaine se concentre ensuite sur le comportement, non sur la chasse aux oublis.",
+      "codeExample": "git diff --cached --name-only | wc -l\ngit diff --cached --numstat | awk '{d+=$2} END {print d+0}'\ngit diff --cached -U0 | grep -c '^+.*TODO'\ngit grep --cached -lE 'API_KEY|sk-[a-z]+-[0-9]+'",
+      "commonMistake": "Accepter un diff parce que les tests passent sans vérifier qu'ils testent encore quelque chose, ou valider un commit géant impossible à relire.",
+      "masteryQuestion": "Quels contrôles mécaniques appliques-tu à un diff d'assistant avant de le lire en détail ?",
+      "masteryProof": "Produire un rapport de revue automatique (fichiers, secret, TODO, suppressions) avec un verdict, à partir d'un changement indexé."
+    }
+  ],
+  "exercises": [
+    {
+      "code": "TERMINAL-22-E1",
+      "title": "Écrire un rapport de revue automatique sur un changement indexé",
+      "statement": "Un assistant a modifié trois fichiers (une clé en clair, un TODO, huit lignes supprimées). Écris le contrôle qui affiche le nombre de fichiers modifiés, les fichiers contenant un secret, les TODO ajoutés, les lignes supprimées avec le seuil de 5, et le verdict REFUSÉ s'il y a un secret ou trop de suppressions.",
+      "starterCode": "#!/usr/bin/env bash\ngit config --global user.name \"Ada\"\ngit config --global user.email \"ada@dlr.dev\"\ngit config --global init.defaultBranch main\nmkdir projet && cd projet\ngit init -q\nprintf 'l1\\nl2\\nl3\\nl4\\nl5\\nl6\\nl7\\nl8\\nl9\\nl10\\n' > app.py\necho 'DEBUG = False' > config.py\necho '# Projet' > README.md\ngit add -A && git commit -q -m \"Initial\"\n\n# Changement de l'assistant\nprintf 'l1\\nl2\\n' > app.py\necho 'API_KEY = \"sk-live-1234\"' >> config.py\necho 'TODO: documenter' >> README.md\ngit add -A\n\nMAX_DELETIONS=5\n# TODO 1 : affiche \"Fichiers modifiés: \" suivi du nombre de fichiers indexés (git diff --cached --name-only | wc -l)\n# TODO 2 : cherche un secret dans l'index (git grep --cached -lE 'API_KEY|sk-[a-z]+-[0-9]+') ;\n#          affiche \"Secret détecté: oui (<fichiers>)\" ou \"Secret détecté: non\"\n# TODO 3 : affiche \"TODO ajoutés: \" suivi du nombre de lignes ajoutées qui contiennent TODO (git diff --cached -U0 | grep -c '^+.*TODO')\n# TODO 4 : affiche \"Lignes supprimées: <n> (seuil 5)\" avec n = somme de la colonne des suppressions de git diff --cached --numstat\n# TODO 5 : affiche \"Verdict: REFUSÉ\" si un secret est détecté ou si n dépasse MAX_DELETIONS, sinon \"Verdict: ACCEPTÉ\"\ntrue\n",
+      "expectedOutput": "Fichiers modifiés: 3\nSecret détecté: oui (config.py)\nTODO ajoutés: 1\nLignes supprimées: 8 (seuil 5)\nVerdict: REFUSÉ"
+    }
+  ],
+  "quiz": [
+    {
+      "code": "TERMINAL-22-Q1",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Pourquoi un « tout passe » rapporté par l'assistant ne suffit-il pas ?",
+      "choices": [
+        "Les tests ont pu être supprimés ou affaiblis pour passer",
+        "Les tests ne servent à rien",
+        "L'assistant ment toujours"
+      ],
+      "correctChoice": 0,
+      "expectedKeywords": []
+    },
+    {
+      "code": "TERMINAL-22-Q2",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Quelle commande résume les lignes ajoutées et supprimées par fichier dans l'index ?",
+      "choices": [
+        "git diff --cached --numstat",
+        "git log --oneline",
+        "git status --ignored"
+      ],
+      "correctChoice": 0,
+      "expectedKeywords": []
+    },
+    {
+      "code": "TERMINAL-22-Q3",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Pourquoi préférer plusieurs petits commits à un seul commit géant ?",
+      "choices": [
+        "Ils se relisent, s'annulent et se déboguent plus facilement",
+        "Ils pèsent moins sur le disque",
+        "Git refuse les gros commits"
+      ],
+      "correctChoice": 0,
+      "expectedKeywords": []
+    },
+    {
+      "code": "TERMINAL-22-Q4",
+      "type": "FREE_TEXT",
+      "prompt": "Un assistant propose un correctif et les tests passent. Quelles vérifications fais-tu avant de fusionner ?",
+      "choices": [],
+      "correctChoice": null,
+      "expectedKeywords": [
+        "diff",
+        "tests",
+        "secret"
+      ]
+    }
+  ],
+  "checklist": [
+    "Je relis le diff avec une checklist : périmètre, suppressions, secrets, tests, dépendances, TODO",
+    "J'automatise le premier tri avec git diff --cached et grep",
+    "Je travaille sur une branche et je fais des commits atomiques",
+    "Je lance moi-même les tests avant de fusionner"
+  ]
+}

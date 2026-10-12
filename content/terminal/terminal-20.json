@@ -1,0 +1,115 @@
+{
+  "code": "TERMINAL-20",
+  "language": "BASH",
+  "number": 20,
+  "slug": "donner-du-contexte-durable-claude-md-et-conventions-de-depot",
+  "title": "Donner du contexte durable : CLAUDE.md et conventions de dépôt",
+  "difficulty": "PROFESSIONNEL",
+  "threshold": 80,
+  "activityType": "LAB",
+  "prerequisites": [
+    "TERMINAL-19"
+  ],
+  "objectives": [
+    "Expliquer pourquoi le contexte est une ressource limitée et à quoi sert un fichier d'instructions de dépôt (CLAUDE.md)",
+    "Rédiger un fichier d'instructions court, précis et vérifiable (commandes, architecture, conventions, interdits)",
+    "Générer et contrôler automatiquement ce fichier à partir de l'état réel du projet"
+  ],
+  "sections": [
+    {
+      "title": "Le contexte est la ressource rare",
+      "conceptCodes": [
+        "TERMINAL-PROJECT-CONTEXT"
+      ],
+      "content": "Un assistant ne se souvient pas de ton projet d'une session à l'autre et sa fenêtre de contexte est limitée : tout ce qu'il lit la consomme. Un fichier d'instructions à la racine du dépôt est chargé automatiquement au démarrage : CLAUDE.md pour Claude Code, AGENTS.md ou GEMINI.md pour d'autres outils. Il existe aussi un fichier personnel au niveau utilisateur (~/.claude/CLAUDE.md) pour tes préférences générales. La commande /init en génère un premier brouillon à partir du dépôt : à relire et à raccourcir, jamais à accepter tel quel. Les noms exacts des commandes et des options évoluent vite : vérifie toujours la documentation de la version que tu utilises."
+    },
+    {
+      "title": "Ce qu'il faut y mettre, et ce qu'il faut éviter",
+      "content": "Mets-y ce que l'assistant ne peut pas deviner : les commandes exactes de build, de test et de lint (« make test »), l'architecture en quelques lignes (où sont les modules), les conventions (nommage, format des commits), les pièges connus et les interdits (ne jamais toucher à migrations/, ne pas modifier les tests pour les faire passer). Évite ce qui se lit dans le code, les longs tutoriels et tout secret. Court et concret vaut mieux que complet : chaque ligne inutile dilue les consignes importantes. Pour de la documentation volumineuse, référence-la avec une importation (@docs/architecture.md) plutôt que de la recopier."
+    },
+    {
+      "title": "Entretenir le fichier comme du code",
+      "content": "Le fichier d'instructions est versionné et relu en revue comme le reste. Règle d'entretien : quand l'assistant se trompe deux fois de la même manière, ajoute la règle correspondante ; quand une règle n'est plus vraie, supprime-la, car une consigne périmée est pire que l'absence de consigne. Vérifie les contradictions et teste le fichier : ouvre une session neuve et regarde si l'assistant applique bien les conventions. Un script peut aussi garder le fichier honnête, par exemple en vérifiant que la commande de test annoncée existe encore."
+    }
+  ],
+  "keyConcepts": [
+    {
+      "code": "TERMINAL-PROJECT-CONTEXT",
+      "name": "Fichier d'instructions de dépôt (CLAUDE.md)",
+      "definition": "Le fichier d'instructions de dépôt est un document court, versionné avec le projet, que l'assistant charge au démarrage pour connaître les commandes, l'architecture, les conventions et les interdits.",
+      "whyExists": "L'assistant repart de zéro à chaque session ; sans mémoire durable, tu répètes les mêmes consignes et il fait les mêmes erreurs.",
+      "whyImportant": "Un contexte clair améliore la qualité des changements et réduit les allers-retours ; un contexte trop long ou périmé a l'effet inverse et coûte du contexte à chaque session.",
+      "minimalExample": "Un CLAUDE.md de quelques lignes avec « Commandes : make test », l'architecture en trois lignes et l'interdit « ne jamais modifier les tests pour les faire passer ».",
+      "professionalExample": "Une équipe constate que l'assistant lance npm test dans un dépôt Maven et crée des fichiers hors des dossiers prévus. Elle ajoute un CLAUDE.md de vingt lignes : commandes réelles (mvn test), arborescence cible, conventions de commit, interdits. Les erreurs de commande disparaissent, et une règle ajoutée après un incident (« ne pas modifier db/migrations ») empêche sa répétition. Un contrôle en intégration continue vérifie que la commande de test annoncée existe.",
+      "codeExample": "## Commandes\n- Tests : mvn test\n\n## Architecture\n- src/main : code, src/test : tests\n\n## Conventions\n- Commits courts à l'impératif\n\n## Interdits\n- Ne jamais modifier les tests pour les faire passer",
+      "commonMistake": "Recopier des pages de documentation dans le fichier, y laisser des consignes périmées ou contradictoires, ou y écrire un secret.",
+      "masteryQuestion": "Que mettre dans le fichier d'instructions, et que laisser dans le code ou la documentation ?",
+      "masteryProof": "Détecter la commande de test de plusieurs projets, générer un fichier d'instructions à quatre rubriques et contrôler sa taille et l'absence de secret."
+    }
+  ],
+  "exercises": [
+    {
+      "code": "TERMINAL-20-E1",
+      "title": "Détecter la commande de test et générer un CLAUDE.md contrôlé",
+      "statement": "Quatre projets utilisent des outils différents. Écris detect_test (npm test, mvn test, pytest ou (inconnu)), génère projets/a/CLAUDE.md avec quatre rubriques dont la commande détectée, puis contrôle ses rubriques, sa taille (30 lignes au plus) et l'absence de secret.",
+      "starterCode": "#!/usr/bin/env bash\nmkdir -p projets/a projets/b projets/c projets/d\necho '{\"scripts\":{\"test\":\"vitest\"}}' > projets/a/package.json\necho '<project/>' > projets/b/pom.xml\necho '[tool.pytest]' > projets/c/pyproject.toml\ntouch projets/d/LISEZMOI\n\ndetect_test() {\n  # TODO 1 : si \"$1/package.json\" existe affiche \"npm test\" ; sinon pom.xml -> \"mvn test\" ; sinon pyproject.toml -> \"pytest\" ;\n  #          sinon \"(inconnu)\"\n  echo \"(inconnu)\"\n}\n\nfor d in projets/*; do\n  echo \"$(basename \"$d\"): $(detect_test \"$d\")\"\ndone\n\n# TODO 2 : écris projets/a/CLAUDE.md (heredoc) avec exactement quatre rubriques dans cet ordre :\n#          \"## Commandes\" (avec la ligne \"- Tests : <commande détectée>\"), \"## Architecture\", \"## Conventions\", \"## Interdits\"\n#          chaque rubrique contient une ou deux lignes de texte\n# TODO 3 : affiche \"Sections: \" suivi des titres de rubriques séparés par \", \" (sans \"## \") :\n#          grep '^## ' ... | sed 's/^## //' | paste -sd, - | sed 's/,/, /g'\n# TODO 4 : affiche \"Taille: ok\" si le fichier fait au plus 30 lignes (wc -l), sinon \"Taille: trop long\"\n# TODO 5 : affiche \"Secrets: aucun\" si aucune ligne ne ressemble à un secret (grep -qiE '(password|api[_-]?key|secret|token)[[:space:]]*[=:]'),\n#          sinon \"Secrets: détectés\"\ntrue\n",
+      "expectedOutput": "a: npm test\nb: mvn test\nc: pytest\nd: (inconnu)\nSections: Commandes, Architecture, Conventions, Interdits\nTaille: ok\nSecrets: aucun"
+    }
+  ],
+  "quiz": [
+    {
+      "code": "TERMINAL-20-Q1",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Pourquoi un fichier d'instructions de dépôt est-il utile ?",
+      "choices": [
+        "L'assistant repart de zéro à chaque session et y retrouve commandes et conventions",
+        "Il remplace les tests",
+        "Il accélère le processeur"
+      ],
+      "correctChoice": 0,
+      "expectedKeywords": []
+    },
+    {
+      "code": "TERMINAL-20-Q2",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Que faut-il éviter d'y mettre ?",
+      "choices": [
+        "Des secrets et des pages de documentation recopiées",
+        "La commande de test",
+        "Les interdits du projet"
+      ],
+      "correctChoice": 0,
+      "expectedKeywords": []
+    },
+    {
+      "code": "TERMINAL-20-Q3",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Que faire quand l'assistant se trompe deux fois de la même manière ?",
+      "choices": [
+        "Ajouter la règle correspondante au fichier d'instructions",
+        "Ignorer l'erreur",
+        "Désactiver les permissions"
+      ],
+      "correctChoice": 0,
+      "expectedKeywords": []
+    },
+    {
+      "code": "TERMINAL-20-Q4",
+      "type": "FREE_TEXT",
+      "prompt": "Comment gardes-tu un fichier CLAUDE.md utile dans le temps, sans qu'il devienne un fourre-tout périmé ?",
+      "choices": [],
+      "correctChoice": null,
+      "expectedKeywords": [
+        "court",
+        "revue",
+        "règle"
+      ]
+    }
+  ],
+  "checklist": [
+    "J'explique pourquoi le contexte est limité et comment un fichier d'instructions le soulage",
+    "J'y mets commandes, architecture, conventions et interdits, et aucun secret",
+    "Je garde le fichier court, versionné et relu en revue",
+    "Je supprime les règles périmées et j'ajoute celles qui préviennent une erreur répétée"
+  ]
+}
