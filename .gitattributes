@@ -1,0 +1,4 @@
+# Les scripts exécutés dans les runners Linux doivent rester en LF, même sous Windows (autocrlf).
+*.sh text eol=lf
+apps/api/src/test/resources/terminal-solutions/*.ps1 text eol=lf
+runners/**/Dockerfile text eol=lf
