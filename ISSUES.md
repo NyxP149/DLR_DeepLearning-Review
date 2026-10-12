@@ -403,3 +403,16 @@ Pour le parcours Terminal, les premiers essais échouaient : `./deploy.sh` répo
 
 **Solution**
 Le répertoire de travail des langages shell est monté avec `exec` (les langages compilés gardent `noexec`), `HOME` et les variables `XDG_*` pointent vers `/work`, et l'image fixe `LC_ALL=C.UTF-8`. `DockerRunnerAvailability` et `start-hybrid.ps1` contrôlent maintenant les quatre images. Tous les exercices ont été rejoués dans le vrai conteneur ; `DockerJavaRunnerTest` verrouille les options de montage.
+
+---
+
+## Les preuves cochées du portfolio disparaissaient à chaque chargement
+- severity: low
+- date: 2026-10
+- tags: Portfolio, Persistance, UX
+
+**Problème**
+Sur l'écran Portfolio, les cases « Preuves à inclure », le titre, le résumé et les décisions du formulaire « Nouvelle fiche projet » n'étaient conservés nulle part : ils vivaient dans des signaux Angular et revenaient aux valeurs par défaut (`JAVA-01` seul) à chaque rechargement. Seul le bouton « Créer le brouillon privé » enregistrait quelque chose.
+
+**Solution**
+Le formulaire est enregistré automatiquement en base (table `portfolio_draft`, migration V21, routes `GET|PUT /api/portfolio/draft`) et restauré au chargement, avec un indicateur « Brouillon enregistré ». La sauvegarde attend la fin de la restauration pour ne pas écraser le brouillon par les valeurs par défaut. Couvert par `PortfolioControllerTest`. Reste connu : la création d'un projet refuse plus de 12 preuves.

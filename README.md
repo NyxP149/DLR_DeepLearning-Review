@@ -21,7 +21,7 @@ DLR est une application locale d'apprentissage de la programmation, avec évalua
 - guide de déploiement actuel et futur avec Neon et Render dans [`docs/DLR_Deploye.md`](docs/DLR_Deploye.md) ;
 - synchronisation V2 par appareils appairés, journal idempotent et conflits sans perte.
 - recommandations adaptatives expliquées, analytics d'autonomie et professeur Ollama à cinq rôles ;
-- portfolio privé avec aperçu Markdown, export ZIP GitHub-ready et filtrage des secrets ;
+- portfolio privé avec aperçu Markdown, export ZIP GitHub-ready, filtrage des secrets et brouillon du formulaire enregistré en base ;
 - catalogue extensible avec dix parcours complets, projets portfolio et défis de synthèse.
 - carnet personnel par laboratoire, page de notes groupée par langage et autosauvegarde des réponses de réflexion ;
 - analyses Ollama persistantes sous chaque réponse, avec suppression explicite ;
@@ -194,4 +194,5 @@ Les routes principales ajoutées sont :
 - `GET /api/adaptation/insights` ;
 - `POST /api/tutor/consult` ;
 - `GET|POST /api/portfolio/projects`, aperçu README et export ZIP ;
+- `GET|PUT /api/portfolio/draft`, brouillon du formulaire de création de projet ;
 - `GET /api/paths/catalog`.
