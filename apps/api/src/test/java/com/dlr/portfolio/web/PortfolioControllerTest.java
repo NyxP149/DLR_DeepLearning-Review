@@ -20,6 +20,7 @@ import java.util.zip.ZipInputStream;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @SpringBootTest
@@ -33,6 +34,36 @@ class PortfolioControllerTest {
         jdbcTemplate.update("delete from portfolio_export");
         jdbcTemplate.update("delete from portfolio_decision");
         jdbcTemplate.update("delete from portfolio_project");
+        jdbcTemplate.update("delete from portfolio_draft");
+    }
+
+    @Test
+    void keepsTheProjectFormDraftBetweenLoads() throws Exception {
+        mockMvc.perform(get("/api/portfolio/draft")).andExpect(status().isNoContent());
+
+        mockMvc.perform(put("/api/portfolio/draft").contentType(MediaType.APPLICATION_JSON).content("""
+                {"title":"Mon parcours","summary":"Résumé en cours","labCodes":["JAVA-01","JAVA-02","TERMINAL-03"],"decisions":"Une\\nDeux"}
+                """)).andExpect(status().isOk());
+        mockMvc.perform(put("/api/portfolio/draft").contentType(MediaType.APPLICATION_JSON).content("""
+                {"title":"Mon parcours","summary":"Résumé en cours","labCodes":["JAVA-01","SPRING_BOOT-04"],"decisions":"Une\\nDeux"}
+                """)).andExpect(status().isOk());
+
+        JsonNode draft = objectMapper.readTree(mockMvc.perform(get("/api/portfolio/draft"))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
+        assertThat(draft.get("title").asText()).isEqualTo("Mon parcours");
+        assertThat(draft.get("decisions").asText()).isEqualTo("Une\nDeux");
+        assertThat(draft.get("labCodes")).extracting(JsonNode::asText).containsExactly("JAVA-01", "SPRING_BOOT-04");
+        assertThat(jdbcTemplate.queryForObject("select count(*) from portfolio_draft", Integer.class)).isEqualTo(1);
+    }
+
+    @Test
+    void acceptsAnEmptySelectionButRejectsMalformedLabCodes() throws Exception {
+        mockMvc.perform(put("/api/portfolio/draft").contentType(MediaType.APPLICATION_JSON).content("""
+                {"title":"","summary":"","labCodes":[],"decisions":""}
+                """)).andExpect(status().isOk());
+        mockMvc.perform(put("/api/portfolio/draft").contentType(MediaType.APPLICATION_JSON).content("""
+                {"title":"x","summary":"y","labCodes":["java,01"],"decisions":""}
+                """)).andExpect(status().isBadRequest());
     }
 
     @Test

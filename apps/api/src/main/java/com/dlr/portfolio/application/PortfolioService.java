@@ -15,6 +15,7 @@ import java.time.Instant;
 import java.util.HexFormat;
 import java.util.List;
 import java.util.Locale;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.regex.Pattern;
 import java.util.zip.ZipEntry;
@@ -56,6 +57,26 @@ public class PortfolioService {
                     UUID.randomUUID(), id, decisions.get(i).strip(), i);
         }
         return find(id);
+    }
+
+    public Optional<Draft> draft() {
+        return jdbcTemplate.query("select title, summary, source_lab_codes, decisions, updated_at from portfolio_draft where id = 1",
+                (row, index) -> new Draft(row.getString("title"), row.getString("summary"),
+                        row.getString("source_lab_codes").isEmpty() ? List.of() : List.of(row.getString("source_lab_codes").split(",")),
+                        row.getString("decisions"), row.getTimestamp("updated_at").toInstant())).stream().findFirst();
+    }
+
+    @Transactional
+    public Draft saveDraft(String title, String summary, List<String> labCodes, String decisions) {
+        Timestamp now = Timestamp.from(Instant.now());
+        String codes = String.join(",", labCodes.stream().map(String::strip).distinct().toList());
+        int updated = jdbcTemplate.update("update portfolio_draft set title = ?, summary = ?, source_lab_codes = ?, decisions = ?, updated_at = ? where id = 1",
+                title, summary, codes, decisions, now);
+        if (updated == 0) {
+            jdbcTemplate.update("insert into portfolio_draft (id, title, summary, source_lab_codes, decisions, updated_at) values (1, ?, ?, ?, ?, ?)",
+                    title, summary, codes, decisions, now);
+        }
+        return draft().orElseThrow();
     }
 
     public Project find(UUID id) {
@@ -136,4 +157,6 @@ public class PortfolioService {
 
     public record Project(UUID id, String slug, String title, String summary, List<String> labCodes,
                           String status, List<String> decisions, Instant createdAt, Instant updatedAt) {}
+
+    public record Draft(String title, String summary, List<String> labCodes, String decisions, Instant updatedAt) {}
 }

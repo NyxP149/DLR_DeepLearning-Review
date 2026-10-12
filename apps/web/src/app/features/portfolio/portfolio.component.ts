@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, computed, inject, signal } from '@angular/core';
 
 import { PortfolioApiService, PortfolioProject } from '../../core/api/portfolio-api.service';
 
@@ -8,13 +8,13 @@ import { PortfolioApiService, PortfolioProject } from '../../core/api/portfolio-
     <header class="page-header"><p>Portfolio V2</p><h1>Transforme tes preuves en projet</h1><span>Privé par défaut. Rien n’est publié automatiquement.</span></header>
     <div class="layout">
       <section class="builder">
-        <h2>Nouvelle fiche projet</h2>
-        <label>Titre<input [value]="title()" (input)="title.set(value($event))" maxlength="160"></label>
-        <label>Résumé public<textarea [value]="summary()" (input)="summary.set(value($event))" rows="4" maxlength="1200"></textarea></label>
+        <h2>Nouvelle fiche projet <small class="draft-state" role="status" aria-live="polite">{{ draftLabel() }}</small></h2>
+        <label>Titre<input [value]="title()" (input)="title.set(value($event)); scheduleDraftSave()" maxlength="160"></label>
+        <label>Résumé public<textarea [value]="summary()" (input)="summary.set(value($event)); scheduleDraftSave()" rows="4" maxlength="1200"></textarea></label>
         <fieldset><legend>Preuves à inclure</legend><div class="labs">
           @for (lab of labs; track lab) { <label><input type="checkbox" [checked]="selectedLabs().includes(lab)" (change)="toggleLab(lab)">{{ lab }}</label> }
         </div></fieldset>
-        <label>Décisions techniques <small>une par ligne</small><textarea [value]="decisions()" (input)="decisions.set(value($event))" rows="4" maxlength="4000"></textarea></label>
+        <label>Décisions techniques <small>une par ligne</small><textarea [value]="decisions()" (input)="decisions.set(value($event)); scheduleDraftSave()" rows="4" maxlength="4000"></textarea></label>
         <button class="primary" type="button" (click)="create()" [disabled]="saving() || !title().trim() || !summary().trim() || selectedLabs().length === 0">{{ saving() ? 'Création…' : 'Créer le brouillon privé' }}</button>
         @if (error()) { <p class="error" role="alert">{{ error() }}</p> }
         <aside><strong>Contrôle de confidentialité</strong><span>Les scores, le profil, les conversations IA et la synchronisation ne sont jamais lus. Un secret potentiel bloque la création.</span></aside>
@@ -33,7 +33,7 @@ import { PortfolioApiService, PortfolioProject } from '../../core/api/portfolio-
     @if (markdown()) { <section class="preview"><div><h2>Aperçu Markdown</h2><button type="button" (click)="markdown.set('')">Fermer</button></div><pre>{{ markdown() }}</pre></section> }
   `,
   styles: [`
-    :host{display:block}.page-header{margin-bottom:1.4rem}.page-header p{color:var(--accent);font-size:.75rem;font-weight:800;letter-spacing:.09em;margin:0;text-transform:uppercase}.page-header h1{font-size:clamp(2rem,4vw,3rem);margin:.25rem 0}.page-header span,.builder small,.projects p,.projects article span,.empty{color:var(--text-muted)}.layout{display:grid;gap:1rem;grid-template-columns:minmax(300px,.8fr) minmax(400px,1.2fr)}.builder,.projects,.preview{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:1.2rem}.builder h2,.projects h2,.preview h2{font-size:1rem;margin:0 0 1rem}.builder>label{color:var(--text-muted);display:grid;font-size:.75rem;font-weight:750;gap:.35rem;margin:.8rem 0}.builder input,.builder textarea{background:#0b1018;border:1px solid var(--border);border-radius:.55rem;color:var(--text);font:inherit;padding:.7rem;resize:vertical}fieldset{border:1px solid var(--border);border-radius:.6rem;margin:.8rem 0;padding:.8rem}legend{color:var(--text-muted);font-size:.75rem;font-weight:750}.labs{display:grid;gap:.5rem;grid-template-columns:repeat(3,1fr)}.labs label{align-items:center;display:flex;font-size:.78rem;gap:.35rem}.primary{background:var(--accent);border:0;border-radius:.55rem;color:#07111f;cursor:pointer;font:inherit;font-weight:800;padding:.7rem 1rem}.primary:disabled{opacity:.45}.builder aside{background:var(--success-soft);border:1px solid #2c765f;border-radius:.65rem;display:grid;gap:.35rem;margin-top:1rem;padding:.8rem}.builder aside span{color:var(--text-muted);font-size:.72rem;line-height:1.5}.error{color:var(--danger)}.section-title{align-items:center;display:flex;justify-content:space-between}.section-title span{background:var(--accent-soft);border-radius:99px;padding:.25rem .55rem}.projects article{align-items:center;border-top:1px solid var(--border);display:flex;gap:1rem;justify-content:space-between;padding:1rem 0}.projects article.active{background:var(--accent-soft);margin:0 -.5rem;padding:1rem .5rem}.projects h3{margin:.2rem 0}.projects article small{color:var(--success);font-weight:800}.projects article p{margin:.3rem 0}.actions{display:flex;gap:.4rem}.actions button,.preview button{background:#202a3d;border:1px solid var(--border);border-radius:.5rem;color:var(--text);cursor:pointer;padding:.55rem .7rem}.preview{margin-top:1rem}.preview>div{align-items:center;display:flex;justify-content:space-between}.preview pre{background:#0b1018;border:1px solid var(--border);border-radius:.6rem;line-height:1.55;overflow:auto;padding:1rem;white-space:pre-wrap}@media(max-width:900px){.layout{grid-template-columns:1fr}.projects article{align-items:flex-start;flex-direction:column}}@media(max-width:520px){.labs{grid-template-columns:repeat(2,1fr)}.actions{flex-wrap:wrap}}
+    :host{display:block}.draft-state{color:var(--text-muted);font-size:.7rem;font-weight:600;margin-left:.6rem}.page-header{margin-bottom:1.4rem}.page-header p{color:var(--accent);font-size:.75rem;font-weight:800;letter-spacing:.09em;margin:0;text-transform:uppercase}.page-header h1{font-size:clamp(2rem,4vw,3rem);margin:.25rem 0}.page-header span,.builder small,.projects p,.projects article span,.empty{color:var(--text-muted)}.layout{display:grid;gap:1rem;grid-template-columns:minmax(300px,.8fr) minmax(400px,1.2fr)}.builder,.projects,.preview{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:1.2rem}.builder h2,.projects h2,.preview h2{font-size:1rem;margin:0 0 1rem}.builder>label{color:var(--text-muted);display:grid;font-size:.75rem;font-weight:750;gap:.35rem;margin:.8rem 0}.builder input,.builder textarea{background:#0b1018;border:1px solid var(--border);border-radius:.55rem;color:var(--text);font:inherit;padding:.7rem;resize:vertical}fieldset{border:1px solid var(--border);border-radius:.6rem;margin:.8rem 0;padding:.8rem}legend{color:var(--text-muted);font-size:.75rem;font-weight:750}.labs{display:grid;gap:.5rem;grid-template-columns:repeat(3,1fr)}.labs label{align-items:center;display:flex;font-size:.78rem;gap:.35rem}.primary{background:var(--accent);border:0;border-radius:.55rem;color:#07111f;cursor:pointer;font:inherit;font-weight:800;padding:.7rem 1rem}.primary:disabled{opacity:.45}.builder aside{background:var(--success-soft);border:1px solid #2c765f;border-radius:.65rem;display:grid;gap:.35rem;margin-top:1rem;padding:.8rem}.builder aside span{color:var(--text-muted);font-size:.72rem;line-height:1.5}.error{color:var(--danger)}.section-title{align-items:center;display:flex;justify-content:space-between}.section-title span{background:var(--accent-soft);border-radius:99px;padding:.25rem .55rem}.projects article{align-items:center;border-top:1px solid var(--border);display:flex;gap:1rem;justify-content:space-between;padding:1rem 0}.projects article.active{background:var(--accent-soft);margin:0 -.5rem;padding:1rem .5rem}.projects h3{margin:.2rem 0}.projects article small{color:var(--success);font-weight:800}.projects article p{margin:.3rem 0}.actions{display:flex;gap:.4rem}.actions button,.preview button{background:#202a3d;border:1px solid var(--border);border-radius:.5rem;color:var(--text);cursor:pointer;padding:.55rem .7rem}.preview{margin-top:1rem}.preview>div{align-items:center;display:flex;justify-content:space-between}.preview pre{background:#0b1018;border:1px solid var(--border);border-radius:.6rem;line-height:1.55;overflow:auto;padding:1rem;white-space:pre-wrap}@media(max-width:900px){.layout{grid-template-columns:1fr}.projects article{align-items:flex-start;flex-direction:column}}@media(max-width:520px){.labs{grid-template-columns:repeat(2,1fr)}.actions{flex-wrap:wrap}}
   `],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
@@ -61,9 +61,54 @@ export class PortfolioComponent {
   readonly saving = signal(false);
   readonly error = signal('');
 
-  constructor() { this.refresh(); }
+  readonly draftState = signal<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  readonly draftLabel = computed(() => ({ idle: '', saving: 'Enregistrement du brouillon…', saved: 'Brouillon enregistré', error: 'Brouillon non enregistré' })[this.draftState()]);
+  private draftTimer: ReturnType<typeof setTimeout> | undefined;
+  private draftLoaded = false;
+
+  constructor() {
+    this.refresh();
+    this.restoreDraft();
+    inject(DestroyRef).onDestroy(() => { if (this.draftTimer) { clearTimeout(this.draftTimer); this.saveDraft(); } });
+  }
+
+  private restoreDraft(): void {
+    this.api.draft().subscribe({
+      next: (draft) => {
+        if (draft) {
+          this.title.set(draft.title);
+          this.summary.set(draft.summary);
+          this.decisions.set(draft.decisions);
+          this.selectedLabs.set(draft.labCodes);
+          this.draftState.set('saved');
+        }
+        this.draftLoaded = true;
+      },
+      error: () => { this.draftLoaded = true; }
+    });
+  }
+
+  /** Enregistre le brouillon en base peu après la dernière modification, jamais avant la fin de sa restauration. */
+  scheduleDraftSave(): void {
+    if (!this.draftLoaded) return;
+    this.draftState.set('saving');
+    if (this.draftTimer) clearTimeout(this.draftTimer);
+    this.draftTimer = setTimeout(() => this.saveDraft(), 500);
+  }
+
+  private saveDraft(): void {
+    this.draftTimer = undefined;
+    this.api.saveDraft({ title: this.title(), summary: this.summary(), labCodes: this.selectedLabs(), decisions: this.decisions() }).subscribe({
+      next: () => this.draftState.set('saved'),
+      error: () => this.draftState.set('error')
+    });
+  }
+
   refresh(): void { this.api.list().subscribe({ next: (items) => this.projects.set(items), error: () => this.error.set('Le module portfolio est indisponible.') }); }
-  toggleLab(code: string): void { this.selectedLabs.update((items) => items.includes(code) ? items.filter((item) => item !== code) : [...items, code]); }
+  toggleLab(code: string): void {
+    this.selectedLabs.update((items) => items.includes(code) ? items.filter((item) => item !== code) : [...items, code]);
+    this.scheduleDraftSave();
+  }
   create(): void {
     this.saving.set(true); this.error.set('');
     const decisions = this.decisions().split(/\r?\n/).map((item) => item.trim()).filter(Boolean);
