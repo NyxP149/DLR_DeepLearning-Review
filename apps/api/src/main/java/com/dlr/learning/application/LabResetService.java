@@ -40,6 +40,8 @@ public class LabResetService {
                 "delete from quiz_answer where attempt_id in (select id from attempt where lab_id = ?)", normalized);
         jdbcTemplate.update(
                 "delete from attempt_checklist where attempt_id in (select id from attempt where lab_id = ?)", normalized);
+        jdbcTemplate.update("delete from lab_pretest_answer where lab_code = ?", normalized);
+        jdbcTemplate.update("delete from lab_pretest where lab_code = ?", normalized);
         int attempts = jdbcTemplate.update("delete from attempt where lab_id = ?", normalized);
         jdbcTemplate.update("delete from adaptation_recommendation where lab_code = ?", normalized);
 

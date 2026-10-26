@@ -15,6 +15,12 @@ export interface LabSummary {
   activityType: 'LAB' | 'PROJECT' | 'CHALLENGE';
   prerequisites: string[];
 }
+export interface PretestGain { total: number; correctAtStart: number; correctAtEnd: number }
+export interface Pretest {
+  status: 'PENDING' | 'ANSWERED' | 'SKIPPED' | 'NOT_APPLICABLE';
+  questionCodes: string[];
+  gain: PretestGain | null;
+}
 export type LabProgressState = 'LOCKED' | 'AVAILABLE' | 'IN_PROGRESS' | 'ACTION_REQUIRED' | 'COMPLETED';
 export interface PathProgress {
   pathCode: string; totalLabs: number; completedLabs: number; progressPercent: number; nextLabCode: string | null;
@@ -33,6 +39,18 @@ export class LabApiService {
 
   getLab(code: string): Observable<LabContent> {
     return this.http.get<LabContent>(`${this.apiUrl}/labs/${encodeURIComponent(code)}`);
+  }
+
+  pretest(code: string): Observable<Pretest> {
+    return this.http.get<Pretest>(`${this.apiUrl}/labs/${encodeURIComponent(code)}/pretest`);
+  }
+
+  submitPretest(code: string, answers: { questionId: string; selectedChoice: number | null }[]): Observable<Pretest> {
+    return this.http.post<Pretest>(`${this.apiUrl}/labs/${encodeURIComponent(code)}/pretest`, { answers });
+  }
+
+  skipPretest(code: string): Observable<Pretest> {
+    return this.http.post<Pretest>(`${this.apiUrl}/labs/${encodeURIComponent(code)}/pretest/skip`, {});
   }
 
   listLabs(): Observable<LabSummary[]> {

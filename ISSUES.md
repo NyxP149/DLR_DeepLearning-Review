@@ -442,3 +442,16 @@ Lors du déploiement du modèle v2, certains extraits censés contenir un bug (p
 
 **Solution**
 Chaque solution et chaque squelette de nouvel exercice est exécuté dans le vrai conteneur Docker (la solution doit produire exactement la sortie attendue, le squelette doit compiler sans la produire), et les sorties sont relues contre des valeurs calculées à la main ; l'exemple Python-03 utilise désormais `[2, 4, 6]` qui donne `[4]` avec le bug, et JAVA-17 attend « Erreur : … ».
+
+---
+
+## Le test e2e du bilan de laboratoire échouait depuis la réécriture de JAVA-01
+- severity: low
+- date: 2026-10
+- tags: Tests, E2E
+
+**Problème**
+Le test Playwright « le bilan d'un laboratoire terminé reste affiché après un rechargement » exécutait l'ancien JAVA-01 (une seule ligne de sortie, une question à choix et une question libre). Depuis la réécriture de JAVA-01 en V3.27 (quatre lignes de sortie, cinq questions) l'exécution n'était plus jugée réussie, et personne ne l'avait vu parce que la suite e2e n'était pas relancée avec les tests Java.
+
+**Solution**
+Le test écrit les quatre lignes attendues, répond aux quatre questions à choix par leur indice et rédige la question libre avec les mots-clés attendus. Les autres tests de laboratoire ignorent désormais le quiz de départ (V3.29) par un mock de `/api/labs/*/pretest`, et un test dédié couvre ce quiz. Suite complète : 18 tests e2e verts sur une base neuve ; le test de planning dépend de l'état de la base et échoue si JAVA-01 a déjà une tentative.

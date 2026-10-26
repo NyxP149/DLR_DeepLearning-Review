@@ -57,7 +57,8 @@
 - [x] Modèle V3.25 déployé sur 138 laboratoires : Java 11-24, Spring Boot, Python, TypeScript, Angular, SQL, DevOps, LLM, Architecture (cours en sections, quiz expliqués, exercices validés dans le conteneur) (V3.26)
 - [x] Modèle v2 appliqué aussi au parcours Terminal (24) et à JAVA-01 à 09 : les 172 laboratoires suivent le même format (V3.27)
 - [x] Tableau de bord de calibration sur la page Coach : confiance déclarée contre réussite réelle, verdict, sources quiz et révisions, angles morts reliés aux labos (V3.28)
-- [ ] Évolution de la calibration dans le temps, quiz de départ avant le cours, exercices de transfert, maîtrise fondée sur le rappel différé
+- [x] Quiz de départ avant le cours : trois questions sans correction ni effet sur le score, « Je ne sais pas » admis, comparées à la première réponse du quiz final dans le bilan (V3.29)
+- [ ] Évolution de la calibration dans le temps, gain du quiz de départ agrégé au tableau de bord, exercices de transfert, maîtrise fondée sur le rappel différé
 
 ## Déploiement cloud
 

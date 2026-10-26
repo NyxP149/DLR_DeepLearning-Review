@@ -1,5 +1,12 @@
 import { expect, test } from '@playwright/test';
 
+// Le quiz de départ masque le cours tant qu'il est en attente : les tests existants l'ignorent, un test dédié le couvre.
+test.beforeEach(async ({ page }) => {
+  await page.route('**/api/labs/*/pretest', (route) => route.fulfill({
+    json: { status: 'NOT_APPLICABLE', questionCodes: [], gain: null }
+  }));
+});
+
 test('catalogue complet puis ouverture du parcours Learn LLMs', async ({ page, request }) => {
   const health = await request.get('http://127.0.0.1:8081/actuator/health');
   expect(health.ok()).toBeTruthy();
@@ -30,6 +37,40 @@ test('un laboratoire expose concept, runner et réinitialisation', async ({ page
   await expect(page.getByText('Concept clé · LLM-PROMPT-TOKENS')).toBeVisible();
   await expect(page.getByRole('button', { name: 'Compiler et exécuter' })).toBeEnabled();
   await expect(page.getByRole('button', { name: 'Réinitialiser ce laboratoire' })).toBeVisible();
+});
+
+test('le quiz de départ précède le cours et peut être validé sans voir la correction', async ({ page }) => {
+  let state: { status: string; questionCodes: string[]; gain: null } = {
+    status: 'PENDING', questionCodes: ['JAVA-01-Q1', 'JAVA-01-Q2', 'JAVA-01-Q3'], gain: null
+  };
+  let submitted: { answers: { questionId: string; selectedChoice: number | null }[] } | null = null;
+  await page.route('**/api/labs/JAVA-01/pretest', async (route) => {
+    if (route.request().method() === 'POST') {
+      submitted = route.request().postDataJSON();
+      state = { ...state, status: 'ANSWERED' };
+    }
+    await route.fulfill({ json: state });
+  });
+
+  await page.goto('/labs/JAVA-01');
+  await expect(page.getByRole('heading', { name: 'Que sais-tu déjà ?' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Compiler et exécuter' })).toHaveCount(0);
+  const start = page.getByRole('button', { name: 'Valider et commencer le cours' });
+  await expect(start).toBeDisabled();
+
+  const questions = page.locator('.pretest .quiz-question');
+  await expect(questions).toHaveCount(3);
+  await questions.nth(0).locator('input[type=radio]').first().check();
+  await questions.nth(1).getByLabel('Je ne sais pas').check();
+  await questions.nth(2).getByLabel('Je ne sais pas').check();
+  await start.click();
+
+  await expect(page.getByRole('button', { name: 'Compiler et exécuter' })).toBeVisible();
+  expect(submitted).toEqual({ answers: [
+    { questionId: 'JAVA-01-Q1', selectedChoice: 0 },
+    { questionId: 'JAVA-01-Q2', selectedChoice: null },
+    { questionId: 'JAVA-01-Q3', selectedChoice: null }
+  ] });
 });
 
 test('le curseur CodeMirror se déplace librement et le texte reste modifiable', async ({ page }) => {
@@ -248,15 +289,19 @@ test('le bilan d’un laboratoire terminé reste affiché après un rechargement
   await expect(page.getByText('a été remis à zéro')).toBeVisible();
   await page.getByRole('button', { name: 'Éditeur simple' }).click();
   await page.getByRole('textbox', { name: 'Code JAVA' }).fill(
-    'public class Main {\n    public static void main(String[] args) {\n        System.out.println("DLR Java Lab 1");\n    }\n}\n'
+    'public class Main {\n    public static void main(String[] args) {\n        System.out.println("DLR Java Lab 1");\n        System.out.println("Source: Main.java");\n        System.out.println("Bytecode: Main.class");\n        System.out.println("Exécution: JVM");\n    }\n}\n'
   );
 
   await page.getByRole('button', { name: 'Compiler et exécuter' }).click();
   await expect(page.locator('.execution-result.success')).toBeVisible({ timeout: 15_000 });
 
-  await page.getByRole('radio', { name: 'javac' }).check();
+  // Bonnes réponses des quatre questions à choix (indices dans le contenu de JAVA-01).
+  const correctChoices = [1, 1, 2, 1];
+  for (const [index, choice] of correctChoices.entries()) {
+    await page.locator('.assessment-panel .quiz-question').nth(index).locator('.choice-list input').nth(choice).check();
+  }
   await page.getByPlaceholder('Explique avec tes propres mots…').fill(
-    'Le code source est compilé en bytecode que la JVM exécute.'
+    'Le code source est compilé en bytecode que la JVM exécute ; une erreur de compilation arrête tout avant l’exécution.'
   );
   for (const item of await page.locator('.checklist input[type="checkbox"]').all()) {
     await item.check();

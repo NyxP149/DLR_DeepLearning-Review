@@ -33,6 +33,46 @@
         <p class="reset-notice" role="status">{{ message }}</p>
       }
 
+      @if (pretest()?.status === 'PENDING') {
+        <article class="panel pretest" aria-labelledby="pretest-title">
+          <p class="eyebrow">Quiz de départ · avant le cours</p>
+          <h2 id="pretest-title">Que sais-tu déjà ?</h2>
+          <p>
+            {{ pretestQuestions(state.lab).length }} questions avant de lire le cours. Tu n'es pas censé·e connaître les réponses :
+            essayer avant d'apprendre aide à mieux retenir ensuite, et « Je ne sais pas » est une réponse honnête.
+            Ce quiz ne compte pas dans ton score et la correction n'est pas affichée ; tu retrouveras ces questions dans le quiz final.
+          </p>
+          <div class="quiz-list">
+            @for (question of pretestQuestions(state.lab); track question.code; let questionIndex = $index) {
+              <fieldset class="quiz-question">
+                <legend><span>{{ questionIndex + 1 }}.</span> {{ promptText(question.prompt) }}</legend>
+                @for (code of promptCode(question.prompt); track $index) { <pre class="code-block"><code>{{ code }}</code></pre> }
+                <div class="choice-list">
+                  @for (choice of question.choices; track choice; let choiceIndex = $index) {
+                    <label>
+                      <input type="radio" [name]="'pretest-' + question.code" [checked]="pretestValues()[question.code] === choiceIndex"
+                             (change)="onPretestChoice(question.code, choiceIndex)" />
+                      <span>{{ choice }}</span>
+                    </label>
+                  }
+                  <label class="unknown">
+                    <input type="radio" [name]="'pretest-' + question.code" [checked]="pretestValues()[question.code] === null"
+                           (change)="onPretestChoice(question.code, null)" />
+                    <span>Je ne sais pas</span>
+                  </label>
+                </div>
+              </fieldset>
+            }
+          </div>
+          @if (pretestError(); as message) { <p class="execution-error" role="alert">{{ message }}</p> }
+          <div class="pretest-actions">
+            <button type="button" [disabled]="pretestBusy() || !pretestComplete(state.lab)" (click)="submitPretest(state.lab)">
+              {{ pretestBusy() ? 'Enregistrement…' : 'Valider et commencer le cours' }}
+            </button>
+            <button type="button" class="secondary-button" [disabled]="pretestBusy()" (click)="skipPretest(state.lab)">Passer le quiz de départ</button>
+          </div>
+        </article>
+      } @else {
       <div class="workspace-grid">
         <section class="lesson-column">
           <article class="panel objectives">
@@ -318,6 +358,9 @@
                   Un score te semble incorrect (pratique ou tests à 0 % par exemple) ? Corrige le code, le quiz ou la checklist
                   ci-dessus puis clique de nouveau sur « Recalculer mon score » — pas besoin de réinitialiser le laboratoire.
                 </p>
+                @if (pretest()?.gain; as gain) {
+                  <p class="pretest-gain">Quiz de départ : {{ gain.correctAtStart }}/{{ gain.total }} avant le cours, {{ gain.correctAtEnd }}/{{ gain.total }} à ta première réponse du quiz final, sur les mêmes questions.</p>
+                }
                 @if (result.reviewScheduled) {
                   <p>Une révision prioritaire a été programmée pour demain.</p>
                 }
@@ -337,6 +380,7 @@
           </article>
         </aside>
       </div>
+      }
     }
   }
 }

@@ -24,6 +24,7 @@ DLR est une application locale d'apprentissage de la programmation, avec évalua
 - portfolio privé avec aperçu Markdown, export ZIP GitHub-ready, filtrage des secrets et brouillon du formulaire enregistré en base ;
 - révisions par question de rappel sans le cours, confiance déclarée avant correction, feedback immédiat par question et score V2 sans aide ;
 - tableau de bord de calibration sur la page Coach : confiance déclarée contre réussite réelle, verdict et angles morts ;
+- quiz de départ avant le cours (sans correction ni effet sur le score), comparé au quiz final dans le bilan ;
 - 172 laboratoires au modèle v2 (cours en sections avec exemple travaillé, 5 questions expliquées, exercices validés dans le conteneur Docker) ;
 - catalogue extensible avec dix parcours complets, projets portfolio et défis de synthèse.
 - carnet personnel par laboratoire, page de notes groupée par langage et autosauvegarde des réponses de réflexion ;

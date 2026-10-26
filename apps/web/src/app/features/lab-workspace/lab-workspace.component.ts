@@ -3,7 +3,7 @@ import { ChangeDetectionStrategy, Component, inject, OnDestroy, signal } from '@
 import { ActivatedRoute } from '@angular/router';
 import { RouterLink } from '@angular/router';
 import { HttpErrorResponse } from '@angular/common/http';
-import { catchError, firstValueFrom, map, Observable, of, startWith, switchMap, tap } from 'rxjs';
+import { catchError, firstValueFrom, forkJoin, map, Observable, of, startWith, switchMap, tap } from 'rxjs';
 
 import {
   AttemptWorkspace,
@@ -12,7 +12,7 @@ import {
   CompletionResult,
   QuizAnswerResponse
 } from '../../core/api/execution-api.service';
-import { LabApiService } from '../../core/api/lab-api.service';
+import { LabApiService, Pretest } from '../../core/api/lab-api.service';
 import { TutorApiService } from '../../core/api/tutor-api.service';
 import { DraftStoreService } from '../../core/storage/draft-store.service';
 import { LabMemoryStoreService } from '../../core/storage/lab-memory-store.service';
@@ -83,6 +83,12 @@ export class LabWorkspaceComponent implements OnDestroy {
   readonly reflectionStatus = signal('Les réponses sont sauvegardées pendant la saisie.');
   readonly reflectionAnalyses = signal<Record<string, string>>({});
   readonly deletingAnalysis = signal<string | null>(null);
+  /** Quiz de départ : `null` tant qu'il est inconnu ou sans objet ; il masque le cours tant qu'il est « PENDING ». */
+  readonly pretest = signal<Pretest | null>(null);
+  /** Réponse choisie par question : un indice de choix, ou `null` pour « Je ne sais pas ». */
+  readonly pretestValues = signal<Record<string, number | null>>({});
+  readonly pretestBusy = signal(false);
+  readonly pretestError = signal<string | null>(null);
 
   private attemptId: string | null = null;
   private attemptPromise: Promise<string> | null = null;
@@ -138,9 +144,16 @@ export class LabWorkspaceComponent implements OnDestroy {
     map((params) => params.get('code') ?? 'JAVA-01'),
     switchMap((code) =>
       this.labApi.getLab(code).pipe(
-        switchMap((lab) => this.executionApi.currentWorkspace(lab.code).pipe(
-          tap((workspace) => {
+        switchMap((lab) => forkJoin({
+          workspace: this.executionApi.currentWorkspace(lab.code),
+          // Un quiz de départ indisponible ne doit jamais bloquer le cours.
+          pretest: this.labApi.pretest(lab.code).pipe(catchError(() => of(null)))
+        }).pipe(
+          tap(({ workspace, pretest }) => {
           this.clearReflectionTimers();
+          this.pretest.set(pretest);
+          this.pretestValues.set({});
+          this.pretestError.set(null);
           this.activeLabCode = lab.code;
           this.activeLanguage = lab.language;
           this.attemptId = workspace?.attempt.id ?? null;
@@ -334,6 +347,7 @@ export class LabWorkspaceComponent implements OnDestroy {
       }
       await firstValueFrom(this.executionApi.saveChecklist(attemptId, this.checklist()));
       this.completion.set(await firstValueFrom(this.executionApi.complete(attemptId)));
+      await this.refreshPretest(lab.code);
     } catch (error) {
       this.completionError.set(this.errorMessage(error));
     } finally {
@@ -389,10 +403,60 @@ export class LabWorkspaceComponent implements OnDestroy {
       this.tutorResponse.set(null);
       this.tutorError.set(null);
       this.resetNotice.set(`${lab.code} a été remis à zéro. Une nouvelle tentative sera créée à la prochaine exécution.`);
+      this.pretestValues.set({});
+      await this.refreshPretest(lab.code);
     } catch (error) {
       this.completionError.set(this.errorMessage(error));
     } finally {
       this.resetting.set(false);
+    }
+  }
+
+  /** Questions du quiz de départ : les premières questions à choix, désignées par l'API. */
+  pretestQuestions(lab: LabContent): QuizQuestion[] {
+    const codes = this.pretest()?.questionCodes ?? [];
+    return lab.quiz.filter((question) => codes.includes(question.code));
+  }
+
+  onPretestChoice(questionId: string, choice: number | null): void {
+    this.pretestValues.update((values) => ({ ...values, [questionId]: choice }));
+  }
+
+  pretestComplete(lab: LabContent): boolean {
+    const values = this.pretestValues();
+    return this.pretestQuestions(lab).every((question) => values[question.code] !== undefined);
+  }
+
+  async submitPretest(lab: LabContent): Promise<void> {
+    if (this.pretestBusy() || !this.pretestComplete(lab)) return;
+    const values = this.pretestValues();
+    await this.settlePretest(() => firstValueFrom(this.labApi.submitPretest(
+      lab.code,
+      this.pretestQuestions(lab).map((question) => ({ questionId: question.code, selectedChoice: values[question.code] ?? null })))));
+  }
+
+  async skipPretest(lab: LabContent): Promise<void> {
+    if (this.pretestBusy()) return;
+    await this.settlePretest(() => firstValueFrom(this.labApi.skipPretest(lab.code)));
+  }
+
+  private async settlePretest(call: () => Promise<Pretest>): Promise<void> {
+    this.pretestBusy.set(true);
+    this.pretestError.set(null);
+    try {
+      this.pretest.set(await call());
+    } catch (error) {
+      this.pretestError.set(this.errorMessage(error));
+    } finally {
+      this.pretestBusy.set(false);
+    }
+  }
+
+  private async refreshPretest(labCode: string): Promise<void> {
+    try {
+      this.pretest.set(await firstValueFrom(this.labApi.pretest(labCode)));
+    } catch {
+      this.pretest.set(null);
     }
   }
 
