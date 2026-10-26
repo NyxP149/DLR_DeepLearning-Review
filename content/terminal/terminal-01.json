@@ -57,6 +57,14 @@
       "statement": "Le script prépare l'arborescence atelier/{src/app,docs,tests}. Déplace-toi uniquement avec des chemins relatifs (cd), affiche le répertoire courant après chaque déplacement, puis liste le contenu du dossier du projet sur une seule ligne.",
       "starterCode": "#!/usr/bin/env bash\n# Prépare l'arborescence du projet\nmkdir -p atelier/src/app atelier/docs atelier/tests\ntouch atelier/src/app/main.txt atelier/docs/guide.txt\n\ncd atelier\n# TODO 1 : descends dans src/app avec un chemin RELATIF, puis affiche le répertoire courant (pwd)\n# TODO 2 : va dans docs avec un chemin relatif qui remonte de deux niveaux (../..), puis affiche pwd\n# TODO 3 : remonte d'un niveau avec .., puis affiche pwd\n# TODO 4 : affiche \"Contenu: \" suivi des noms du dossier courant sur UNE ligne (ls | xargs)\ntrue\n",
       "expectedOutput": "/work/atelier/src/app\n/work/atelier/docs\n/work/atelier\nContenu: docs src tests"
+    },
+    {
+      "code": "TERMINAL-01-T1",
+      "title": "Transfert : se repérer dans l'arborescence d'un site",
+      "statement": "Même notion, autre contexte : le script prépare l'arborescence site/{pages/blog,assets,tests}. À partir du dossier site, déplace-toi uniquement avec des chemins relatifs (cd) : affiche le répertoire courant (pwd) en entrant dans pages/blog, puis dans assets, puis à la racine du site, et liste enfin le contenu du dossier du site sur une seule ligne « Contenu: … ». Aucun indice n'est proposé et cet exercice ne compte pas dans le score. Sortie exacte :\n/work/site/pages/blog\n/work/site/assets\n/work/site\nContenu: assets pages tests",
+      "starterCode": "#!/usr/bin/env bash\nmkdir -p site/pages/blog site/assets site/tests\ncd site\n# À toi : écris la suite, sans étapes imposées.\n",
+      "expectedOutput": "/work/site/pages/blog\n/work/site/assets\n/work/site\nContenu: assets pages tests",
+      "kind": "TRANSFER"
     }
   ],
   "quiz": [

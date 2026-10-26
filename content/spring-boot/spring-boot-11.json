@@ -59,6 +59,14 @@
       "statement": "Pour l'API métier, modélise l'état d'une commande avec un enum dont les transitions sont contrôlées (CREATED → PAID → SHIPPED, jamais en arrière) et calcule son total en centimes sans erreur d'arrondi.",
       "starterCode": "import java.util.List;\nimport java.util.Locale;\n\nenum Status {\n    CREATED, PAID, SHIPPED;\n\n    boolean canMoveTo(Status next) {\n        // TODO 1 : n'autorise que le passage à l'état immédiatement suivant (ordinal() + 1)\n        return false;\n    }\n}\n\nclass OrderAggregate {\n    private Status status = Status.CREATED;\n    private final List<Integer> lineCents;\n\n    OrderAggregate(List<Integer> lineCents) {\n        this.lineCents = lineCents;\n    }\n\n    void moveTo(Status next) {\n        // TODO 2 : si la transition est interdite, lance IllegalStateException(\"transition refusée: <actuel> -> <next>\")\n        // TODO 3 : affiche \"Commande 1: <actuel> -> <next>\" puis change l'état\n    }\n\n    String total() {\n        // TODO 4 : additionne les lignes (en centimes) et retourne le total au format \"85.50\"\n        return \"\";\n    }\n}\n\npublic class Main {\n    public static void main(String[] args) {\n        var order = new OrderAggregate(List.of(2500, 2500, 3550));\n        order.moveTo(Status.PAID);\n        order.moveTo(Status.SHIPPED);\n        try {\n            order.moveTo(Status.PAID);\n        } catch (IllegalStateException error) {\n            System.out.println(error.getMessage());\n        }\n        System.out.println(\"Total: \" + order.total());\n    }\n}\n",
       "expectedOutput": "Commande 1: CREATED -> PAID\nCommande 1: PAID -> SHIPPED\ntransition refusée: SHIPPED -> PAID\nTotal: 85.50"
+    },
+    {
+      "code": "SPRING_BOOT-11-T1",
+      "title": "Transfert : modéliser le cycle de vie d'une facture",
+      "statement": "Même notion, autre contexte : modélise une facture avec un enum Status dont les transitions sont contrôlées (DRAFT → SENT → PAID, jamais en arrière, IllegalStateException sinon) et calcule son total TTC en centimes entiers (lignes de 1999 et 2501 centimes, TVA de 20 %) avant de l'afficher au format euros avec deux décimales. Joue les trois transitions indiquées dans la sortie. Aucun indice n'est proposé et cet exercice ne compte pas dans le score. Sortie exacte :\nFacture 1: DRAFT -> SENT\nFacture 1: SENT -> PAID\ntransition refusee: PAID -> SENT\nTotal TTC: 54.00",
+      "starterCode": "public class Main {\n    public static void main(String[] args) {\n        // À toi : écris la suite, sans étapes imposées.\n    }\n}\n",
+      "expectedOutput": "Facture 1: DRAFT -> SENT\nFacture 1: SENT -> PAID\ntransition refusee: PAID -> SENT\nTotal TTC: 54.00",
+      "kind": "TRANSFER"
     }
   ],
   "quiz": [

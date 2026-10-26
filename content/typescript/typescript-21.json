@@ -59,6 +59,14 @@
       "statement": "Une optimisation se prouve par une mesure. Compte les appels de la suite de Fibonacci récursive naïve, puis écris une version mémoïsée (cache de type Map) qui compte les siens de la même façon, et compare les deux à un budget de 100 appels.",
       "starterCode": "export {};\n\nlet naiveCalls = 0;\nlet memoCalls = 0;\n\nfunction fibNaive(n: number): number {\n  naiveCalls++;\n  return n < 2 ? n : fibNaive(n - 1) + fibNaive(n - 2);\n}\n\nconst cache = new Map<number, number>();\n\nfunction fibMemo(n: number): number {\n  memoCalls++;\n  // TODO : si n < 2 retourne n ; si le résultat est déjà dans le cache retourne-le ;\n  //        sinon calcule-le récursivement avec fibMemo, mémorise-le dans le cache puis retourne-le\n  return n < 2 ? n : fibMemo(n - 1) + fibMemo(n - 2);\n}\n\nconst BUDGET = 100;\nfibNaive(20);\nfibMemo(20);\nconsole.log(`fib(20) naïf: ${naiveCalls} appels`);\nconsole.log(`fib(20) mémoïsé: ${memoCalls} appels`);\nconsole.log(\n  `Budget ${BUDGET} appels: naïf ${naiveCalls > BUDGET ? 'dépasse' : 'respecte'}, mémoïsé ${memoCalls > BUDGET ? 'dépasse' : 'respecte'}`,\n);\n",
       "expectedOutput": "fib(20) naïf: 21891 appels\nfib(20) mémoïsé: 39 appels\nBudget 100 appels: naïf dépasse, mémoïsé respecte"
+    },
+    {
+      "code": "TYPESCRIPT-21-T1",
+      "title": "Transfert : mesurer le gain d'une mémoïsation sur un coefficient binomial",
+      "statement": "Même notion, autre contexte : compte les appels de binomial(n, k) calculé par la récurrence de Pascal naïve, puis écris une version mémoïsée (cache de type Map) qui compte les siens de la même façon, et compare-les à un budget de 100 appels pour binomial(10, 5). Aucun indice n'est proposé et cet exercice ne compte pas dans le score. Sortie exacte :\nbinomial(10,5) naif: 503 appels\nbinomial(10,5) memoise: 51 appels\nBudget 100 appels: naif depasse, memoise respecte",
+      "starterCode": "export {};\n// À toi : écris la suite, sans étapes imposées.\n",
+      "expectedOutput": "binomial(10,5) naif: 503 appels\nbinomial(10,5) memoise: 51 appels\nBudget 100 appels: naif depasse, memoise respecte",
+      "kind": "TRANSFER"
     }
   ],
   "quiz": [

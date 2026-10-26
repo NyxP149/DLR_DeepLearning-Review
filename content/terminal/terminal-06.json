@@ -59,6 +59,14 @@
       "statement": "Le script crée un petit outil bin/hello. Montre la différence entre variable exportée et non exportée (vue depuis un sous-shell bash -c), ajoute bin au PATH pour lancer hello par son nom, puis crée un fichier dont le nom contient une espace en citant correctement la variable.",
       "starterCode": "#!/usr/bin/env bash\nmkdir -p bin\nprintf '#!/usr/bin/env bash\\necho bonjour\\n' > bin/hello\nchmod +x bin/hello\n\nGREETING=salut\nLOCAL=prive\n# TODO 1 : exporte GREETING seulement (pas LOCAL)\n# TODO 2 : affiche \"Exporté: \" suivi de la valeur de GREETING vue par un sous-shell (bash -c 'echo $GREETING')\n# TODO 3 : affiche \"Non exporté: \" suivi de la valeur de LOCAL vue par un sous-shell (vide), avec un texte \"(vide)\" si la valeur est vide\n# TODO 4 : ajoute le dossier bin du répertoire courant au DÉBUT du PATH (export PATH=\"$PWD/bin:$PATH\")\n# TODO 5 : affiche \"Commande: \" suivi de command -v hello, puis exécute hello par son nom\n# TODO 6 : avec NOM=\"Ada Lovelace\", crée le fichier \"$NOM.txt\" et affiche \"Nom: \" suivi de la liste des fichiers .txt du dossier courant (ls *.txt)\ntrue\n",
       "expectedOutput": "Exporté: salut\nNon exporté: (vide)\nCommande: /work/bin/hello\nbonjour\nNom: Ada Lovelace.txt"
+    },
+    {
+      "code": "TERMINAL-06-T1",
+      "title": "Transfert : exporter, étendre le PATH et citer un nom avec espace",
+      "statement": "Même notion, autre contexte : le script crée un outil tools/hello. Montre la différence entre une variable exportée (EXPORTED) et non exportée (MODE), vue depuis un sous-shell bash -c (affiche « (vide) » pour une valeur vide), ajoute tools au début du PATH pour lancer hello par son nom, puis crée un fichier dont le nom « Grace Hopper.txt » contient une espace en citant correctement. Aucun indice n'est proposé et cet exercice ne compte pas dans le score. Sortie exacte :\nExporte: visible\nNon exporte: (vide)\nCommande: /work/lab/tools/hello\nsalut depuis hello\nNom: Grace Hopper.txt",
+      "starterCode": "#!/usr/bin/env bash\nmkdir -p lab/tools\ncd lab\nprintf '#!/usr/bin/env bash\\necho salut depuis hello\\n' > tools/hello\nchmod +x tools/hello\nMODE=demo\nEXPORTED=visible\n# À toi : écris la suite, sans étapes imposées.\n",
+      "expectedOutput": "Exporte: visible\nNon exporte: (vide)\nCommande: /work/lab/tools/hello\nsalut depuis hello\nNom: Grace Hopper.txt",
+      "kind": "TRANSFER"
     }
   ],
   "quiz": [

@@ -59,6 +59,14 @@
       "statement": "Le script crée un journal app.log et un ancien journal. Affiche le nombre de lignes ERROR, le numéro de la première ligne WARN, les deux dernières lignes du journal et la liste triée des fichiers .log du projet.",
       "starterCode": "#!/usr/bin/env bash\nmkdir -p old\nprintf '%s\\n' 'INFO  démarrage' 'WARN  disque à 85%' 'ERROR connexion refusée' 'INFO  reprise' 'ERROR timeout' > app.log\nprintf '%s\\n' 'INFO  archive 2023' > old/app-2023.log\n\n# TODO 1 : affiche \"Erreurs: \" suivi du nombre de lignes qui contiennent ERROR (grep -c)\n# TODO 2 : affiche \"Premier WARN: ligne \" suivi de son numéro (grep -n WARN | head -1 | cut -d: -f1)\n# TODO 3 : affiche \"Dernières lignes:\" puis les deux dernières lignes de app.log (tail -n 2)\n# TODO 4 : affiche \"Fichiers log: \" suivi des fichiers .log triés sur une ligne (find . -name '*.log' | sort | xargs)\ntrue\n",
       "expectedOutput": "Erreurs: 2\nPremier WARN: ligne 2\nDernières lignes:\nINFO  reprise\nERROR timeout\nFichiers log: ./app.log ./old/app-2023.log"
+    },
+    {
+      "code": "TERMINAL-03-T1",
+      "title": "Transfert : analyser un journal de service",
+      "statement": "Même notion, autre contexte : le script crée projet/app.log et un ancien journal dans projet/old. Affiche le nombre de lignes ERROR ou FATAL, le numéro de la première ligne WARN, les deux dernières lignes du journal et la liste triée des fichiers .log du projet sur une seule ligne. Aucun indice n'est proposé et cet exercice ne compte pas dans le score. Sortie exacte :\nErreurs: 2\nPremier WARN: ligne 2\nDernieres lignes:\nINFO  reprise\nFATAL arret force\nFichiers log: ./app.log ./old/app-2023.log",
+      "starterCode": "#!/usr/bin/env bash\nmkdir -p projet/old\ncd projet\nprintf 'INFO  demarrage\\nWARN  disque presque plein\\nERROR connexion refusee\\nINFO  reprise\\nFATAL arret force\\n' > app.log\nprintf 'INFO  ancien\\n' > old/app-2023.log\n# À toi : écris la suite, sans étapes imposées.\n",
+      "expectedOutput": "Erreurs: 2\nPremier WARN: ligne 2\nDernieres lignes:\nINFO  reprise\nFATAL arret force\nFichiers log: ./app.log ./old/app-2023.log",
+      "kind": "TRANSFER"
     }
   ],
   "quiz": [

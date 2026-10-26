@@ -59,6 +59,14 @@
       "statement": "TypeScript compare les formes, pas les noms : une classe qui possède les bonnes propriétés satisfait une interface sans la déclarer. Complète l'interface Contact avec une propriété email optionnelle et la fonction label, puis constate qu'un objet Robot (qui n'a pas d'e-mail) est accepté partout où un Contact est attendu.",
       "starterCode": "export {};\n\ninterface Contact {\n  name: string;\n  // TODO 1 : ajoute une propriété email optionnelle de type string\n}\n\nfunction label(contact: Contact): string {\n  // TODO 2 : retourne \"<nom> <<email>>\" en remplaçant un e-mail absent par \"inconnu\"\n  return contact.name;\n}\n\nclass Robot {\n  name: string;\n  model: string;\n\n  constructor(name: string, model: string) {\n    this.name = name;\n    this.model = model;\n  }\n}\n\nconst ada = { name: 'Ada', email: 'ada@dlr.dev' };\nconst linus = { name: 'Linus' };\nconst robot = new Robot('R2', 'astromech');\n\nfor (const contact of [ada, linus, robot]) {\n  console.log(label(contact));\n}\n",
       "expectedOutput": "Ada <ada@dlr.dev>\nLinus <inconnu>\nR2 <inconnu>"
+    },
+    {
+      "code": "TYPESCRIPT-04-T1",
+      "title": "Transfert : distinguer des identifiants par un type brandé",
+      "statement": "Même notion, autre contexte : décris un produit par une interface avec un prix optionnel et un nom readonly, écris label(product) (« nom : prix EUR » ou « nom : prix inconnu »), vérifie qu'une classe Gadget de même forme est acceptée, puis crée un type brandé UserId (string & { readonly __brand: 'UserId' }) avec asUserId qui refuse un texte vide et loadUser(id: UserId). Aucun indice n'est proposé et cet exercice ne compte pas dans le score. Sortie exacte :\nClavier : 49.9 EUR\nSouris : prix inconnu\nGadget : prix inconnu\nUtilisateur u-1 charge\nRefus: identifiant vide",
+      "starterCode": "export {};\n// À toi : écris la suite, sans étapes imposées.\n",
+      "expectedOutput": "Clavier : 49.9 EUR\nSouris : prix inconnu\nGadget : prix inconnu\nUtilisateur u-1 charge\nRefus: identifiant vide",
+      "kind": "TRANSFER"
     }
   ],
   "quiz": [

@@ -59,6 +59,14 @@
       "statement": "Complète : le classement par nombre de mots communs (départage par identifiant), le recall@k et le MRR sur trois requêtes dont on connaît le document pertinent. Affiche exactement :\nClassement: A > C > D > B\nPremier score: 2\nrecall@1: 0.67\nrecall@2: 0.67\nMRR: 0.778",
       "starterCode": "DOCUMENTS = {\n    \"A\": {\"java\", \"bytecode\", \"jvm\"},\n    \"B\": {\"python\", \"interpréteur\"},\n    \"C\": {\"java\", \"spring\"},\n    \"D\": {\"jvm\", \"garbage\", \"collector\"},\n}\nQUERIES = [\n    ({\"java\", \"jvm\"}, \"A\"),\n    ({\"spring\"}, \"C\"),\n    ({\"garbage\", \"java\"}, \"D\"),\n]\n\n\ndef rank(query: set) -> list[str]:\n    # TODO 1 : identifiants triés par nombre de mots communs décroissant, puis par identifiant croissant\n    return []\n\n\ndef reciprocal_rank(ranking: list[str], relevant: str) -> float:\n    # TODO 2 : 1 / rang (à partir de 1) du document pertinent, 0.0 s'il est absent\n    return 0.0\n\n\n# TODO 3 : pour la première requête, affiche \"Classement: \" suivi des identifiants séparés par \" > \"\n#          et \"Premier score: \" suivi du nombre de mots communs du premier document\n# TODO 4 : calcule pour les trois requêtes le recall@1 et le recall@2 (part des requêtes dont le bon document est dans les k premiers)\n#          affiche \"recall@1: <valeur 2 décimales>\" et \"recall@2: <valeur 2 décimales>\"\n# TODO 5 : affiche \"MRR: <moyenne des rangs réciproques, 3 décimales>\"\n",
       "expectedOutput": "Classement: A > C > D > B\nPremier score: 2\nrecall@1: 0.67\nrecall@2: 0.67\nMRR: 0.778"
+    },
+    {
+      "code": "LLM-08-T1",
+      "title": "Transfert : classer des documents puis mesurer la recherche",
+      "statement": "Même notion, autre contexte : classe les documents par nombre de mots communs avec la requête (départage par identifiant) puis calcule recall@1, recall@2 et le MRR sur les trois requêtes fournies dont on connaît le document pertinent. Affiche le classement de la première requête, son premier score, les deux recall (deux décimales) et le MRR (trois décimales). Aucun indice n'est proposé et cet exercice ne compte pas dans le score. Sortie exacte :\nClassement: D1 > D4 > D2 > D3\nPremier score: 2\nrecall@1: 0.67\nrecall@2: 1.00\nMRR: 0.833",
+      "starterCode": "docs = {\n    \"D1\": \"python liste dictionnaire\",\n    \"D2\": \"java jvm bytecode\",\n    \"D3\": \"sql jointure index\",\n    \"D4\": \"python async await\",\n}\nqueries = [\n    (\"liste python\", \"D1\"),\n    (\"index sql\", \"D3\"),\n    (\"bytecode python\", \"D2\"),\n]\n# À toi : écris la suite, sans étapes imposées.\n",
+      "expectedOutput": "Classement: D1 > D4 > D2 > D3\nPremier score: 2\nrecall@1: 0.67\nrecall@2: 1.00\nMRR: 0.833",
+      "kind": "TRANSFER"
     }
   ],
   "quiz": [

@@ -59,6 +59,14 @@
       "statement": "Complète Main : un record Invoice (calcul du sous-total et du total avec une TaxPolicy injectée), un InvoicePrinter séparé, et trois politiques de taxe (France 20 %, exonéré, réduit 10 %) sans modifier Invoice. Affiche exactement :\nSous-total : 150\nTotal FR (20%) : 180\nTotal exonere : 150\nTotal reduit (10%) : 165\nFacture: 2 lignes, total 180",
       "starterCode": "import java.util.*;\n\npublic class Main {\n    interface TaxPolicy { int tax(int amount); }\n\n    // TODO 1 : record Invoice(List<Integer> lines) avec :\n    //          - int subtotal() : somme des lignes\n    //          - int total(TaxPolicy policy) : sous-total + taxe calculée par la politique\n    //          (aucun affichage, aucun taux en dur dans cette classe)\n\n    // TODO 2 : classe InvoicePrinter avec String render(Invoice invoice, TaxPolicy policy)\n    //          qui retourne \"Facture: N lignes, total T\" (l'affichage est sa seule responsabilité)\n\n    public static void main(String[] args) {\n        List<Integer> lines = List.of(100, 50);\n        // TODO 3 : crée trois TaxPolicy (lambdas) : france = 20 %, exonere = 0, reduit = 10 % (division entière)\n        // TODO 4 : affiche, dans cet ordre :\n        //   \"Sous-total : 150\", \"Total FR (20%) : 180\", \"Total exonere : 150\", \"Total reduit (10%) : 165\"\n        // TODO 5 : affiche le rendu du printer pour la politique France\n    }\n}\n",
       "expectedOutput": "Sous-total : 150\nTotal FR (20%) : 180\nTotal exonere : 150\nTotal reduit (10%) : 165\nFacture: 2 lignes, total 180"
+    },
+    {
+      "code": "JAVA-16-T1",
+      "title": "Transfert : séparer calcul, barème et affichage",
+      "statement": "Même notion, autre contexte : écris une classe Report qui calcule la moyenne d'une liste de notes et reçoit un barème injecté (interface GradeScale), deux barèmes (standard : 16 très bien, 14 bien, 12 assez bien ; strict : 18, 16, 14 ; sinon insuffisant) et un ReportPrinter séparé qui affiche. Ajouter un barème ne doit pas modifier Report. Aucun indice n'est proposé et cet exercice ne compte pas dans le score. Sortie exacte :\nMoyenne : 14.0\nMention (standard) : Bien\nMention (stricte) : Assez bien\nRapport: 3 notes, moyenne 14.0",
+      "starterCode": "import java.util.List;\n\npublic class Main {\n    public static void main(String[] args) {\n        List<Double> notes = List.of(12.0, 14.0, 16.0);\n        // À toi : écris la suite, sans étapes imposées.\n    }\n}\n",
+      "expectedOutput": "Moyenne : 14.0\nMention (standard) : Bien\nMention (stricte) : Assez bien\nRapport: 3 notes, moyenne 14.0",
+      "kind": "TRANSFER"
     }
   ],
   "quiz": [

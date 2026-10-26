@@ -59,6 +59,14 @@
       "statement": "Complète Main avec trois outils génériques : maximum(List<T>) borné par Comparable, total(List<? extends Number>) et un record Pair<A, B>. Puis affiche exactement :\nPlus grand age : 45\nDernier nom : Nyx\nTotal prix : 49.3\nPaire : Pair[first=Nyx, second=45]",
       "starterCode": "import java.util.*;\n\npublic class Main {\n    // TODO 1 : écris static <T extends Comparable<T>> T maximum(List<T> items)\n    // TODO 2 : écris static double total(List<? extends Number> numbers)\n    // TODO 3 : définis un record générique Pair<A, B>(A first, B second)\n\n    public static void main(String[] args) {\n        List<Integer> ages = List.of(31, 18, 45, 27);\n        List<String> names = List.of(\"Nyx\", \"Ada\", \"Linus\");\n        List<Double> prices = List.of(19.9, 4.5, 24.9);\n        // TODO 4 : affiche \"Plus grand age : \" + le maximum des âges\n        // TODO 5 : affiche \"Dernier nom : \" + le maximum des noms\n        // TODO 6 : affiche \"Total prix : \" + le total des prix avec une décimale (String.format(Locale.ROOT, \"%.1f\", ...))\n        // TODO 7 : crée une Pair<String, Integer> (maximum des noms, maximum des âges) et affiche-la\n    }\n}\n",
       "expectedOutput": "Plus grand age : 45\nDernier nom : Nyx\nTotal prix : 49.3\nPaire : Pair[first=Nyx, second=45]"
+    },
+    {
+      "code": "JAVA-11-T1",
+      "title": "Transfert : écrire des outils génériques réutilisables",
+      "statement": "Même notion, autre contexte : écris une méthode générique min(List<T>) bornée par Comparable, une méthode total(Collection<? extends Number>) qui retourne un double, et une méthode fill(List<? super Integer>, int) qui ajoute 0, 1, 2… ; applique-les aux données fournies (la liste Object reçoit trois entiers). Aucun indice n'est proposé et cet exercice ne compte pas dans le score. Sortie exacte :\nPlus petit nom : Ada\nPlus petit score : 12\nSomme : 7.5\nListe remplie : [0, 1, 2]",
+      "starterCode": "import java.util.*;\n\npublic class Main {\n    public static void main(String[] args) {\n        List<String> names = List.of(\"Nyx\", \"Ada\", \"Linus\");\n        List<Integer> scores = List.of(40, 12, 33);\n        List<Number> numbers = List.of(1, 2.5, 4L);\n        List<Object> filled = new ArrayList<>();\n        // À toi : écris la suite, sans étapes imposées.\n    }\n}\n",
+      "expectedOutput": "Plus petit nom : Ada\nPlus petit score : 12\nSomme : 7.5\nListe remplie : [0, 1, 2]",
+      "kind": "TRANSFER"
     }
   ],
   "quiz": [

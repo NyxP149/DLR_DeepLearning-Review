@@ -59,6 +59,14 @@
       "statement": "La fonction emit écrit deux lignes sur stdout et deux sur stderr. Capture chaque flux dans son fichier, affiche le nombre de lignes de chacun, puis refais une exécution qui fusionne les deux flux dans un seul fichier et compte ses lignes.",
       "starterCode": "#!/usr/bin/env bash\nemit() {\n  echo \"ok 1\"\n  echo \"erreur 1\" >&2\n  echo \"ok 2\"\n  echo \"erreur 2\" >&2\n}\n\n# TODO 1 : exécute emit en envoyant stdout dans out.txt et stderr dans err.txt (> et 2>)\n# TODO 2 : affiche \"stdout: <n> lignes\" avec n = nombre de lignes de out.txt (wc -l < out.txt)\n# TODO 3 : affiche \"stderr: <n> lignes\" avec le nombre de lignes de err.txt\n# TODO 4 : exécute emit en envoyant les DEUX flux dans tout.txt (> tout.txt 2>&1)\n# TODO 5 : affiche \"fusion: <n> lignes\" avec le nombre de lignes de tout.txt\ntrue\n",
       "expectedOutput": "stdout: 2 lignes\nstderr: 2 lignes\nfusion: 4 lignes"
+    },
+    {
+      "code": "TERMINAL-04-T1",
+      "title": "Transfert : séparer puis fusionner les flux d'une commande",
+      "statement": "Même notion, autre contexte : la fonction emit écrit trois lignes sur stdout et une sur stderr. Capture chaque flux dans son fichier, affiche le nombre de lignes de chacun (« stdout: n lignes », « stderr: n lignes »), puis refais une exécution qui fusionne les deux flux dans un seul fichier et affiche « fusion: n lignes ». Aucun indice n'est proposé et cet exercice ne compte pas dans le score. Sortie exacte :\nstdout: 3 lignes\nstderr: 1 lignes\nfusion: 4 lignes",
+      "starterCode": "#!/usr/bin/env bash\nmkdir -p tmp\ncd tmp\nemit() {\n  echo out1\n  echo out2\n  echo out3\n  echo err1 >&2\n}\n# À toi : écris la suite, sans étapes imposées.\n",
+      "expectedOutput": "stdout: 3 lignes\nstderr: 1 lignes\nfusion: 4 lignes",
+      "kind": "TRANSFER"
     }
   ],
   "quiz": [

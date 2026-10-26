@@ -59,6 +59,14 @@
       "statement": "Construis les trois briques d'un framework de test : assertEqual qui lève une erreur « attendu X, obtenu Y », test qui exécute un corps, affiche ✓ ou ✗ avec le message et compte les réussites et les échecs, et spy qui fournit une fonction enregistrant ses appels pour vérifier comment une dépendance a été utilisée.",
       "starterCode": "export {};\n\nlet passed = 0;\nlet failed = 0;\n\nfunction assertEqual<T>(actual: T, expected: T): void {\n  // TODO 1 : si actual !== expected, lance new Error(`attendu ${expected}, obtenu ${actual}`)\n}\n\nfunction test(name: string, body: () => void): void {\n  // TODO 2 : exécute body dans un try/catch ; succès -> passed++ et affiche `✓ <nom>` ;\n  //          erreur -> failed++ et affiche `✗ <nom>: <message>`\n}\n\nfunction spy<A extends unknown[]>(): { fn: (...args: A) => void; calls: A[] } {\n  // TODO 3 : retourne une fonction fn qui enregistre ses arguments dans calls à chaque appel\n  return { fn: () => {}, calls: [] };\n}\n\nfunction notify(log: (message: string) => void): void {\n  log('ok');\n}\n\ntest('additionne deux nombres', () => assertEqual(2 + 2, 4));\ntest('le logger est appelé une fois avec \"ok\"', () => {\n  const logger = spy<[string]>();\n  notify(logger.fn);\n  assertEqual(logger.calls.length, 1);\n  assertEqual(logger.calls[0][0], 'ok');\n});\ntest('échec attendu', () => assertEqual(2 + 2, 5));\nconsole.log(`Résumé: ${passed} réussis, ${failed} échoué(s)`);\n",
       "expectedOutput": "✓ additionne deux nombres\n✓ le logger est appelé une fois avec \"ok\"\n✗ échec attendu: attendu 5, obtenu 4\nRésumé: 2 réussis, 1 échoué(s)"
+    },
+    {
+      "code": "TYPESCRIPT-16-T1",
+      "title": "Transfert : tester un cache à durée de vie avec une horloge injectée",
+      "statement": "Même notion, autre contexte : écris un TtlCache(clock, ttl) dont set mémorise une valeur et get la rend tant que ttl ms ne se sont pas écoulés (undefined sinon), un mini exécuteur check qui affiche ✓ ou ✗ et compte les réussites et échecs, et trois tests avec une fausse horloge que le test fait avancer : valeur conservée avant expiration, valeur expirée après le ttl, clé inconnue. Aucun indice n'est proposé et cet exercice ne compte pas dans le score. Sortie exacte :\n✓ valeur conservee avant expiration\n✓ valeur expiree apres le ttl\n✓ cle inconnue renvoie undefined\nResume: 3 reussis, 0 echoue(s)",
+      "starterCode": "export {};\n// À toi : écris la suite, sans étapes imposées.\n",
+      "expectedOutput": "✓ valeur conservee avant expiration\n✓ valeur expiree apres le ttl\n✓ cle inconnue renvoie undefined\nResume: 3 reussis, 0 echoue(s)",
+      "kind": "TRANSFER"
     }
   ],
   "quiz": [

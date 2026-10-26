@@ -59,6 +59,14 @@
       "statement": "Le dossier notes contient a.txt, b.txt, c.log et tmp.tmp. Crée archive/2024, copie-y les .txt, déplace c.log dans archive, supprime le fichier temporaire, puis affiche la liste triée de tous les fichiers.",
       "starterCode": "#!/usr/bin/env bash\nmkdir -p tp && cd tp\nmkdir -p notes\ntouch notes/a.txt notes/b.txt notes/c.log notes/tmp.tmp\n\n# TODO 1 : crée le dossier archive/2024 (mkdir -p)\n# TODO 2 : copie tous les fichiers .txt de notes dans archive/2024 (joker *.txt)\n# TODO 3 : DÉPLACE notes/c.log dans archive/\n# TODO 4 : supprime notes/tmp.tmp\n# TODO 5 : affiche la liste triée de tous les fichiers : find . -type f | sort\ntrue\n",
       "expectedOutput": "./archive/2024/a.txt\n./archive/2024/b.txt\n./archive/c.log\n./notes/a.txt\n./notes/b.txt"
+    },
+    {
+      "code": "TERMINAL-02-T1",
+      "title": "Transfert : trier des photos puis vérifier l'arborescence",
+      "statement": "Même notion, autre contexte : le dossier photos contient 1.jpg, 2.jpg, 3.png et draft.tmp. Crée trie/2024, copie-y les .jpg, déplace 3.png dans trie, supprime le fichier temporaire, puis affiche la liste triée de tous les fichiers du dossier de travail. Aucun indice n'est proposé et cet exercice ne compte pas dans le score. Sortie exacte :\n./photos/1.jpg\n./photos/2.jpg\n./trie/2024/1.jpg\n./trie/2024/2.jpg\n./trie/3.png",
+      "starterCode": "#!/usr/bin/env bash\nmkdir -p atelier/photos\ncd atelier\ntouch photos/1.jpg photos/2.jpg photos/3.png photos/draft.tmp\n# À toi : écris la suite, sans étapes imposées.\n",
+      "expectedOutput": "./photos/1.jpg\n./photos/2.jpg\n./trie/2024/1.jpg\n./trie/2024/2.jpg\n./trie/3.png",
+      "kind": "TRANSFER"
     }
   ],
   "quiz": [

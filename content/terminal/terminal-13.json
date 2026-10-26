@@ -59,6 +59,14 @@
       "statement": "Écris la fonction sauvegarder : elle exige un seul argument (code de retour 2 sinon), vérifie que c'est un dossier existant (code 3 sinon), copie son contenu dans sauvegarde et affiche le nombre de fichiers. Le script active le mode strict et affiche toujours « Nettoyage effectué » à la fin grâce à trap.",
       "starterCode": "#!/usr/bin/env bash\n# TODO 1 : active le mode strict : set -euo pipefail\n# TODO 2 : définis une fonction cleanup qui affiche \"Nettoyage effectué\" et enregistre-la avec trap cleanup EXIT\n\nsauvegarder() {\n  # TODO 3 : si le nombre d'arguments n'est pas 1, affiche un message d'usage sur stderr et fais return 2\n  # TODO 4 : si \"$1\" n'est pas un dossier, affiche un message sur stderr et fais return 3\n  # TODO 5 : compte les fichiers de \"$1\" (find \"$1\" -type f | wc -l), copie le contenu dans le dossier sauvegarde\n  #          (mkdir -p sauvegarde && cp -r \"$1\"/. sauvegarde/) et affiche \"Sauvegarde: <n> fichiers\"\n  return 0\n}\n\nmkdir -p projet/src\ntouch projet/a.txt projet/b.txt projet/src/c.txt\n\nsauvegarder 2>/dev/null || echo \"Usage refusé: code $?\"\nsauvegarder absent 2>/dev/null || echo \"Dossier absent: code $?\"\nsauvegarder projet\n",
       "expectedOutput": "Usage refusé: code 2\nDossier absent: code 3\nSauvegarde: 3 fichiers\nNettoyage effectué"
+    },
+    {
+      "code": "TERMINAL-13-T1",
+      "title": "Transfert : archiver un dossier avec contrôles et nettoyage",
+      "statement": "Même notion, autre contexte : écris la fonction archiver : elle exige un seul argument (code de retour 2 sinon), vérifie que c'est un dossier existant (code 3 sinon), copie son contenu dans archive et affiche « Archive: n fichiers ». Le script active le mode strict (set -euo pipefail), installe un trap EXIT qui affiche « Nettoyage effectue » et supprime archive, et teste les trois cas (sans argument, dossier absent, dossier data valide). Aucun indice n'est proposé et cet exercice ne compte pas dans le score. Sortie exacte :\nUsage refuse: code 2\nDossier absent: code 3\nArchive: 2 fichiers\nNettoyage effectue",
+      "starterCode": "#!/usr/bin/env bash\nmkdir -p data\ntouch data/a.txt data/b.txt\n# À toi : écris la suite, sans étapes imposées.\n",
+      "expectedOutput": "Usage refuse: code 2\nDossier absent: code 3\nArchive: 2 fichiers\nNettoyage effectue",
+      "kind": "TRANSFER"
     }
   ],
   "quiz": [

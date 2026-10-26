@@ -59,6 +59,14 @@
       "statement": "Écris trois fonctions aux signatures sûres : split avec deux surcharges (texte à découper sur la virgule, ou tableau déjà découpé), sum avec un paramètre rest, et retryDelay dont la base vaut 100 par défaut et double à chaque tentative (base x 2 puissance tentative).",
       "starterCode": "export {};\n\nfunction split(value: string): string[];\nfunction split(value: string[]): string[];\nfunction split(value: string | string[]): string[] {\n  // TODO 1 : un tableau est retourné tel quel ; un texte est découpé sur la virgule\n  return [];\n}\n\nfunction sum(...values: number[]): number {\n  // TODO 2 : additionne tous les arguments (0 s'il n'y en a aucun)\n  return -1;\n}\n\nfunction retryDelay(attempt: number, base?: number): number {\n  // TODO 3 : base vaut 100 quand elle est absente ; retourne base * 2 ** attempt\n  return 0;\n}\n\nconsole.log(`split(\"a,b,c\") = ${split('a,b,c').join('|')}`);\nconsole.log(`split([\"x\",\"y\"]) = ${split(['x', 'y']).join('|')}`);\nconsole.log(`sum() = ${sum()}`);\nconsole.log(`sum(1, 2, 3) = ${sum(1, 2, 3)}`);\nconsole.log(`retryDelay(2) = ${retryDelay(2)}`);\nconsole.log(`retryDelay(2, 50) = ${retryDelay(2, 50)}`);\n",
       "expectedOutput": "split(\"a,b,c\") = a|b|c\nsplit([\"x\",\"y\"]) = x|y\nsum() = 0\nsum(1, 2, 3) = 6\nretryDelay(2) = 400\nretryDelay(2, 50) = 200"
+    },
+    {
+      "code": "TYPESCRIPT-05-T1",
+      "title": "Transfert : des signatures sûres : surcharges, rest et valeur par défaut",
+      "statement": "Même notion, autre contexte : écris toArray avec deux surcharges (un texte à découper sur « ; », ou un tableau de nombres converti en textes), average avec un paramètre rest (0 sans argument) et timeoutFor(attempt, base = 200, factor = 3) qui retourne base x factor puissance attempt. Affiche les six appels indiqués. Aucun indice n'est proposé et cet exercice ne compte pas dans le score. Sortie exacte :\ntoArray(\"a;b\") = a|b\ntoArray([1,2]) = 1|2\naverage() = 0\naverage(2, 4, 9) = 5\ntimeoutFor(2) = 1800\ntimeoutFor(2, 100, 2) = 400",
+      "starterCode": "export {};\n// À toi : écris la suite, sans étapes imposées.\n",
+      "expectedOutput": "toArray(\"a;b\") = a|b\ntoArray([1,2]) = 1|2\naverage() = 0\naverage(2, 4, 9) = 5\ntimeoutFor(2) = 1800\ntimeoutFor(2, 100, 2) = 400",
+      "kind": "TRANSFER"
     }
   ],
   "quiz": [

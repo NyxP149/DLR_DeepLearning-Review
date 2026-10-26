@@ -59,6 +59,14 @@
       "statement": "Au lieu de vérifier les données dans l'application, protège la table product par des contraintes : référence (sku) unique, nom obligatoire, prix strictement positif. Le programme tente quatre insertions et indique laquelle est acceptée ou quelle contrainte la refuse.",
       "starterCode": "import sqlite3\n\nconnection = sqlite3.connect(\":memory:\")\n\n# TODO : ajoute les contraintes : sku obligatoire et UNIQUE, name obligatoire, price obligatoire avec CHECK (price > 0)\nconnection.execute(\"CREATE TABLE product (sku TEXT, name TEXT, price INTEGER)\")\n\nattempts = [\n    (\"A1\", \"Clavier\", 50),\n    (\"A1\", \"Souris\", 20),\n    (\"B2\", None, 10),\n    (\"C3\", \"Câble\", -5),\n]\n\nfor attempt in attempts:\n    try:\n        connection.execute(\"INSERT INTO product VALUES (?, ?, ?)\", attempt)\n        print(f\"{attempt}: accepté\")\n    except sqlite3.Error as error:\n        print(f\"{attempt}: refusé ({str(error).split(' constraint failed')[0]})\")\n\ncount = connection.execute(\"SELECT COUNT(*) FROM product\").fetchone()[0]\nprint(f\"Lignes: {count}\")\n",
       "expectedOutput": "('A1', 'Clavier', 50): accepté\n('A1', 'Souris', 20): refusé (UNIQUE)\n('B2', None, 10): refusé (NOT NULL)\n('C3', 'Câble', -5): refusé (CHECK)\nLignes: 1"
+    },
+    {
+      "code": "SQL-05-T1",
+      "title": "Transfert : protéger une table d'employés par des contraintes",
+      "statement": "Même notion, autre contexte : au lieu de vérifier les données dans l'application, protège la table employee par des contraintes : e-mail unique, nom obligatoire, salaire positif ou nul (CHECK). Le programme tente quatre insertions et indique pour chacune « accepté » ou la contrainte violée (UNIQUE, NOT NULL, CHECK, déduite du message d'erreur), puis le nombre de lignes. Aucun indice n'est proposé et cet exercice ne compte pas dans le score. Sortie exacte :\n('ada@dlr.dev', 'Ada', 3000): accepte\n('ada@dlr.dev', 'Ada bis', 3100): refuse (UNIQUE)\n('nyx@dlr.dev', None, 2800): refuse (NOT NULL)\n('max@dlr.dev', 'Max', -10): refuse (CHECK)\nLignes: 1",
+      "starterCode": "import sqlite3\n\nconnection = sqlite3.connect(\":memory:\")\nrows = [\n    (\"ada@dlr.dev\", \"Ada\", 3000),\n    (\"ada@dlr.dev\", \"Ada bis\", 3100),\n    (\"nyx@dlr.dev\", None, 2800),\n    (\"max@dlr.dev\", \"Max\", -10),\n]\n# À toi : écris la suite, sans étapes imposées.\n",
+      "expectedOutput": "('ada@dlr.dev', 'Ada', 3000): accepte\n('ada@dlr.dev', 'Ada bis', 3100): refuse (UNIQUE)\n('nyx@dlr.dev', None, 2800): refuse (NOT NULL)\n('max@dlr.dev', 'Max', -10): refuse (CHECK)\nLignes: 1",
+      "kind": "TRANSFER"
     }
   ],
   "quiz": [

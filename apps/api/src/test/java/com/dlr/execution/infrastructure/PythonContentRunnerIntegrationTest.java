@@ -30,21 +30,23 @@ class PythonContentRunnerIntegrationTest {
 
         assertThat(pythonLabs).hasSize(24);
         for (var lab : pythonLabs) {
-            var exercise = lab.exercises().getFirst();
+            // Exercice guidé puis exercices de transfert : chacun a un squelette et une solution de référence.
+            for (var exercise : lab.exercises()) {
             var submission = new Submission(
                     UUID.randomUUID(), UUID.randomUUID(), "PYTHON", exercise.starterCode(),
                     SubmissionOrigin.EDITOR, Instant.now());
             var result = runner.run(submission);
-            assertThat(result.status()).as(lab.code() + ": " + result.errorOutput()).isEqualTo(ExecutionStatus.SUCCESS);
-            assertThat(result.standardOutput().strip()).as(lab.code() + " ne doit pas donner la solution")
+            assertThat(result.status()).as(exercise.code() + ": " + result.errorOutput()).isEqualTo(ExecutionStatus.SUCCESS);
+            assertThat(result.standardOutput().strip()).as(exercise.code() + " ne doit pas donner la solution")
                     .isNotEqualTo(exercise.expectedOutput().strip());
 
             var solved = runner.run(new Submission(
                     UUID.randomUUID(), UUID.randomUUID(), "PYTHON", referenceSolution("python", exercise.code(), "py"),
                     SubmissionOrigin.EDITOR, Instant.now()));
-            assertThat(solved.status()).as(lab.code() + ": " + solved.errorOutput()).isEqualTo(ExecutionStatus.SUCCESS);
-            assertThat(solved.standardOutput().strip()).as(lab.code() + " solution de référence")
+            assertThat(solved.status()).as(exercise.code() + ": " + solved.errorOutput()).isEqualTo(ExecutionStatus.SUCCESS);
+            assertThat(solved.standardOutput().strip()).as(exercise.code() + " solution de référence")
                     .isEqualTo(exercise.expectedOutput().strip());
+            }
         }
     }
 

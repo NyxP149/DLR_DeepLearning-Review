@@ -59,6 +59,14 @@
       "statement": "Complète Main : une interface Shipping, une fabrique shippingOf(code) qui refuse les codes inconnus, et un OrderBuilder qui valide et produit un record Order. Affiche exactement :\nSTANDARD(150) : 5\nEXPRESS(150) : 15\nFREE(150) : 0\nFREE(60) : 5\nCommande : Order[customer=Nyx, total=150, shipping=EXPRESS, shippingCost=15]\nErreur : mode inconnu : DRONE\nErreur : client requis",
       "starterCode": "public class Main {\n    interface Shipping { int cost(int total); }\n\n    // TODO 1 : static Shipping shippingOf(String code) — switch sur le code :\n    //          STANDARD -> 5 ; EXPRESS -> 15 ; FREE -> 0 si total >= 100 sinon 5 ;\n    //          autre code -> IllegalArgumentException avec le code dans le message\n\n    record Order(String customer, int total, String shipping, int shippingCost) {}\n\n    // TODO 2 : classe OrderBuilder avec customer(String), total(int), shipping(String) chaînables\n    //          (shipping vaut \"STANDARD\" par défaut) et build() qui :\n    //          - lève IllegalStateException si le client est vide\n    //          - calcule shippingCost avec shippingOf(...)\n\n    public static void main(String[] args) {\n        // TODO 3 : affiche \"STANDARD(150) : 5\", \"EXPRESS(150) : 15\", \"FREE(150) : 0\" puis \"FREE(60) : 5\"\n        // TODO 4 : construis la commande Nyx / 150 / EXPRESS avec le builder et affiche \"Commande : \" + commande\n        // TODO 5 : tente shippingOf(\"DRONE\") dans un try/catch et affiche \"Erreur : \" + message de l'exception\n        // TODO 6 : tente build() sans client dans un try/catch et affiche \"Erreur : \" + message de l'exception\n    }\n}\n",
       "expectedOutput": "STANDARD(150) : 5\nEXPRESS(150) : 15\nFREE(150) : 0\nFREE(60) : 5\nCommande : Order[customer=Nyx, total=150, shipping=EXPRESS, shippingCost=15]\nErreur : mode inconnu : DRONE\nErreur : client requis"
+    },
+    {
+      "code": "JAVA-17-T1",
+      "title": "Transfert : choisir un formateur par code",
+      "statement": "Même notion, autre contexte : définis une interface Formatter, trois implémentations (UPPER, LOWER, TITLE qui met la première lettre de chaque mot en majuscule) et une fabrique formatterOf(code) qui lève une IllegalArgumentException « format inconnu CODE » pour un code absent. Formate « bonjour nyx » avec chaque code, puis demande le code REVERSE en interceptant l'erreur. Aucun indice n'est proposé et cet exercice ne compte pas dans le score. Sortie exacte :\nUPPER : BONJOUR NYX\nLOWER : bonjour nyx\nTITLE : Bonjour Nyx\nErreur : format inconnu REVERSE",
+      "starterCode": "public class Main {\n    public static void main(String[] args) {\n        String text = \"bonjour nyx\";\n        // À toi : écris la suite, sans étapes imposées.\n    }\n}\n",
+      "expectedOutput": "UPPER : BONJOUR NYX\nLOWER : bonjour nyx\nTITLE : Bonjour Nyx\nErreur : format inconnu REVERSE",
+      "kind": "TRANSFER"
     }
   ],
   "quiz": [

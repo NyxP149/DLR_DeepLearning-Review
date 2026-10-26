@@ -59,6 +59,14 @@
       "statement": "Complète Main avec un pool de 4 threads : somme des carrés de 1 à 10 via invokeAll, un compteur AtomicInteger incrémenté par 4 tâches de 1000, un compteur int protégé par synchronized, et un comptage de mots avec ConcurrentHashMap.merge. Affiche exactement :\nSomme des carres : 385\nCompteur atomique : 4000\nCompteur synchronise : 4000\nMots : {a=3, b=2, c=1}",
       "starterCode": "import java.util.*;\nimport java.util.concurrent.*;\nimport java.util.concurrent.atomic.AtomicInteger;\n\npublic class Main {\n    static int synced = 0;\n    static final Object LOCK = new Object();\n\n    public static void main(String[] args) throws Exception {\n        ExecutorService pool = Executors.newFixedThreadPool(4);\n        try {\n            // TODO 1 : crée 10 Callable<Integer> (carré de 1 à 10), exécute-les avec pool.invokeAll, additionne les get()\n            //          et affiche \"Somme des carres : \" + somme\n            // TODO 2 : 4 tâches qui font 1000 fois incrementAndGet sur un AtomicInteger ; attends-les puis affiche \"Compteur atomique : \" + valeur\n            // TODO 3 : 4 tâches qui font 1000 fois synced++ DANS un bloc synchronized (LOCK) ; affiche \"Compteur synchronise : \" + synced\n            // TODO 4 : 3 tâches comptent des mots (\"a b a\", \"b a\", \"c\") dans une ConcurrentHashMap avec merge(mot, 1, Integer::sum) ;\n            //          affiche \"Mots : \" + new TreeMap<>(map)\n        } finally {\n            pool.shutdown();\n        }\n    }\n}\n",
       "expectedOutput": "Somme des carres : 385\nCompteur atomique : 4000\nCompteur synchronise : 4000\nMots : {a=3, b=2, c=1}"
+    },
+    {
+      "code": "JAVA-18-T1",
+      "title": "Transfert : compter des mots en parallèle",
+      "statement": "Même notion, autre contexte : avec un pool de 3 threads (ExecutorService et invokeAll), compte les mots de chaque document dans une tâche Callable, affiche la liste des comptes dans l'ordre des documents et leur total, et compte avec un AtomicInteger le nombre de tâches exécutées. Aucun indice n'est proposé et cet exercice ne compte pas dans le score. Sortie exacte :\nMots par document : [3, 2, 4]\nTotal mots : 9\nTaches executees : 3",
+      "starterCode": "import java.util.*;\nimport java.util.concurrent.*;\nimport java.util.concurrent.atomic.AtomicInteger;\n\npublic class Main {\n    public static void main(String[] args) throws Exception {\n        List<String> documents = List.of(\"un deux trois\", \"quatre cinq\", \"six sept huit neuf\");\n        // À toi : écris la suite, sans étapes imposées.\n    }\n}\n",
+      "expectedOutput": "Mots par document : [3, 2, 4]\nTotal mots : 9\nTaches executees : 3",
+      "kind": "TRANSFER"
     }
   ],
   "quiz": [

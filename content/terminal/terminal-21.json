@@ -59,6 +59,14 @@
       "statement": "Un fichier .claude/settings.json autorise Bash(*) et oublie de protéger .env et git push. Écris la fonction audit qui détecte ces trois problèmes avec jq et affiche leur nombre, puis produis une version corrigée (settings.fixed.json) et vérifie qu'elle ne contient plus aucun problème.",
       "starterCode": "#!/usr/bin/env bash\nmkdir -p .claude\ncat > .claude/settings.json <<'JSON'\n{\n  \"permissions\": {\n    \"allow\": [\"Bash(*)\", \"Read\", \"Bash(npm test:*)\"],\n    \"deny\": [\"Bash(rm -rf:*)\"]\n  }\n}\nJSON\n\naudit() {\n  local file=$1 n=0\n  # TODO 1 : si allow contient \"Bash(*)\" (jq -e '.permissions.allow | index(\"Bash(*)\")'), affiche\n  #          \"Problème: allow trop large (Bash(*))\" et incrémente n\n  # TODO 2 : si deny ne contient PAS \"Read(./.env)\", affiche \"Problème: .env non protégé\"\n  # TODO 3 : si deny ne contient PAS \"Bash(git push:*)\", affiche \"Problème: git push non interdit\"\n  echo \"Problèmes: $n\"\n}\n\naudit .claude/settings.json\n\n# TODO 4 : produis .claude/settings.fixed.json avec jq : retire \"Bash(*)\" de allow (- [\"Bash(*)\"]) et ajoute\n#          \"Read(./.env)\" et \"Bash(git push:*)\" à deny (+= [...])\n[ -f .claude/settings.fixed.json ] && audit .claude/settings.fixed.json\ntrue\n",
       "expectedOutput": "Problème: allow trop large (Bash(*))\nProblème: .env non protégé\nProblème: git push non interdit\nProblèmes: 3\nProblèmes: 0"
+    },
+    {
+      "code": "TERMINAL-21-T1",
+      "title": "Transfert : auditer et corriger un fichier de permissions avec jq",
+      "statement": "Même notion, autre contexte : un fichier settings.json autorise Bash(*) et ne protège ni Read(./.env) ni git push --force. Écris la fonction audit qui détecte ces trois problèmes avec jq (« Probleme: allow trop large (Bash(*)) », « Probleme: .env non protege », « Probleme: push force non interdit ») et affiche leur nombre « Problemes: n », puis produis settings.fixed.json (sans Bash(*), avec Read(./.env) et Bash(git push --force*) dans deny) et relance l'audit dessus. Aucun indice n'est proposé et cet exercice ne compte pas dans le score. Sortie exacte :\nProbleme: allow trop large (Bash(*))\nProbleme: .env non protege\nProbleme: push force non interdit\nProblemes: 3\nProblemes: 0",
+      "starterCode": "#!/usr/bin/env bash\nmkdir -p cfg\ncd cfg\ncat > settings.json <<'EOF'\n{\"permissions\":{\"allow\":[\"Bash(*)\",\"Read(*)\"],\"deny\":[\"Bash(rm -rf *)\"]}}\nEOF\n# À toi : écris la suite, sans étapes imposées.\n",
+      "expectedOutput": "Probleme: allow trop large (Bash(*))\nProbleme: .env non protege\nProbleme: push force non interdit\nProblemes: 3\nProblemes: 0",
+      "kind": "TRANSFER"
     }
   ],
   "quiz": [

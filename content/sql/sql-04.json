@@ -59,6 +59,14 @@
       "statement": "À partir des ventes mensuelles, écris deux requêtes : le total par région pour celles qui dépassent 150 (GROUP BY + HAVING, du plus grand au plus petit), puis le cumul mensuel de la région Nord avec une fonction fenêtre SUM() OVER.",
       "starterCode": "import sqlite3\n\nconnection = sqlite3.connect(\":memory:\")\nconnection.executescript(\n    \"\"\"\n    CREATE TABLE sales (region TEXT, month INTEGER, amount INTEGER);\n    INSERT INTO sales VALUES\n      ('Nord', 1, 100), ('Nord', 2, 150),\n      ('Sud', 1, 80), ('Sud', 2, 100),\n      ('Est', 1, 60);\n    \"\"\"\n)\n\n# TODO 1 : total par région, seulement si le total dépasse 150, trié par total décroissant\ntotals = \"SELECT region, SUM(amount) FROM sales GROUP BY region\"\n# TODO 2 : cumul mensuel de la région Nord : SUM(amount) OVER (ORDER BY month), trié par mois\nrunning = \"SELECT amount FROM sales WHERE region = 'Nord' ORDER BY month\"\n\nprint(\"Régions > 150:\", \", \".join(f\"{region}={total}\" for region, total in connection.execute(totals)))\nprint(\"Cumul Nord:\", \", \".join(str(row[0]) for row in connection.execute(running)))\n",
       "expectedOutput": "Régions > 150: Nord=250, Sud=180\nCumul Nord: 100, 250"
+    },
+    {
+      "code": "SQL-04-T1",
+      "title": "Transfert : agréger des ventes par produit et cumuler par mois",
+      "statement": "Même notion, autre contexte : à partir des ventes mensuelles, écris deux requêtes : le total par produit pour ceux qui dépassent 80 (GROUP BY et HAVING, du plus grand au plus petit), puis le cumul mensuel du produit « stylo » avec une fonction fenêtre SUM() OVER (ORDER BY mois). Aucun indice n'est proposé et cet exercice ne compte pas dans le score. Sortie exacte :\nProduits > 80: stylo=140, cahier=85\nCumul stylo: 40, 110, 140",
+      "starterCode": "import sqlite3\n\nconnection = sqlite3.connect(\":memory:\")\nconnection.executescript(\n    \"\"\"\n    CREATE TABLE sale (month TEXT, product TEXT, amount INTEGER);\n    INSERT INTO sale VALUES\n      ('2024-01', 'stylo', 40), ('2024-02', 'stylo', 70), ('2024-03', 'stylo', 30),\n      ('2024-01', 'cahier', 60), ('2024-02', 'cahier', 25), ('2024-01', 'gomme', 15);\n    \"\"\"\n)\n# À toi : écris la suite, sans étapes imposées.\n",
+      "expectedOutput": "Produits > 80: stylo=140, cahier=85\nCumul stylo: 40, 110, 140",
+      "kind": "TRANSFER"
     }
   ],
   "quiz": [

@@ -59,6 +59,14 @@
       "statement": "Écris mapWithLimit qui applique un worker asynchrone à chaque élément en n'exécutant jamais plus de limit tâches en même temps, tout en rendant les résultats dans l'ordre d'origine. Le programme mesure la concurrence réellement atteinte.",
       "starterCode": "export {};\n\nasync function mapWithLimit<T, R>(items: T[], limit: number, worker: (item: T) => Promise<R>): Promise<R[]> {\n  // TODO : lance `limit` « coureurs » ; chacun prend le prochain indice libre, attend worker(items[indice])\n  //        et range le résultat à la bonne position, jusqu'à épuisement des éléments (Promise.all)\n  return [];\n}\n\nconst sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));\n\nlet inFlight = 0;\nlet maxInFlight = 0;\n\nasync function double(value: number): Promise<number> {\n  inFlight++;\n  maxInFlight = Math.max(maxInFlight, inFlight);\n  await sleep(10);\n  inFlight--;\n  return value * 2;\n}\n\nasync function main(): Promise<void> {\n  const results = await mapWithLimit([1, 2, 3, 4, 5], 2, double);\n  console.log(`Résultats: ${JSON.stringify(results)}`);\n  console.log(`Concurrence maximale: ${maxInFlight}`);\n}\n\nmain();\n",
       "expectedOutput": "Résultats: [2,4,6,8,10]\nConcurrence maximale: 2"
+    },
+    {
+      "code": "TYPESCRIPT-13-T1",
+      "title": "Transfert : réessayer, regrouper et borner dans le temps",
+      "statement": "Même notion, autre contexte : écris retry(task, times) qui réessaie une tâche asynchrone en journalisant « tentative n: echec » ou « tentative n: succes », summarize qui compte avec Promise.allSettled les promesses tenues et rejetées, et withTimeout(promise, ms) qui rejette avec « delai depasse » si la promesse est trop lente. La tâche fournie échoue deux fois puis réussit. Aucun indice n'est proposé et cet exercice ne compte pas dans le score. Sortie exacte :\ntentative 1: echec\ntentative 2: echec\ntentative 3: succes\nResultat: ok\nRegroupe: 2 reussies, 1 echouee\nTimeout: delai depasse",
+      "starterCode": "export {};\n\nlet calls = 0;\nconst flaky = async (): Promise<string> => {\n  calls += 1;\n  if (calls < 3) throw new Error('reseau');\n  return 'ok';\n};\nconst sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));\n// À toi : écris la suite, sans étapes imposées.\n",
+      "expectedOutput": "tentative 1: echec\ntentative 2: echec\ntentative 3: succes\nResultat: ok\nRegroupe: 2 reussies, 1 echouee\nTimeout: delai depasse",
+      "kind": "TRANSFER"
     }
   ],
   "quiz": [

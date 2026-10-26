@@ -59,6 +59,14 @@
       "statement": "Modélise des formes par une union discriminée sur le champ kind et calcule leur aire avec un switch exhaustif : la branche par défaut appelle assertNever, de sorte que l'ajout d'une nouvelle forme à l'union provoque une erreur de compilation tant qu'elle n'est pas traitée.",
       "starterCode": "export {};\n\ntype Shape =\n  | { kind: 'circle'; radius: number }\n  | { kind: 'rectangle'; width: number; height: number }\n  | { kind: 'square'; side: number };\n\nfunction assertNever(value: never): never {\n  throw new Error(`cas non géré: ${JSON.stringify(value)}`);\n}\n\nfunction area(shape: Shape): number {\n  // TODO : switch sur shape.kind : cercle = PI x rayon², rectangle = largeur x hauteur, carré = côté² ;\n  //        termine par `default: return assertNever(shape);`\n  return 0;\n}\n\nconst labels: Record<Shape['kind'], string> = { circle: 'cercle', rectangle: 'rectangle', square: 'carré' };\nconst shapes: Shape[] = [\n  { kind: 'circle', radius: 5 },\n  { kind: 'rectangle', width: 3, height: 4 },\n  { kind: 'square', side: 2 },\n];\nfor (const shape of shapes) {\n  console.log(`${labels[shape.kind]}: ${area(shape).toFixed(2)}`);\n}\n",
       "expectedOutput": "cercle: 78.54\nrectangle: 12.00\ncarré: 4.00"
+    },
+    {
+      "code": "TYPESCRIPT-03-T1",
+      "title": "Transfert : décrire des événements par une union discriminée",
+      "statement": "Même notion, autre contexte : modélise des événements par une union discriminée sur le champ kind (click avec x et y, key avec key, scroll avec delta) et écris describe avec un switch exhaustif dont la branche par défaut appelle assertNever. Affiche la description des trois événements fournis. Aucun indice n'est proposé et cet exercice ne compte pas dans le score. Sortie exacte :\nclick en (10, 20)\ntouche Enter\ndefilement de -120",
+      "starterCode": "export {};\n\nconst events = [\n  { kind: 'click', x: 10, y: 20 },\n  { kind: 'key', key: 'Enter' },\n  { kind: 'scroll', delta: -120 },\n];\n// À toi : écris la suite, sans étapes imposées.\n",
+      "expectedOutput": "click en (10, 20)\ntouche Enter\ndefilement de -120",
+      "kind": "TRANSFER"
     }
   ],
   "quiz": [

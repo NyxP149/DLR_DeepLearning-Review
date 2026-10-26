@@ -59,6 +59,14 @@
       "statement": "Crée une classe BankAccount (solde initial 100) avec deposit et withdraw qui retournent false pour un montant invalide, puis affiche exactement :\nSolde: 150\nDépôt -20: refusé\nRetrait 500: refusé\nSolde final: 120",
       "starterCode": "class BankAccount {\n    // TODO 1 : champ privé int balance, initialisé à 100 dans le constructeur\n    // TODO 2 : boolean deposit(int amount) : refuse (retourne false) un montant <= 0, sinon ajoute au solde et retourne true\n    // TODO 3 : boolean withdraw(int amount) : refuse un montant <= 0 ou supérieur au solde, sinon retire et retourne true\n    // TODO 4 : int getBalance()\n}\n\npublic class Main {\n    public static void main(String[] args) {\n        // TODO 5 : crée un compte, dépose 50 et affiche \"Solde: \" + solde\n        // TODO 6 : essaie deposit(-20) puis withdraw(500) ; affiche \"Dépôt -20: refusé\" / \"Retrait 500: refusé\" quand la méthode retourne false\n        // TODO 7 : retire 30 puis affiche \"Solde final: \" + solde\n    }\n}\n",
       "expectedOutput": "Solde: 150\nDépôt -20: refusé\nRetrait 500: refusé\nSolde final: 120"
+    },
+    {
+      "code": "JAVA-06-T1",
+      "title": "Transfert : protéger un stock",
+      "statement": "Même notion, autre contexte : crée une classe Stock (quantité initiale 10, champ privé) avec add et remove qui retournent false pour une quantité invalide (zéro ou négative, ou retrait supérieur au stock) et true sinon. Affiche l'état initial, un ajout de -5, un retrait de 20, un retrait de 4 puis l'état final. Aucun indice n'est proposé et cet exercice ne compte pas dans le score. Sortie exacte :\nStock: 10\nAjout -5: refuse\nRetrait 20: refuse\nRetrait 4: accepte\nStock final: 6",
+      "starterCode": "public class Main {\n    public static void main(String[] args) {\n        // À toi : écris la suite, sans étapes imposées.\n    }\n}\n",
+      "expectedOutput": "Stock: 10\nAjout -5: refuse\nRetrait 20: refuse\nRetrait 4: accepte\nStock final: 6",
+      "kind": "TRANSFER"
     }
   ],
   "quiz": [

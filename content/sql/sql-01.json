@@ -57,6 +57,14 @@
       "statement": "Modélise deux tables reliées : customer (clé primaire, e-mail obligatoire et unique) et orders (clé primaire, client obligatoire référençant customer, total en centimes obligatoire). Le programme inspecte ensuite le schéma et tente d'insérer une commande pour un client qui n'existe pas : la base doit la refuser.",
       "starterCode": "import sqlite3\n\nconnection = sqlite3.connect(\":memory:\")\nconnection.execute(\"PRAGMA foreign_keys = ON\")\n\n# TODO 1 : crée la table customer(id entier clé primaire, email texte obligatoire et unique)\n# TODO 2 : crée la table orders(id entier clé primaire, customer_id entier obligatoire\n#          qui référence customer(id), total_cents entier obligatoire)\n\nfor table in (\"customer\", \"orders\"):\n    columns = [row[1] for row in connection.execute(f\"PRAGMA table_info({table})\")]\n    print(f\"{table}: {', '.join(columns)}\")\n\nfor row in connection.execute(\"PRAGMA foreign_key_list(orders)\"):\n    print(f\"Clé étrangère: orders.{row[3]} -> {row[2]}.{row[4]}\")\n\ntry:\n    connection.execute(\"INSERT INTO orders (customer_id, total_cents) VALUES (99, 1000)\")\nexcept sqlite3.Error as error:\n    print(f\"Insertion orpheline refusée: {error}\")\n",
       "expectedOutput": "customer: id, email\norders: id, customer_id, total_cents\nClé étrangère: orders.customer_id -> customer.id\nInsertion orpheline refusée: FOREIGN KEY constraint failed"
+    },
+    {
+      "code": "SQL-01-T1",
+      "title": "Transfert : modéliser des auteurs et des livres",
+      "statement": "Même notion, autre contexte : modélise deux tables reliées : author (clé primaire, nom obligatoire) et book (clé primaire, auteur obligatoire référençant author, titre obligatoire, isbn unique). Active les clés étrangères, inspecte le schéma avec PRAGMA table_info et foreign_key_list, puis tente d'insérer un livre pour un auteur inexistant et affiche l'erreur de la base. Aucun indice n'est proposé et cet exercice ne compte pas dans le score. Sortie exacte :\nauthor: id, name\nbook: id, author_id, title, isbn\nCle etrangere: book.author_id -> author.id\nInsertion orpheline refusee: FOREIGN KEY constraint failed",
+      "starterCode": "import sqlite3\n\nconnection = sqlite3.connect(\":memory:\")\n# À toi : écris la suite, sans étapes imposées.\n",
+      "expectedOutput": "author: id, name\nbook: id, author_id, title, isbn\nCle etrangere: book.author_id -> author.id\nInsertion orpheline refusee: FOREIGN KEY constraint failed",
+      "kind": "TRANSFER"
     }
   ],
   "quiz": [

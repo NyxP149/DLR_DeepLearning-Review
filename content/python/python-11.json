@@ -59,6 +59,14 @@
       "statement": "Teste la fonction pay sans appeler de vrai service : configure un Mock de passerelle qui répond « ok », vérifie qu'il a été appelé une seule fois avec le bon montant, puis un second Mock dont charge lève un TimeoutError pour vérifier que pay retourne False.",
       "starterCode": "from unittest.mock import Mock\n\n\ndef pay(gateway, amount: int) -> bool:\n    try:\n        return gateway.charge(amount) == \"ok\"\n    except TimeoutError:\n        return False\n\n\n# TODO 1 : crée un Mock de passerelle dont charge retourne \"ok\" (charge.return_value)\ngateway = Mock()\nprint(f\"paiement accepté: {pay(gateway, 120)}\")\n\n# TODO 2 : vérifie avec assert_called_once_with(120) que charge a été appelé une seule fois avec 120\ngateway.charge.assert_called_once_with(120)\nprint(\"appel vérifié: charge(120) une seule fois\")\n\n# TODO 3 : crée un second Mock dont charge lève TimeoutError (charge.side_effect)\nslow = Mock()\nprint(f\"paiement après timeout: {pay(slow, 120)}\")\n",
       "expectedOutput": "paiement accepté: True\nappel vérifié: charge(120) une seule fois\npaiement après timeout: False"
+    },
+    {
+      "code": "PYTHON-11-T1",
+      "title": "Transfert : tester une notification avec une doublure Mock",
+      "statement": "Même notion, autre contexte : écris notify(client, address) qui appelle client.send(address, \"Bienvenue\") et retourne True, ou False si le client lève un TimeoutError. Teste-la avec unittest.mock : un Mock de client vérifié (appelé une seule fois avec les bons arguments) puis un Mock dont send lève TimeoutError. Aucun indice n'est proposé et cet exercice ne compte pas dans le score. Sortie exacte :\nnotification envoyee: True\nappel verifie: send('ada@dlr.dev', 'Bienvenue') une seule fois\nnotification apres timeout: False",
+      "starterCode": "from unittest.mock import Mock\n# À toi : écris la suite, sans étapes imposées.\n",
+      "expectedOutput": "notification envoyee: True\nappel verifie: send('ada@dlr.dev', 'Bienvenue') une seule fois\nnotification apres timeout: False",
+      "kind": "TRANSFER"
     }
   ],
   "quiz": [

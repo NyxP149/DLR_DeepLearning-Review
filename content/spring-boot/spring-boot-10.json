@@ -59,6 +59,14 @@
       "statement": "Simule les profils Spring et Micrometer : le profil prod surcharge le niveau de log par défaut (INFO) avec WARN, le profil dev avec DEBUG, et un compteur requests_total étiqueté par statut HTTP est affiché trié par statut.",
       "starterCode": "import java.util.List;\nimport java.util.Map;\nimport java.util.TreeMap;\n\npublic class Main {\n    static final Map<String, String> DEFAULTS = Map.of(\"log.level\", \"INFO\");\n    static final Map<String, Map<String, String>> PROFILES = Map.of(\n        \"dev\", Map.of(\"log.level\", \"DEBUG\"),\n        \"prod\", Map.of(\"log.level\", \"WARN\"));\n\n    static String logLevel(String profile) {\n        // TODO 1 : retourne la valeur du profil si elle existe, sinon la valeur par défaut\n        return \"\";\n    }\n\n    public static void main(String[] args) {\n        for (String profile : List.of(\"dev\", \"prod\", \"test\")) {\n            // TODO 2 : affiche \"<profil>: niveau de log=<niveau>\"\n        }\n\n        var counters = new TreeMap<Integer, Integer>();\n        for (int status : List.of(200, 500, 200, 404, 200)) {\n            // TODO 3 : incrémente le compteur du statut\n        }\n        for (var entry : counters.entrySet()) {\n            // TODO 4 : affiche requests_total{status=\"<statut>\"} <valeur>\n        }\n    }\n}\n",
       "expectedOutput": "dev: niveau de log=DEBUG\nprod: niveau de log=WARN\ntest: niveau de log=INFO\nrequests_total{status=\"200\"} 3\nrequests_total{status=\"404\"} 1\nrequests_total{status=\"500\"} 1"
+    },
+    {
+      "code": "SPRING_BOOT-10-T1",
+      "title": "Transfert : choisir un profil et compter les statuts",
+      "statement": "Même notion, autre contexte : simule les profils Spring : le profil par défaut fixe pool=2 et log=INFO, le profil dev surcharge log=DEBUG, le profil prod surcharge pool=20 et log=WARN. Affiche la configuration des profils dev, test (sans surcharge) et prod, puis un compteur http_requests_total étiqueté par statut (jamais par chemin) calculé sur les quatre requêtes fournies et trié par statut. Aucun indice n'est proposé et cet exercice ne compte pas dans le score. Sortie exacte :\ndev: pool=2 log=DEBUG\ntest: pool=2 log=INFO\nprod: pool=20 log=WARN\nhttp_requests_total{status=\"200\"} 3\nhttp_requests_total{status=\"500\"} 1",
+      "starterCode": "import java.util.*;\n\npublic class Main {\n    public static void main(String[] args) {\n        int[] statuses = {200, 200, 500, 200};\n        // À toi : écris la suite, sans étapes imposées.\n    }\n}\n",
+      "expectedOutput": "dev: pool=2 log=DEBUG\ntest: pool=2 log=INFO\nprod: pool=20 log=WARN\nhttp_requests_total{status=\"200\"} 3\nhttp_requests_total{status=\"500\"} 1",
+      "kind": "TRANSFER"
     }
   ],
   "quiz": [

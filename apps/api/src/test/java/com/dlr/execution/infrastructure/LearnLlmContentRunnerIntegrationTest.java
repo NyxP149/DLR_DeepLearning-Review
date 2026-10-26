@@ -26,21 +26,23 @@ class LearnLlmContentRunnerIntegrationTest {
         var labs = catalog.findAll().stream().filter(lab -> lab.code().startsWith("LLM-")).toList();
         assertThat(labs).hasSize(12);
         for (var lab : labs) {
-            var exercise = lab.exercises().getFirst();
+            // Exercice guidé puis exercices de transfert : chacun a un squelette et une solution de référence.
+            for (var exercise : lab.exercises()) {
             var submission = new Submission(
                     UUID.randomUUID(), UUID.randomUUID(), lab.language(), exercise.starterCode(),
                     SubmissionOrigin.EDITOR, Instant.now());
             var result = runner.run(submission);
-            assertThat(result.status()).as(lab.code() + ": " + result.errorOutput()).isEqualTo(ExecutionStatus.SUCCESS);
-            assertThat(result.standardOutput().strip()).as(lab.code() + " ne doit pas donner la solution")
+            assertThat(result.status()).as(exercise.code() + ": " + result.errorOutput()).isEqualTo(ExecutionStatus.SUCCESS);
+            assertThat(result.standardOutput().strip()).as(exercise.code() + " ne doit pas donner la solution")
                     .isNotEqualTo(exercise.expectedOutput().strip());
 
             var solved = runner.run(new Submission(
                     UUID.randomUUID(), UUID.randomUUID(), lab.language(), referenceSolution(exercise.code()),
                     SubmissionOrigin.EDITOR, Instant.now()));
-            assertThat(solved.status()).as(lab.code() + ": " + solved.errorOutput()).isEqualTo(ExecutionStatus.SUCCESS);
-            assertThat(solved.standardOutput().strip()).as(lab.code() + " solution de référence")
+            assertThat(solved.status()).as(exercise.code() + ": " + solved.errorOutput()).isEqualTo(ExecutionStatus.SUCCESS);
+            assertThat(solved.standardOutput().strip()).as(exercise.code() + " solution de référence")
                     .isEqualTo(exercise.expectedOutput().strip());
+            }
         }
     }
 

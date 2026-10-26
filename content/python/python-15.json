@@ -59,6 +59,14 @@
       "statement": "Lis un pyproject.toml avec tomllib et contrôle-le : affiche le nom et la version du projet, la version de Python requise, les dépendances déclarées sans aucune borne de version (opérateurs >=, ==, ~=, <, !=) et chaque commande installée par [project.scripts].",
       "starterCode": "import tomllib\n\nPYPROJECT = \"\"\"\n[project]\nname = \"dlr-tools\"\nversion = \"1.2.0\"\nrequires-python = \">=3.11\"\ndependencies = [\"requests>=2.31\", \"flask\", \"pydantic>=2\"]\n\n[project.scripts]\ndlr = \"dlr_tools.cli:main\"\n\"\"\"\n\n# TODO 1 : charge le texte avec tomllib.loads et récupère la table [\"project\"]\n# TODO 2 : affiche \"Projet: <nom> <version>\" puis \"Python requis: <requires-python>\"\n# TODO 3 : liste les dépendances sans opérateur de version et affiche\n#          \"Dépendances sans borne: <liste séparée par \", \">\" (ou \"aucune\")\n# TODO 4 : pour chaque entrée de [project.scripts], affiche \"Script: <commande> -> <cible>\"\n",
       "expectedOutput": "Projet: dlr-tools 1.2.0\nPython requis: >=3.11\nDépendances sans borne: flask\nScript: dlr -> dlr_tools.cli:main"
+    },
+    {
+      "code": "PYTHON-15-T1",
+      "title": "Transfert : contrôler le pyproject d'un outil d'ETL",
+      "statement": "Même notion, autre contexte : lis le pyproject.toml fourni avec tomllib et contrôle-le : affiche le nom et la version du projet, la version de Python requise, les dépendances déclarées sans aucune borne de version (opérateurs >=, ==, ~=, <, !=), triées, et chaque commande installée par [project.scripts]. Aucun indice n'est proposé et cet exercice ne compte pas dans le score. Sortie exacte :\nProjet: dlr-etl 0.4.1\nPython requis: >=3.12\nDependances sans borne: requests, rich\nScript: etl -> dlr_etl.main:run",
+      "starterCode": "import tomllib\n\nTEXT = \"\"\"\n[project]\nname = \"dlr-etl\"\nversion = \"0.4.1\"\nrequires-python = \">=3.12\"\ndependencies = [\"requests\", \"pydantic>=2,<3\", \"rich\"]\n\n[project.scripts]\netl = \"dlr_etl.main:run\"\n\"\"\"\n# À toi : écris la suite, sans étapes imposées.\n",
+      "expectedOutput": "Projet: dlr-etl 0.4.1\nPython requis: >=3.12\nDependances sans borne: requests, rich\nScript: etl -> dlr_etl.main:run",
+      "kind": "TRANSFER"
     }
   ],
   "quiz": [

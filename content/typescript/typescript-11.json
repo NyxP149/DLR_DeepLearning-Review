@@ -59,6 +59,14 @@
       "statement": "Plutôt que de lancer des exceptions pour des cas attendus, retourne un Result discriminé : { ok: true, value } ou { ok: false, error }. Écris parseQuantity (texte illisible, négatif ou non entier) et sumValid qui additionne uniquement les valeurs valides, puis affiche chaque résultat avec un switch sur ok.",
       "starterCode": "export {};\n\ntype Result<T, E> = { ok: true; value: T } | { ok: false; error: E };\n\nfunction parseQuantity(input: string): Result<number, string> {\n  // TODO 1 : erreur \"quantité illisible\" si le texte n'est pas un nombre, \"quantité négative\" si < 0,\n  //          \"quantité non entière\" si ce n'est pas un entier ; sinon { ok: true, value }\n  return { ok: false, error: '' };\n}\n\nfunction sumValid(results: Result<number, string>[]): number {\n  // TODO 2 : additionne les valeurs des résultats ok\n  return 0;\n}\n\nconst inputs = ['5', '-2', 'abc'];\nconst results = inputs.map(parseQuantity);\ninputs.forEach((input, index) => {\n  const result = results[index];\n  // TODO 3 : affiche `\"<entrée>\" -> ok <valeur>` ou `\"<entrée>\" -> erreur: <message>`\n});\nconsole.log(`Total: ${sumValid(results)} (sur ${inputs.length} entrées)`);\n",
       "expectedOutput": "\"5\" -> ok 5\n\"-2\" -> erreur: quantité négative\n\"abc\" -> erreur: quantité illisible\nTotal: 5 (sur 3 entrées)"
+    },
+    {
+      "code": "TYPESCRIPT-11-T1",
+      "title": "Transfert : un Result pour des prix saisis",
+      "statement": "Même notion, autre contexte : plutôt que de lancer des exceptions pour des cas attendus, retourne un Result discriminé ({ ok: true, value } ou { ok: false, error }) : parsePrice refuse un texte illisible (« prix illisible ») ou négatif (« prix negatif »), sumValid additionne uniquement les valeurs valides. Affiche le résultat de chaque saisie puis le total. Aucun indice n'est proposé et cet exercice ne compte pas dans le score. Sortie exacte :\n\"12.5\" -> ok 12.5\n\"-3\" -> erreur: prix negatif\n\"abc\" -> erreur: prix illisible\nTotal: 12.5 (sur 3 entrees)",
+      "starterCode": "export {};\n\nconst inputs = ['12.5', '-3', 'abc'];\n// À toi : écris la suite, sans étapes imposées.\n",
+      "expectedOutput": "\"12.5\" -> ok 12.5\n\"-3\" -> erreur: prix negatif\n\"abc\" -> erreur: prix illisible\nTotal: 12.5 (sur 3 entrees)",
+      "kind": "TRANSFER"
     }
   ],
   "quiz": [

@@ -59,6 +59,14 @@
       "statement": "Utilise le polymorphisme pour afficher exactement : Paiement carte: 42",
       "starterCode": "interface Payment { String pay(int amount); }\n\n// TODO 1 : crée une classe CardPayment qui implémente Payment\n//          et retourne \"Paiement carte: \" suivi du montant.\n\npublic class Main {\n    public static void main(String[] args) {\n        // TODO 2 : déclare une variable de type Payment, instanciée avec CardPayment\n        // TODO 3 : affiche le résultat de pay(42)\n    }\n}\n",
       "expectedOutput": "Paiement carte: 42"
+    },
+    {
+      "code": "JAVA-07-T1",
+      "title": "Transfert : envoyer des notifications polymorphes",
+      "statement": "Même notion, autre contexte : définis une classe abstraite Notification (destinataire, message, méthode abstraite send qui retourne le texte envoyé) et trois sous-classes Email, Sms et Push ; parcours une liste de Notification sans tester leur type concret et affiche le texte de chacune, puis le nombre de notifications envoyées. Aucun indice n'est proposé et cet exercice ne compte pas dans le score. Sortie exacte :\nEMAIL a nyx@mail.io : Bienvenue\nSMS a +33600000000 : Bienvenue\nPUSH a nyx : Bienvenue\n3 notifications envoyees",
+      "starterCode": "public class Main {\n    public static void main(String[] args) {\n        // À toi : écris la suite, sans étapes imposées.\n    }\n}\n",
+      "expectedOutput": "EMAIL a nyx@mail.io : Bienvenue\nSMS a +33600000000 : Bienvenue\nPUSH a nyx : Bienvenue\n3 notifications envoyees",
+      "kind": "TRANSFER"
     }
   ],
   "quiz": [

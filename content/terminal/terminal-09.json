@@ -59,6 +59,14 @@
       "statement": "Le script crée cinq fichiers de tailles connues dans data. Affiche les fichiers de plus de 100 octets du plus gros au plus petit, le total des tailles, le nombre de fichiers par extension (triés par extension) et le plus petit fichier.",
       "starterCode": "New-Item -ItemType Directory -Path data -Force | Out-Null\n$sizes = @{ 'a.txt' = 10; 'b.txt' = 20; 'report.csv' = 300; 'data.csv' = 50; 'data.json' = 200 }\nforeach ($name in $sizes.Keys) {\n    Set-Content -Path \"data/$name\" -Value ('x' * $sizes[$name]) -NoNewline\n}\n$files = Get-ChildItem data\n\n# TODO 1 : affiche \"Gros fichiers: \" suivi des noms des fichiers de plus de 100 octets, du plus gros au plus petit, séparés par \", \"\n#          (Where-Object, Sort-Object -Descending, ForEach-Object Name, -join)\n# TODO 2 : affiche \"Total octets: \" suivi de la somme des tailles (Measure-Object -Property Length -Sum)\n# TODO 3 : affiche \"Par extension: \" suivi de \".csv=2, .json=1, ...\" : groupe par Extension (Group-Object), trie par Name\n# TODO 4 : affiche \"Plus petit: \" suivi du nom et de la taille entre parenthèses, par exemple a.txt (10)\n",
       "expectedOutput": "Gros fichiers: report.csv, data.json\nTotal octets: 580\nPar extension: .csv=2, .json=1, .txt=2\nPlus petit: a.txt (10)"
+    },
+    {
+      "code": "TERMINAL-09-T1",
+      "title": "Transfert : interroger des journaux par leurs propriétés",
+      "statement": "Même notion, autre contexte : le script crée cinq fichiers de tailles connues dans logs. Affiche les fichiers de plus de 100 octets du plus gros au plus petit (noms séparés par « , »), le total des tailles, le nombre de fichiers par extension (triés par extension, « .ext=n » séparés par « , ») et le plus petit fichier avec sa taille. Aucun indice n'est proposé et cet exercice ne compte pas dans le score. Sortie exacte :\nGros fichiers: e.log, b.log, c.txt\nTotal octets: 810\nPar extension: .log=3, .txt=2\nPlus petit: d.txt (10)",
+      "starterCode": "New-Item -ItemType Directory -Path logs -Force | Out-Null\nSet-Content logs/a.log ('x' * 30) -NoNewline\nSet-Content logs/b.log ('x' * 250) -NoNewline\nSet-Content logs/c.txt ('x' * 120) -NoNewline\nSet-Content logs/d.txt ('x' * 10) -NoNewline\nSet-Content logs/e.log ('x' * 400) -NoNewline\n# À toi : écris la suite, sans étapes imposées.\n",
+      "expectedOutput": "Gros fichiers: e.log, b.log, c.txt\nTotal octets: 810\nPar extension: .log=3, .txt=2\nPlus petit: d.txt (10)",
+      "kind": "TRANSFER"
     }
   ],
   "quiz": [

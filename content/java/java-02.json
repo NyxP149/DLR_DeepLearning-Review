@@ -59,6 +59,14 @@
       "statement": "Déclare une quantité de 3 et un prix unitaire de 14, puis complète le calcul pour afficher exactement :\ntotal=42\navecTVA=50.40\ntronque=50\npartEntiere=10\npartExacte=10.5",
       "starterCode": "import java.util.Locale;\n\npublic class Main {\n    public static void main(String[] args) {\n        int quantity = 3;\n        int unitPrice = 14;\n        // TODO 1 : calcule total (int) = quantity * unitPrice et affiche \"total=\" + total\n        // TODO 2 : calcule avecTva (double) = total * 1.2 et affiche \"avecTVA=\" suivi de la valeur à 2 décimales\n        //          (String.format(Locale.ROOT, \"%.2f\", avecTva))\n        // TODO 3 : convertis avecTva en int avec un cast et affiche \"tronque=\" + la valeur\n        // TODO 4 : affiche \"partEntiere=\" suivi de total / 4 (division entière)\n        // TODO 5 : affiche \"partExacte=\" suivi de total / 4.0\n    }\n}\n",
       "expectedOutput": "total=42\navecTVA=50.40\ntronque=50\npartEntiere=10\npartExacte=10.5"
+    },
+    {
+      "code": "JAVA-02-T1",
+      "title": "Transfert : partager une addition",
+      "statement": "Même notion, autre contexte : un total de 100 euros est partagé entre 8 personnes. Affiche la part entière (division entière), le reste, la part exacte avec deux décimales (division décimale, formatage indépendant de la langue) et le total recomposé à partir de la part entière et du reste. Aucun indice n'est proposé et cet exercice ne compte pas dans le score. Sortie exacte :\npart entiere=12\nreste=4\npart exacte=12.50\ntotal recompose=100",
+      "starterCode": "public class Main {\n    public static void main(String[] args) {\n        int total = 100;\n        int people = 8;\n        // À toi : écris la suite, sans étapes imposées.\n    }\n}\n",
+      "expectedOutput": "part entiere=12\nreste=4\npart exacte=12.50\ntotal recompose=100",
+      "kind": "TRANSFER"
     }
   ],
   "quiz": [

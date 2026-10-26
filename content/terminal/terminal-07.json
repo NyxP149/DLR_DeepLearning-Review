@@ -59,6 +59,14 @@
       "statement": "Le dossier vrac contient 7 fichiers. Classe chaque fichier dans docs (pdf, txt), images (jpg), data (csv), scripts (sh) ou autres (sans extension connue), sans rien supprimer, puis affiche le nombre de fichiers de chaque catégorie par ordre alphabétique et le total.",
       "starterCode": "#!/usr/bin/env bash\nmkdir -p vrac\ntouch vrac/rapport.pdf vrac/photo1.jpg vrac/photo2.jpg vrac/notes.txt vrac/donnees.csv vrac/build.sh vrac/LISEZMOI\n\nfor f in vrac/*; do\n  [ -f \"$f\" ] || continue\n  # TODO 1 : déduis l'extension : ext=\"${f##*.}\" (pour LISEZMOI, ext vaut le nom entier : c'est normal)\n  # TODO 2 : avec un case, choisis le dossier : pdf|txt -> docs, jpg -> images, csv -> data, sh -> scripts, sinon autres\n  # TODO 3 : crée le dossier (mkdir -p) et déplace-y le fichier sans écraser (mv -n)\n  :\ndone\n\n# TODO 4 : pour chaque catégorie dans l'ordre alphabétique (autres data docs images scripts),\n#          affiche \"<catégorie>: <nombre de fichiers>\" (ls \"$dir\" | wc -l)\n# TODO 5 : affiche \"Total: \" suivi de la somme des fichiers classés\ntrue\n",
       "expectedOutput": "autres: 1\ndata: 1\ndocs: 2\nimages: 2\nscripts: 1\nTotal: 7"
+    },
+    {
+      "code": "TERMINAL-07-T1",
+      "title": "Transfert : classer un dossier en désordre",
+      "statement": "Même notion, autre contexte : le dossier vrac contient 7 fichiers. Classe chaque fichier dans tri/docs (md, txt), tri/img (png, jpg), tri/data (json, csv) ou tri/autres (tout le reste, y compris sans extension), sans rien écraser (mv -n), puis affiche le nombre de fichiers de chaque catégorie par ordre alphabétique et le total. Aucun indice n'est proposé et cet exercice ne compte pas dans le score. Sortie exacte :\nautres: 2\ndata: 1\ndocs: 2\nimg: 2\nTotal: 7",
+      "starterCode": "#!/usr/bin/env bash\nmkdir -p vrac\ncd vrac\ntouch notes.md todo.txt logo.png photo.jpg export.json backup run.sh\ncd ..\n# À toi : écris la suite, sans étapes imposées.\n",
+      "expectedOutput": "autres: 2\ndata: 1\ndocs: 2\nimg: 2\nTotal: 7",
+      "kind": "TRANSFER"
     }
   ],
   "quiz": [

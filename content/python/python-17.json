@@ -59,6 +59,14 @@
       "statement": "Pour trouver deux nombres dont la somme vaut la cible, écris la version naïve (deux boucles imbriquées) et la version par dictionnaire (une seule passe), chacune en comptant ses opérations, afin de mesurer le gain de complexité sans dépendre du temps d'exécution.",
       "starterCode": "NUMBERS = [8, 3, 11, 7, 2, 15, 4]\nTARGET = 9\n\n\ndef naive(numbers: list[int], target: int) -> tuple[tuple[int, int] | None, int]:\n    comparisons = 0\n    # TODO 1 : pour i puis pour j > i, compte une comparaison à chaque test numbers[i] + numbers[j] == target\n    #          et retourne ((i, j), comparaisons) dès que la paire est trouvée\n    return None, comparisons\n\n\ndef hashed(numbers: list[int], target: int) -> tuple[tuple[int, int] | None, int]:\n    lookups = 0\n    # TODO 2 : parcours la liste en mémorisant dans un dictionnaire valeur -> indice ;\n    #          à chaque élément, compte une consultation du dictionnaire pour le complément (target - valeur) ;\n    #          retourne ((indice du complément, indice courant), consultations) quand il existe\n    return None, lookups\n\n\npair_a, comparisons = naive(NUMBERS, TARGET)\npair_b, lookups = hashed(NUMBERS, TARGET)\nprint(f\"Naïf: indices {pair_a} après {comparisons} comparaisons\")\nprint(f\"Hachage: indices {pair_b} après {lookups} consultations\")\nprint(f\"Gain: {comparisons - lookups} opérations\")\n",
       "expectedOutput": "Naïf: indices (3, 4) après 16 comparaisons\nHachage: indices (3, 4) après 5 consultations\nGain: 11 opérations"
+    },
+    {
+      "code": "PYTHON-17-T1",
+      "title": "Transfert : trouver un doublon sans double boucle",
+      "statement": "Même notion, autre contexte : pour détecter le premier doublon d'une liste, écris la version naïve (deux boucles imbriquées) et la version par ensemble (une seule passe), chacune en comptant ses opérations (comparaisons ou consultations) pour mesurer le gain sans dépendre du temps d'exécution. Liste : [4, 9, 1, 7, 3, 9, 8]. Aucun indice n'est proposé et cet exercice ne compte pas dans le score. Sortie exacte :\nNaif: doublon 9 apres 10 comparaisons\nEnsemble: doublon 9 apres 6 consultations\nGain: 4 operations",
+      "starterCode": "values = [4, 9, 1, 7, 3, 9, 8]\n# À toi : écris la suite, sans étapes imposées.\n",
+      "expectedOutput": "Naif: doublon 9 apres 10 comparaisons\nEnsemble: doublon 9 apres 6 consultations\nGain: 4 operations",
+      "kind": "TRANSFER"
     }
   ],
   "quiz": [

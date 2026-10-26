@@ -59,6 +59,14 @@
       "statement": "Complète : debit avec version attendue (CONFLIT si la version a changé), et un client qui relit puis rejoue au plus 3 fois. Deux clients lisent la même version puis écrivent. Affiche exactement :\nA: OK après 1 essai(s)\nB: OK après 2 essai(s)\nCompte: {'balance': 40, 'version': 5}\nSolde insuffisant: SOLDE",
       "starterCode": "account = {\"balance\": 100, \"version\": 3}\n\n\ndef read() -> dict:\n    return dict(account)\n\n\ndef debit(amount: int, expected_version: int) -> str:\n    # TODO 1 : \"CONFLIT\" si expected_version != account[\"version\"] (aucune modification) ;\n    #          \"SOLDE\" si le solde est insuffisant (aucune modification) ;\n    #          sinon débite, incrémente la version et retourne \"OK\"\n    return \"\"\n\n\ndef debit_with_retry(amount: int, snapshot: dict, max_attempts: int = 3) -> str:\n    # TODO 2 : essaie debit avec snapshot[\"version\"] ; en cas de CONFLIT, relit le compte (read()) et réessaie,\n    #          au plus max_attempts fois ; retourne \"OK après <n> essai(s)\", \"CONFLIT PERSISTANT\" ou \"SOLDE\"\n    return \"\"\n\n\nsnapshot_a = read()\nsnapshot_b = read()\n# TODO 3 : affiche \"A: \" + debit_with_retry(30, snapshot_a) puis \"B: \" + debit_with_retry(30, snapshot_b)\n#          (B part d'une lecture périmée : il doit détecter le conflit puis réussir)\n# TODO 4 : affiche \"Compte: \" + account (print(account)) ; 100 - 30 - 30 = 40 : aucun retrait perdu\n# TODO 5 : affiche \"Solde insuffisant: \" + debit_with_retry(500, read())\n",
       "expectedOutput": "A: OK après 1 essai(s)\nB: OK après 2 essai(s)\nCompte: {'balance': 40, 'version': 5}\nSolde insuffisant: SOLDE"
+    },
+    {
+      "code": "ARCHITECTURE-09-T1",
+      "title": "Transfert : un verrouillage optimiste sur un stock",
+      "statement": "Même notion, autre contexte : écris debit(stock, quantite, version_attendue) qui retourne CONFLIT si la version du stock a changé depuis la lecture, SOLDE si la quantité dépasse le stock, OK sinon (le stock et sa version augmentent) ; un client relit puis rejoue au plus 3 fois. Deux clients lisent la même version, puis A écrit (retrait de 10), puis B tente (retrait de 5, il doit relire une fois). Affiche le résultat de chacun, l'état final et un retrait de 500 refusé pour solde insuffisant. Aucun indice n'est proposé et cet exercice ne compte pas dans le score. Sortie exacte :\nA: OK apres 1 essai(s)\nB: OK apres 2 essai(s)\nStock: {'units': 25, 'version': 3}\nRetrait 500: SOLDE",
+      "starterCode": "stock = {\"units\": 40, \"version\": 1}\n# À toi : écris la suite, sans étapes imposées.\n",
+      "expectedOutput": "A: OK apres 1 essai(s)\nB: OK apres 2 essai(s)\nStock: {'units': 25, 'version': 3}\nRetrait 500: SOLDE",
+      "kind": "TRANSFER"
     }
   ],
   "quiz": [

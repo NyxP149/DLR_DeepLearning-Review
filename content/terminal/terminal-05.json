@@ -59,6 +59,14 @@
       "statement": "Le script prépare deploy.sh (sans droit d'exécution) et secret.txt. Affiche son mode octal, constate que l'exécuter directement échoue (code 126), donne-lui les droits 755, exécute-le, puis réduis secret.txt à 600.",
       "starterCode": "#!/usr/bin/env bash\numask 022\nprintf '#!/usr/bin/env bash\\necho \"déploiement ok\"\\n' > deploy.sh\necho \"mot-de-passe\" > secret.txt\n\n# TODO 1 : affiche \"Avant: \" suivi du mode octal de deploy.sh (stat -c %a deploy.sh)\n# TODO 2 : essaie ./deploy.sh en ignorant l'erreur (2>/dev/null), puis affiche \"Exécution refusée: code \" suivi de $?\n# TODO 3 : donne les droits 755 à deploy.sh (chmod)\n# TODO 4 : affiche \"Après: \" suivi du mode octal, puis \"Résultat: \" suivi de la sortie de ./deploy.sh\n# TODO 5 : réduis secret.txt à 600 et affiche \"Secret: \" suivi de son mode octal\ntrue\n",
       "expectedOutput": "Avant: 644\nExécution refusée: code 126\nAprès: 755\nRésultat: déploiement ok\nSecret: 600"
+    },
+    {
+      "code": "TERMINAL-05-T1",
+      "title": "Transfert : rendre un script de livraison exécutable et protéger une clé",
+      "statement": "Même notion, autre contexte : le script prépare release.sh (mode 644, sans droit d'exécution) et key.txt. Affiche le mode octal de release.sh, constate que l'exécuter directement échoue (code 126), donne-lui les droits 750, exécute-le, puis réduis key.txt à 600 et affiche son mode. Aucun indice n'est proposé et cet exercice ne compte pas dans le score. Sortie exacte :\nAvant: 644\nExecution refusee: code 126\nApres: 750\nResultat: livraison ok\nCle: 600",
+      "starterCode": "#!/usr/bin/env bash\nmkdir -p dep\ncd dep\nprintf '#!/usr/bin/env bash\\necho livraison ok\\n' > release.sh\necho cle > key.txt\nchmod 644 release.sh key.txt\n# À toi : écris la suite, sans étapes imposées.\n",
+      "expectedOutput": "Avant: 644\nExecution refusee: code 126\nApres: 750\nResultat: livraison ok\nCle: 600",
+      "kind": "TRANSFER"
     }
   ],
   "quiz": [

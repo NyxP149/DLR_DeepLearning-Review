@@ -59,6 +59,14 @@
       "statement": "Écris trois méthodes statiques sum qui RETOURNENT leur résultat : sum(int, int), sum(int, int, int) et sum(double, double). Affiche ensuite sum(5, 7), sum(1, 2, 3) et sum(1.5, 2.0), chacun sur sa ligne. Sortie exacte :\n12\n6\n3.5",
       "starterCode": "public class Main {\n    // TODO 1 : écris static int sum(int a, int b) qui RETOURNE la somme\n    // TODO 2 : surcharge-la : static int sum(int a, int b, int c)\n    // TODO 3 : surcharge-la : static double sum(double a, double b)\n\n    public static void main(String[] args) {\n        // TODO 4 : affiche sum(5, 7), sum(1, 2, 3) puis sum(1.5, 2.0), chacun sur sa ligne\n    }\n}\n",
       "expectedOutput": "12\n6\n3.5"
+    },
+    {
+      "code": "JAVA-04-T1",
+      "title": "Transfert : surcharger un calcul de périmètre",
+      "statement": "Même notion, autre contexte : écris trois méthodes statiques perimetre qui RETOURNENT leur résultat : perimetre(int) pour un carré (4 x côté), perimetre(int, int) pour un rectangle (2 x (largeur + hauteur)) et perimetre(double) pour un cercle (2 x 3.14 x rayon, arrondi à deux décimales). Affiche les trois appels perimetre(5), perimetre(3, 4) et perimetre(1.5). Aucun indice n'est proposé et cet exercice ne compte pas dans le score. Sortie exacte :\ncarre 5 : 20\nrectangle 3x4 : 14\ncercle 1.5 : 9.42",
+      "starterCode": "public class Main {\n    public static void main(String[] args) {\n        // À toi : écris la suite, sans étapes imposées.\n    }\n}\n",
+      "expectedOutput": "carre 5 : 20\nrectangle 3x4 : 14\ncercle 1.5 : 9.42",
+      "kind": "TRANSFER"
     }
   ],
   "quiz": [

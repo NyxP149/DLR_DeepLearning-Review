@@ -59,6 +59,14 @@
       "statement": "Intercepte l'erreur métier et affiche exactement : Erreur: montant négatif",
       "starterCode": "public class Main {\n    static int validate(int amount) {\n        // TODO 1 : lance une IllegalArgumentException(\"montant négatif\") si amount < 0\n        return amount;\n    }\n    public static void main(String[] args) {\n        // TODO 2 : appelle validate(-1) dans un try, intercepte l'exception\n        //          puis affiche \"Erreur: \" suivi du message de l'erreur\n    }\n}\n",
       "expectedOutput": "Erreur: montant négatif"
+    },
+    {
+      "code": "JAVA-09-T1",
+      "title": "Transfert : valider des âges saisis",
+      "statement": "Même notion, autre contexte : écris parseAge(String) qui lève une IllegalArgumentException « pas un nombre » si le texte n'est pas un entier et « age hors limites » s'il n'est pas entre 0 et 120 ; traite la liste de saisies en interceptant l'erreur, affiche « saisie : valeur » ou « saisie : refuse (motif) », puis le bilan des valides et des refusés. Aucun indice n'est proposé et cet exercice ne compte pas dans le score. Sortie exacte :\n25 : 25\nabc : refuse (pas un nombre)\n-3 : refuse (age hors limites)\n130 : refuse (age hors limites)\n42 : 42\nValides : 2, refuses : 3",
+      "starterCode": "import java.util.List;\n\npublic class Main {\n    public static void main(String[] args) {\n        List<String> saisies = List.of(\"25\", \"abc\", \"-3\", \"130\", \"42\");\n        // À toi : écris la suite, sans étapes imposées.\n    }\n}\n",
+      "expectedOutput": "25 : 25\nabc : refuse (pas un nombre)\n-3 : refuse (age hors limites)\n130 : refuse (age hors limites)\n42 : 42\nValides : 2, refuses : 3",
+      "kind": "TRANSFER"
     }
   ],
   "quiz": [

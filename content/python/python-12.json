@@ -59,6 +59,14 @@
       "statement": "Écris la coroutine fetch(name, delay) qui attend delay secondes puis retourne son nom, lance trois appels de 0,1 s en concurrence avec asyncio.gather (le total doit rester sous 0,25 s au lieu de 0,3 s) et protège un appel lent par asyncio.wait_for avec un délai maximal.",
       "starterCode": "import asyncio\nimport time\n\n\nasync def fetch(name: str, delay: float) -> str:\n    # TODO 1 : attends `delay` secondes avec asyncio.sleep puis retourne le nom\n    return \"\"\n\n\nasync def main() -> None:\n    start = time.perf_counter()\n    # TODO 2 : lance fetch(\"a\", 0.1), fetch(\"b\", 0.1) et fetch(\"c\", 0.1) en concurrence avec asyncio.gather\n    results: list[str] = []\n    elapsed = time.perf_counter() - start\n    print(f\"Résultats: {results}\")\n    print(f\"Concurrent: {elapsed < 0.25}\")\n    # TODO 3 : attends fetch(\"lent\", 0.5) avec asyncio.wait_for(..., timeout=0.05) ;\n    #          sur asyncio.TimeoutError affiche \"Timeout: délai dépassé\"\n\n\nasyncio.run(main())\n",
       "expectedOutput": "Résultats: ['a', 'b', 'c']\nConcurrent: True\nTimeout: délai dépassé"
+    },
+    {
+      "code": "PYTHON-12-T1",
+      "title": "Transfert : limiter la concurrence avec un sémaphore",
+      "statement": "Même notion, autre contexte : écris la coroutine fetch(name) qui attend 0,1 s puis retourne son nom, lance quatre appels en concurrence avec asyncio.gather derrière un asyncio.Semaphore(2) et affiche les résultats dans l'ordre, la concurrence maximale réellement observée et si le total reste sous 0,35 s. Aucun indice n'est proposé et cet exercice ne compte pas dans le score. Sortie exacte :\nResultats: ['a', 'b', 'c', 'd']\nConcurrence max: 2\nDuree sous 0.35 s: True",
+      "starterCode": "import asyncio\nimport time\n# À toi : écris la suite, sans étapes imposées.\n",
+      "expectedOutput": "Resultats: ['a', 'b', 'c', 'd']\nConcurrence max: 2\nDuree sous 0.35 s: True",
+      "kind": "TRANSFER"
     }
   ],
   "quiz": [

@@ -59,6 +59,14 @@
       "statement": "Complète la fonction ConvertTo-Size : elle refuse un nombre d'octets négatif avec throw, retourne « N B » sous 1 Ko, « x.x KB » sous 1 Mo et « x.x MB » au-delà (une décimale, séparateur point). La boucle affiche le résultat ou « Erreur: » et le message.",
       "starterCode": "function ConvertTo-Size {\n    [CmdletBinding()]\n    param([Parameter(Mandatory)][long]$Bytes)\n    # TODO 1 : si $Bytes est négatif, lance throw 'octets négatifs'\n    # TODO 2 : sous 1KB retourne \"<n> B\"\n    # TODO 3 : sous 1MB retourne la taille en KB avec une décimale : [string]::Format([cultureinfo]::InvariantCulture, '{0:N1} KB', $Bytes / 1KB)\n    # TODO 4 : sinon retourne la taille en MB avec une décimale, même formatage\n    return ''\n}\n\nforeach ($value in 512, 1536, 2097152, -1) {\n    try {\n        ConvertTo-Size -Bytes $value\n    }\n    catch {\n        \"Erreur: $($_.Exception.Message)\"\n    }\n}\n",
       "expectedOutput": "512 B\n1.5 KB\n2.0 MB\nErreur: octets négatifs"
+    },
+    {
+      "code": "TERMINAL-12-T1",
+      "title": "Transfert : convertir des secondes en durée lisible avec validation",
+      "statement": "Même notion, autre contexte : écris la fonction ConvertTo-Duration (paramètre Seconds obligatoire de type entier) : elle refuse un nombre négatif avec throw « secondes negatives », retourne « N s » sous une minute, « x.x min » sous une heure et « x.x h » au-delà (une décimale, séparateur point quelle que soit la culture). La boucle fournie affiche le résultat ou « Erreur: » suivi du message. Aucun indice n'est proposé et cet exercice ne compte pas dans le score. Sortie exacte :\n45 s\n2.5 min\n2.0 h\nErreur: secondes negatives",
+      "starterCode": "foreach ($s in 45, 150, 7200, -1) {\n    try { Write-Output (ConvertTo-Duration -Seconds $s) } catch { Write-Output \"Erreur: $($_.Exception.Message)\" }\n}\n# À toi : écris la suite, sans étapes imposées.\n",
+      "expectedOutput": "45 s\n2.5 min\n2.0 h\nErreur: secondes negatives",
+      "kind": "TRANSFER"
     }
   ],
   "quiz": [

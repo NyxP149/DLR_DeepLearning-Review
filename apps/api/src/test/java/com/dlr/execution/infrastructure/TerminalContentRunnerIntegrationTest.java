@@ -33,16 +33,18 @@ class TerminalContentRunnerIntegrationTest {
         assertThat(labs.stream().map(lab -> lab.language()).distinct()).containsExactlyInAnyOrder("BASH", "POWERSHELL");
 
         for (var lab : labs) {
-            var exercise = lab.exercises().getFirst();
+            // Exercice guidé puis exercices de transfert : chacun a un squelette et une solution de référence.
+            for (var exercise : lab.exercises()) {
             var starter = runner.run(submission(lab.language(), exercise.starterCode()));
-            assertThat(starter.status()).as(lab.code() + ": " + starter.errorOutput()).isEqualTo(ExecutionStatus.SUCCESS);
-            assertThat(starter.standardOutput().strip()).as(lab.code() + " ne doit pas donner la solution")
+            assertThat(starter.status()).as(exercise.code() + ": " + starter.errorOutput()).isEqualTo(ExecutionStatus.SUCCESS);
+            assertThat(starter.standardOutput().strip()).as(exercise.code() + " ne doit pas donner la solution")
                     .isNotEqualTo(exercise.expectedOutput().strip());
 
             var solved = runner.run(submission(lab.language(), referenceSolution(exercise.code(), lab.language())));
-            assertThat(solved.status()).as(lab.code() + ": " + solved.errorOutput()).isEqualTo(ExecutionStatus.SUCCESS);
-            assertThat(solved.standardOutput().strip()).as(lab.code() + " solution de référence")
+            assertThat(solved.status()).as(exercise.code() + ": " + solved.errorOutput()).isEqualTo(ExecutionStatus.SUCCESS);
+            assertThat(solved.standardOutput().strip()).as(exercise.code() + " solution de référence")
                     .isEqualTo(exercise.expectedOutput().strip());
+            }
         }
     }
 

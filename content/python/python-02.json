@@ -59,6 +59,14 @@
       "statement": "Complète : safe_average qui refuse une liste vide, parse_age qui traduit une erreur de conversion et vérifie la borne, et add_tag qui évite la valeur par défaut mutable. Affiche exactement :\nMoyenne: 15.0\nErreur: La liste ne peut pas être vide\nAge: 42\nAge invalide: 'abc' n'est pas un entier\nAge invalide: 200 hors de [0, 150]\nListe 1: ['a'] Liste 2: ['b']",
       "starterCode": "def safe_average(values: list[float]) -> float:\n    # TODO 1 : lève ValueError(\"La liste ne peut pas être vide\") si la liste est vide, sinon retourne la moyenne\n    ...\n\n\ndef parse_age(text: str) -> int:\n    # TODO 2 : convertis text en int ; si la conversion échoue, lève ValueError(f\"{text!r} n'est pas un entier\") from error\n    # TODO 3 : si l'âge n'est pas dans [0, 150], lève ValueError(f\"{age} hors de [0, 150]\")\n    ...\n\n\ndef add_tag(tag: str, tags: list[str] | None = None) -> list[str]:\n    # TODO 4 : ajoute le tag à une NOUVELLE liste quand tags vaut None (pas de valeur par défaut mutable) et retourne la liste\n    ...\n\n\ntry:\n    print(f\"Moyenne: {safe_average([10, 15, 20])}\")\n    print(f\"Moyenne: {safe_average([])}\")\nexcept ValueError as error:\n    print(f\"Erreur: {error}\")\n\n# TODO 5 : pour \"42\", \"abc\", \"200\" : affiche \"Age: <valeur>\" ou \"Age invalide: <message>\" (capture ValueError)\n\n# TODO 6 : affiche \"Liste 1: \" et \"Liste 2: \" en appelant add_tag(\"a\") puis add_tag(\"b\") sans second argument\n#          (chaque appel doit renvoyer une liste indépendante) sur une seule ligne :  Liste 1: ['a'] Liste 2: ['b']\n",
       "expectedOutput": "Moyenne: 15.0\nErreur: La liste ne peut pas être vide\nAge: 42\nAge invalide: 'abc' n'est pas un entier\nAge invalide: 200 hors de [0, 150]\nListe 1: ['a'] Liste 2: ['b']"
+    },
+    {
+      "code": "PYTHON-02-T1",
+      "title": "Transfert : des contrats clairs pour un ratio et un port",
+      "statement": "Même notion, autre contexte : écris safe_ratio(a, b) qui refuse un dénominateur nul par une ValueError précise, parse_port(texte) qui traduit l'erreur de conversion (« 'x1' n'est pas un entier ») et vérifie la borne [1, 65535], et add_item(item, bucket=None) qui évite la valeur par défaut mutable. Affiche les résultats indiqués. Aucun indice n'est proposé et cet exercice ne compte pas dans le score. Sortie exacte :\nRatio: 2.5\nErreur: le denominateur ne peut pas etre nul\nPort: 8080\nPort invalide: 'x1' n'est pas un entier\nPort invalide: 70000 hors de [1, 65535]\nPanier 1: ['pomme'] Panier 2: ['poire']",
+      "starterCode": "# Écris safe_ratio, parse_port et add_item, puis affiche les résultats.\n",
+      "expectedOutput": "Ratio: 2.5\nErreur: le denominateur ne peut pas etre nul\nPort: 8080\nPort invalide: 'x1' n'est pas un entier\nPort invalide: 70000 hors de [1, 65535]\nPanier 1: ['pomme'] Panier 2: ['poire']",
+      "kind": "TRANSFER"
     }
   ],
   "quiz": [

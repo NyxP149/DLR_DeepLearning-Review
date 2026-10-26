@@ -59,6 +59,14 @@
       "statement": "Complète : le filtre de maîtrise minimale, le score pondéré, le classement et le test de sensibilité (que devient le résultat si la vitesse pèse 5 ?). Affiche exactement :\nÉcartées: Rust-WebAssembly\n1. Spring-Angular: 21\n2. FastAPI-TypeScript: 17\nChoix: Spring-Angular\nSensibilité: le choix devient FastAPI-TypeScript\nDécision robuste: False",
       "starterCode": "STACKS = {\n    \"Spring-Angular\": {\"team\": 5, \"speed\": 3, \"ops\": 4},\n    \"FastAPI-TypeScript\": {\"team\": 3, \"speed\": 5, \"ops\": 3},\n    \"Rust-WebAssembly\": {\"team\": 1, \"speed\": 2, \"ops\": 2},\n}\nWEIGHTS = {\"team\": 2, \"speed\": 1, \"ops\": 2}\nMIN_TEAM = 3\n\n\ndef score(notes: dict, weights: dict) -> int:\n    # TODO 1 : somme des notes x poids pour chaque critère de weights\n    return 0\n\n\ndef ranking(weights: dict) -> list[tuple[str, int]]:\n    # TODO 2 : couples (nom, score) des stacks éligibles (team >= MIN_TEAM), triés par score décroissant puis par nom\n    return []\n\n\n# TODO 3 : affiche \"Écartées: \" suivi des stacks sous MIN_TEAM (séparées par \", \") ou \"aucune\"\n# TODO 4 : affiche chaque ligne \"<rang>. <nom>: <score>\" du classement avec les poids WEIGHTS\n# TODO 5 : affiche \"Choix: <nom>\" (premier du classement)\n# TODO 6 : avec les poids {\"team\": 2, \"speed\": 5, \"ops\": 2}, affiche \"Sensibilité: le choix devient <nom>\" et\n#          \"Décision robuste: <True/False>\" (True si le gagnant ne change pas)\n",
       "expectedOutput": "Écartées: Rust-WebAssembly\n1. Spring-Angular: 21\n2. FastAPI-TypeScript: 17\nChoix: Spring-Angular\nSensibilité: le choix devient FastAPI-TypeScript\nDécision robuste: False"
+    },
+    {
+      "code": "ARCHITECTURE-04-T1",
+      "title": "Transfert : choisir une base de données avec une matrice de décision",
+      "statement": "Même notion, autre contexte : écarte les options dont la maîtrise de l'équipe est inférieure à 3 (contrainte dure), calcule le score pondéré des autres (somme des notes x poids), classe-les et affiche le choix ; refais le calcul en doublant le poids du critère « cout » et indique si le choix change. Aucun indice n'est proposé et cet exercice ne compte pas dans le score. Sortie exacte :\nEcartees: Cassandra\n1. PostgreSQL: 29\n2. MongoDB: 20\nChoix: PostgreSQL\nSensibilite: le choix ne change pas",
+      "starterCode": "weights = {\"fiabilite\": 3, \"cout\": 1, \"ecosysteme\": 2}\noptions = {\n    \"PostgreSQL\": {\"maitrise\": 4, \"fiabilite\": 5, \"cout\": 4, \"ecosysteme\": 5},\n    \"MongoDB\": {\"maitrise\": 3, \"fiabilite\": 3, \"cout\": 3, \"ecosysteme\": 4},\n    \"Cassandra\": {\"maitrise\": 1, \"fiabilite\": 5, \"cout\": 2, \"ecosysteme\": 3},\n}\n# À toi : écris la suite, sans étapes imposées.\n",
+      "expectedOutput": "Ecartees: Cassandra\n1. PostgreSQL: 29\n2. MongoDB: 20\nChoix: PostgreSQL\nSensibilite: le choix ne change pas",
+      "kind": "TRANSFER"
     }
   ],
   "quiz": [

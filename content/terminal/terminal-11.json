@@ -59,6 +59,14 @@
       "statement": "Définis APP_ENV pour le processus, lis-la, puis préfixe PATH avec un dossier tools du répertoire courant en prouvant qu'une seule entrée a été ajoutée et qu'elle est en première position. Supprime enfin la variable et vérifie qu'elle a disparu, y compris via l'API .NET.",
       "starterCode": "$sep = [IO.Path]::PathSeparator\n$tools = Join-Path (Get-Location).Path 'tools'\nNew-Item -ItemType Directory -Path $tools -Force | Out-Null\n\n# TODO 1 : définis $env:APP_ENV à 'prod' puis affiche \"APP_ENV=\" suivi de sa valeur\n# TODO 2 : range dans $before le nombre d'entrées de PATH ($env:PATH -split $sep).Count\n# TODO 3 : préfixe PATH avec $tools : $env:PATH = \"$tools$sep$env:PATH\"\n# TODO 4 : affiche \"Entrées ajoutées: \" suivi de la différence entre le nombre d'entrées après et $before\n# TODO 5 : affiche \"Première entrée: \" suivi du NOM du premier dossier de PATH (Split-Path -Leaf)\n# TODO 6 : supprime la variable (Remove-Item Env:APP_ENV) puis affiche \"Supprimée: \" suivi de\n#          [Environment]::GetEnvironmentVariable('APP_ENV', 'Process') -eq $null\n",
       "expectedOutput": "APP_ENV=prod\nEntrées ajoutées: 1\nPremière entrée: tools\nSupprimée: True"
+    },
+    {
+      "code": "TERMINAL-11-T1",
+      "title": "Transfert : manipuler une variable d'environnement et PATH",
+      "statement": "Même notion, autre contexte : définis LAYER pour le processus et lis-la, puis préfixe PATH avec le dossier tools du répertoire courant (séparateur de la plateforme) en prouvant qu'une seule entrée a été ajoutée et que son nom est tools en première position ; supprime enfin LAYER et vérifie qu'elle a disparu, y compris via [Environment]::GetEnvironmentVariable. Aucun indice n'est proposé et cet exercice ne compte pas dans le score. Sortie exacte :\nLAYER=staging\nEntrees ajoutees: 1\nPremiere entree: tools\nSupprimee: True",
+      "starterCode": "New-Item -ItemType Directory -Path tools -Force | Out-Null\n# À toi : écris la suite, sans étapes imposées.\n",
+      "expectedOutput": "LAYER=staging\nEntrees ajoutees: 1\nPremiere entree: tools\nSupprimee: True",
+      "kind": "TRANSFER"
     }
   ],
   "quiz": [

@@ -59,6 +59,14 @@
       "statement": "Écris validate : retire d'éventuelles balises de code, décode le JSON, exige exactement les clés answer et confidence, answer non vide et confidence entre 0 et 1 (un booléen n'est pas un nombre). Teste cinq réponses. Affiche exactement :\n1. accepté: JVM (92%)\n2. accepté: JDK (50%)\n3. rejeté: JSON invalide\n4. rejeté: confidence hors de [0, 1]\n5. rejeté: clés inattendues",
       "starterCode": "import json\n\nSAMPLES = [\n    '{\"answer\":\"JVM\",\"confidence\":0.92}',\n    '```json\\n{\"answer\":\"JDK\",\"confidence\":0.5}\\n```',\n    'Voici la réponse : {\"answer\":\"JVM\"}',\n    '{\"answer\":\"JVM\",\"confidence\":1.7}',\n    '{\"answer\":\"JVM\",\"confidence\":0.9,\"extra\":1}',\n]\n\n\ndef validate(raw: str) -> dict:\n    # TODO 1 : retire les balises ``` (et le mot json) si présentes, puis json.loads ;\n    #          en cas d'erreur de syntaxe : ValueError(\"JSON invalide\")\n    # TODO 2 : exige un dict avec exactement les clés {\"answer\", \"confidence\"} sinon ValueError(\"clés inattendues\")\n    # TODO 3 : answer doit être une chaîne non vide ; confidence un nombre (pas un booléen) dans [0, 1]\n    #          sinon ValueError(\"confidence hors de [0, 1]\")\n    return {}\n\n\nfor raw in SAMPLES:\n    # TODO 4 : affiche \"<n>. accepté: <answer> (<confidence en pourcent>%)\" ou \"<n>. rejeté: <raison>\" (n commence à 1)\n    pass\n",
       "expectedOutput": "1. accepté: JVM (92%)\n2. accepté: JDK (50%)\n3. rejeté: JSON invalide\n4. rejeté: confidence hors de [0, 1]\n5. rejeté: clés inattendues"
+    },
+    {
+      "code": "LLM-04-T1",
+      "title": "Transfert : valider une classification structurée",
+      "statement": "Même notion, autre contexte : écris validate qui retire d'éventuelles balises de code (``` et ```json), décode le JSON, exige exactement les clés label (parmi positif, negatif, neutre) et score (entier entre 0 et 10, un booléen n'est pas un entier) et retourne « accepte: label (score) » ou « rejete: motif » (JSON invalide, cles inattendues, label inconnu, score hors de [0, 10]). Teste les cinq réponses fournies. Aucun indice n'est proposé et cet exercice ne compte pas dans le score. Sortie exacte :\n1. accepte: positif (9)\n2. accepte: neutre (5)\n3. rejete: JSON invalide\n4. rejete: score hors de [0, 10]\n5. rejete: cles inattendues",
+      "starterCode": "responses = [\n    '{\"label\": \"positif\", \"score\": 9}',\n    '```json\\n{\"label\": \"neutre\", \"score\": 5}\\n```',\n    'pas du json',\n    '{\"label\": \"positif\", \"score\": 15}',\n    '{\"label\": \"negatif\", \"score\": 2, \"extra\": true}',\n]\n# À toi : écris la suite, sans étapes imposées.\n",
+      "expectedOutput": "1. accepte: positif (9)\n2. accepte: neutre (5)\n3. rejete: JSON invalide\n4. rejete: score hors de [0, 10]\n5. rejete: cles inattendues",
+      "kind": "TRANSFER"
     }
   ],
   "quiz": [

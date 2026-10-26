@@ -57,6 +57,14 @@
       "statement": "Complète le programme : une fonction describe_language, une fonction qui nomme les types de valeurs, une somme de carrés pairs avec compréhension, la preuve qu'une annotation n'est pas imposée, et la différence entre alias et copie. Affiche exactement :\nPython: dynamique et lisible\nTypes: int, str, list, float\nSomme des carres pairs: 20\nAnnotation non imposee: aa\nAlias: [1, 2, 3] [1, 2, 3]\nCopie: [1, 2, 3] [1, 2]",
       "starterCode": "def describe_language(name: str) -> str:\n    # TODO 1 : retourne \"<name>: dynamique et lisible\"\n    ...\n\n\ndef type_names(values: list) -> str:\n    # TODO 2 : retourne les noms de types des valeurs (type(v).__name__) séparés par \", \"\n    ...\n\n\ndef sum_even_squares(numbers: list[int]) -> int:\n    # TODO 3 : somme des carrés des nombres pairs, avec une compréhension / expression génératrice\n    ...\n\n\ndef double(value: int) -> int:\n    return value * 2\n\n\nprint(describe_language(\"Python\"))\nprint(\"Types:\", type_names([3, \"a\", [1], 2.5]))\nprint(\"Somme des carres pairs:\", sum_even_squares([1, 2, 3, 4, 5]))\n# TODO 4 : affiche \"Annotation non imposee: \" suivi de double(\"a\") (aucune erreur : l'annotation n'est pas vérifiée)\n# TODO 5 : a = [1, 2] ; b = a (alias) ; c = a.copy() ; b.append(3)\n#          affiche \"Alias: \" + a et b, puis \"Copie: \" + a et c   (print(a, b) affiche \"[1, 2, 3] [1, 2, 3]\")\n",
       "expectedOutput": "Python: dynamique et lisible\nTypes: int, str, list, float\nSomme des carres pairs: 20\nAnnotation non imposee: aa\nAlias: [1, 2, 3] [1, 2, 3]\nCopie: [1, 2, 3] [1, 2]"
+    },
+    {
+      "code": "PYTHON-01-T1",
+      "title": "Transfert : trois réflexes Python sur une configuration",
+      "statement": "Même notion, autre contexte : affiche les noms de types des valeurs fournies (sans le module), la somme des cubes des nombres impairs de 1 à 6 avec une compréhension, puis la différence entre alias et copie d'un dictionnaire (un alias suit les modifications, une copie non). Aucun indice n'est proposé et cet exercice ne compte pas dans le score. Sortie exacte :\nTypes: int, str, float, list, NoneType\nSomme des cubes impairs: 153\nAlias: {'a': 1, 'b': 2} {'a': 1, 'b': 2}\nCopie: {'a': 1} {'a': 1, 'b': 2}",
+      "starterCode": "values = [3, \"dlr\", 2.5, [1], None]\nconfig = {\"a\": 1}\n# À toi : écris la suite, sans étapes imposées.\n",
+      "expectedOutput": "Types: int, str, float, list, NoneType\nSomme des cubes impairs: 153\nAlias: {'a': 1, 'b': 2} {'a': 1, 'b': 2}\nCopie: {'a': 1} {'a': 1, 'b': 2}",
+      "kind": "TRANSFER"
     }
   ],
   "quiz": [

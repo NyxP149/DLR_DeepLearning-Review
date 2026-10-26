@@ -59,6 +59,14 @@
       "statement": "Écris une classe abstraite Account qui encapsule son solde (protected) et son historique (private) et impose à ses sous-classes de déclarer leurs frais. withdraw retire le montant plus les frais, refuse un retrait impossible avec l'erreur « solde insuffisant » et journalise l'opération. Complète ensuite les comptes Checking (frais de 1) et Savings (sans frais).",
       "starterCode": "export {};\n\nabstract class Account {\n  protected balance: number;\n  private history: string[] = [];\n\n  constructor(initial: number) {\n    this.balance = initial;\n  }\n\n  abstract fee(): number;\n\n  withdraw(amount: number): void {\n    // TODO : le coût est amount + fee() ; s'il dépasse le solde lance new Error('solde insuffisant') ;\n    //        sinon retire-le du solde et ajoute `retrait ${amount}` à l'historique\n  }\n\n  summary(): string {\n    return `solde ${this.balance} (frais ${this.fee()})`;\n  }\n\n  log(): string {\n    return this.history.join(', ');\n  }\n}\n\nclass Checking extends Account {\n  fee(): number {\n    // TODO : frais de 1\n    return 0;\n  }\n}\n\nclass Savings extends Account {\n  fee(): number {\n    // TODO : aucun frais\n    return 0;\n  }\n}\n\nconst checking = new Checking(100);\nconst savings = new Savings(100);\nchecking.withdraw(10);\nsavings.withdraw(10);\nconsole.log(`Courant: ${checking.summary()}`);\nconsole.log(`Épargne: ${savings.summary()}`);\nconsole.log(`Historique courant: ${checking.log()}`);\ntry {\n  savings.withdraw(500);\n} catch (error) {\n  console.log(`Refus: ${(error as Error).message}`);\n}\n",
       "expectedOutput": "Courant: solde 89 (frais 1)\nÉpargne: solde 90 (frais 0)\nHistorique courant: retrait 10\nRefus: solde insuffisant"
+    },
+    {
+      "code": "TYPESCRIPT-07-T1",
+      "title": "Transfert : modéliser des employés avec une classe abstraite",
+      "statement": "Même notion, autre contexte : écris une classe abstraite Employee qui encapsule le nom (protected) et le salaire de base (private), impose à ses sous-classes de déclarer leur prime en pourcentage (méthode abstraite) et calcule le total (base + base x prime / 100, en entiers). Ajoute Developer (prime 10) et Manager (prime 20), une méthode raise(percent) qui refuse une augmentation négative (« augmentation negative ») et affiche les totaux et la masse salariale. Aucun indice n'est proposé et cet exercice ne compte pas dans le score. Sortie exacte :\nAda (dev): total 3300\nBob (manager): total 4800\nMasse salariale: 8100\nRefus: augmentation negative",
+      "starterCode": "export {};\n// À toi : écris la suite, sans étapes imposées.\n",
+      "expectedOutput": "Ada (dev): total 3300\nBob (manager): total 4800\nMasse salariale: 8100\nRefus: augmentation negative",
+      "kind": "TRANSFER"
     }
   ],
   "quiz": [

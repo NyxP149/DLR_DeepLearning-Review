@@ -57,6 +57,14 @@
       "statement": "Complète : describeLanguage, greet (typage structurel : classe, autre classe et objet littéral), et classify qui réduit un unknown avec typeof. Montre aussi qu'une annotation disparaît à l'exécution. Affiche exactement :\nTypeScript: typage statique progressif\nBonjour Ada | Bonjour R2 | Bonjour Linus\nType a l'execution: string\nunknown: nombre, texte, autre",
       "starterCode": "interface Named {\n  name: string;\n}\n\nclass Person {\n  constructor(public name: string, public age: number) {}\n}\n\nclass Robot {\n  name = 'R2';\n  model = 'astromech';\n}\n\nfunction describeLanguage(name: string): string {\n  // TODO 1 : retourne \"<name>: typage statique progressif\"\n  return '';\n}\n\nfunction greet(entity: Named): string {\n  // TODO 2 : retourne \"Bonjour <nom>\"\n  return '';\n}\n\nfunction classify(value: unknown): string {\n  // TODO 3 : \"nombre\" si typeof est 'number', \"texte\" si 'string', sinon \"autre\" (réduction de unknown)\n  return '';\n}\n\nconsole.log(describeLanguage('TypeScript'));\nconsole.log([new Person('Ada', 36), new Robot(), { name: 'Linus' }].map(greet).join(' | '));\nconst typed: string = 'x';\n// TODO 4 : affiche \"Type a l'execution: \" suivi de typeof typed (l'annotation string a disparu, seule la valeur existe)\n// TODO 5 : affiche \"unknown: \" suivi de classify(42), classify('x'), classify(true) séparés par \", \"\n",
       "expectedOutput": "TypeScript: typage statique progressif\nBonjour Ada | Bonjour R2 | Bonjour Linus\nType a l'execution: string\nunknown: nombre, texte, autre"
+    },
+    {
+      "code": "TYPESCRIPT-01-T1",
+      "title": "Transfert : étiqueter des documents par typage structurel",
+      "statement": "Même notion, autre contexte : écris show(item: Labeled) pour une interface Labeled { label: string } et appelle-la avec une classe Invoice, une autre classe Quote et un objet littéral (le typage structurel accepte les trois sans déclaration), puis affiche le type à l'exécution d'une valeur annotée number et classify(value: unknown) qui réduit un unknown avec typeof. Aucun indice n'est proposé et cet exercice ne compte pas dans le score. Sortie exacte :\nEtiquette: Facture\nEtiquette: Devis\nEtiquette: Avoir\nType a l'execution: number\nunknown: nombre 42, texte dlr, autre",
+      "starterCode": "export {};\n\nclass Invoice { label = \"Facture\"; }\nclass Quote { label = \"Devis\"; }\n// À toi : écris la suite, sans étapes imposées.\n",
+      "expectedOutput": "Etiquette: Facture\nEtiquette: Devis\nEtiquette: Avoir\nType a l'execution: number\nunknown: nombre 42, texte dlr, autre",
+      "kind": "TRANSFER"
     }
   ],
   "quiz": [

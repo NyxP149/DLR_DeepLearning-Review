@@ -59,6 +59,14 @@
       "statement": "Reprends le rangement du labo 3 en PowerShell : compte les fichiers de vrac par extension (l'absence d'extension s'affiche (aucune)), donne le total, vérifie que Join-Path produit le même chemin qu'une concaténation avec le séparateur de la plateforme, et affiche la table d'équivalences bash/PowerShell triée.",
       "starterCode": "New-Item -ItemType Directory -Path vrac -Force | Out-Null\nforeach ($name in 'a.txt', 'b.txt', 'c.csv', 'd.sh', 'LISEZMOI') {\n    New-Item -ItemType File -Path (Join-Path 'vrac' $name) -Force | Out-Null\n}\n\n$equivalences = @{ 'ls' = 'Get-ChildItem'; 'cat' = 'Get-Content'; 'grep' = 'Select-String'; 'rm' = 'Remove-Item'; 'cd' = 'Set-Location' }\n\n# TODO 1 : affiche \"Extensions: \" suivi de \".csv=1, .sh=1, .txt=2, (aucune)=1\" : groupe les fichiers de vrac par extension\n#          (Group-Object Extension), remplace l'extension vide par (aucune), trie par nom d'extension vide à la fin\n# TODO 2 : affiche \"Fichiers: \" suivi du nombre de fichiers de vrac (Measure-Object)\n# TODO 3 : affiche \"Chemin portable: \" suivi de True si (Join-Path 'vrac' 'a.txt') est égal à \"vrac\" + séparateur + \"a.txt\"\n#          ([IO.Path]::DirectorySeparatorChar)\n# TODO 4 : affiche \"Équivalences:\" puis une ligne \"<bash> -> <PowerShell>\" par entrée de $equivalences, triée par nom\n",
       "expectedOutput": "Extensions: .csv=1, .sh=1, .txt=2, (aucune)=1\nFichiers: 5\nChemin portable: True\nÉquivalences:\ncat -> Get-Content\ncd -> Set-Location\ngrep -> Select-String\nls -> Get-ChildItem\nrm -> Remove-Item"
+    },
+    {
+      "code": "TERMINAL-18-T1",
+      "title": "Transfert : compter les fichiers d'un dossier en PowerShell portable",
+      "statement": "Même notion, autre contexte : compte les fichiers de vrac par extension (l'absence d'extension s'affiche (aucune), les extensions triées et (aucune) en dernier, format « .ext=n » séparés par « , »), donne le total, vérifie que Join-Path produit le même chemin qu'une concaténation avec le séparateur de la plateforme ([IO.Path]::DirectorySeparatorChar), et affiche trois équivalences bash vers PowerShell (cat, cd, grep) triées par commande bash au format « cat -> Get-Content ». Aucun indice n'est proposé et cet exercice ne compte pas dans le score. Sortie exacte :\nExtensions: .csv=1, .sh=1, .txt=2, (aucune)=1\nFichiers: 5\nChemin portable: True\nEquivalences:\ncat -> Get-Content\ncd -> Set-Location\ngrep -> Select-String",
+      "starterCode": "New-Item -ItemType Directory -Path vrac -Force | Out-Null\nforeach ($name in 'a.txt', 'b.txt', 'c.csv', 'run.sh', 'README') { New-Item -ItemType File -Path (Join-Path 'vrac' $name) -Force | Out-Null }\n# À toi : écris la suite, sans étapes imposées.\n",
+      "expectedOutput": "Extensions: .csv=1, .sh=1, .txt=2, (aucune)=1\nFichiers: 5\nChemin portable: True\nEquivalences:\ncat -> Get-Content\ncd -> Set-Location\ngrep -> Select-String",
+      "kind": "TRANSFER"
     }
   ],
   "quiz": [

@@ -57,6 +57,14 @@
       "statement": "Complète la méthode main pour afficher exactement quatre lignes, une instruction System.out.println par ligne :\nDLR Java Lab 1\nSource: Main.java\nBytecode: Main.class\nExécution: JVM",
       "starterCode": "public class Main {\n    public static void main(String[] args) {\n        // TODO 1 : affiche \"DLR Java Lab 1\"\n        // TODO 2 : affiche \"Source: Main.java\"\n        // TODO 3 : affiche \"Bytecode: Main.class\"\n        // TODO 4 : affiche \"Exécution: JVM\"\n    }\n}\n",
       "expectedOutput": "DLR Java Lab 1\nSource: Main.java\nBytecode: Main.class\nExécution: JVM"
+    },
+    {
+      "code": "JAVA-01-T1",
+      "title": "Transfert : annoncer la compilation d'une autre classe",
+      "statement": "Même notion, autre contexte : affiche, à partir du nom de classe Greeter stocké dans une variable, le fichier source, le bytecode produit et la commande de lancement, une instruction println par ligne. Aucun indice n'est proposé et cet exercice ne compte pas dans le score. Sortie exacte :\nFichier source : Greeter.java\nBytecode : Greeter.class\nLancer : java Greeter",
+      "starterCode": "public class Main {\n    public static void main(String[] args) {\n        String name = \"Greeter\";\n        // À toi : écris la suite, sans étapes imposées.\n    }\n}\n",
+      "expectedOutput": "Fichier source : Greeter.java\nBytecode : Greeter.class\nLancer : java Greeter",
+      "kind": "TRANSFER"
     }
   ],
   "quiz": [

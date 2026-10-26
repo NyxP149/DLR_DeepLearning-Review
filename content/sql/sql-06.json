@@ -59,6 +59,14 @@
       "statement": "Sur une table de mille utilisateurs, compare le plan d'exécution d'une recherche par e-mail avant et après la création d'un index. Écris ensuite la variante lower(email) = ? et constate qu'une fonction appliquée à la colonne empêche l'index de servir.",
       "starterCode": "import sqlite3\n\nconnection = sqlite3.connect(\":memory:\")\nconnection.execute(\"CREATE TABLE user (id INTEGER PRIMARY KEY, email TEXT NOT NULL)\")\nconnection.executemany(\n    \"INSERT INTO user (email) VALUES (?)\",\n    [(f\"user{number}@dlr.dev\",) for number in range(1000)],\n)\n\nTARGET = \"user42@dlr.dev\"\n\n\ndef plan(sql: str) -> str:\n    rows = connection.execute(\"EXPLAIN QUERY PLAN \" + sql, (TARGET,)).fetchall()\n    detail = \" \".join(row[3] for row in rows)\n    return \"recherche par index\" if \"SEARCH\" in detail else \"SCAN complet\"\n\n\nexact = \"SELECT id FROM user WHERE email = ?\"\nprint(\"Avant index:\", plan(exact))\n\n# TODO 1 : crée l'index idx_user_email sur user(email)\nprint(\"Après index:\", plan(exact))\n\n# TODO 2 : écris la requête qui compare lower(email) à ? au lieu de email\nlowered = \"SELECT id FROM user WHERE email = ?\"\nprint(\"Avec lower(email):\", plan(lowered))\n\nfound = connection.execute(exact, (TARGET,)).fetchall()\nprint(\"Lignes trouvées:\", len(found))\n",
       "expectedOutput": "Avant index: SCAN complet\nAprès index: recherche par index\nAvec lower(email): SCAN complet\nLignes trouvées: 1"
+    },
+    {
+      "code": "SQL-06-T1",
+      "title": "Transfert : lire un plan d'exécution sur une table de commandes",
+      "statement": "Même notion, autre contexte : sur une table de deux mille commandes, compare le plan d'exécution (EXPLAIN QUERY PLAN) d'une recherche par référence client avant et après la création d'un index, puis écris la variante upper(reference) = ? et constate qu'une fonction appliquée à la colonne empêche l'index de servir. Affiche « SCAN complet » ou « recherche par index » selon le plan, puis le nombre de lignes trouvées. Aucun indice n'est proposé et cet exercice ne compte pas dans le score. Sortie exacte :\nAvant index: SCAN complet\nApres index: recherche par index\nAvec upper(reference): SCAN complet\nLignes trouvees: 1",
+      "starterCode": "import sqlite3\n\nconnection = sqlite3.connect(\":memory:\")\nconnection.execute(\"CREATE TABLE orders (id INTEGER PRIMARY KEY, reference TEXT, total INTEGER)\")\nconnection.executemany(\n    \"INSERT INTO orders (reference, total) VALUES (?, ?)\",\n    [(f\"ref-{i}\", i) for i in range(2000)],\n)\n# À toi : écris la suite, sans étapes imposées.\n",
+      "expectedOutput": "Avant index: SCAN complet\nApres index: recherche par index\nAvec upper(reference): SCAN complet\nLignes trouvees: 1",
+      "kind": "TRANSFER"
     }
   ],
   "quiz": [

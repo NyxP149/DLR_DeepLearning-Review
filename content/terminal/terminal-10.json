@@ -59,6 +59,14 @@
       "statement": "Crée un journal logs/app.log de quatre lignes, ajoute-y une ligne, compte les lignes et les erreurs, produis une copie où ERROR devient ALERTE et vérifie ce qu'elle contient, puis teste l'existence de fichiers avant et après une suppression.",
       "starterCode": "New-Item -ItemType Directory -Path logs -Force | Out-Null\n$log = Join-Path 'logs' 'app.log'\nSet-Content -Path $log -Value @('INFO démarrage', 'ERROR disque plein', 'INFO reprise', 'ERROR timeout')\n\n# TODO 1 : ajoute la ligne 'INFO arrêt' à la fin du journal (Add-Content)\n# TODO 2 : affiche \"Lignes: \" suivi du nombre de lignes du journal (Get-Content ... ).Count\n# TODO 3 : affiche \"Erreurs: \" suivi du nombre de lignes qui contiennent ERROR (Select-String)\n# TODO 4 : écris dans logs/alertes.log le journal où ERROR est remplacé par ALERTE (-replace, Set-Content)\n#          puis affiche \"Alertes: \" suivi du nombre de lignes de alertes.log qui contiennent ALERTE\n# TODO 5 : affiche \"Existe: \" suivi de Test-Path sur le journal, \" / \" et Test-Path sur logs/absent.log\n# TODO 6 : copie le journal en logs/backup.log, supprime le journal (Remove-Item), puis affiche \"Après suppression: \" suivi de Test-Path sur le journal\n",
       "expectedOutput": "Lignes: 5\nErreurs: 2\nAlertes: 2\nExiste: True / False\nAprès suppression: False"
+    },
+    {
+      "code": "TERMINAL-10-T1",
+      "title": "Transfert : traiter un journal d'audit avec les cmdlets de fichiers",
+      "statement": "Même notion, autre contexte : crée audit/audit.log de quatre lignes (INFO start, FAIL disk, INFO retry, FAIL network), ajoute-y une ligne « INFO done », compte les lignes et les lignes FAIL, produis une copie audit/audit-fr.log où FAIL devient ECHEC et compte ses ECHEC, puis teste l'existence du journal et d'un fichier absent (Join-Path), supprime la copie et vérifie qu'elle a disparu. Aucun indice n'est proposé et cet exercice ne compte pas dans le score. Sortie exacte :\nLignes: 5\nEchecs: 2\nEchecs traduits: 2\nExiste: True / False\nApres suppression: False",
+      "starterCode": "New-Item -ItemType Directory -Path audit -Force | Out-Null\n# À toi : écris la suite, sans étapes imposées.\n",
+      "expectedOutput": "Lignes: 5\nEchecs: 2\nEchecs traduits: 2\nExiste: True / False\nApres suppression: False",
+      "kind": "TRANSFER"
     }
   ],
   "quiz": [

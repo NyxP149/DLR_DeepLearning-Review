@@ -59,6 +59,14 @@
       "statement": "Implémente le contrat et affiche exactement : Rapport: prêt",
       "starterCode": "interface Report { String render(); }\n\n// TODO 1 : crée une classe StatusReport qui implémente Report\n//          et dont render() retourne le texte \"Rapport: prêt\".\n\npublic class Main {\n    public static void main(String[] args) {\n        // TODO 2 : utilise le contrat Report pour manipuler un StatusReport\n        // TODO 3 : affiche le résultat de render()\n    }\n}\n",
       "expectedOutput": "Rapport: prêt"
+    },
+    {
+      "code": "JAVA-08-T1",
+      "title": "Transfert : appliquer des remises derrière une interface",
+      "statement": "Même notion, autre contexte : définis une interface Discount (méthodes label et apply) avec trois implémentations : pourcentage de 10, montant fixe de 5 et aucune remise. Applique chacune à un prix de 100.0, affiche « libellé : prix » puis le meilleur prix obtenu. Aucun indice n'est proposé et cet exercice ne compte pas dans le score. Sortie exacte :\nPercent 10 : 90.0\nFixed 5 : 95.0\nNone : 100.0\nMeilleur prix : 90.0",
+      "starterCode": "public class Main {\n    public static void main(String[] args) {\n        double price = 100.0;\n        // À toi : écris la suite, sans étapes imposées.\n    }\n}\n",
+      "expectedOutput": "Percent 10 : 90.0\nFixed 5 : 95.0\nNone : 100.0\nMeilleur prix : 90.0",
+      "kind": "TRANSFER"
     }
   ],
   "quiz": [

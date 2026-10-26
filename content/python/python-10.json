@@ -59,6 +59,14 @@
       "statement": "Décris par un Protocol le contrat d'un notificateur (une méthode send(message) -> str) sans imposer d'héritage, rends-le vérifiable avec runtime_checkable, implémente deux classes conformes et vérifie qu'une troisième, qui n'a pas la bonne méthode, est rejetée.",
       "starterCode": "from typing import Protocol, runtime_checkable\n\n\n# TODO 1 : décore Notifier avec @runtime_checkable\nclass Notifier(Protocol):\n    def send(self, message: str) -> str: ...\n\n\nclass EmailNotifier:\n    def send(self, message: str) -> str:\n        # TODO 2 : retourne \"email: <message>\"\n        return \"\"\n\n\nclass SmsNotifier:\n    def send(self, message: str) -> str:\n        # TODO 3 : retourne \"sms: <message>\"\n        return \"\"\n\n\nclass Broken:\n    def push(self, message: str) -> str:\n        return message\n\n\ndef conforms(candidate: object) -> bool:\n    # TODO 4 : retourne True si le candidat respecte le protocole Notifier\n    return False\n\n\nfor candidate in (EmailNotifier(), SmsNotifier(), Broken()):\n    name = type(candidate).__name__\n    if conforms(candidate):\n        print(f\"{name}: conforme -> {candidate.send('bonjour')}\")\n    else:\n        print(f\"{name}: non conforme\")\n",
       "expectedOutput": "EmailNotifier: conforme -> email: bonjour\nSmsNotifier: conforme -> sms: bonjour\nBroken: non conforme"
+    },
+    {
+      "code": "PYTHON-10-T1",
+      "title": "Transfert : un Protocol d'exportation vérifiable à l'exécution",
+      "statement": "Même notion, autre contexte : décris par un Protocol runtime_checkable le contrat d'un exportateur (une méthode export(data: dict) -> str) sans imposer d'héritage, implémente JsonExporter et CsvExporter conformes (le second produit « a=1 »), et vérifie qu'une troisième classe BrokenExporter, dont la méthode s'appelle dump, est rejetée. Aucun indice n'est proposé et cet exercice ne compte pas dans le score. Sortie exacte :\nJsonExporter: conforme -> {\"a\": 1}\nCsvExporter: conforme -> a=1\nBrokenExporter: non conforme",
+      "starterCode": "from typing import Protocol, runtime_checkable\n# À toi : écris la suite, sans étapes imposées.\n",
+      "expectedOutput": "JsonExporter: conforme -> {\"a\": 1}\nCsvExporter: conforme -> a=1\nBrokenExporter: non conforme",
+      "kind": "TRANSFER"
     }
   ],
   "quiz": [

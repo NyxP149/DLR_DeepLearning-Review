@@ -59,6 +59,14 @@
       "statement": "La base du conteneur n'a pas de pilote JDBC : simule une transaction sur une Map de soldes. Implémente transfer(from, to, amount) : copie l'état, applique les deux écritures, contrôle l'invariant (aucun solde négatif), puis COMMIT ou restaure la copie (ROLLBACK). Affiche exactement :\nAvant : {A=100, B=50}\nTransfert 30 A->B : COMMIT {A=70, B=80}\nTransfert 500 A->B : ROLLBACK {A=70, B=80}\nTotal conserve : true",
       "starterCode": "import java.util.*;\n\npublic class Main {\n    static final Map<String, Integer> balances = new TreeMap<>();\n\n    // TODO 1 : static String transfer(String from, String to, int amount) qui renvoie \"COMMIT\" ou \"ROLLBACK\" :\n    //          - copie les soldes (snapshot)\n    //          - débite puis crédite\n    //          - si un solde devient négatif : restaure le snapshot (balances.clear(); balances.putAll(snapshot)) et renvoie \"ROLLBACK\"\n    //          - sinon renvoie \"COMMIT\"\n\n    public static void main(String[] args) {\n        balances.put(\"A\", 100);\n        balances.put(\"B\", 50);\n        int totalBefore = balances.values().stream().mapToInt(Integer::intValue).sum();\n        System.out.println(\"Avant : \" + balances);\n        // TODO 2 : affiche \"Transfert 30 A->B : \" + résultat + \" \" + soldes\n        // TODO 3 : affiche \"Transfert 500 A->B : \" + résultat + \" \" + soldes\n        // TODO 4 : affiche \"Total conserve : \" + (la somme des soldes est égale à totalBefore)\n    }\n}\n",
       "expectedOutput": "Avant : {A=100, B=50}\nTransfert 30 A->B : COMMIT {A=70, B=80}\nTransfert 500 A->B : ROLLBACK {A=70, B=80}\nTotal conserve : true"
+    },
+    {
+      "code": "JAVA-19-T1",
+      "title": "Transfert : réserver un stock tout ou rien",
+      "statement": "Même notion, autre contexte : la base n'a pas de pilote JDBC : simule une transaction sur une Map de stocks (LinkedHashMap). reserve(Map<String,Integer>) copie l'état, retire chaque ligne de la commande, contrôle qu'aucun stock ne devient négatif, puis valide (COMMIT) ou restaure la copie (ROLLBACK). Aucun indice n'est proposé et cet exercice ne compte pas dans le score. Sortie exacte :\nAvant : {pomme=5, poire=2}\nCommande 1 : COMMIT {pomme=3, poire=1}\nCommande 2 : ROLLBACK {pomme=3, poire=1}\nStock jamais negatif : true",
+      "starterCode": "import java.util.*;\n\npublic class Main {\n    public static void main(String[] args) {\n        Map<String, Integer> stock = new LinkedHashMap<>();\n        stock.put(\"pomme\", 5);\n        stock.put(\"poire\", 2);\n        // À toi : écris la suite, sans étapes imposées.\n    }\n}\n",
+      "expectedOutput": "Avant : {pomme=5, poire=2}\nCommande 1 : COMMIT {pomme=3, poire=1}\nCommande 2 : ROLLBACK {pomme=3, poire=1}\nStock jamais negatif : true",
+      "kind": "TRANSFER"
     }
   ],
   "quiz": [

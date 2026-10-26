@@ -59,6 +59,14 @@
       "statement": "Le script crée deux prompts dans prompts/. Écris la fonction score qui compte, pour un fichier, les quatre rubriques attendues (titres « ## Objectif », « ## Contexte », « ## Contraintes », « ## Critères d'acceptation »), affiche « nom : n/4 », liste les rubriques manquantes et donne le verdict « prêt » ou « à compléter ».",
       "starterCode": "#!/usr/bin/env bash\nmkdir -p prompts\ncat > prompts/vague.md <<'EOF'\nCorrige le bug dans le code.\nEOF\ncat > prompts/bon.md <<'EOF'\n## Objectif\nCorriger l'arrondi de la TVA dans src/tva.py.\n## Contexte\nLe test tests/test_tva.py échoue sur 19,99.\n## Contraintes\nNe pas modifier l'API publique ; aucune nouvelle dépendance.\n## Critères d'acceptation\nmake test passe et le diff touche au plus 2 fichiers.\nEOF\n\nSECTIONS=(\"Objectif\" \"Contexte\" \"Contraintes\" \"Critères d'acceptation\")\n\nscore() {\n  local file=$1 found=0 missing=()\n  # TODO 1 : pour chaque rubrique de SECTIONS, teste si le fichier contient la ligne \"## <rubrique>\" (grep -qF)\n  #          compte celles qui sont présentes dans found et range les absentes dans le tableau missing\n  # TODO 2 : affiche \"<nom du fichier sans dossier> : <found>/4\" (basename)\n  # TODO 3 : affiche \"  manque : <rubrique>\" pour chaque rubrique absente\n  # TODO 4 : affiche \"  Verdict : prêt\" si found vaut 4, sinon \"  Verdict : à compléter\"\n  :\n}\n\nfor f in prompts/*.md; do score \"$f\"; done\ntrue\n",
       "expectedOutput": "bon.md : 4/4\n  Verdict : prêt\nvague.md : 0/4\n  manque : Objectif\n  manque : Contexte\n  manque : Contraintes\n  manque : Critères d'acceptation\n  Verdict : à compléter"
+    },
+    {
+      "code": "TERMINAL-19-T1",
+      "title": "Transfert : noter des prompts avec un contrôleur de rubriques",
+      "statement": "Même notion, autre contexte : le script crée deux prompts dans prompts/. Écris la fonction score qui compte, pour un fichier, les quatre rubriques attendues (titres « ## But », « ## Fichiers », « ## Limites », « ## Verification »), affiche « nom : n/4 », liste les rubriques manquantes (« manque : … ») et rend le verdict « pret » (4/4) ou « a completer ». Aucun indice n'est proposé et cet exercice ne compte pas dans le score. Sortie exacte :\nbon.md : 4/4\n  Verdict : pret\nvague.md : 1/4\n  manque : Fichiers\n  manque : Limites\n  manque : Verification\n  Verdict : a completer",
+      "starterCode": "#!/usr/bin/env bash\nmkdir -p prompts\ncd prompts\nprintf '## But\\nAjouter un test\\n## Fichiers\\nsrc/app.py\\n## Limites\\nSans dependance\\n## Verification\\npytest\\n' > bon.md\nprintf '## But\\nFaire mieux\\n' > vague.md\ncd ..\n# À toi : écris la suite, sans étapes imposées.\n",
+      "expectedOutput": "bon.md : 4/4\n  Verdict : pret\nvague.md : 1/4\n  manque : Fichiers\n  manque : Limites\n  manque : Verification\n  Verdict : a completer",
+      "kind": "TRANSFER"
     }
   ],
   "quiz": [

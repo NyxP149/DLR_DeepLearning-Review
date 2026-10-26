@@ -59,6 +59,14 @@
       "statement": "Écris pipe qui compose des fonctions de gauche à droite et addTag qui retourne une nouvelle copie de l'état (compteur incrémenté, étiquette ajoutée) sans toucher à l'état gelé d'origine. Le programme vérifie que l'original est intact et que la copie est un autre objet.",
       "starterCode": "export {};\n\nfunction pipe<T>(...fns: Array<(value: T) => T>): (value: T) => T {\n  // TODO 1 : retourne une fonction qui applique les fonctions dans l'ordre (reduce)\n  return (value) => value;\n}\n\ninterface State {\n  readonly count: number;\n  readonly tags: readonly string[];\n}\n\nfunction addTag(state: State, tag: string): State {\n  // TODO 2 : retourne un NOUVEL état : count + 1 et un nouveau tableau de tags avec l'étiquette ajoutée\n  return state;\n}\n\nconst add = (n: number) => (x: number) => x + n;\nconst double = (x: number) => x * 2;\nconsole.log(`pipe: ${pipe(add(2), double, add(2))(3)}`);\n\nconst original: State = Object.freeze({ count: 1, tags: Object.freeze(['a']) });\nconst updated = addTag(original, 'b');\nconsole.log(`Original: ${JSON.stringify(original)}`);\nconsole.log(`Copie: ${JSON.stringify(updated)}`);\nconsole.log(`Même référence: ${original === updated}`);\n",
       "expectedOutput": "pipe: 12\nOriginal: {\"count\":1,\"tags\":[\"a\"]}\nCopie: {\"count\":2,\"tags\":[\"a\",\"b\"]}\nMême référence: false"
+    },
+    {
+      "code": "TYPESCRIPT-17-T1",
+      "title": "Transfert : composer des fonctions pures sur un profil gelé",
+      "statement": "Même notion, autre contexte : écris pipe qui compose des fonctions de gauche à droite et withTag qui retourne une nouvelle copie d'un profil gelé (Object.freeze) avec une étiquette de plus, sans toucher à l'original ; affiche le résultat de pipe(double, increment) appliqué à 5, l'original, la copie et si les deux références sont identiques. Aucun indice n'est proposé et cet exercice ne compte pas dans le score. Sortie exacte :\npipe: 11\nOriginal: {\"name\":\"Ada\",\"tags\":[\"a\"]}\nCopie: {\"name\":\"Ada\",\"tags\":[\"a\",\"b\"]}\nMeme reference: false",
+      "starterCode": "export {};\n\nconst profile = Object.freeze({ name: 'Ada', tags: Object.freeze(['a']) });\n// À toi : écris la suite, sans étapes imposées.\n",
+      "expectedOutput": "pipe: 11\nOriginal: {\"name\":\"Ada\",\"tags\":[\"a\"]}\nCopie: {\"name\":\"Ada\",\"tags\":[\"a\",\"b\"]}\nMeme reference: false",
+      "kind": "TRANSFER"
     }
   ],
   "quiz": [

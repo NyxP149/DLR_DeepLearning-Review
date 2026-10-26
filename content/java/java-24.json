@@ -59,6 +59,14 @@
       "statement": "Écris trois règles nommées (nom non vide, score >= 85, dossier relu) sous forme de prédicats, évalue quatre candidats et affiche, pour chacun, ACCEPTE ou REFUSE avec la liste des règles en échec, puis un bilan. Affiche exactement :\nNyx : ACCEPTE\nAda : REFUSE [score>=85]\nLinus : REFUSE [relu]\n : REFUSE [nom, score>=85, relu]\nBilan : 1/4 acceptes",
       "starterCode": "import java.util.*;\nimport java.util.function.Predicate;\n\npublic class Main {\n    record Candidate(String name, int score, boolean reviewed) {}\n    // TODO 1 : record Rule(String name, Predicate<Candidate> test)\n\n    public static void main(String[] args) {\n        List<Candidate> candidates = List.of(\n                new Candidate(\"Nyx\", 90, true),\n                new Candidate(\"Ada\", 84, true),\n                new Candidate(\"Linus\", 85, false),\n                new Candidate(\"\", 10, false));\n        // TODO 2 : List<Rule> rules — \"nom\" (nom non vide), \"score>=85\" (score >= 85), \"relu\" (dossier relu), dans cet ordre\n        // TODO 3 : pour chaque candidat, calcule la liste des NOMS de règles en échec (dans l'ordre des règles)\n        //          et affiche  nom + \" : ACCEPTE\"  ou  nom + \" : REFUSE \" + liste (ex. \"Ada : REFUSE [score>=85]\")\n        // TODO 4 : affiche \"Bilan : \" + nombre d'acceptés + \"/\" + total + \" acceptes\"\n    }\n}\n",
       "expectedOutput": "Nyx : ACCEPTE\nAda : REFUSE [score>=85]\nLinus : REFUSE [relu]\n : REFUSE [nom, score>=85, relu]\nBilan : 1/4 acceptes"
+    },
+    {
+      "code": "JAVA-24-T1",
+      "title": "Transfert : contrôler des codes promo avec des règles nommées",
+      "statement": "Même notion, autre contexte : écris trois règles nommées sous forme de prédicats (prefixe : commence par « DLR- », longueur : exactement 8 caractères, chiffre : se termine par un chiffre), évalue quatre codes et affiche pour chacun VALIDE ou INVALIDE avec la liste des règles en échec, puis le bilan. Aucun indice n'est proposé et cet exercice ne compte pas dans le score. Sortie exacte :\nDLR-2026 : VALIDE\nDLR-ABCD : INVALIDE [chiffre]\nPROMO-26 : INVALIDE [prefixe]\nDLR-20 : INVALIDE [longueur]\nBilan : 1/4 valides",
+      "starterCode": "import java.util.List;\n\npublic class Main {\n    public static void main(String[] args) {\n        List<String> codes = List.of(\"DLR-2026\", \"DLR-ABCD\", \"PROMO-26\", \"DLR-20\");\n        // À toi : écris la suite, sans étapes imposées.\n    }\n}\n",
+      "expectedOutput": "DLR-2026 : VALIDE\nDLR-ABCD : INVALIDE [chiffre]\nPROMO-26 : INVALIDE [prefixe]\nDLR-20 : INVALIDE [longueur]\nBilan : 1/4 valides",
+      "kind": "TRANSFER"
     }
   ],
   "quiz": [

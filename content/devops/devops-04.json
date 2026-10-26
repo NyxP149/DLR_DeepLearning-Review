@@ -59,6 +59,14 @@
       "statement": "Un pipeline est un graphe de jobs avec des durées et des dépendances. Calcule sa durée séquentielle, sa durée en parallèle (le chemin critique) et le chemin lui-même, puis mesure le gain d'un cache de dépendances qui ramène l'installation de 3 à 1 minute.",
       "starterCode": "JOBS = {\n    \"install\": (3, []),\n    \"lint\": (2, [\"install\"]),\n    \"test\": (6, [\"install\"]),\n    \"build\": (4, [\"install\"]),\n    \"package\": (3, [\"build\", \"test\"]),\n}\n\n\ndef critical_path(jobs: dict) -> tuple[int, list[str]]:\n    # TODO : pour chaque job, durée de fin = sa durée + la plus grande durée de fin de ses dépendances\n    #        (mémorise les résultats). Retourne la plus grande durée de fin et le chemin de jobs qui y mène,\n    #        de la racine au dernier job.\n    return 0, []\n\n\nsequential = sum(duration for duration, _ in JOBS.values())\nparallel, path = critical_path(JOBS)\nprint(f\"Séquentiel: {sequential} min\")\nprint(f\"Parallèle: {parallel} min\")\nprint(f\"Chemin critique: {' -> '.join(path)}\")\n\ncached = dict(JOBS)\ncached[\"install\"] = (1, [])\nprint(f\"Avec cache: {critical_path(cached)[0]} min\")\n",
       "expectedOutput": "Séquentiel: 18 min\nParallèle: 12 min\nChemin critique: install -> test -> package\nAvec cache: 10 min"
+    },
+    {
+      "code": "DEVOPS-04-T1",
+      "title": "Transfert : paralléliser des tests en tranches",
+      "statement": "Même notion, autre contexte : un pipeline contient les jobs suivants (durée en minutes, dépendances) : checkout 1 (aucune), install 3 (checkout), lint 2 (install), tests_a 6 (install), tests_b 4 (install), package 2 (lint, tests_a, tests_b). Calcule la durée séquentielle, la durée en parallèle (chemin critique), le chemin critique lui-même, puis la durée avec un cache qui ramène install à 1 minute. Aucun indice n'est proposé et cet exercice ne compte pas dans le score. Sortie exacte :\nSequentiel: 18 min\nParallele: 12 min\nChemin critique: checkout -> install -> tests_a -> package\nAvec cache: 10 min",
+      "starterCode": "jobs = {\n    \"checkout\": (1, []),\n    \"install\": (3, [\"checkout\"]),\n    \"lint\": (2, [\"install\"]),\n    \"tests_a\": (6, [\"install\"]),\n    \"tests_b\": (4, [\"install\"]),\n    \"package\": (2, [\"lint\", \"tests_a\", \"tests_b\"]),\n}\n# À toi : écris la suite, sans étapes imposées.\n",
+      "expectedOutput": "Sequentiel: 18 min\nParallele: 12 min\nChemin critique: checkout -> install -> tests_a -> package\nAvec cache: 10 min",
+      "kind": "TRANSFER"
     }
   ],
   "quiz": [

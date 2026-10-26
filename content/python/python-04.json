@@ -59,6 +59,14 @@
       "statement": "Écris un profil en JSON UTF-8 puis relis-le, vérifie que le fichier est fermé, détecte un champ manquant dans un second JSON, vérifie que l'accent a survécu et compte les lignes d'un journal écrit avec with. Affiche exactement :\nProfil: Nyx | niveau 3\nFichier ferme: True\nChamp manquant: 'level'\nAccents conserves: True\nLignes ecrites: 3",
       "starterCode": "import json\nfrom pathlib import Path\n\npath = Path(\"profile.json\")\nprofile = {\"name\": \"Nyx\", \"level\": 3, \"motto\": \"Révision\"}\nlog_path = Path(\"journal.txt\")\n\n# TODO 1 : écris le profil au format JSON dans path avec un with (encoding=\"utf-8\", ensure_ascii=False)\n# TODO 2 : relis le fichier avec un with et json.load\n# TODO 3 : affiche \"Profil: Nyx | niveau 3\" depuis les données rechargées\n# TODO 4 : affiche \"Fichier ferme: \" suivi de l'attribut .closed du fichier utilisé pour la lecture (hors du bloc with)\n# TODO 5 : charge json.loads('{\"name\": \"Ada\"}') et, pour chaque champ de (\"name\", \"level\"), affiche \"Champ manquant: 'level'\"\n#          (print(f\"Champ manquant: {champ!r}\")) quand le champ est absent\n# TODO 6 : affiche \"Accents conserves: \" suivi de True si les données relues ont motto == \"Révision\"\n# TODO 7 : écris 3 lignes dans log_path avec un with (write), relis avec read_text(encoding=\"utf-8\").splitlines()\n#          et affiche \"Lignes ecrites: 3\"\n",
       "expectedOutput": "Profil: Nyx | niveau 3\nFichier ferme: True\nChamp manquant: 'level'\nAccents conserves: True\nLignes ecrites: 3"
+    },
+    {
+      "code": "PYTHON-04-T1",
+      "title": "Transfert : persister des réglages en JSON",
+      "statement": "Même notion, autre contexte : écris des réglages en JSON UTF-8 dans settings.json puis relis-les avec pathlib, vérifie que le fichier est fermé (with), détecte un champ manquant dans un second dictionnaire chargé depuis un JSON, vérifie que l'accent de « thème » a survécu et compte les lignes d'un journal écrit avec with. Aucun indice n'est proposé et cet exercice ne compte pas dans le score. Sortie exacte :\nReglages: theme=sombre taille=14\nFichier ferme: True\nChamp manquant: 'langue'\nAccents conserves: True\nLignes ecrites: 3",
+      "starterCode": "import json\nfrom pathlib import Path\n\npath = Path(\"settings.json\")\nlog_path = Path(\"journal.txt\")\n# À toi : écris la suite, sans étapes imposées.\n",
+      "expectedOutput": "Reglages: theme=sombre taille=14\nFichier ferme: True\nChamp manquant: 'langue'\nAccents conserves: True\nLignes ecrites: 3",
+      "kind": "TRANSFER"
     }
   ],
   "quiz": [

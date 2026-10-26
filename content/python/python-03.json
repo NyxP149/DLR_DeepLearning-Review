@@ -59,6 +59,14 @@
       "statement": "À partir de la liste de membres, affiche les actifs triés, les rôles uniques triés, le nombre de membres par rôle (dictionnaire trié par clé), le membre le plus ancien et vérifie que la source est intacte. Affiche exactement :\nActifs: Ada, Linus, Nyx\nRoles uniques: ['admin', 'dev', 'ops']\nPar role: {'admin': 1, 'dev': 2, 'ops': 1}\nPlus ancien: Grace (12 ans)\nSource intacte: 4",
       "starterCode": "members = [\n    {\"name\": \"Linus\", \"active\": True, \"role\": \"dev\", \"years\": 5},\n    {\"name\": \"Grace\", \"active\": False, \"role\": \"admin\", \"years\": 12},\n    {\"name\": \"Ada\", \"active\": True, \"role\": \"dev\", \"years\": 8},\n    {\"name\": \"Nyx\", \"active\": True, \"role\": \"ops\", \"years\": 2},\n]\n\n# TODO 1 : noms des membres actifs, triés, avec une compréhension / expression génératrice -> \"Actifs: Ada, Linus, Nyx\"\n# TODO 2 : rôles uniques (set de compréhension) triés -> \"Roles uniques: ['admin', 'dev', 'ops']\"\n# TODO 3 : dictionnaire {rôle: nombre de membres} construit avec get(clé, 0) + 1, affiché trié par clé -> \"Par role: {...}\"\n# TODO 4 : membre le plus ancien avec max(..., key=...) -> \"Plus ancien: Grace (12 ans)\"\n# TODO 5 : \"Source intacte: \" + len(members)  (aucune des étapes ne doit modifier la liste)\n",
       "expectedOutput": "Actifs: Ada, Linus, Nyx\nRoles uniques: ['admin', 'dev', 'ops']\nPar role: {'admin': 1, 'dev': 2, 'ops': 1}\nPlus ancien: Grace (12 ans)\nSource intacte: 4"
+    },
+    {
+      "code": "PYTHON-03-T1",
+      "title": "Transfert : un rapport sur des produits sans modifier la source",
+      "statement": "Même notion, autre contexte : à partir de la liste de produits (nom, catégorie, prix, en stock), affiche les noms en stock triés, les catégories uniques triées, le nombre de produits par catégorie (dictionnaire trié par clé), le produit le moins cher avec son prix, et vérifie que la source est intacte (sa longueur). Aucun indice n'est proposé et cet exercice ne compte pas dans le score. Sortie exacte :\nEn stock: Cable, Casque, Clavier\nCategories: ['audio', 'bureau']\nPar categorie: {'audio': 1, 'bureau': 3}\nMoins cher: Cable (4.5)\nSource intacte: 4",
+      "starterCode": "products = [\n    (\"Clavier\", \"bureau\", 49.9, True),\n    (\"Casque\", \"audio\", 59.0, True),\n    (\"Cable\", \"bureau\", 4.5, True),\n    (\"Souris\", \"bureau\", 19.9, False),\n]\n# À toi : écris la suite, sans étapes imposées.\n",
+      "expectedOutput": "En stock: Cable, Casque, Clavier\nCategories: ['audio', 'bureau']\nPar categorie: {'audio': 1, 'bureau': 3}\nMoins cher: Cable (4.5)\nSource intacte: 4",
+      "kind": "TRANSFER"
     }
   ],
   "quiz": [

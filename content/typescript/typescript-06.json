@@ -59,6 +59,14 @@
       "statement": "Un paramètre readonly number[] promet de ne pas modifier le tableau reçu. Écris minMax (qui retourne un tuple [min, max]), sortedCopy (qui trie une copie sans toucher à l'original) et distance (qui prend un point readonly [x, y]), puis vérifie que le tableau d'origine est resté intact.",
       "starterCode": "export {};\n\nfunction minMax(values: readonly number[]): [number, number] {\n  // TODO 1 : retourne [plus petite valeur, plus grande valeur] sans modifier le tableau\n  return [0, 0];\n}\n\nfunction sortedCopy(values: readonly number[]): number[] {\n  // TODO 2 : retourne une COPIE triée par ordre croissant (le tableau reçu ne doit pas changer)\n  return [];\n}\n\nfunction distance(point: readonly [number, number]): number {\n  // TODO 3 : retourne la distance du point à l'origine (Math.hypot)\n  return 0;\n}\n\nconst data: readonly number[] = [9, 2, 4];\nconst [min, max] = minMax(data);\nconsole.log(`Min/Max: ${min} / ${max}`);\nconsole.log(`Trié: ${sortedCopy(data).join(',')}`);\nconsole.log(`Original inchangé: ${data.join(',')}`);\nconsole.log(`Distance: ${distance([3, 4])}`);\n",
       "expectedOutput": "Min/Max: 2 / 9\nTrié: 2,4,9\nOriginal inchangé: 9,2,4\nDistance: 5"
+    },
+    {
+      "code": "TYPESCRIPT-06-T1",
+      "title": "Transfert : travailler sur des tableaux readonly et des tuples",
+      "statement": "Même notion, autre contexte : écris rangeOf (tuple [min, max] d'un readonly number[]), sortedDescending (copie triée par ordre décroissant sans toucher à l'original) et midpoint (milieu de deux points readonly [x, y]) puis affiche les résultats pour le tableau [7, 4, 9, 2] et les points [0, 0] et [4, 6]. Aucun indice n'est proposé et cet exercice ne compte pas dans le score. Sortie exacte :\nEtendue: 2 -> 9\nDecroissant: 9,7,4,2\nOriginal inchange: 7,4,9,2\nMilieu: 2,3",
+      "starterCode": "export {};\n\nconst values: readonly number[] = [7, 4, 9, 2];\n// À toi : écris la suite, sans étapes imposées.\n",
+      "expectedOutput": "Etendue: 2 -> 9\nDecroissant: 9,7,4,2\nOriginal inchange: 7,4,9,2\nMilieu: 2,3",
+      "kind": "TRANSFER"
     }
   ],
   "quiz": [

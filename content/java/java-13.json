@@ -59,6 +59,14 @@
       "statement": "Complète Main : écris les lignes du journal en UTF-8 dans journal.txt, relis-les, cumule les minutes par mois (YearMonth, TreeMap), trouve le jour de la semaine de la première date et vérifie que l'accent de « Révision » a survécu. Affiche exactement :\n2026-08 : 75 min\n2026-09 : 80 min\nJour : SUNDAY\nAccent conserve : true",
       "starterCode": "import java.io.IOException;\nimport java.nio.charset.StandardCharsets;\nimport java.nio.file.*;\nimport java.time.*;\nimport java.util.*;\n\npublic class Main {\n    public static void main(String[] args) throws IOException {\n        Path path = Path.of(\"journal.txt\");\n        List<String> lines = List.of(\n                \"2026-08-30;Java;45\",\n                \"2026-08-31;SQL;30\",\n                \"2026-09-01;Révision;60\",\n                \"2026-09-03;Docker;20\");\n        // TODO 1 : écris les lignes dans le fichier en UTF-8 (Files.write)\n        // TODO 2 : relis le fichier en UTF-8 (Files.readAllLines)\n        // TODO 3 : cumule les minutes par YearMonth dans une TreeMap puis affiche \"2026-08 : 75 min\", etc.\n        // TODO 4 : affiche \"Jour : \" suivi du jour de la semaine de la première date (getDayOfWeek)\n        // TODO 5 : affiche \"Accent conserve : \" suivi de true si la 3e ligne relue contient \"Révision\"\n    }\n}\n",
       "expectedOutput": "2026-08 : 75 min\n2026-09 : 80 min\nJour : SUNDAY\nAccent conserve : true"
+    },
+    {
+      "code": "JAVA-13-T1",
+      "title": "Transfert : relire un agenda en UTF-8",
+      "statement": "Même notion, autre contexte : écris les trois lignes de l'agenda (date ISO;titre;minutes) en UTF-8 dans agenda.txt, relis-les, convertis les dates avec LocalDate et affiche la première date, la dernière, l'écart en jours entre les deux (ChronoUnit.DAYS), le jour de la semaine de la dernière et si l'accent de « Révision » a survécu. Aucun indice n'est proposé et cet exercice ne compte pas dans le score. Sortie exacte :\nPremiere : 2026-02-27\nDerniere : 2026-03-15\nEcart : 16 jours\nJour de la derniere : SUNDAY\nAccent conserve : true",
+      "starterCode": "import java.nio.charset.StandardCharsets;\nimport java.nio.file.*;\nimport java.time.*;\nimport java.util.*;\n\npublic class Main {\n    public static void main(String[] args) throws Exception {\n        List<String> lines = List.of(\"2026-02-27;Soutenance;90\", \"2026-03-01;Révision;30\", \"2026-03-15;Atelier;60\");\n        Path file = Path.of(\"agenda.txt\");\n        // À toi : écris la suite, sans étapes imposées.\n    }\n}\n",
+      "expectedOutput": "Premiere : 2026-02-27\nDerniere : 2026-03-15\nEcart : 16 jours\nJour de la derniere : SUNDAY\nAccent conserve : true",
+      "kind": "TRANSFER"
     }
   ],
   "quiz": [

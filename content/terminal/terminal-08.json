@@ -59,6 +59,14 @@
       "statement": "Le script prépare atelier/docs/guide.txt et atelier/readme.txt. Entre dans atelier avec une cmdlet, affiche le nom du dossier courant, la liste triée de son contenu, la définition de l'alias gci et le type de la commande Get-ChildItem.",
       "starterCode": "# Prépare l'arborescence\nNew-Item -ItemType Directory -Path atelier/docs -Force | Out-Null\nNew-Item -ItemType File -Path atelier/docs/guide.txt -Force | Out-Null\nNew-Item -ItemType File -Path atelier/readme.txt -Force | Out-Null\n\n# TODO 1 : entre dans le dossier atelier avec Set-Location\n# TODO 2 : affiche \"Dossier: \" suivi du NOM du dossier courant (Split-Path -Leaf (Get-Location).Path)\n# TODO 3 : affiche \"Contenu: \" suivi des noms du dossier triés et séparés par \", \" (Get-ChildItem | Sort-Object Name)\n# TODO 4 : affiche \"gci = \" suivi de la définition de l'alias gci (Get-Alias gci)\n# TODO 5 : affiche \"Type: \" suivi du type de la commande Get-ChildItem (Get-Command ... ).CommandType\n",
       "expectedOutput": "Dossier: atelier\nContenu: docs, readme.txt\ngci = Get-ChildItem\nType: Cmdlet"
+    },
+    {
+      "code": "TERMINAL-08-T1",
+      "title": "Transfert : naviguer dans un site avec des cmdlets",
+      "statement": "Même notion, autre contexte : le script prépare site/css/style.css et site/index.html. Entre dans site avec une cmdlet, affiche le nom du dossier courant, la liste triée de son contenu (noms séparés par « , »), la définition de l'alias gcm et le type de la commande Get-Content. Aucun indice n'est proposé et cet exercice ne compte pas dans le score. Sortie exacte :\nDossier: site\nContenu: css, index.html\ngcm = Get-Command\nType: Cmdlet",
+      "starterCode": "New-Item -ItemType Directory -Path site/css -Force | Out-Null\nSet-Content site/index.html '<h1>Accueil</h1>'\nSet-Content site/css/style.css 'body{}'\n# À toi : écris la suite, sans étapes imposées.\n",
+      "expectedOutput": "Dossier: site\nContenu: css, index.html\ngcm = Get-Command\nType: Cmdlet",
+      "kind": "TRANSFER"
     }
   ],
   "quiz": [

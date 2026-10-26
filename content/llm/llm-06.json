@@ -59,6 +59,14 @@
       "statement": "Complète : le sac de mots d'un texte, la similarité cosinus (0 si une norme est nulle), le classement de trois documents pour une requête et la preuve que deux synonymes ont une similarité nulle. Affiche exactement :\nClassement: jvm=0.707 jdk=0.000 python=0.000\nVoiture vs automobile: 0.000\nUn modèle d'embedding réel remplacerait bag_of_words et rapprocherait les synonymes.",
       "starterCode": "from math import sqrt\n\nDOCUMENTS = {\n    \"jvm\": \"la jvm exécute le bytecode java\",\n    \"jdk\": \"le jdk contient le compilateur javac\",\n    \"python\": \"python est interprété\",\n}\n\n\ndef bag_of_words(text: str, vocabulary: list[str]) -> list[float]:\n    # TODO 1 : pour chaque mot du vocabulaire, le nombre d'occurrences dans text.split()\n    return []\n\n\ndef cosine(a: list[float], b: list[float]) -> float:\n    # TODO 2 : produit scalaire / (norme de a x norme de b), 0.0 si une norme est nulle\n    return 0.0\n\n\nvocabulary = sorted({word for text in DOCUMENTS.values() for word in text.split()} | {\"voiture\", \"automobile\"})\nquery = \"jvm exécute bytecode\"\n# TODO 3 : calcule la similarité de la requête avec chaque document ; affiche\n#   \"Classement:\" suivi de \"<nom>=<similarité 3 décimales>\" pour chaque document, du plus proche au moins proche\n#   (tri par similarité décroissante, puis par nom)\n# TODO 4 : affiche \"Voiture vs automobile: <similarité 3 décimales>\" (deux textes d'un mot : \"voiture\" et \"automobile\")\n",
       "expectedOutput": "Classement: jvm=0.707 jdk=0.000 python=0.000\nVoiture vs automobile: 0.000"
+    },
+    {
+      "code": "LLM-06-T1",
+      "title": "Transfert : des embeddings qui rapprochent les synonymes",
+      "statement": "Même notion, autre contexte : montre qu'un sac de mots ne voit aucun lien entre « voiture » et « automobile » (similarité cosinus nulle) alors que de petits embeddings fournis les rapprochent ; classe ensuite les mots du dictionnaire d'embeddings par similarité avec « voiture » (hors lui-même), trois décimales, du plus proche au plus éloigné. Aucun indice n'est proposé et cet exercice ne compte pas dans le score. Sortie exacte :\nSac de mots voiture/automobile: 0.000\nEmbedding voiture/automobile: 0.998\nClassement pour voiture: automobile=0.998 banane=0.100",
+      "starterCode": "EMBEDDINGS = {\n    \"voiture\": [1.0, 0.1],\n    \"automobile\": [0.95, 0.15],\n    \"banane\": [0.0, 1.0],\n}\n# À toi : écris la suite, sans étapes imposées.\n",
+      "expectedOutput": "Sac de mots voiture/automobile: 0.000\nEmbedding voiture/automobile: 0.998\nClassement pour voiture: automobile=0.998 banane=0.100",
+      "kind": "TRANSFER"
     }
   ],
   "quiz": [

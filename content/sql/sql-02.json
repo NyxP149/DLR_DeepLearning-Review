@@ -59,6 +59,14 @@
       "statement": "Écris la requête d'une page de catalogue : uniquement les produits de la catégorie « peripherique » à 20 € ou plus, du plus cher au moins cher (puis par nom), avec LIMIT et OFFSET paramétrés. Trois pages de deux produits sont demandées, la dernière doit être vide.",
       "starterCode": "import sqlite3\n\nconnection = sqlite3.connect(\":memory:\")\nconnection.execute(\"CREATE TABLE product (name TEXT, category TEXT, price INTEGER)\")\nconnection.executemany(\n    \"INSERT INTO product VALUES (?, ?, ?)\",\n    [\n        (\"Souris\", \"peripherique\", 20),\n        (\"Clavier\", \"peripherique\", 50),\n        (\"Câble\", \"peripherique\", 10),\n        (\"Écran\", \"peripherique\", 200),\n        (\"Webcam\", \"peripherique\", 80),\n        (\"Chaise\", \"mobilier\", 120),\n    ],\n)\n\nPAGE_SIZE = 2\n\n\ndef page(number: int) -> list[str]:\n    # TODO : complète la requête : filtre la catégorie « peripherique » et le prix >= 20,\n    #        trie par prix décroissant puis par nom, et garde LIMIT ? OFFSET ?\n    sql = \"SELECT name FROM product LIMIT ? OFFSET ?\"\n    rows = connection.execute(sql, (PAGE_SIZE, (number - 1) * PAGE_SIZE)).fetchall()\n    return [row[0] for row in rows]\n\n\nfor number in (1, 2, 3):\n    names = page(number)\n    print(f\"Page {number}: {', '.join(names) if names else '(vide)'}\")\n",
       "expectedOutput": "Page 1: Écran, Webcam\nPage 2: Clavier, Souris\nPage 3: (vide)"
+    },
+    {
+      "code": "SQL-02-T1",
+      "title": "Transfert : paginer un catalogue de livres",
+      "statement": "Même notion, autre contexte : écris la requête d'une page de catalogue : uniquement les livres du genre « policier » de 200 pages ou plus, du plus long au plus court (puis par titre), avec LIMIT et OFFSET paramétrés. Trois pages de deux livres sont demandées ; la dernière peut être vide. Aucun indice n'est proposé et cet exercice ne compte pas dans le score. Sortie exacte :\nPage 1: Nuit blanche, Dernier train\nPage 2: Brume, Le Pont\nPage 3: (vide)",
+      "starterCode": "import sqlite3\n\nconnection = sqlite3.connect(\":memory:\")\nconnection.executescript(\n    \"\"\"\n    CREATE TABLE book (id INTEGER PRIMARY KEY, title TEXT, genre TEXT, pages INTEGER);\n    INSERT INTO book (title, genre, pages) VALUES\n      ('Nuit blanche', 'policier', 320), ('Le Pont', 'policier', 210), ('Recettes', 'cuisine', 400),\n      ('Brume', 'policier', 210), ('Court', 'policier', 90), ('Dernier train', 'policier', 280);\n    \"\"\"\n)\n# À toi : écris la suite, sans étapes imposées.\n",
+      "expectedOutput": "Page 1: Nuit blanche, Dernier train\nPage 2: Brume, Le Pont\nPage 3: (vide)",
+      "kind": "TRANSFER"
     }
   ],
   "quiz": [

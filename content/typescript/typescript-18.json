@@ -59,6 +59,14 @@
       "statement": "Applique l'inversion de dépendances : InvoiceService ne crée ni horloge ni journal, il reçoit deux interfaces (Clock et Logger) par son constructeur. Écris issue, qui produit et journalise le message de facture, et le compteur de factures émises ; une horloge fixe et un journal en mémoire rendent le comportement vérifiable.",
       "starterCode": "export {};\n\ninterface Clock {\n  now(): string;\n}\n\ninterface Logger {\n  info(message: string): void;\n}\n\nclass InvoiceService {\n  private issued = 0;\n  private clock: Clock;\n  private logger: Logger;\n\n  constructor(clock: Clock, logger: Logger) {\n    this.clock = clock;\n    this.logger = logger;\n  }\n\n  issue(id: number, total: number): string {\n    // TODO : construis `[<heure>] facture <id> émise (total <total>)` avec la Clock injectée,\n    //        envoie-le au Logger injecté, compte la facture et retourne le message\n    return '';\n  }\n\n  get count(): number {\n    // TODO : nombre de factures émises\n    return 0;\n  }\n}\n\nclass FixedClock implements Clock {\n  now(): string {\n    return '2024-01-01T00:00:00Z';\n  }\n}\n\nclass MemoryLogger implements Logger {\n  messages: string[] = [];\n\n  info(message: string): void {\n    this.messages.push(message);\n  }\n}\n\nconst logger = new MemoryLogger();\nconst service = new InvoiceService(new FixedClock(), logger);\nconsole.log(service.issue(42, 120));\nconsole.log(`Journal: ${logger.messages.length} message(s)`);\nconsole.log(`Émises: ${service.count}`);\n",
       "expectedOutput": "[2024-01-01T00:00:00Z] facture 42 émise (total 120)\nJournal: 1 message(s)\nÉmises: 1"
+    },
+    {
+      "code": "TYPESCRIPT-18-T1",
+      "title": "Transfert : injecter l'horloge et la messagerie d'un service de rappels",
+      "statement": "Même notion, autre contexte : applique l'inversion de dépendances : ReminderService ne crée ni horloge ni messagerie, il reçoit deux interfaces (Clock avec now() et Mailer avec send(to, text)) par son constructeur. Écris remind(user), qui envoie « [horodatage] rappel envoye a user » via le Mailer, et le compteur de rappels ; une horloge fixe (2024-03-01T09:00:00Z) et une messagerie en mémoire servent de doublures. Aucun indice n'est proposé et cet exercice ne compte pas dans le score. Sortie exacte :\n[2024-03-01T09:00:00Z] rappel envoye a ada@dlr.dev\nMessages: 1\nRappels envoyes: 1",
+      "starterCode": "export {};\n// À toi : écris la suite, sans étapes imposées.\n",
+      "expectedOutput": "[2024-03-01T09:00:00Z] rappel envoye a ada@dlr.dev\nMessages: 1\nRappels envoyes: 1",
+      "kind": "TRANSFER"
     }
   ],
   "quiz": [

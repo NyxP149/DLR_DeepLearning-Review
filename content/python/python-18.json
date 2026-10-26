@@ -59,6 +59,14 @@
       "statement": "Écris deux versions de la somme des carrés de 0 à n : l'une construit une liste complète, l'autre utilise une expression génératrice. Mesure le pic mémoire de chacune avec tracemalloc et vérifie que les résultats sont identiques alors que l'empreinte est très différente.",
       "starterCode": "import tracemalloc\n\nN = 100_000\n\n\ndef sum_squares_list(n: int) -> int:\n    # TODO 1 : construis d'abord la liste complète des carrés (list comprehension) puis additionne-la\n    return 0\n\n\ndef sum_squares_generator(n: int) -> int:\n    # TODO 2 : additionne les carrés avec une expression génératrice (sans liste intermédiaire)\n    return 0\n\n\ndef peak(func, n: int) -> tuple[int, int]:\n    # TODO 3 : démarre tracemalloc, appelle func(n), lis le pic avec tracemalloc.get_traced_memory()[1],\n    #          arrête tracemalloc et retourne (résultat, pic en octets)\n    return 0, 0\n\n\nresult_list, peak_list = peak(sum_squares_list, N)\nresult_generator, peak_generator = peak(sum_squares_generator, N)\nprint(f\"Résultats identiques: {result_list == result_generator}\")\nprint(f\"Pic liste > 500 Ko: {peak_list > 500_000}\")\nprint(f\"Pic générateur < 10 Ko: {peak_generator < 10_000}\")\n",
       "expectedOutput": "Résultats identiques: True\nPic liste > 500 Ko: True\nPic générateur < 10 Ko: True"
+    },
+    {
+      "code": "PYTHON-18-T1",
+      "title": "Transfert : comparer la mémoire d'une liste et d'un générateur",
+      "statement": "Même notion, autre contexte : calcule la somme des longueurs des représentations décimales des entiers de 0 à 49999 de deux façons : en construisant la liste complète puis en utilisant une expression génératrice. Mesure le pic mémoire de chacune avec tracemalloc et affiche si les résultats sont identiques, si le pic de la liste dépasse 200 Ko et si celui du générateur reste sous 10 Ko. Aucun indice n'est proposé et cet exercice ne compte pas dans le score. Sortie exacte :\nResultats identiques: True\nPic liste > 200 Ko: True\nPic generateur < 10 Ko: True",
+      "starterCode": "import tracemalloc\n# À toi : écris la suite, sans étapes imposées.\n",
+      "expectedOutput": "Resultats identiques: True\nPic liste > 200 Ko: True\nPic generateur < 10 Ko: True",
+      "kind": "TRANSFER"
     }
   ],
   "quiz": [

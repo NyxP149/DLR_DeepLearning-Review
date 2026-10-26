@@ -120,10 +120,16 @@ class TransferExerciseControllerTest {
         output.set(catalog.findByCode("JAVA-10").orElseThrow().exercise("JAVA-10-T2").orElseThrow().expectedOutput());
         submitAndRun(completed, "JAVA-10-T2", "code");
 
+        // Tous les labos ont désormais un transfert : le total dépend des labos terminés présents en base.
+        int available = jdbcTemplate.queryForList(
+                        "select distinct lab_id from attempt where status in ('COMPLETED', 'COMPLETED_BELOW_THRESHOLD')", String.class)
+                .stream()
+                .mapToInt(code -> catalog.findByCode(code).orElseThrow().transferExercises().size())
+                .sum();
         mockMvc.perform(get("/api/adaptation/insights"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.transferScore").value(50))
-                .andExpect(jsonPath("$.factors[?(@ == 'transferts réussis : 1 sur 2')]").exists());
+                .andExpect(jsonPath("$.transferScore").value(Math.round(100f / available)))
+                .andExpect(jsonPath("$.factors[?(@ == 'transferts réussis : 1 sur " + available + "')]").exists());
     }
 
     private String submitAndRun(UUID attemptId, String exerciseCode, String source) throws Exception {

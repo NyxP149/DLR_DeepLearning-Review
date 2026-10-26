@@ -59,6 +59,14 @@
       "statement": "Le script crée ventes.csv (avec en-tête) et client.json. Calcule le nombre de lignes par pays, le total des montants par pays, la liste triée des produits distincts, la somme des commandes du client avec jq et le nombre de lignes renommées par sed.",
       "starterCode": "#!/usr/bin/env bash\ncat > ventes.csv <<'CSV'\npays,produit,montant\nFR,clavier,50\nDE,souris,20\nFR,souris,20\nFR,ecran,200\nDE,clavier,50\nCSV\ncat > client.json <<'JSON'\n{\"nom\":\"Ada\",\"commandes\":[{\"id\":1,\"total\":120},{\"id\":2,\"total\":80}]}\nJSON\n\n# TODO 1 : affiche \"Lignes par pays: \" suivi de \"DE=2 FR=3\" (tail -n +2 | cut -d, -f1 | sort | uniq -c | awk '{print $2\"=\"$1}' | xargs)\n# TODO 2 : affiche \"Total par pays: \" suivi de \"DE=70 FR=270\" (awk avec tableau associatif, puis sort et xargs)\n# TODO 3 : affiche \"Produits distincts: \" suivi des produits triés sans doublon sur une ligne (cut -d, -f2 | sort -u)\n# TODO 4 : affiche \"Total JSON: \" suivi de la somme des totaux de client.json (jq '[.commandes[].total] | add')\n# TODO 5 : affiche \"Renommés: \" suivi du nombre de lignes qui contiennent \"mouse\" après sed 's/souris/mouse/' ventes.csv\ntrue\n",
       "expectedOutput": "Lignes par pays: DE=2 FR=3\nTotal par pays: DE=70 FR=270\nProduits distincts: clavier ecran souris\nTotal JSON: 200\nRenommés: 2"
+    },
+    {
+      "code": "TERMINAL-14-T1",
+      "title": "Transfert : produire un rapport de tickets à partir d'un CSV et d'un JSON",
+      "statement": "Même notion, autre contexte : le script crée tickets.csv (avec en-tête) et resume.json. Calcule le nombre de tickets par équipe (« équipe=n » séparés par une espace, triés), le total d'heures par équipe, la liste triée des types distincts, la somme des heures du JSON avec jq et le nombre de lignes modifiées par un sed qui remplace bug par defaut. Aucun indice n'est proposé et cet exercice ne compte pas dans le score. Sortie exacte :\nTickets par equipe: api=2 data=1 web=2\nHeures par equipe: api=7 data=8 web=7\nTypes distincts: bug feature\nTotal JSON: 7\nRenommes: 3",
+      "starterCode": "#!/usr/bin/env bash\nmkdir -p rapport\ncd rapport\nprintf 'equipe,heures,type\\nweb,5,bug\\napi,3,feature\\nweb,2,bug\\ndata,8,feature\\napi,4,bug\\n' > tickets.csv\necho '{\"items\":[{\"h\":3},{\"h\":4}]}' > resume.json\n# À toi : écris la suite, sans étapes imposées.\n",
+      "expectedOutput": "Tickets par equipe: api=2 data=1 web=2\nHeures par equipe: api=7 data=8 web=7\nTypes distincts: bug feature\nTotal JSON: 7\nRenommes: 3",
+      "kind": "TRANSFER"
     }
   ],
   "quiz": [

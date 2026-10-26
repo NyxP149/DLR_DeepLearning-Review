@@ -59,6 +59,14 @@
       "statement": "Complète le moteur : Order refuse un montant <= 0, le rapport ne garde que les commandes payées, calcule le revenu par client, trie par revenu décroissant puis par nom, et rejette proprement une commande invalide. Affiche exactement :\nCommandes: 4\nRevenu: 300 EUR\n1. Ada : 200\n2. Grace : 70\n3. Linus : 30\nRejetee : montant invalide",
       "starterCode": "import java.util.*;\nimport java.util.stream.Collectors;\n\npublic class Main {\n    record Order(String customer, int amount, boolean paid) {\n        // TODO 1 : constructeur compact qui refuse un montant <= 0 (IllegalArgumentException(\"montant invalide\"))\n    }\n\n    // TODO 2 : static String report(List<Order> orders) — retourne le rapport (lignes séparées par \\n, sans \\n final) :\n    //          \"Commandes: N\" (nombre de commandes PAYÉES), \"Revenu: T EUR\", puis le classement\n    //          \"1. Ada : 200\" ... trié par revenu décroissant puis nom croissant (revenu par client, commandes payées seulement)\n\n    public static void main(String[] args) {\n        List<Order> orders = List.of(\n                new Order(\"Ada\", 120, true),\n                new Order(\"Linus\", 30, true),\n                new Order(\"Grace\", 70, true),\n                new Order(\"Linus\", 80, false),\n                new Order(\"Ada\", 80, true));\n        // TODO 3 : affiche report(orders)\n        // TODO 4 : tente de créer new Order(\"Bug\", 0, true) dans un try/catch et affiche \"Rejetee : \" + message\n    }\n}\n",
       "expectedOutput": "Commandes: 4\nRevenu: 300 EUR\n1. Ada : 200\n2. Grace : 70\n3. Linus : 30\nRejetee : montant invalide"
+    },
+    {
+      "code": "JAVA-23-T1",
+      "title": "Transfert : moteur de réservations : revenu par client",
+      "statement": "Même notion, autre contexte : crée un record Booking(guest, nights, rate, status) qui refuse nights <= 0 (IllegalArgumentException « nuits invalides »), ne garde que les réservations CONFIRMED, calcule le revenu (nights x rate) par client, classe les clients par revenu décroissant puis par nom, et affiche le nombre de réservations confirmées, le revenu total, le classement numéroté et le rejet d'une réservation invalide. Aucun indice n'est proposé et cet exercice ne compte pas dans le score. Sortie exacte :\nReservations: 3\nRevenu: 480 EUR\n1. Ada : 300\n2. Nyx : 120\n3. Linus : 60\nRejetee : nuits invalides",
+      "starterCode": "import java.util.*;\n\npublic class Main {\n    public static void main(String[] args) {\n        // À toi : écris la suite, sans étapes imposées.\n    }\n}\n",
+      "expectedOutput": "Reservations: 3\nRevenu: 480 EUR\n1. Ada : 300\n2. Nyx : 120\n3. Linus : 60\nRejetee : nuits invalides",
+      "kind": "TRANSFER"
     }
   ],
   "quiz": [

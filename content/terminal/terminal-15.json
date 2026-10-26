@@ -59,6 +59,14 @@
       "statement": "Configure l'identité Git, initialise un dépôt, valide un premier commit, modifie app.txt et ajoute notes.txt, affiche le statut compact et le résumé du diff, valide le second commit puis affiche l'historique des titres et les fichiers suivis.",
       "starterCode": "#!/usr/bin/env bash\ngit config --global user.name \"Ada\"\ngit config --global user.email \"ada@dlr.dev\"\ngit config --global init.defaultBranch main\nmkdir projet && cd projet\ngit init -q\necho \"v1\" > app.txt\n\n# TODO 1 : indexe app.txt et valide avec le message \"Ajoute app\" (git add, git commit -q -m)\necho \"v2\" > app.txt\necho \"notes\" > notes.txt\n# TODO 2 : affiche \"Statut:\" puis git status --short\n# TODO 3 : affiche \"Diff: \" suivi de \"+<ajouts> -<suppressions> <fichier>\" pour app.txt (git diff --numstat | awk '{print \"+\"$1\" -\"$2\" \"$3}')\n# TODO 4 : indexe tout (git add -A) et valide avec le message \"Met à jour app et ajoute notes\"\n# TODO 5 : affiche \"Historique:\" puis les titres des commits du plus récent au plus ancien (git log --format=%s)\n# TODO 6 : affiche \"Fichiers suivis: \" suivi de git ls-files sur une ligne (xargs)\ntrue\n",
       "expectedOutput": "Statut:\n M app.txt\n?? notes.txt\nDiff: +1 -1 app.txt\nHistorique:\nMet à jour app et ajoute notes\nAjoute app\nFichiers suivis: app.txt notes.txt"
+    },
+    {
+      "code": "TERMINAL-15-T1",
+      "title": "Transfert : faire deux commits et relire le dépôt",
+      "statement": "Même notion, autre contexte : le script initialise un dépôt avec une identité. Valide un premier commit « Ajoute readme », modifie readme.txt et crée todo.txt, affiche le statut compact sous « Statut: », valide un second commit « Met a jour readme et ajoute todo », puis affiche l'historique des titres sous « Historique: » et les fichiers suivis sur une ligne « Fichiers suivis: … ». Aucun indice n'est proposé et cet exercice ne compte pas dans le score. Sortie exacte :\nStatut:\n M readme.txt\n?? todo.txt\nHistorique:\nMet a jour readme et ajoute todo\nAjoute readme\nFichiers suivis: readme.txt todo.txt",
+      "starterCode": "#!/usr/bin/env bash\nmkdir -p depot\ncd depot\ngit init -q -b main\ngit config user.name \"Eleve\"\ngit config user.email \"eleve@dlr.dev\"\n# À toi : écris la suite, sans étapes imposées.\n",
+      "expectedOutput": "Statut:\n M readme.txt\n?? todo.txt\nHistorique:\nMet a jour readme et ajoute todo\nAjoute readme\nFichiers suivis: readme.txt todo.txt",
+      "kind": "TRANSFER"
     }
   ],
   "quiz": [

@@ -59,6 +59,14 @@
       "statement": "Sans Spring, écris les trois couches : OrderRepository (interface) avec une implémentation mémoire qui numérote commande-1, commande-2…, un OrderService qui refuse un client vide, et un OrderController qui renvoie un statut. Assemble-les dans main, puis substitue un faux dépôt. Affiche exactement :\n201 commande-1\n400 client vide\n201 commande-2\nDepot : 2 commandes\nFaux depot : 1 sauvegarde",
       "starterCode": "import java.util.*;\n\npublic class Main {\n    interface OrderRepository {\n        String save(String customer);   // retourne l'identifiant créé\n        int count();\n    }\n\n    // TODO 1 : classe InMemoryRepository implements OrderRepository — numérote \"commande-1\", \"commande-2\", ... et compte les sauvegardes\n    // TODO 2 : classe OrderService(OrderRepository) — create(String customer) lève IllegalArgumentException(\"client vide\") si le texte est vide\n    //          (isBlank), sinon retourne repository.save(customer)\n    // TODO 3 : classe OrderController(OrderService) — String post(String customer) retourne \"201 \" + id,\n    //          ou \"400 \" + message de l'exception ; le contrôleur ne contient aucune règle métier\n\n    public static void main(String[] args) {\n        // TODO 4 : assemble repository, service et contrôleur (injection par constructeur) puis affiche\n        //          post(\"Nyx\"), post(\"\"), post(\"Ada\") ; ensuite \"Depot : \" + count + \" commandes\"\n        // TODO 5 : crée un faux dépôt (classe anonyme ou classe) qui compte ses appels à save et renvoie \"faux-1\" ;\n        //          injecte-le dans un nouveau service, appelle create(\"Nyx\") et affiche \"Faux depot : \" + appels + \" sauvegarde\"\n    }\n}\n",
       "expectedOutput": "201 commande-1\n400 client vide\n201 commande-2\nDepot : 2 commandes\nFaux depot : 1 sauvegarde"
+    },
+    {
+      "code": "JAVA-20-T1",
+      "title": "Transfert : assembler trois couches pour une inscription",
+      "statement": "Même notion, autre contexte : sans Spring, écris SubscriberRepository (interface) avec une implémentation mémoire, un SubscriberService qui refuse un e-mail sans « @ » (IllegalArgumentException) et un SubscriberController qui retourne « 201 e-mail » ou « 400 email invalide ». Assemble-les dans main, inscris trois adresses dont une invalide, puis substitue un faux dépôt qui compte les sauvegardes. Aucun indice n'est proposé et cet exercice ne compte pas dans le score. Sortie exacte :\n201 ana@mail.io\n400 email invalide\n201 bob@mail.io\nDepot : 2 abonnes\nFaux depot : 1 sauvegarde",
+      "starterCode": "public class Main {\n    public static void main(String[] args) {\n        // À toi : écris la suite, sans étapes imposées.\n    }\n}\n",
+      "expectedOutput": "201 ana@mail.io\n400 email invalide\n201 bob@mail.io\nDepot : 2 abonnes\nFaux depot : 1 sauvegarde",
+      "kind": "TRANSFER"
     }
   ],
   "quiz": [

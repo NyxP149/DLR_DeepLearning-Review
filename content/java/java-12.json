@@ -59,6 +59,14 @@
       "statement": "Complète Main pour analyser la liste de commandes avec des Streams (sans boucle for) et afficher exactement :\nTotal paye : 235.0\nClients : Ada, Linus, Nyx\nPar statut : {CANCELLED=1, PAID=4, PENDING=1}\nPlus grosse commande : Linus (120.0)",
       "starterCode": "import java.util.*;\nimport java.util.stream.Collectors;\n\npublic class Main {\n    record Order(String customer, double amount, String status) {}\n\n    public static void main(String[] args) {\n        List<Order> orders = List.of(\n                new Order(\"Nyx\", 50.0, \"PAID\"),\n                new Order(\"Ada\", 35.0, \"PAID\"),\n                new Order(\"Linus\", 120.0, \"PAID\"),\n                new Order(\"Nyx\", 30.0, \"PAID\"),\n                new Order(\"Ada\", 80.0, \"PENDING\"),\n                new Order(\"Linus\", 15.0, \"CANCELLED\"));\n        // TODO 1 : total des montants des commandes PAID -> \"Total paye : 235.0\"\n        // TODO 2 : clients distincts ayant au moins une commande PAID, triés, séparés par \", \" -> \"Clients : Ada, Linus, Nyx\"\n        // TODO 3 : nombre de commandes par statut dans une TreeMap (groupingBy + counting) -> \"Par statut : {...}\"\n        // TODO 4 : commande au montant maximal (max + Comparator.comparingDouble) -> \"Plus grosse commande : Linus (120.0)\"\n    }\n}\n",
       "expectedOutput": "Total paye : 235.0\nClients : Ada, Linus, Nyx\nPar statut : {CANCELLED=1, PAID=4, PENDING=1}\nPlus grosse commande : Linus (120.0)"
+    },
+    {
+      "code": "JAVA-12-T1",
+      "title": "Transfert : analyser un journal de requêtes avec des Streams",
+      "statement": "Même notion, autre contexte : à partir de la liste de requêtes, sans boucle for, affiche le nombre d'erreurs serveur (statut supérieur ou égal à 500), la durée moyenne par route (routes triées par nom, TreeMap) et la route de la requête la plus lente avec sa durée. Aucun indice n'est proposé et cet exercice ne compte pas dans le score. Sortie exacte :\nErreurs serveur : 2\nMoyenne par route : {/home=50.0, /login=20.0, /orders=300.0}\nPlus lente : /orders (500)",
+      "starterCode": "import java.util.*;\nimport java.util.stream.*;\n\npublic class Main {\n    record Request(String route, int status, int ms) {\n    }\n\n    public static void main(String[] args) {\n        List<Request> requests = List.of(\n                new Request(\"/home\", 200, 40), new Request(\"/orders\", 500, 300),\n                new Request(\"/home\", 200, 60), new Request(\"/orders\", 200, 100),\n                new Request(\"/login\", 401, 20), new Request(\"/orders\", 503, 500));\n        // À toi : écris la suite, sans étapes imposées.\n    }\n}\n",
+      "expectedOutput": "Erreurs serveur : 2\nMoyenne par route : {/home=50.0, /login=20.0, /orders=300.0}\nPlus lente : /orders (500)",
+      "kind": "TRANSFER"
     }
   ],
   "quiz": [

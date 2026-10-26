@@ -59,6 +59,14 @@
       "statement": "Écris deux types calculés par le compilateur : EventName<T> qui produit le littéral `${T}:created` (le type retourné par eventName('user') est alors exactement 'user:created') et ElementOf<T> qui extrait le type des éléments d'un tableau avec infer (et laisse les autres types inchangés), puis les fonctions qui les utilisent.",
       "starterCode": "export {};\n\n// TODO 1 : remplace string par le type littéral de gabarit `${T}:created`\ntype EventName<T extends string> = string;\n\n// TODO 2 : type conditionnel : si T est un tableau (T extends readonly (infer U)[]) alors U, sinon T\ntype ElementOf<T> = T;\n\nfunction eventName<T extends string>(entity: T): EventName<T> {\n  // TODO 3 : retourne `${entity}:created`\n  return entity as EventName<T>;\n}\n\nfunction first<T>(value: T): ElementOf<T> {\n  // TODO 4 : retourne le premier élément si value est un tableau, sinon value lui-même\n  return value as ElementOf<T>;\n}\n\nconst created: string = eventName('user');\nconsole.log(created);\nconsole.log(eventName('order'));\nconsole.log(`first([1, 2]) = ${first([1, 2])}`);\nconsole.log(`first(\"x\") = ${first('x')}`);\n",
       "expectedOutput": "user:created\norder:created\nfirst([1, 2]) = 1\nfirst(\"x\") = x"
+    },
+    {
+      "code": "TYPESCRIPT-10-T1",
+      "title": "Transfert : des noms de routes et un type conditionnel",
+      "statement": "Même notion, autre contexte : écris RouteName<T extends string> qui produit le littéral `/${T}`, une fonction route qui retourne ce type précis, et Unwrap<T> qui extrait le type d'une Promise avec infer (et laisse les autres types inchangés). Affiche route('users'), route('orders'), puis la valeur d'une promesse résolue à 42 typée Unwrap et la valeur d'un texte typé Unwrap. Aucun indice n'est proposé et cet exercice ne compte pas dans le score. Sortie exacte :\n/users\n/orders\npromesse: 42\nvaleur: abc",
+      "starterCode": "export {};\n// À toi : écris la suite, sans étapes imposées.\n",
+      "expectedOutput": "/users\n/orders\npromesse: 42\nvaleur: abc",
+      "kind": "TRANSFER"
     }
   ],
   "quiz": [

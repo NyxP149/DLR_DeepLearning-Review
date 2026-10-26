@@ -59,6 +59,14 @@
       "statement": "Avec une boucle for, parcours les nombres de 1 à 10, garde les pairs, calcule leur somme, puis double une puissance avec while. Affiche exactement :\n2 4 6 8 10\nsomme=30\npuissance=128",
       "starterCode": "public class Main {\n    public static void main(String[] args) {\n        StringBuilder pairs = new StringBuilder();\n        int sum = 0;\n        // TODO 1 : boucle for de 1 à 10 ; si i est pair (i % 2 == 0), ajoute i suivi d'une espace à pairs et ajoute i à sum\n        // TODO 2 : affiche pairs sans l'espace finale (pairs.toString().trim())\n        // TODO 3 : affiche \"somme=\" + sum\n        int power = 1;\n        // TODO 4 : avec une boucle while, multiplie power par 2 tant que power <= 100, puis affiche \"puissance=\" + power\n    }\n}\n",
       "expectedOutput": "2 4 6 8 10\nsomme=30\npuissance=128"
+    },
+    {
+      "code": "JAVA-03-T1",
+      "title": "Transfert : filtrer des multiples et doubler jusqu'à un seuil",
+      "statement": "Même notion, autre contexte : avec une boucle for, parcours les nombres de 1 à 30, garde ceux qui sont multiples de 3 mais pas de 2 et calcule leur somme ; puis, avec une boucle while, double la valeur 5 tant qu'elle ne dépasse pas 1000 en comptant les doublements. Aucun indice n'est proposé et cet exercice ne compte pas dans le score. Sortie exacte :\n3 9 15 21 27\nsomme=75\ndoublements=8 valeur=1280",
+      "starterCode": "public class Main {\n    public static void main(String[] args) {\n        // À toi : écris la suite, sans étapes imposées.\n    }\n}\n",
+      "expectedOutput": "3 9 15 21 27\nsomme=75\ndoublements=8 valeur=1280",
+      "kind": "TRANSFER"
     }
   ],
   "quiz": [

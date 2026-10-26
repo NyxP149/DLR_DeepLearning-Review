@@ -59,6 +59,14 @@
       "statement": "Dans une table d'employés avec manager_id, écris une CTE récursive qui remonte la chaîne hiérarchique de Grace jusqu'au sommet, puis une CTE non récursive qui calcule le salaire moyen pour lister les employés qui gagnent plus que la moyenne, du mieux payé au moins bien payé.",
       "starterCode": "import sqlite3\n\nconnection = sqlite3.connect(\":memory:\")\nconnection.executescript(\n    \"\"\"\n    CREATE TABLE employee (id INTEGER PRIMARY KEY, name TEXT, manager_id INTEGER, salary INTEGER);\n    INSERT INTO employee VALUES\n      (1, 'Ada', NULL, 5000),\n      (2, 'Linus', 1, 4000),\n      (3, 'Grace', 2, 3000),\n      (4, 'Alan', 1, 2000);\n    \"\"\"\n)\n\n# TODO 1 : WITH RECURSIVE chain(...) : part de Grace (profondeur 0), puis rejoint à chaque tour\n#          l'employé dont l'id est le manager_id précédent (profondeur + 1) ;\n#          sélectionne les noms triés par profondeur\nchain = \"SELECT name FROM employee WHERE name = 'Grace'\"\n# TODO 2 : WITH average AS (SELECT AVG(salary) AS value FROM employee) : employés dont le salaire\n#          dépasse average.value, triés par salaire décroissant\nrich = \"SELECT name FROM employee ORDER BY name\"\n\nprint(\"Chaîne de Grace:\", \" > \".join(row[0] for row in connection.execute(chain)))\nprint(\"Au-dessus de la moyenne:\", \", \".join(row[0] for row in connection.execute(rich)))\n",
       "expectedOutput": "Chaîne de Grace: Grace > Linus > Ada\nAu-dessus de la moyenne: Ada, Linus"
+    },
+    {
+      "code": "SQL-08-T1",
+      "title": "Transfert : remonter les catégories avec une CTE récursive",
+      "statement": "Même notion, autre contexte : dans une table category(id, name, parent_id), écris une CTE récursive qui remonte la chaîne de « Casques » jusqu'à la racine (affichée de la feuille vers la racine, séparée par « > »), puis une CTE non récursive qui calcule le prix moyen des produits pour lister, du plus cher au moins cher, ceux qui coûtent plus que la moyenne. Aucun indice n'est proposé et cet exercice ne compte pas dans le score. Sortie exacte :\nChaine de Casques: Casques > Audio > Electronique\nAu-dessus de la moyenne: Casque pro, Micro",
+      "starterCode": "import sqlite3\n\nconnection = sqlite3.connect(\":memory:\")\nconnection.executescript(\n    \"\"\"\n    CREATE TABLE category (id INTEGER PRIMARY KEY, name TEXT, parent_id INTEGER);\n    INSERT INTO category VALUES (1, 'Electronique', NULL), (2, 'Audio', 1), (3, 'Casques', 2);\n    CREATE TABLE product (name TEXT, price INTEGER);\n    INSERT INTO product VALUES ('Casque pro', 250), ('Casque eco', 40), ('Micro', 120), ('Cable', 10);\n    \"\"\"\n)\n# À toi : écris la suite, sans étapes imposées.\n",
+      "expectedOutput": "Chaine de Casques: Casques > Audio > Electronique\nAu-dessus de la moyenne: Casque pro, Micro",
+      "kind": "TRANSFER"
     }
   ],
   "quiz": [

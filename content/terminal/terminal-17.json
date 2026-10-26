@@ -59,6 +59,14 @@
       "statement": "Complète le Makefile (le préfixe de recette est > pour éviter les tabulations) : all dépend de dist/app.txt, qui est copié depuis src/app.txt et affiche « construit » ; test vérifie le contenu et affiche « test ok » ; clean supprime dist. Le script montre ensuite que make ne reconstruit rien quand tout est à jour et reconstruit (ce qui réaffiche « construit ») quand la source change.",
       "starterCode": "#!/usr/bin/env bash\nmkdir -p src\necho \"contenu\" > src/app.txt\n\ncat > Makefile <<'MAKE'\n.RECIPEPREFIX = >\n.PHONY: all test clean\n# TODO 1 : la cible all dépend de dist/app.txt\n# TODO 2 : la règle dist/app.txt dépend de src/app.txt ; sa recette crée dist (mkdir -p dist),\n#          copie src/app.txt vers dist/app.txt (cp) puis affiche construit (echo construit)\n# TODO 3 : la cible test dépend de dist/app.txt ; sa recette fait : grep -q contenu dist/app.txt && echo \"test ok\"\n# TODO 4 : la cible clean supprime le dossier dist (rm -rf dist)\nMAKE\n\nmake -s all 2>/dev/null || true\nmake -q all 2>/dev/null && echo \"À jour\" || echo \"À reconstruire\"\ntouch -d 'now + 2 seconds' src/app.txt\nmake -q all 2>/dev/null && echo \"À jour\" || echo \"À reconstruire\"\nmake -s test 2>/dev/null || true\nmake -s clean 2>/dev/null || true\n[ -d dist ] && echo \"dist présent\" || echo \"dist supprimé\"\ntrue\n",
       "expectedOutput": "construit\nÀ jour\nÀ reconstruire\nconstruit\ntest ok\ndist supprimé"
+    },
+    {
+      "code": "TERMINAL-17-T1",
+      "title": "Transfert : écrire un Makefile build, test et clean",
+      "statement": "Même notion, autre contexte : écris un Makefile (préfixe de recette > défini par .RECIPEPREFIX pour éviter les tabulations) : all dépend de dist/page.txt, copié depuis src/page.txt avec l'affichage « construit » ; test dépend de all, vérifie que dist/page.txt contient « contenu » et affiche « test ok » ; clean supprime dist et affiche « dist supprime ». Le script lance make, prouve que la cible est à jour avec make -q dist/page.txt (« A jour »), vieillit dist/page.txt de deux minutes (touch -d), constate « A reconstruire » avec make -q, relance make, make test puis make clean. Aucun indice n'est proposé et cet exercice ne compte pas dans le score. Sortie exacte :\nconstruit\nA jour\nA reconstruire\nconstruit\ntest ok\ndist supprime",
+      "starterCode": "#!/usr/bin/env bash\nmkdir -p proj/src\ncd proj\necho contenu > src/page.txt\n# À toi : écris la suite, sans étapes imposées.\n",
+      "expectedOutput": "construit\nA jour\nA reconstruire\nconstruit\ntest ok\ndist supprime",
+      "kind": "TRANSFER"
     }
   ],
   "quiz": [

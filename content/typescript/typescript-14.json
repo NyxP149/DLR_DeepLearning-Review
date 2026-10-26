@@ -59,6 +59,14 @@
       "statement": "Un type TypeScript disparaît à l'exécution : une réponse JSON externe doit être vérifiée. Écris le type guard isUser (value is User) puis parseUser qui lève « JSON invalide » si le texte n'est pas du JSON et « contrat violé » si la forme est mauvaise, et affiche le verdict pour quatre réponses.",
       "starterCode": "export {};\n\ninterface User {\n  id: number;\n  name: string;\n}\n\nfunction isUser(value: unknown): value is User {\n  // TODO 1 : vrai si value est un objet non nul dont id est un nombre et name une chaîne\n  return false;\n}\n\nfunction parseUser(json: string): User {\n  // TODO 2 : JSON.parse dans un try/catch -> new Error('JSON invalide') ;\n  //          puis, si !isUser(data) -> new Error('contrat violé') ; sinon retourne l'utilisateur\n  return { id: 0, name: '' };\n}\n\nfor (const input of ['{\"id\":1,\"name\":\"Ada\"}', '{\"id\":\"1\",\"name\":\"Ada\"}', 'not json', '{\"id\":2}']) {\n  try {\n    console.log(`${input} -> User ${parseUser(input).name}`);\n  } catch (error) {\n    console.log(`${input} -> rejeté: ${(error as Error).message}`);\n  }\n}\n",
       "expectedOutput": "{\"id\":1,\"name\":\"Ada\"} -> User Ada\n{\"id\":\"1\",\"name\":\"Ada\"} -> rejeté: contrat violé\nnot json -> rejeté: JSON invalide\n{\"id\":2} -> rejeté: contrat violé"
+    },
+    {
+      "code": "TYPESCRIPT-14-T1",
+      "title": "Transfert : valider une réponse JSON de produit",
+      "statement": "Même notion, autre contexte : écris le type guard isProduct (value is Product, avec sku texte et price nombre) puis parseProduct qui lève « JSON invalide » si le texte n'est pas du JSON et « contrat viole » si la forme est mauvaise, et affiche le résultat pour les quatre textes fournis. Aucun indice n'est proposé et cet exercice ne compte pas dans le score. Sortie exacte :\n{\"sku\":\"K-1\",\"price\":49.9} -> Product K-1\n{\"sku\":\"K-2\",\"price\":\"cher\"} -> rejete: contrat viole\npas du json -> rejete: JSON invalide\n{\"price\":10} -> rejete: contrat viole",
+      "starterCode": "export {};\n\nconst inputs = [\n  '{\"sku\":\"K-1\",\"price\":49.9}',\n  '{\"sku\":\"K-2\",\"price\":\"cher\"}',\n  'pas du json',\n  '{\"price\":10}',\n];\n// À toi : écris la suite, sans étapes imposées.\n",
+      "expectedOutput": "{\"sku\":\"K-1\",\"price\":49.9} -> Product K-1\n{\"sku\":\"K-2\",\"price\":\"cher\"} -> rejete: contrat viole\npas du json -> rejete: JSON invalide\n{\"price\":10} -> rejete: contrat viole",
+      "kind": "TRANSFER"
     }
   ],
   "quiz": [

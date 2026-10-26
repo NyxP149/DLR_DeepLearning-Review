@@ -59,6 +59,14 @@
       "statement": "Écris chunks : fenêtre glissante de `size` mots avec `overlap` mots de chevauchement, qui refuse un chevauchement supérieur ou égal à la taille, renvoie pour chaque morceau sa source, son début et son texte, et s'arrête quand le texte est couvert. Vérifie aussi la couverture. Affiche exactement :\nun deux trois | trois quatre cinq | cinq six\ndoc-1@0: un deux trois\ndoc-1@2: trois quatre cinq\ndoc-1@4: cinq six\nCouverture complète: True\nRefusé: size doit dépasser overlap\nCourt texte: 1",
       "starterCode": "def chunks(source: str, words: list[str], size: int, overlap: int) -> list[dict]:\n    # TODO 1 : si size <= overlap, lève ValueError(\"size doit dépasser overlap\")\n    # TODO 2 : fenêtre glissante de pas size - overlap ; chaque morceau est un dict\n    #          {\"source\": source, \"start\": indice du premier mot, \"text\": mots du morceau joints par un espace}\n    #          arrête-toi dès qu'un morceau atteint la fin des mots ; ignore les morceaux vides\n    return []\n\n\nwords = \"un deux trois quatre cinq six\".split()\nparts = chunks(\"doc-1\", words, 3, 1)\nprint(\" | \".join(part[\"text\"] for part in parts))\n# TODO 3 : affiche, pour chaque morceau, \"<source>@<start>: <text>\"\n# TODO 4 : affiche \"Couverture complète: <True/False>\" (tous les mots du document figurent dans au moins un morceau)\n# TODO 5 : tente chunks(\"doc-1\", words, 2, 2) ; affiche \"Refusé: <message de l'erreur>\"\n# TODO 6 : affiche \"Court texte: \" suivi du nombre de morceaux obtenus pour [\"a\", \"b\"] avec size=5 et overlap=1\n",
       "expectedOutput": "un deux trois | trois quatre cinq | cinq six\ndoc-1@0: un deux trois\ndoc-1@2: trois quatre cinq\ndoc-1@4: cinq six\nCouverture complète: True\nRefusé: size doit dépasser overlap\nCourt texte: 1"
+    },
+    {
+      "code": "LLM-07-T1",
+      "title": "Transfert : découper des lignes en morceaux traçables",
+      "statement": "Même notion, autre contexte : écris chunks(source, lines, size, overlap) qui découpe une liste de lignes en fenêtres glissantes de size lignes avec overlap lignes de chevauchement, qui refuse un chevauchement supérieur ou égal à la taille (ValueError « size doit depasser overlap »), renvoie pour chaque morceau sa source, sa ligne de départ et son texte (lignes jointes par « / »), et s'arrête quand tout est couvert. Vérifie aussi la couverture complète. Aucun indice n'est proposé et cet exercice ne compte pas dans le score. Sortie exacte :\ndoc-9@0: l0 / l1 / l2\ndoc-9@2: l2 / l3 / l4\ndoc-9@4: l4 / l5\nCouverture complete: True\nRefuse: size doit depasser overlap",
+      "starterCode": "lines = [\"l0\", \"l1\", \"l2\", \"l3\", \"l4\", \"l5\"]\n# À toi : écris la suite, sans étapes imposées.\n",
+      "expectedOutput": "doc-9@0: l0 / l1 / l2\ndoc-9@2: l2 / l3 / l4\ndoc-9@4: l4 / l5\nCouverture complete: True\nRefuse: size doit depasser overlap",
+      "kind": "TRANSFER"
     }
   ],
   "quiz": [

@@ -59,6 +59,14 @@
       "statement": "Écris load_config qui lit PORT et DEBUG dans un dictionnaire d'environnement avec des valeurs par défaut (8000 et faux) et convertit les types, puis setup_logging qui configure logging avec le format « NIVEAU nom: message » sur la sortie standard. Le niveau DEBUG n'est actif qu'en mode debug.",
       "starterCode": "import logging\nimport sys\n\n\ndef load_config(env: dict) -> dict:\n    # TODO 1 : port = int(PORT), 8000 par défaut ; debug vrai si DEBUG vaut \"1\", \"true\" ou \"yes\" (insensible à la casse) ;\n    #          level = \"DEBUG\" en mode debug, sinon \"INFO\"\n    return {\"port\": 0, \"debug\": False, \"level\": \"INFO\"}\n\n\ndef setup_logging(level: str) -> logging.Logger:\n    # TODO 2 : logging.basicConfig avec le niveau, le format \"%(levelname)s %(name)s: %(message)s\",\n    #          stream=sys.stdout et force=True ; retourne logging.getLogger(\"app\")\n    return logging.getLogger(\"app\")\n\n\nfor env in ({\"PORT\": \"8080\", \"DEBUG\": \"true\"}, {}):\n    config = load_config(env)\n    print(f\"Config: port={config['port']} debug={config['debug']} level={config['level']}\")\n    logger = setup_logging(config[\"level\"])\n    logger.debug(\"diagnostic\")\n    logger.info(\"démarrage\")\n    logger.warning(\"attention\")\n",
       "expectedOutput": "Config: port=8080 debug=True level=DEBUG\nDEBUG app: diagnostic\nINFO app: démarrage\nWARNING app: attention\nConfig: port=8000 debug=False level=INFO\nINFO app: démarrage\nWARNING app: attention"
+    },
+    {
+      "code": "PYTHON-14-T1",
+      "title": "Transfert : charger une configuration de service et configurer les logs",
+      "statement": "Même notion, autre contexte : écris load_config(env) qui lit TIMEOUT (décimal, 2.5 par défaut), RETRIES (entier, 3 par défaut) et VERBOSE (booléen, faux par défaut : la chaîne \"false\" doit donner False) dans un dictionnaire d'environnement, et setup_logging(verbose) qui configure logging avec le format « NIVEAU nom: message » sur la sortie standard (niveau DEBUG si verbose, INFO sinon). Joue les deux configurations indiquées. Aucun indice n'est proposé et cet exercice ne compte pas dans le score. Sortie exacte :\nConfig: timeout=1.5 retries=5 verbose=True level=DEBUG\nDEBUG svc: detail\nINFO svc: demarrage\nConfig: timeout=2.5 retries=3 verbose=False level=INFO\nINFO svc: demarrage",
+      "starterCode": "import logging\nimport sys\n# À toi : écris la suite, sans étapes imposées.\n",
+      "expectedOutput": "Config: timeout=1.5 retries=5 verbose=True level=DEBUG\nDEBUG svc: detail\nINFO svc: demarrage\nConfig: timeout=2.5 retries=3 verbose=False level=INFO\nINFO svc: demarrage",
+      "kind": "TRANSFER"
     }
   ],
   "quiz": [

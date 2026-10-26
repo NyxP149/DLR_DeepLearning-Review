@@ -59,6 +59,14 @@
       "statement": "Écris un décorateur retry(times) qui relance une fonction en cas de ConnectionError (en conservant son nom grâce à functools.wraps) et un gestionnaire de contexte transaction() qui affiche BEGIN, puis COMMIT en cas de succès ou ROLLBACK avec le message d'erreur avant de relancer l'exception.",
       "starterCode": "import functools\nfrom contextlib import contextmanager\n\n\ndef retry(times: int):\n    def decorator(func):\n        # TODO 1 : retourne un wrapper (décoré avec functools.wraps) qui essaie jusqu'à `times` fois :\n        #          succès -> affiche \"tentative <n>: succès\" et retourne le résultat ;\n        #          ConnectionError -> affiche \"tentative <n>: échec (<message>)\" et relance à la dernière tentative\n        return func\n\n    return decorator\n\n\n@contextmanager\ndef transaction():\n    # TODO 2 : affiche \"BEGIN\" ; si le bloc réussit affiche \"COMMIT\" ;\n    #          s'il lève une exception affiche \"ROLLBACK (<message>)\" puis relance-la\n    yield\n\n\ncalls = {\"count\": 0}\n\n\n@retry(3)\ndef fetch() -> str:\n    calls[\"count\"] += 1\n    if calls[\"count\"] == 1:\n        raise ConnectionError(\"réseau\")\n    return \"ok\"\n\n\ntry:\n    print(f\"Résultat: {fetch()} | nom conservé: {fetch.__name__}\")\nexcept ConnectionError as error:\n    print(f\"Erreur non gérée: {error}\")\n\nwith transaction():\n    pass\n\ntry:\n    with transaction():\n        raise ValueError(\"boom\")\nexcept ValueError:\n    pass\n",
       "expectedOutput": "tentative 1: échec (réseau)\ntentative 2: succès\nRésultat: ok | nom conservé: fetch\nBEGIN\nCOMMIT\nBEGIN\nROLLBACK (boom)"
+    },
+    {
+      "code": "PYTHON-09-T1",
+      "title": "Transfert : mémoïser une fonction et restaurer un réglage",
+      "statement": "Même notion, autre contexte : écris un décorateur memoize qui conserve le nom de la fonction (functools.wraps) et compte les appels réels, applique-le à une fonction fib récursive et affiche fib(10), le nombre d'appels réels et le nom conservé ; écris aussi un gestionnaire de contexte temporary(settings, key, value) qui restaure la valeur d'origine même après une erreur. Aucun indice n'est proposé et cet exercice ne compte pas dans le score. Sortie exacte :\nfib(10) = 55 | appels reels: 11 | nom conserve: fib\nAvant: debug=False\nDans le contexte: debug=True\nApres: debug=False\nApres erreur: debug=False",
+      "starterCode": "import functools\nfrom contextlib import contextmanager\n\nsettings = {\"debug\": False}\n# À toi : écris la suite, sans étapes imposées.\n",
+      "expectedOutput": "fib(10) = 55 | appels reels: 11 | nom conserve: fib\nAvant: debug=False\nDans le contexte: debug=True\nApres: debug=False\nApres erreur: debug=False",
+      "kind": "TRANSFER"
     }
   ],
   "quiz": [

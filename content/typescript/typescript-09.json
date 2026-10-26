@@ -59,6 +59,14 @@
       "statement": "À partir d'une seule interface User, dérive les types dont tu as besoin : Partial<User> pour une mise à jour partielle, Pick<T, K> pour extraire certaines clés, et un type mappé Flags<T> qui associe un booléen à chaque propriété. Écris update, pick et toFlags.",
       "starterCode": "export {};\n\ninterface User {\n  id: number;\n  name: string;\n  email: string;\n}\n\ntype Flags<T> = { [K in keyof T]: boolean };\n\nfunction update(user: User, patch: Partial<User>): User {\n  // TODO 1 : retourne un NOUVEL utilisateur : les champs de user remplacés par ceux de patch\n  return user;\n}\n\nfunction pick<T, K extends keyof T>(source: T, keys: K[]): Pick<T, K> {\n  // TODO 2 : retourne un objet qui ne contient que les clés demandées\n  return {} as Pick<T, K>;\n}\n\nfunction toFlags<T extends object>(source: T): Flags<T> {\n  // TODO 3 : pour chaque propriété, true si la valeur est « truthy » (Boolean(valeur)), sinon false\n  return {} as Flags<T>;\n}\n\nconst user: User = { id: 1, name: 'Ada', email: '' };\nconsole.log(`update: ${JSON.stringify(update(user, { email: 'ada@new.dev' }))}`);\nconsole.log(`pick: ${JSON.stringify(pick(user, ['id', 'name']))}`);\nconsole.log(`flags: ${JSON.stringify(toFlags(user))}`);\n",
       "expectedOutput": "update: {\"id\":1,\"name\":\"Ada\",\"email\":\"ada@new.dev\"}\npick: {\"id\":1,\"name\":\"Ada\"}\nflags: {\"id\":true,\"name\":true,\"email\":false}"
+    },
+    {
+      "code": "TYPESCRIPT-09-T1",
+      "title": "Transfert : dériver des types pour des réglages",
+      "statement": "Même notion, autre contexte : à partir d'une seule interface Settings (theme, fontSize, compact), dérive Partial<Settings> pour une mise à jour partielle (merge), Pick<T, K> pour extraire des clés (pickKeys) et un type mappé Validators<T> qui associe à chaque propriété une fonction de validation ; validate retourne les clés invalides. Applique-les aux données fournies. Aucun indice n'est proposé et cet exercice ne compte pas dans le score. Sortie exacte :\nmerge: {\"theme\":\"dark\",\"fontSize\":14,\"compact\":true}\npick: {\"theme\":\"dark\",\"fontSize\":14}\ninvalides: fontSize",
+      "starterCode": "export {};\n\ninterface Settings {\n  theme: string;\n  fontSize: number;\n  compact: boolean;\n}\n\nconst base: Settings = { theme: 'light', fontSize: 12, compact: true };\n// À toi : écris la suite, sans étapes imposées.\n",
+      "expectedOutput": "merge: {\"theme\":\"dark\",\"fontSize\":14,\"compact\":true}\npick: {\"theme\":\"dark\",\"fontSize\":14}\ninvalides: fontSize",
+      "kind": "TRANSFER"
     }
   ],
   "quiz": [

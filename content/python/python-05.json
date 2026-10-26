@@ -59,6 +59,14 @@
       "statement": "Définis une dataclass Skill (frozen, slots) dont le niveau reste entre 1 et 5, avec level_up qui renvoie une nouvelle valeur. Vérifie l'immutabilité, l'égalité par valeur et le refus d'un niveau invalide. Affiche exactement :\nPython: niveau 2\nOriginal inchange: niveau 1\nRefuse: niveau doit etre entre 1 et 5\nEgalite par valeur: True\nDans un set: 1\nModification refusee: True",
       "starterCode": "from dataclasses import dataclass, replace, FrozenInstanceError\n\n# TODO 1 : dataclass immuable Skill (frozen=True, slots=True) avec name: str et level: int\n#          - __post_init__ : lève ValueError(\"niveau doit etre entre 1 et 5\") si level n'est pas dans [1, 5]\n#          - level_up() : retourne une NOUVELLE Skill avec un niveau de plus (dataclasses.replace)\n\n# TODO 2 : crée Skill(\"Python\", 1) puis appelle level_up() et vérifie avec assert que l'original est resté à 1\n# TODO 3 : affiche \"Python: niveau 2\" (nouvelle valeur) puis \"Original inchange: niveau 1\"\n# TODO 4 : tente Skill(\"Bug\", 9) dans un try/except ValueError et affiche \"Refuse: \" + message\n# TODO 5 : affiche \"Egalite par valeur: \" + (Skill(\"A\", 1) == Skill(\"A\", 1))\n# TODO 6 : affiche \"Dans un set: \" + taille de {Skill(\"A\", 1), Skill(\"A\", 1)}\n# TODO 7 : tente skill.level = 3 (FrozenInstanceError) et affiche \"Modification refusee: True\" si l'exception est levée\n",
       "expectedOutput": "Python: niveau 2\nOriginal inchange: niveau 1\nRefuse: niveau doit etre entre 1 et 5\nEgalite par valeur: True\nDans un set: 1\nModification refusee: True"
+    },
+    {
+      "code": "PYTHON-05-T1",
+      "title": "Transfert : une valeur monétaire immuable",
+      "statement": "Même notion, autre contexte : définis une dataclass Money (frozen, slots) avec un montant en centimes jamais négatif et une devise, une méthode add qui renvoie une nouvelle valeur, puis vérifie l'immutabilité, l'égalité par valeur, le hachage (taille d'un set) et le refus d'un montant négatif. Aucun indice n'est proposé et cet exercice ne compte pas dans le score. Sortie exacte :\nTotal: 1500 EUR\nOriginal inchange: 1000 EUR\nRefuse: montant negatif\nEgalite par valeur: True\nDans un set: 1\nModification refusee: True",
+      "starterCode": "from dataclasses import dataclass, replace, FrozenInstanceError\n# À toi : écris la suite, sans étapes imposées.\n",
+      "expectedOutput": "Total: 1500 EUR\nOriginal inchange: 1000 EUR\nRefuse: montant negatif\nEgalite par valeur: True\nDans un set: 1\nModification refusee: True",
+      "kind": "TRANSFER"
     }
   ],
   "quiz": [

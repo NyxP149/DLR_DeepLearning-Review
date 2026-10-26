@@ -59,6 +59,14 @@
       "statement": "Complète main pour afficher exactement :\nRLD\nmax=15\nmoyenne=11.25\nDLR\n(la chaîne DLR inversée, le maximum et la moyenne du tableau notes avec deux décimales, puis les initiales de la phrase).",
       "starterCode": "import java.util.Locale;\n\npublic class Main {\n    public static void main(String[] args) {\n        String value = \"DLR\";\n        int[] notes = {12, 8, 15, 10};\n        String phrase = \"Deep Learning Review\";\n        // TODO 1 : inverse value avec StringBuilder (reverse) et affiche le résultat\n        // TODO 2 : parcours notes pour trouver le maximum ; affiche \"max=\" + max\n        // TODO 3 : calcule la moyenne en double ; affiche \"moyenne=\" suivie de la valeur à 2 décimales\n        //          (String.format(Locale.ROOT, \"%.2f\", moyenne))\n        // TODO 4 : construis les initiales de phrase (split(\" \") et charAt(0)) et affiche-les\n    }\n}\n",
       "expectedOutput": "RLD\nmax=15\nmoyenne=11.25\nDLR"
+    },
+    {
+      "code": "JAVA-05-T1",
+      "title": "Transfert : repérer des palindromes",
+      "statement": "Même notion, autre contexte : pour chaque mot du tableau, affiche « mot : true » s'il se lit pareil à l'envers et « mot : false » sinon (compare avec equals, pas avec ==), puis affiche le premier mot le plus long. Aucun indice n'est proposé et cet exercice ne compte pas dans le score. Sortie exacte :\nradar : true\njava : false\nkayak : true\njvm : false\nPlus long : radar",
+      "starterCode": "public class Main {\n    public static void main(String[] args) {\n        String[] mots = {\"radar\", \"java\", \"kayak\", \"jvm\"};\n        // À toi : écris la suite, sans étapes imposées.\n    }\n}\n",
+      "expectedOutput": "radar : true\njava : false\nkayak : true\njvm : false\nPlus long : radar",
+      "kind": "TRANSFER"
     }
   ],
   "quiz": [
