@@ -11,25 +11,30 @@
     "TERMINAL-16"
   ],
   "objectives": [
-    "Décrire des tâches de projet (build, test, clean) dans un Makefile avec leurs dépendances",
-    "Expliquer comment make décide de reconstruire un fichier (dates de modification) et à quoi servent les cibles .PHONY",
-    "Offrir à l'équipe une interface unique et reproductible pour lancer le projet, sans connaître ses outils internes"
+    "Écrire un Makefile avec des cibles, des dépendances, .PHONY et des recettes correctement préfixées.",
+    "Prédire quand make reconstruit une cible et ce que renvoie make -q.",
+    "Prouver qu'un projet est à jour sans l'exécuter (make -q, make -n).",
+    "Justifier un point d'entrée unique pour les humains, la CI et un assistant IA."
   ],
   "sections": [
     {
-      "title": "Pourquoi un point d'entrée unique",
+      "title": "Le problème : chacun lance les commandes à sa façon",
+      "content": "Chaque projet a ses commandes (npm test, mvn verify, pytest, docker build) que personne ne retient toutes. Un Makefile les rassemble sous des noms stables : make test, make build, make clean. Un nouveau développeur, l'intégration continue et un assistant IA lancent alors exactement les mêmes commandes, avec les mêmes options. Dans un README, « lance make test » est plus fiable que de recopier une longue ligne."
+    },
+    {
+      "title": "Exemple résolu : reconstruire seulement ce qui a changé",
       "conceptCodes": [
         "TERMINAL-TASK-RUNNER"
       ],
-      "content": "Chaque projet a ses commandes (npm test, mvn verify, pytest, docker build…) que personne ne retient toutes. Un Makefile les rassemble sous des noms stables : make test, make build, make clean. Un nouveau développeur, l'intégration continue et un assistant IA lancent alors les mêmes commandes, avec les mêmes options. Dans CLAUDE.md ou un README, écrire « lance make test » est plus fiable que de recopier une longue ligne de commande."
+      "content": "Objectif : out.txt est copié depuis in.txt, make ne refait le travail que si in.txt est plus récent.\n\nRaisonnement, étape par étape :\n1. Une règle s'écrit cible: dépendances puis la recette (les commandes).\n2. La recette de out.txt copie in.txt et affiche construit.\n3. Première exécution : out.txt n'existe pas, make construit.\n4. Deuxième exécution : out.txt est plus récent que in.txt, make ne fait rien (« up to date »).\n5. Après un touch in.txt, la dépendance est plus récente : make reconstruit.\n6. make -q out.txt répond sans rien exécuter : code 0 si tout est à jour, 1 sinon.\n```make\n.RECIPEPREFIX = >\n.PHONY: clean\nout.txt: in.txt\n> cp in.txt out.txt\n> echo construit\nclean:\n> rm -f out.txt\n```\n```bash\nmake -q out.txt; echo $?    # 1 avant la première construction\nmake out.txt                # construit\nmake -q out.txt; echo $?    # 0 : à jour\n```\n.PHONY déclare clean comme une action et non un fichier : même si un fichier nommé clean existe, make la lance."
     },
     {
-      "title": "Cibles, dépendances et recettes",
-      "content": "Une règle s'écrit cible: dépendances suivie de la recette (les commandes). make reconstruit la cible seulement si elle est absente ou plus ancienne qu'une dépendance : dist/app.txt: src/app.txt copie le fichier uniquement quand la source change. Les cibles qui ne produisent pas de fichier (test, clean, all) se déclarent avec .PHONY pour ne pas être confondues avec un fichier du même nom. Les lignes de recette commencent par une tabulation, pas par des espaces ; la variable spéciale .RECIPEPREFIX permet de choisir un autre caractère (par exemple >) quand les tabulations posent problème dans un éditeur."
+      "title": "Recettes, variables et alternatives",
+      "content": "Les lignes de recette commencent par une tabulation ; la variable spéciale .RECIPEPREFIX permet de choisir un autre caractère (par exemple >) quand les tabulations posent problème dans un éditeur. Des variables (BUILD_DIR := dist) évitent de répéter les chemins ; $@ désigne la cible et $< la première dépendance. make -n affiche ce qui serait exécuté sans le faire, make -q répond par son code de sortie, make -s réduit le bruit.\n\nSous Windows, make n'est pas installé par défaut : on utilise WSL, Git Bash, ou des équivalents (just, Taskfile, scripts npm, build.ps1). L'important est le principe : un point d'entrée documenté, idempotent et vérifiable."
     },
     {
-      "title": "Variables, make -q et alternatives",
-      "content": "Des variables (BUILD_DIR := dist) évitent de répéter les chemins ; $@ désigne la cible et $< la première dépendance. make -n affiche ce qui serait exécuté sans le faire, make -q répond par son code de sortie à la question « tout est-il à jour ? », make -s réduit le bruit. Sous Windows, make n'est pas installé par défaut : on utilise WSL, Git Bash, ou des équivalents (just, Taskfile, scripts npm, ou un fichier build.ps1). L'important est le principe : un point d'entrée documenté, idempotent et vérifiable."
+      "title": "Erreurs fréquentes à reconnaître",
+      "content": "1. Indenter la recette avec des espaces : make répond « missing separator ».\n2. Oublier .PHONY : si un fichier test ou clean existe, make croit la cible à jour et ne fait rien.\n3. Oublier une dépendance : la cible n'est pas reconstruite quand elle devrait l'être.\n4. Mettre dans le Makefile des chemins spécifiques à une machine.\n5. Donner à un assistant IA une longue commande au lieu de make test.\n\nRetrouve ces pièges de mémoire avant le quiz."
     }
   ],
   "keyConcepts": [
@@ -60,56 +65,80 @@
     {
       "code": "TERMINAL-17-Q1",
       "type": "SINGLE_CHOICE",
-      "prompt": "Quand make reconstruit-il une cible fichier ?",
+      "prompt": "out.txt est plus ancien que sa dépendance in.txt. Que renvoie make -q out.txt ?",
       "choices": [
-        "Quand elle est absente ou plus ancienne qu'une dépendance",
-        "À chaque exécution, sans condition",
-        "Seulement si on utilise l'option -f"
+        "0 et rien ne se passe",
+        "1 : la cible est à reconstruire, sans rien exécuter",
+        "2 : erreur de syntaxe",
+        "Il construit out.txt puis renvoie 0"
       ],
-      "correctChoice": 0,
-      "expectedKeywords": []
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "make -q (question) ne construit rien : code 0 si la cible est à jour, 1 si elle doit être reconstruite, 2 en cas d'erreur."
     },
     {
       "code": "TERMINAL-17-Q2",
       "type": "SINGLE_CHOICE",
-      "prompt": "À quoi sert .PHONY: test clean ?",
+      "prompt": "Trouve le bug : make répond « missing separator ». La recette est indentée avec quatre espaces. Que faire ?",
       "choices": [
-        "À indiquer que ce sont des tâches et non des fichiers",
-        "À rendre les cibles plus rapides",
-        "À cacher les cibles dans make --help"
+        "Ajouter .PHONY",
+        "Utiliser une tabulation (ou définir .RECIPEPREFIX) pour préfixer les lignes de recette",
+        "Renommer le Makefile",
+        "Mettre la recette sur une seule ligne"
       ],
-      "correctChoice": 0,
-      "expectedKeywords": []
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Par défaut, make exige une tabulation en début de ligne de recette. .RECIPEPREFIX = > permet un autre préfixe."
     },
     {
       "code": "TERMINAL-17-Q3",
       "type": "SINGLE_CHOICE",
-      "prompt": "Pourquoi un Makefile aide-t-il un assistant IA qui reprend un projet ?",
+      "prompt": "Pourquoi déclarer clean avec .PHONY ?",
       "choices": [
-        "Il fournit des commandes stables pour construire et vérifier",
-        "Il remplace le besoin de tests",
-        "Il gère automatiquement les secrets"
+        "Pour qu'il s'exécute plus vite",
+        "Pour que make le lance même si un fichier nommé clean existe",
+        "Pour qu'il soit exécuté automatiquement à chaque make",
+        "Pour le rendre invisible"
       ],
-      "correctChoice": 0,
-      "expectedKeywords": []
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Sans .PHONY, un fichier clean sans dépendance serait considéré comme à jour et la recette ne s'exécuterait pas. .PHONY marque la cible comme une action."
     },
     {
       "code": "TERMINAL-17-Q4",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Que fait make -n test ?",
+      "choices": [
+        "Exécute test sans afficher de bruit",
+        "Affiche les commandes qui seraient exécutées, sans les lancer",
+        "Supprime les fichiers temporaires",
+        "Teste la syntaxe du Makefile uniquement"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "-n (dry run) liste les recettes que make exécuterait, sans les lancer : pratique pour vérifier avant d'agir."
+    },
+    {
+      "code": "TERMINAL-17-Q5",
       "type": "FREE_TEXT",
-      "prompt": "Sous Windows sans make, comment offrir le même point d'entrée unique à l'équipe ?",
+      "prompt": "Pourquoi centraliser les commandes d'un projet dans un point d'entrée unique comme make test ?",
       "choices": [],
       "correctChoice": null,
       "expectedKeywords": [
-        "WSL",
-        "script",
-        "tâche"
-      ]
+        "meme",
+        "CI",
+        "assistant",
+        "documente",
+        "commande"
+      ],
+      "modelAnswer": "Parce que les humains, l'intégration continue et l'assistant IA lancent exactement la même commande, documentée une seule fois : moins d'erreurs de copie, un comportement identique partout, et un changement de l'outil de test ne modifie qu'un endroit.",
+      "explanation": "Une bonne réponse cite le partage de la même commande par les humains, la CI et l'assistant, et la maintenance en un seul endroit."
     }
   ],
   "checklist": [
-    "J'écris des règles cible, dépendances et recette, et je déclare les tâches avec .PHONY",
-    "J'explique la reconstruction conditionnelle selon les dates de modification",
-    "J'utilise make -n, -q et -s pour simuler, vérifier et réduire le bruit",
-    "Je documente les commandes de vérification du projet sous des noms stables"
+    "J'écris des cibles avec dépendances et une recette correctement préfixée",
+    "Je déclare les actions sans fichier avec .PHONY",
+    "Je prouve l'état d'un projet avec make -q et je simule avec make -n",
+    "Je donne make test plutôt qu'une longue commande aux autres et à l'assistant"
   ]
 }

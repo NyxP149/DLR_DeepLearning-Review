@@ -1,12 +1,144 @@
 {
-  "code":"JAVA-02","language":"JAVA","number":2,"slug":"variables-types-operateurs","title":"Variables, types primitifs, opérateurs et conversions","difficulty":"BASE","threshold":70,"activityType":"LAB","prerequisites":["JAVA-01"],
-  "objectives":["Choisir un type primitif adapté","Déclarer des variables lisibles","Utiliser les opérateurs sans conversion involontaire"],
-  "sections":[
-    {"title":"Nommer et typer une valeur","content":"Une variable associe un nom, un type et une valeur. Java vérifie à la compilation que les opérations respectent le type déclaré."},
-    {"title":"Conversions explicites","content":"Une conversion élargissante est sûre. Une conversion réductrice exige un cast et peut perdre de l'information : elle doit donc être intentionnelle."}
+  "code": "JAVA-02",
+  "language": "JAVA",
+  "number": 2,
+  "slug": "variables-types-operateurs",
+  "title": "Variables, types primitifs, opérateurs et conversions",
+  "difficulty": "BASE",
+  "threshold": 70,
+  "activityType": "LAB",
+  "prerequisites": [
+    "JAVA-01"
   ],
-  "keyConcepts":[{"code":"JAVA-STATIC-TYPING","name":"Typage statique","definition":"Le type d'une variable est connu et contrôlé avant l'exécution.","whyExists":"Il détecte tôt les opérations incohérentes et rend les contrats du code visibles.","whyImportant":"Les erreurs de type deviennent des retours immédiats du compilateur plutôt que des incidents en production.","minimalExample":"int quantity = 3; double price = 9.5;","professionalExample":"Dans un module de facturation, une équipe stocke initialement les montants en double : après des milliers d'additions, les totaux affichés diffèrent de quelques centimes de ceux calculés côté comptabilité. Le problème vient du typage à virgule flottante binaire, incapable de représenter exactement 0,10 ou 0,20 euro. La correction consiste à typer les montants en int (centimes) ou en BigDecimal, ce que le compilateur aurait imposé de vérifier dès la déclaration si le typage statique avait été respecté dès la conception.","codeExample":"int priceCents = 950; // 9,50 € stockés en centimes pour éviter l'arrondi\nint quantity = 3;\nint totalCents = priceCents * quantity;\nSystem.out.println(totalCents / 100.0 + \" EUR\");\n\n// Anti-pattern rencontré en production :\ndouble price = 9.50;\ndouble total = price * 3; // 28.499999999999996 après accumulation d'erreurs","commonMistake":"Utiliser double pour une somme d'argent ou caster sans vérifier la plage.","masteryQuestion":"Que gagne-t-on à connaître les types pendant la compilation ?","masteryProof":"Justifier le type de chaque donnée d'une petite facture."}],
-  "exercises":[{"code":"VARIABLES-INVOICE","title":"Calculer une facture simple","statement":"Déclare une quantité de 3 et un prix entier de 14, puis affiche exactement : total=42","starterCode":"public class Main {\n    public static void main(String[] args) {\n        // Déclare les variables et calcule le total\n    }\n}\n","expectedOutput":"total=42"}],
-  "quiz":[{"code":"JAVA-02-Q1","type":"SINGLE_CHOICE","prompt":"Quel type convient à un nombre entier courant ?","choices":["boolean","int","char","double"],"correctChoice":1,"expectedKeywords":[]},{"code":"JAVA-02-Q2","type":"FREE_TEXT","prompt":"Explique pourquoi une conversion réductrice doit être explicite.","choices":[],"correctChoice":null,"expectedKeywords":["perte","information","type","cast"]}],
-  "checklist":["Je distingue les types entiers et décimaux","Je sais expliquer un cast","Je donne des noms clairs aux variables"]
+  "objectives": [
+    "Choisir un type primitif adapté (int, long, double, boolean, char) à une donnée.",
+    "Prédire le résultat d'une division entière, d'une division décimale et d'un cast.",
+    "Expliquer pourquoi 0.1 + 0.2 n'est pas égal à 0.3 et ce que cela implique pour l'argent.",
+    "Repérer une conversion réductrice refusée par le compilateur."
+  ],
+  "sections": [
+    {
+      "title": "Le problème : la même opération donne un autre résultat selon le type",
+      "content": "Une variable associe un nom, un type et une valeur. Java vérifie les types à la compilation (typage statique), et le type change le calcul :\n```java\nSystem.out.println(7 / 2);     // 3    : division entière, la partie décimale est perdue\nSystem.out.println(7 / 2.0);   // 3.5  : un opérande décimal impose une division décimale\n```\nChoisir le bon type, c'est choisir la bonne précision et la bonne plage de valeurs, avant même d'écrire le calcul."
+    },
+    {
+      "title": "Exemple résolu : une facture avec TVA",
+      "conceptCodes": [
+        "JAVA-STATIC-TYPING"
+      ],
+      "content": "Problème : 3 articles à 14 euros, TVA à 20 %. Afficher le total, le total avec TVA et une part entière.\n\nRaisonnement, étape par étape :\n1. Quantité et prix sont des entiers : int quantity = 3; int unitPrice = 14;\n2. Le total est un produit d'entiers : int total = quantity * unitPrice; donne 42.\n3. La TVA introduit une décimale : double avecTva = total * 1.2; l'opérande décimal fait calculer en double, donc 50.4.\n4. Pour garder la partie entière, un cast explicite est nécessaire : int tronque = (int) avecTva; donne 50. Le compilateur refuse « int x = avecTva; » car une perte d'information serait silencieuse.\n5. Pour afficher deux décimales : String.format(Locale.ROOT, \"%.2f\", avecTva) donne 50.40.\n```java\nint total = quantity * unitPrice;          // 42\ndouble avecTva = total * 1.2;              // 50.4\nint tronque = (int) avecTva;               // 50, le cast tronque (il n'arrondit pas)\nint partEntiere = total / 4;               // 10\ndouble partExacte = total / 4.0;           // 10.5\n```\nRègle : une conversion élargissante (int vers double) est automatique et sûre ; une conversion réductrice (double vers int) demande un cast car elle peut perdre de l'information."
+    },
+    {
+      "title": "Les types à connaître et leurs pièges",
+      "content": "- Entiers : byte, short, int (le choix courant), long (suffixe L : 3_000_000_000L). Un int déborde sans erreur : Integer.MAX_VALUE + 1 vaut -2147483648.\n- Décimaux : float, double (le choix courant). Ils sont binaires : 0.1 + 0.2 vaut 0.30000000000000004, donc 0.1 + 0.2 == 0.3 est faux. Pour de l'argent, utilise des centimes entiers ou BigDecimal.\n- boolean : true ou false. char : un caractère entre apostrophes ('a'), qui se comporte aussi comme un nombre ('a' + 1 vaut 98).\n- Reste de la division : 10 % 3 vaut 1.\n- La concaténation lit de gauche à droite : \"a\" + 1 + 2 donne a12, mais 1 + 2 + \"a\" donne 3a.\nNomme les variables avec des noms qui disent leur rôle : unitPrice plutôt que p."
+    },
+    {
+      "title": "Erreurs fréquentes à reconnaître",
+      "content": "1. Diviser deux entiers et s'étonner de perdre les décimales.\n2. Écrire int x = 5 * 2.5; : « incompatible types: possible lossy conversion from double to int ».\n3. Comparer des décimaux avec == au lieu d'une tolérance.\n4. Oublier le L d'un grand nombre : 3000000000 ne tient pas dans un int.\n5. Calculer de l'argent en double.\n\nRetrouve ces pièges de mémoire avant le quiz."
+    }
+  ],
+  "keyConcepts": [
+    {
+      "code": "JAVA-STATIC-TYPING",
+      "name": "Typage statique",
+      "definition": "Le type d'une variable est connu et contrôlé avant l'exécution.",
+      "whyExists": "Il détecte tôt les opérations incohérentes et rend les contrats du code visibles.",
+      "whyImportant": "Les erreurs de type deviennent des retours immédiats du compilateur plutôt que des incidents en production.",
+      "minimalExample": "int quantity = 3; double price = 9.5;",
+      "professionalExample": "Dans un module de facturation, une équipe stocke initialement les montants en double : après des milliers d'additions, les totaux affichés diffèrent de quelques centimes de ceux calculés côté comptabilité. Le problème vient du typage à virgule flottante binaire, incapable de représenter exactement 0,10 ou 0,20 euro. La correction consiste à typer les montants en int (centimes) ou en BigDecimal, ce que le compilateur aurait imposé de vérifier dès la déclaration si le typage statique avait été respecté dès la conception.",
+      "codeExample": "int priceCents = 950; // 9,50 € stockés en centimes pour éviter l'arrondi\nint quantity = 3;\nint totalCents = priceCents * quantity;\nSystem.out.println(totalCents / 100.0 + \" EUR\");\n\n// Anti-pattern rencontré en production :\ndouble price = 9.50;\ndouble total = price * 3; // 28.499999999999996 après accumulation d'erreurs",
+      "commonMistake": "Utiliser double pour une somme d'argent ou caster sans vérifier la plage.",
+      "masteryQuestion": "Que gagne-t-on à connaître les types pendant la compilation ?",
+      "masteryProof": "Justifier le type de chaque donnée d'une petite facture."
+    }
+  ],
+  "exercises": [
+    {
+      "code": "VARIABLES-INVOICE",
+      "title": "Calculer une facture simple",
+      "statement": "Déclare une quantité de 3 et un prix unitaire de 14, puis complète le calcul pour afficher exactement :\ntotal=42\navecTVA=50.40\ntronque=50\npartEntiere=10\npartExacte=10.5",
+      "starterCode": "import java.util.Locale;\n\npublic class Main {\n    public static void main(String[] args) {\n        int quantity = 3;\n        int unitPrice = 14;\n        // TODO 1 : calcule total (int) = quantity * unitPrice et affiche \"total=\" + total\n        // TODO 2 : calcule avecTva (double) = total * 1.2 et affiche \"avecTVA=\" suivi de la valeur à 2 décimales\n        //          (String.format(Locale.ROOT, \"%.2f\", avecTva))\n        // TODO 3 : convertis avecTva en int avec un cast et affiche \"tronque=\" + la valeur\n        // TODO 4 : affiche \"partEntiere=\" suivi de total / 4 (division entière)\n        // TODO 5 : affiche \"partExacte=\" suivi de total / 4.0\n    }\n}\n",
+      "expectedOutput": "total=42\navecTVA=50.40\ntronque=50\npartEntiere=10\npartExacte=10.5"
+    }
+  ],
+  "quiz": [
+    {
+      "code": "JAVA-02-Q1",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Prédis l'affichage :\n```java\nSystem.out.println(7 / 2);\n```\n",
+      "choices": [
+        "3.5",
+        "3",
+        "4",
+        "3.0"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Les deux opérandes sont des int : la division est entière et la partie décimale est supprimée (3). Avec 7 / 2.0, le résultat serait 3.5."
+    },
+    {
+      "code": "JAVA-02-Q2",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Prédis l'affichage :\n```java\ndouble d = 3.99;\nint n = (int) d;\nSystem.out.println(n);\n```\n",
+      "choices": [
+        "4",
+        "3",
+        "3.99",
+        "Erreur de compilation"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Le cast vers int tronque la partie décimale sans arrondir : 3. Sans cast, « int n = d; » serait refusé par le compilateur."
+    },
+    {
+      "code": "JAVA-02-Q3",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Trouve le bug : pourquoi cette ligne ne compile-t-elle pas ?\n```java\nint total = 5 * 2.5;\n```\n",
+      "choices": [
+        "Il manque un point-virgule",
+        "5 * 2.5 est un double : le stocker dans un int perdrait l'information et exige un cast explicite",
+        "5 n'est pas un entier valide",
+        "Les variables doivent être en majuscules"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Le résultat est un double (12.5). Java refuse la conversion réductrice implicite : « possible lossy conversion from double to int ». Il faut déclarer un double ou écrire (int) (5 * 2.5) en assumant la troncature."
+    },
+    {
+      "code": "JAVA-02-Q4",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Que vaut l'expression 0.1 + 0.2 == 0.3 ?",
+      "choices": [
+        "true",
+        "false",
+        "Une erreur de compilation",
+        "Cela dépend de la machine"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Les décimaux sont stockés en binaire : 0.1 + 0.2 vaut 0.30000000000000004. On compare avec une tolérance, ou on utilise des entiers (centimes) / BigDecimal pour l'argent."
+    },
+    {
+      "code": "JAVA-02-Q5",
+      "type": "FREE_TEXT",
+      "prompt": "Explique pourquoi une conversion réductrice, comme de double vers int, doit être écrite explicitement avec un cast.",
+      "choices": [],
+      "correctChoice": null,
+      "expectedKeywords": [
+        "perte",
+        "information",
+        "type",
+        "cast",
+        "explicite"
+      ],
+      "modelAnswer": "Une conversion réductrice peut perdre de l'information (la partie décimale, ou la plage de valeurs). Java exige donc un cast explicite pour que le développeur assume cette perte : le type déclaré reste un contrat vérifié par le compilateur, et rien ne se dégrade en silence.",
+      "explanation": "Une bonne réponse parle de perte d'information, de cast explicite assumé et du rôle du compilateur."
+    }
+  ],
+  "checklist": [
+    "Je choisis int, long ou double selon la donnée",
+    "Je prédis une division entière avant de la lancer",
+    "J'écris un cast seulement quand j'accepte la perte",
+    "Je ne compare pas des décimaux avec == et je ne calcule pas l'argent en double"
+  ]
 }

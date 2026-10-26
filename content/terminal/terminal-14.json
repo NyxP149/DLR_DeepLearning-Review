@@ -11,25 +11,30 @@
     "TERMINAL-13"
   ],
   "objectives": [
-    "Découper, trier et dédoublonner du texte avec cut, sort et uniq",
-    "Agréger et transformer avec awk et sed, et interroger du JSON avec jq",
-    "Construire un rapport reproductible à partir de données brutes"
+    "Composer cut, sort, uniq, awk et sed pour compter et totaliser des données tabulaires.",
+    "Expliquer pourquoi sort précède uniq -c et suit awk quand l'ordre compte.",
+    "Prédire la sortie de uniq -c, de sed sans /g et d'un total awk.",
+    "Extraire un champ JSON avec jq plutôt qu'avec sed, et choisir entre jq et jq -r."
   ],
   "sections": [
     {
-      "title": "Les outils de découpe : cut, sort, uniq, tr",
+      "title": "Le problème : un rapport reproductible à partir de texte brut",
+      "content": "Un export CSV de ventes ou un JSON d'API doit devenir un petit rapport : comptes, totaux, valeurs distinctes. Le texte est le format d'échange universel d'Unix, mais deux pièges guettent : un ordre de sortie instable (donc un rapport qui change d'une exécution à l'autre) et un découpage fragile de données structurées.\n\nLes briques : cut extrait une colonne, sort trie, uniq -c compte les doublons consécutifs, awk calcule, sed transforme, jq lit le JSON."
+    },
+    {
+      "title": "Exemple résolu : compter et totaliser des ventes par pays",
       "conceptCodes": [
         "TERMINAL-TEXT-PROCESSING"
       ],
-      "content": "cut -d, -f1 extrait la première colonne d'un CSV, sort trie (sort -n pour les nombres, sort -r à l'envers, sort -u pour dédoublonner), uniq -c compte les doublons consécutifs (d'où le sort préalable), tr a-z A-Z convertit des caractères. head -n et tail -n +2 sélectionnent des lignes (tail -n +2 saute l'en-tête). Ces commandes se composent par pipes : cut -d, -f2 ventes.csv | sort | uniq -c | sort -rn donne le classement des valeurs les plus fréquentes."
+      "content": "Fichier notes.csv : l'en-tête puis FR,10 ; DE,5 ; FR,7. Objectif : nombre de lignes et total par pays, dans un ordre stable.\n\nRaisonnement, étape par étape :\n1. Ignorer l'en-tête : tail -n +2.\n2. Extraire la colonne pays : cut -d, -f1.\n3. Trier PUIS compter : sort | uniq -c, car uniq ne compte que les doublons voisins.\n4. Pour les totaux, awk avec un tableau associatif : awk -F, 'NR>1 {t[$1]+=$2} END {for (p in t) print p, t[p]}'.\n5. Trier la sortie d'awk : l'ordre de parcours d'un tableau associatif n'est pas garanti.\n```bash\ntail -n +2 notes.csv | cut -d, -f1 | sort | uniq -c       # 1 DE / 2 FR\nawk -F, 'NR>1 {t[$1]+=$2} END {for (p in t) print p, t[p]}' notes.csv | sort\n# DE 5\n# FR 17\n```\nSans le sort avant uniq -c, FR,DE,FR donnerait trois groupes au lieu de deux."
     },
     {
-      "title": "awk et sed",
-      "content": "awk lit ligne par ligne, découpe en champs ($1, $2, …) et exécute un programme : awk -F, 'NR>1 {t[$1]+=$3} END {for (p in t) print p, t[p]}' somme la colonne 3 par pays (NR est le numéro de ligne, -F, fixe le séparateur). Les tableaux associatifs d'awk remplacent souvent un petit script. sed transforme le flux : sed 's/ancien/nouveau/g' remplace, sed -n '2,4p' affiche des lignes, sed -i modifie un fichier sur place (sauvegarde-le d'abord). L'ordre de sortie d'un tableau awk n'est pas garanti : on le trie ensuite avec sort."
+      "title": "sed et jq",
+      "content": "sed 's/ancien/nouveau/' remplace la première occurrence de chaque ligne ; avec /g toutes les occurrences. sed -n '2,4p' affiche des lignes, sed -i modifie un fichier sur place (sauvegarde-le d'abord).\n\nLe JSON n'est pas du texte à découper : jq l'analyse. jq '.nom' donne \"Ada\" avec ses guillemets JSON ; jq -r '.nom' donne Ada en texte brut, à utiliser pour comparer ou affecter dans le shell. jq '[.commandes[].total] | add' somme une liste, jq 'select(.total > 100)' filtre. Sous PowerShell, ConvertFrom-Json et le pipeline d'objets jouent ce rôle."
     },
     {
-      "title": "JSON avec jq",
-      "content": "Le JSON n'est pas du texte à découper avec sed : jq l'analyse. jq -r '.nom' extrait un champ en texte brut, jq '[.commandes[].total] | add' somme une liste, jq 'select(.total > 100)' filtre. Le texte reste le format d'échange universel des outils Unix, mais dès qu'une donnée est structurée, utilise un outil qui comprend la structure. Sous PowerShell, ConvertFrom-Json et le pipeline d'objets jouent ce rôle."
+      "title": "Erreurs fréquentes à reconnaître",
+      "content": "1. Oublier le sort avant uniq -c : les doublons non voisins ne sont pas regroupés.\n2. Afficher le résultat d'un tableau awk sans trier : la sortie change d'une machine à l'autre.\n3. Inclure l'en-tête CSV dans les calculs (penser à NR>1 ou tail -n +2).\n4. Comparer une valeur jq entourée de guillemets : il faut -r.\n5. Utiliser sed pour extraire un champ JSON : le moindre changement de format casse le script.\n\nRetrouve ces pièges de mémoire avant le quiz."
     }
   ],
   "keyConcepts": [
@@ -60,56 +65,80 @@
     {
       "code": "TERMINAL-14-Q1",
       "type": "SINGLE_CHOICE",
-      "prompt": "Pourquoi faut-il sort avant uniq -c ?",
+      "prompt": "Prédis la sortie :\n```bash\nprintf 'b\\na\\nb\\n' | uniq -c\n```\n",
       "choices": [
-        "uniq ne regroupe que les lignes identiques consécutives",
-        "sort accélère uniq",
-        "uniq refuse un fichier non trié"
+        "2 b et 1 a",
+        "1 b, 1 a, 1 b (trois lignes)",
+        "1 a et 2 b",
+        "Une erreur : uniq exige un fichier trié"
       ],
-      "correctChoice": 0,
-      "expectedKeywords": []
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "uniq ne compare que des lignes consécutives : b, a, b donnent trois groupes. Avec sort avant, on obtient « 1 a » puis « 2 b »."
     },
     {
       "code": "TERMINAL-14-Q2",
       "type": "SINGLE_CHOICE",
-      "prompt": "Que fait tail -n +2 ventes.csv ?",
+      "prompt": "Prédis le résultat :\n```bash\necho aaa | sed 's/a/b/'\n```\n",
       "choices": [
-        "Affiche le fichier à partir de la deuxième ligne, donc sans l'en-tête",
-        "Affiche les deux dernières lignes",
-        "Affiche la deuxième ligne uniquement"
+        "bbb",
+        "baa",
+        "aab",
+        "aaa"
       ],
-      "correctChoice": 0,
-      "expectedKeywords": []
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Sans le drapeau g, sed remplace seulement la première occurrence de chaque ligne : baa. Avec s/a/b/g le résultat serait bbb."
     },
     {
       "code": "TERMINAL-14-Q3",
       "type": "SINGLE_CHOICE",
-      "prompt": "Quel outil choisir pour sommer un champ d'un fichier JSON ?",
+      "prompt": "Pourquoi ajouter un sort après un awk qui parcourt un tableau associatif avec for (p in t) ?",
       "choices": [
-        "jq",
-        "cut",
-        "uniq"
+        "Parce qu'awk supprime les doublons",
+        "Parce que l'ordre de parcours d'un tableau associatif n'est pas garanti",
+        "Parce que sort additionne les valeurs",
+        "Parce qu'awk n'affiche rien sans sort"
       ],
-      "correctChoice": 0,
-      "expectedKeywords": []
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "L'ordre de for (p in t) dépend de l'implémentation. Un sort final rend le rapport identique d'une exécution et d'une machine à l'autre."
     },
     {
       "code": "TERMINAL-14-Q4",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Trouve le bug : le test ne réussit jamais.\n```bash\nnom=$(jq '.nom' client.json)\n[ \"$nom\" = \"Ada\" ] && echo oui\n```\n",
+      "choices": [
+        "jq ne sait pas lire les fichiers",
+        "jq renvoie \"Ada\" avec ses guillemets JSON ; il faut jq -r",
+        "Il faut remplacer = par ==",
+        "Il manque -n"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Sans -r, jq imprime la valeur JSON, donc avec les guillemets. -r produit le texte brut Ada, comparable dans le shell."
+    },
+    {
+      "code": "TERMINAL-14-Q5",
       "type": "FREE_TEXT",
-      "prompt": "Tu dois produire le total des ventes par pays à partir d'un CSV avec en-tête. Décris ton pipeline et les pièges que tu évites.",
+      "prompt": "Comment t'assures-tu qu'un rapport produit par un pipeline de texte est identique d'une exécution à l'autre ?",
       "choices": [],
       "correctChoice": null,
       "expectedKeywords": [
-        "awk",
-        "en-tête",
-        "sort"
-      ]
+        "sort",
+        "ordre",
+        "uniq",
+        "jq",
+        "structure"
+      ],
+      "modelAnswer": "Je trie les sorties dont l'ordre n'est pas garanti (tableaux awk), je trie avant uniq -c, j'ignore l'en-tête, et je laisse jq lire le JSON au lieu de le découper avec sed. Ainsi le résultat dépend des données, pas de l'implémentation.",
+      "explanation": "Une bonne réponse cite le tri avant uniq et après awk, l'exclusion de l'en-tête et l'usage de jq pour les données structurées."
     }
   ],
   "checklist": [
-    "Je découpe avec cut, trie avec sort et compte avec uniq -c (après sort)",
-    "J'agrège avec awk et je trie sa sortie pour la rendre stable",
-    "Je transforme avec sed et je sauvegarde avant sed -i",
-    "J'interroge du JSON avec jq plutôt qu'avec des outils de texte"
+    "Je trie avant uniq -c et après un tableau awk",
+    "Je prédis la sortie d'un sed avec ou sans /g",
+    "J'ignore l'en-tête d'un CSV (tail -n +2 ou NR>1)",
+    "J'extrais le JSON avec jq (-r pour du texte brut), pas avec sed"
   ]
 }

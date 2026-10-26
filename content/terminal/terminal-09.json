@@ -11,25 +11,30 @@
     "TERMINAL-08"
   ],
   "objectives": [
-    "Expliquer pourquoi le pipeline PowerShell transmet des objets et non du texte",
-    "Filtrer, trier, sélectionner, compter et grouper avec Where-Object, Sort-Object, Select-Object, Measure-Object et Group-Object",
-    "Inspecter les propriétés d'un objet avec Get-Member et écrire un pipeline lisible"
+    "Expliquer pourquoi le pipeline transmet des objets avec des propriétés et non du texte.",
+    "Filtrer, trier, totaliser et grouper avec Where-Object, Sort-Object, Measure-Object et Group-Object.",
+    "Prédire le résultat d'un pipeline et repérer un Format-Table placé trop tôt.",
+    "Écrire un pipeline lisible : filtrer tôt, formater en dernier."
   ],
   "sections": [
     {
-      "title": "Des objets, pas du texte",
+      "title": "Le problème : extraire une taille de fichier sans découper du texte",
+      "content": "Avec bash, connaître la taille d'un fichier oblige à découper une ligne de ls -l avec cut ou awk, et le moindre changement de format casse le script. Avec PowerShell, Get-ChildItem produit des objets FileInfo qui possèdent des propriétés : Name, Length, Extension, LastWriteTime.\n```powershell\nGet-ChildItem | Get-Member          # liste les propriétés et méthodes disponibles\n(Get-Item rapport.pdf).Length       # la taille, directement\n```\nLe pipeline | transmet ces objets à la commande suivante, qui lit leurs propriétés par leur nom : aucun découpage de texte."
+    },
+    {
+      "title": "Exemple résolu : les deux plus gros fichiers",
       "conceptCodes": [
         "TERMINAL-POWERSHELL-PIPELINE"
       ],
-      "content": "Quand Get-ChildItem produit des fichiers, il émet des objets FileInfo qui possèdent des propriétés (Name, Length, Extension, LastWriteTime). Le pipeline | transmet ces objets à la commande suivante, qui peut lire leurs propriétés directement : plus besoin de découper du texte avec cut ou awk. Get-ChildItem | Get-Member liste les propriétés et méthodes disponibles ; c'est l'outil pour comprendre ce que l'on manipule."
+      "content": "Dossier de trois fichiers : rapport.pdf (300 octets), notes.txt (20) et data.csv (150). Question : quels sont les fichiers de plus de 100 octets, du plus gros au plus petit, et quel est leur total ?\n\nRaisonnement, étape par étape :\n1. Filtrer d'abord : Where-Object Length -gt 100 garde rapport.pdf et data.csv.\n2. Trier : Sort-Object Length -Descending place rapport.pdf avant data.csv.\n3. Totaliser : Measure-Object -Property Length -Sum calcule 450.\n4. Mettre en forme en dernier, seulement pour l'affichage.\n```powershell\n$gros = Get-ChildItem | Where-Object Length -gt 100 | Sort-Object Length -Descending\n$gros | ForEach-Object Name                         # rapport.pdf, data.csv\n($gros | Measure-Object -Property Length -Sum).Sum  # 450\nGet-ChildItem | Group-Object Extension              # regroupe par extension\n```\nChaque étape reçoit des objets complets et en transmet : on compose sans jamais re-parser du texte."
     },
     {
       "title": "Les cinq verbes du pipeline",
-      "content": "Where-Object filtre (Where-Object Length -gt 100), Sort-Object trie (Sort-Object Length -Descending), Select-Object choisit des propriétés ou des lignes (Select-Object -First 3 Name), Measure-Object calcule des totaux (Measure-Object -Property Length -Sum) et Group-Object regroupe (Group-Object Extension). ForEach-Object applique un traitement à chaque élément ; $_ désigne l'élément courant. Les opérateurs de comparaison sont -eq, -ne, -gt, -lt, -like et -match, insensibles à la casse par défaut."
+      "content": "Where-Object filtre (Where-Object Length -gt 100), Sort-Object trie (-Descending pour l'ordre inverse), Select-Object choisit des propriétés ou des lignes (-First 3), Measure-Object calcule (Count, Sum, Average) et Group-Object regroupe (propriétés Name et Count). ForEach-Object applique un traitement à chaque élément ; $_ est l'élément courant.\n\nLes opérateurs de comparaison sont -eq, -ne, -gt, -lt, -like et -match ; ils sont insensibles à la casse par défaut ('A' -eq 'a' vaut True), et leurs variantes -ceq, -clike, -cmatch y sont sensibles. Filtre tôt pour réduire le volume. N'utilise Format-Table et Format-List qu'en dernière étape : ils produisent des objets de mise en forme, qui ne sont plus des fichiers et n'ont plus de propriété Length."
     },
     {
-      "title": "Lisibilité et performance",
-      "content": "Filtre tôt (Where-Object avant Sort-Object) pour réduire le volume traité. Écris un pipeline par ligne logique, avec un retour à la ligne après chaque | ; il se lit comme une phrase. N'utilise Format-Table et Format-List qu'en dernière étape, pour l'affichage : ils transforment les objets en texte de mise en forme et empêchent tout traitement ultérieur. Pour exporter ou échanger des données structurées, Export-Csv et ConvertTo-Json conservent la structure."
+      "title": "Erreurs fréquentes à reconnaître",
+      "content": "1. Placer Format-Table au milieu du pipeline : les objets suivants ne portent plus la propriété Length, le filtre ne retourne rien.\n2. Trier avant de filtrer : on trie plus d'éléments que nécessaire.\n3. Confondre -eq (égalité) et = (affectation).\n4. Oublier que les comparaisons ignorent la casse par défaut.\n5. Utiliser select pour afficher puis vouloir calculer dessus : réserve l'affichage à la fin.\n\nRetrouve ces pièges de mémoire avant le quiz."
     }
   ],
   "keyConcepts": [
@@ -60,56 +65,80 @@
     {
       "code": "TERMINAL-09-Q1",
       "type": "SINGLE_CHOICE",
-      "prompt": "Que transmet le pipeline entre deux cmdlets PowerShell ?",
+      "prompt": "Prédis le résultat :\n```powershell\n5, 3, 9 | Sort-Object -Descending | Select-Object -First 2\n```\n",
       "choices": [
-        "Des objets avec leurs propriétés",
-        "Uniquement du texte",
-        "Uniquement des nombres"
+        "5 puis 3",
+        "9 puis 5",
+        "3 puis 5",
+        "9 seulement"
       ],
-      "correctChoice": 0,
-      "expectedKeywords": []
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Sort-Object -Descending donne 9, 5, 3 ; Select-Object -First 2 garde les deux premiers, 9 et 5."
     },
     {
       "code": "TERMINAL-09-Q2",
       "type": "SINGLE_CHOICE",
-      "prompt": "Quelle cmdlet permet de totaliser une propriété numérique ?",
+      "prompt": "Trouve le bug : le dossier contient un fichier de 220 octets, mais ce pipeline ne retourne rien.\n```powershell\nGet-ChildItem | Format-Table | Where-Object Length -gt 100\n```\n",
       "choices": [
-        "Measure-Object -Property Length -Sum",
-        "Count-Object",
-        "Sum-Object"
+        "Where-Object ne sait pas comparer des nombres",
+        "Format-Table transforme les objets en objets de mise en forme qui n'ont plus de propriété Length",
+        "Il manque -Recurse",
+        "Length est une méthode, pas une propriété"
       ],
-      "correctChoice": 0,
-      "expectedKeywords": []
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Format-Table doit être la dernière étape : il produit des objets d'affichage. Le filtre doit passer avant : Get-ChildItem | Where-Object Length -gt 100 | Format-Table."
     },
     {
       "code": "TERMINAL-09-Q3",
       "type": "SINGLE_CHOICE",
-      "prompt": "Pourquoi placer Format-Table en toute dernière étape ?",
+      "prompt": "Quelle commande donne la somme des tailles des fichiers du dossier ?",
       "choices": [
-        "Il convertit les objets en mise en forme, inutilisable ensuite",
-        "Il est plus lent s'il est placé en dernier",
-        "Il supprime les doublons"
+        "Get-ChildItem | Measure-Object -Property Length -Sum",
+        "Get-ChildItem | Sort-Object Length",
+        "Get-ChildItem | Group-Object Length",
+        "Get-ChildItem | Select-Object Length -First 1"
       ],
       "correctChoice": 0,
-      "expectedKeywords": []
+      "expectedKeywords": [],
+      "explanation": "Measure-Object calcule Count, Sum, Average sur une propriété. Sort-Object trie, Group-Object regroupe, Select-Object choisit des valeurs sans les additionner."
     },
     {
       "code": "TERMINAL-09-Q4",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Prédis les deux valeurs :\n```powershell\n'ERROR' -eq 'error'\n'ERROR' -ceq 'error'\n```\n",
+      "choices": [
+        "False puis False",
+        "True puis False",
+        "True puis True",
+        "False puis True"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "-eq ignore la casse par défaut (True). Le préfixe c de -ceq rend la comparaison sensible à la casse (False)."
+    },
+    {
+      "code": "TERMINAL-09-Q5",
       "type": "FREE_TEXT",
-      "prompt": "Compare la manière de trouver les cinq plus gros fichiers d'un dossier avec un pipeline bash et avec un pipeline PowerShell.",
+      "prompt": "Explique pourquoi un pipeline d'objets est plus robuste qu'un pipeline de texte, et où placer Format-Table.",
       "choices": [],
       "correctChoice": null,
       "expectedKeywords": [
         "objet",
-        "propriété",
-        "Sort-Object"
-      ]
+        "propriete",
+        "texte",
+        "Format-Table",
+        "dernier"
+      ],
+      "modelAnswer": "Chaque commande reçoit des objets qui portent des propriétés nommées (Length, Name) : on y accède directement, sans découper une ligne de texte qui change de format. Format-Table produit des objets de mise en forme, donc on le place en toute dernière étape, uniquement pour l'affichage.",
+      "explanation": "Une bonne réponse oppose objets avec propriétés et texte à découper, et place Format-Table à la fin du pipeline."
     }
   ],
   "checklist": [
-    "J'explique que PowerShell transmet des objets et non du texte",
-    "J'enchaîne Where-Object, Sort-Object, Select-Object, Measure-Object et Group-Object",
-    "J'inspecte un objet avec Get-Member",
-    "Je réserve Format-Table et Format-List à l'affichage final"
+    "J'explique pourquoi le pipeline PowerShell transmet des objets",
+    "Je filtre avec Where-Object avant de trier",
+    "Je place Format-Table en dernière étape seulement",
+    "Je sais que -eq ignore la casse et que -ceq la respecte"
   ]
 }

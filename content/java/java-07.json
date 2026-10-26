@@ -1,9 +1,144 @@
 {
-  "code":"JAVA-07","language":"JAVA","number":7,"slug":"heritage-composition-polymorphisme","title":"Héritage, composition et polymorphisme","difficulty":"INTERMEDIAIRE","threshold":70,"activityType":"LAB","prerequisites":["JAVA-06"],
-  "objectives":["Choisir entre héritage et composition","Utiliser le polymorphisme","Préserver un contrat substituable"],
-  "sections":[{"title":"Réutiliser sans coupler","content":"La composition assemble des comportements tandis que l'héritage spécialise une abstraction stable. Le polymorphisme permet au code client de dépendre du contrat.","conceptCodes":["JAVA-POLYMORPHISM"]},{"title":"Substitution","content":"Un sous-type doit rester utilisable partout où son type parent est attendu, sans modifier les garanties observables."}],
-  "keyConcepts":[{"code":"JAVA-POLYMORPHISM","name":"Polymorphisme","definition":"Une référence de type abstrait peut piloter plusieurs implémentations.","whyExists":"Il permet d'étendre un comportement sans multiplier les conditions.","whyImportant":"Les architectures modulaires et testables reposent sur des contrats substituables.","minimalExample":"Payment payment = new CardPayment();","professionalExample":"Un module de paiement gérait initialement carte, virement et portefeuille électronique avec un grand switch sur un champ type : chaque nouveau moyen de paiement obligeait à modifier cette méthode centrale, avec le risque d'oublier un cas. En introduisant une interface Payment implémentée par CardPayment, WalletPayment, etc., le code appelant se contente d'invoquer payment.pay(amount) et un nouveau moyen de paiement s'ajoute sans toucher au code existant.","codeExample":"interface Payment {\n    String pay(int amountCents);\n}\n\nclass WalletPayment implements Payment {\n    public String pay(int amountCents) {\n        return \"Paiement portefeuille: \" + amountCents;\n    }\n}\n\nvoid checkout(Payment payment, int amountCents) {\n    System.out.println(payment.pay(amountCents)); // ne connaît aucune implémentation concrète\n}","commonMistake":"Employer l'héritage uniquement pour réutiliser quelques lignes.","masteryQuestion":"Quand la composition est-elle préférable à l'héritage ?","masteryProof":"Remplacer une implémentation sans modifier le code client."}],
-  "exercises":[{"code":"JAVA-07-E1","title":"Choisir une stratégie de paiement","statement":"Utilise le polymorphisme pour afficher exactement : Paiement carte: 42","starterCode":"interface Payment { String pay(int amount); }\n\n// TODO 1 : crée une classe CardPayment qui implémente Payment\n//          et retourne \"Paiement carte: \" suivi du montant.\n\npublic class Main {\n    public static void main(String[] args) {\n        // TODO 2 : déclare une variable de type Payment, instanciée avec CardPayment\n        // TODO 3 : affiche le résultat de pay(42)\n    }\n}\n","expectedOutput":"Paiement carte: 42"}],
-  "quiz":[{"code":"JAVA-07-Q1","type":"SINGLE_CHOICE","prompt":"Quel mécanisme réduit le couplage entre un client et ses implémentations ?","choices":["Le polymorphisme","Un champ public","Une condition globale"],"correctChoice":0,"expectedKeywords":[]},{"code":"JAVA-07-Q2","type":"FREE_TEXT","prompt":"Explique le compromis entre composition et héritage.","choices":[],"correctChoice":null,"expectedKeywords":["composition","héritage","couplage","contrat"]}],
-  "checklist":["Je reconnais une relation est-un et a-un","Je programme contre un contrat","Je vérifie la substituabilité"]
+  "code": "JAVA-07",
+  "language": "JAVA",
+  "number": 7,
+  "slug": "heritage-composition-polymorphisme",
+  "title": "Héritage, composition et polymorphisme",
+  "difficulty": "INTERMEDIAIRE",
+  "threshold": 70,
+  "activityType": "LAB",
+  "prerequisites": [
+    "JAVA-06"
+  ],
+  "objectives": [
+    "Choisir entre héritage et composition selon la stabilité de l'abstraction et le besoin de changer de comportement.",
+    "Prédire quelle version d'une méthode s'exécute (liaison dynamique) et pourquoi les champs ne sont pas polymorphes.",
+    "Reconnaître une violation du principe de substitution.",
+    "Écrire un code client qui dépend d'un contrat et non d'une classe concrète."
+  ],
+  "sections": [
+    {
+      "title": "Le problème : un client couplé à une classe concrète",
+      "content": "Un code qui crée partout new CardPayment() et teste le type avec des if ne peut plus évoluer : ajouter un moyen de paiement oblige à modifier chaque appelant. Le polymorphisme résout cela : le client dépend d'un contrat (une interface ou une classe parente) et l'objet réel décide du comportement.\n```java\nPayment payment = new CardPayment();      // type déclaré : Payment, objet réel : CardPayment\nSystem.out.println(payment.pay(42));      // la méthode appelée est celle de CardPayment\n```"
+    },
+    {
+      "title": "Exemple résolu : remplacer une implémentation sans toucher au client",
+      "conceptCodes": [
+        "JAVA-POLYMORPHISM"
+      ],
+      "content": "Objectif : afficher un reçu quel que soit le moyen de paiement.\n\nRaisonnement, étape par étape :\n1. Définir le contrat : interface Payment { String pay(int amount); }.\n2. Écrire les implémentations : CardPayment et CashPayment retournent chacune leur message.\n3. Le client reçoit un Payment : il ne connaît que le contrat.\n4. Ajouter un nouveau moyen de paiement revient à ajouter une classe, sans modifier le client.\n```java\ninterface Payment { String pay(int amount); }\nclass CardPayment implements Payment { public String pay(int a) { return \"carte: \" + a; } }\nclass CashPayment implements Payment { public String pay(int a) { return \"espèces: \" + a; } }\n\nstatic void receipt(Payment p) {            // dépend du contrat\n    System.out.println(p.pay(42));\n}\nreceipt(new CardPayment());                 // carte: 42\nreceipt(new CashPayment());                 // espèces: 42\n```\nLa liaison dynamique choisit la méthode d'après le type réel de l'objet à l'exécution, pas d'après le type déclaré de la variable."
+    },
+    {
+      "title": "Héritage, composition et substitution",
+      "content": "L'héritage (extends) spécialise une abstraction stable et crée un lien fort : le fils dépend de l'implémentation du parent. La composition assemble des objets qui ont un comportement : on peut changer la pièce à l'exécution et l'on ne dépend que d'un contrat. Règle pratique : « est-un » solide et stable, héritage ; « a-un » ou comportement variable, composition.\n\nPrincipe de substitution : un sous-type doit pouvoir remplacer son parent sans casser les garanties. Une classe Pingouin qui étend Oiseau et lève une exception dans voler() viole ce principe : le code client qui appelle voler() sur n'importe quel Oiseau casse.\n\nParticularité : les méthodes sont polymorphes, pas les champs. Avec Parent p = new Child(), p.dire() appelle la version de Child mais p.nom lit le champ de Parent, car l'accès à un champ se résout sur le type déclaré."
+    },
+    {
+      "title": "Erreurs fréquentes à reconnaître",
+      "content": "1. Utiliser l'héritage seulement pour réutiliser du code, sans relation « est-un ».\n2. Tester le type avec instanceof au lieu de laisser le polymorphisme choisir.\n3. Un sous-type qui renforce les préconditions ou lève une exception inattendue.\n4. Croire qu'un champ est polymorphe comme une méthode.\n5. Hiérarchies profondes : le moindre changement du parent casse les enfants.\n\nRetrouve ces pièges de mémoire avant le quiz."
+    }
+  ],
+  "keyConcepts": [
+    {
+      "code": "JAVA-POLYMORPHISM",
+      "name": "Polymorphisme",
+      "definition": "Une référence de type abstrait peut piloter plusieurs implémentations.",
+      "whyExists": "Il permet d'étendre un comportement sans multiplier les conditions.",
+      "whyImportant": "Les architectures modulaires et testables reposent sur des contrats substituables.",
+      "minimalExample": "Payment payment = new CardPayment();",
+      "professionalExample": "Un module de paiement gérait initialement carte, virement et portefeuille électronique avec un grand switch sur un champ type : chaque nouveau moyen de paiement obligeait à modifier cette méthode centrale, avec le risque d'oublier un cas. En introduisant une interface Payment implémentée par CardPayment, WalletPayment, etc., le code appelant se contente d'invoquer payment.pay(amount) et un nouveau moyen de paiement s'ajoute sans toucher au code existant.",
+      "codeExample": "interface Payment {\n    String pay(int amountCents);\n}\n\nclass WalletPayment implements Payment {\n    public String pay(int amountCents) {\n        return \"Paiement portefeuille: \" + amountCents;\n    }\n}\n\nvoid checkout(Payment payment, int amountCents) {\n    System.out.println(payment.pay(amountCents)); // ne connaît aucune implémentation concrète\n}",
+      "commonMistake": "Employer l'héritage uniquement pour réutiliser quelques lignes.",
+      "masteryQuestion": "Quand la composition est-elle préférable à l'héritage ?",
+      "masteryProof": "Remplacer une implémentation sans modifier le code client."
+    }
+  ],
+  "exercises": [
+    {
+      "code": "JAVA-07-E1",
+      "title": "Choisir une stratégie de paiement",
+      "statement": "Utilise le polymorphisme pour afficher exactement : Paiement carte: 42",
+      "starterCode": "interface Payment { String pay(int amount); }\n\n// TODO 1 : crée une classe CardPayment qui implémente Payment\n//          et retourne \"Paiement carte: \" suivi du montant.\n\npublic class Main {\n    public static void main(String[] args) {\n        // TODO 2 : déclare une variable de type Payment, instanciée avec CardPayment\n        // TODO 3 : affiche le résultat de pay(42)\n    }\n}\n",
+      "expectedOutput": "Paiement carte: 42"
+    }
+  ],
+  "quiz": [
+    {
+      "code": "JAVA-07-Q1",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Quel mécanisme réduit le couplage entre un client et ses implémentations ?",
+      "choices": [
+        "Un champ public",
+        "Le polymorphisme : le client dépend d'un contrat",
+        "Une condition globale",
+        "Une variable statique"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Le client ne connaît que le type déclaré (interface ou classe parente) ; les implémentations peuvent changer sans le modifier."
+    },
+    {
+      "code": "JAVA-07-Q2",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Prédis l'affichage :\n```java\nclass Parent { String nom = \"parent\"; String dire() { return \"parent\"; } }\nclass Child extends Parent { String nom = \"child\"; String dire() { return \"child\"; } }\n\nParent p = new Child();\nSystem.out.println(p.nom + \" \" + p.dire());\n```\n",
+      "choices": [
+        "child child",
+        "parent child",
+        "parent parent",
+        "child parent"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Les méthodes sont résolues sur le type réel (Child) : dire() donne child. Les champs sont résolus sur le type déclaré (Parent) : p.nom donne parent."
+    },
+    {
+      "code": "JAVA-07-Q3",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Trouve le défaut : Pingouin étend Oiseau et sa méthode voler() lance une UnsupportedOperationException. Quel principe est violé ?",
+      "choices": [
+        "Le principe de substitution : un Pingouin n'est pas utilisable partout où un Oiseau est attendu",
+        "Le principe de surcharge",
+        "Le principe d'encapsulation",
+        "Aucun : c'est permis"
+      ],
+      "correctChoice": 0,
+      "expectedKeywords": [],
+      "explanation": "Du code qui appelle voler() sur n'importe quel Oiseau casse avec un Pingouin. Une meilleure conception sépare l'abstraction (Oiseau) du comportement (Volant) ou utilise la composition."
+    },
+    {
+      "code": "JAVA-07-Q4",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Dans quel cas la composition est-elle préférable à l'héritage ?",
+      "choices": [
+        "Quand le comportement doit pouvoir changer à l'exécution ou éviter un lien fort avec une classe parente",
+        "Quand on veut gagner quelques lignes",
+        "Quand la relation « est-un » est stable",
+        "Jamais"
+      ],
+      "correctChoice": 0,
+      "expectedKeywords": [],
+      "explanation": "La composition délègue à un objet interchangeable et ne dépend que d'un contrat. L'héritage est adapté à une relation « est-un » stable."
+    },
+    {
+      "code": "JAVA-07-Q5",
+      "type": "FREE_TEXT",
+      "prompt": "Explique le compromis entre composition et héritage, avec un exemple.",
+      "choices": [],
+      "correctChoice": null,
+      "expectedKeywords": [
+        "composition",
+        "heritage",
+        "couplage",
+        "contrat",
+        "substitu"
+      ],
+      "modelAnswer": "L'héritage réutilise et spécialise une abstraction stable, mais crée un couplage fort : le fils dépend de l'implémentation du parent et doit respecter la substitution. La composition assemble des objets derrière un contrat : elle est plus flexible (on change la pièce à l'exécution) mais demande de déléguer explicitement. Exemple : un moyen de paiement injecté dans une commande plutôt qu'une commande qui hérite de CardPayment.",
+      "explanation": "Une bonne réponse cite le couplage fort de l'héritage, la souplesse de la composition, le contrat et la substitution."
+    }
+  ],
+  "checklist": [
+    "Mon code client dépend d'un contrat, pas d'une classe concrète",
+    "Je prédis quelle méthode s'exécute (type réel) et quel champ est lu (type déclaré)",
+    "Je choisis héritage pour un « est-un » stable, composition sinon",
+    "Je vérifie qu'un sous-type respecte le principe de substitution"
+  ]
 }

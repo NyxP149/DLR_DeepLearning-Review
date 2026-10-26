@@ -11,25 +11,30 @@
     "TERMINAL-21"
   ],
   "objectives": [
-    "Relire un diff produit par un assistant avec une checklist de revue précise",
-    "Automatiser les contrôles répétitifs (secrets, TODO, suppressions massives, périmètre) avec git et grep",
-    "Organiser le travail en branches et commits atomiques pour pouvoir annuler sans douleur"
+    "Relire un diff d'assistant avec cinq questions fixes : fichiers, suppressions, secret, dépendance, tests affaiblis.",
+    "Automatiser un premier tri avec git diff --cached, git grep --cached et numstat.",
+    "Prédire le résultat d'un cumul de suppressions et lire name-status (A, M, D).",
+    "Découper un changement en commits atomiques qui se relisent et s'annulent."
   ],
   "sections": [
     {
-      "title": "Relire comme un collègue pressé qui a produit trop vite",
+      "title": "Le problème : un code plausible est difficile à relire",
+      "content": "Le code d'un assistant compile et ressemble au reste du projet : c'est ce qui rend l'erreur difficile à voir. Relis son diff comme celui d'un collègue talentueux mais pressé. Cinq questions à chaque fois : seuls les fichiers attendus sont-ils modifiés ? des suppressions sont-elles inattendues ? un secret ou une dépendance est-il apparu ? des tests ont-ils été supprimés ou affaiblis pour passer ? des TODO ont-ils été laissés ?\n\nUn « tout passe » rapporté par l'assistant n'est pas une preuve : exécute les tests toi-même."
+    },
+    {
+      "title": "Exemple résolu : un premier tri automatique",
       "conceptCodes": [
         "TERMINAL-AI-REVIEW"
       ],
-      "content": "Le code d'un assistant est plausible : il compile, il ressemble au reste. C'est précisément ce qui rend l'erreur difficile à voir. Relis son diff comme celui d'un collègue talentueux mais pressé. Pose-toi les mêmes questions à chaque fois : seuls les fichiers attendus sont-ils modifiés ? des suppressions sont-elles inattendues ? un secret ou une dépendance est-il apparu ? des tests ont-ils été supprimés ou affaiblis pour passer ? des TODO ont-ils été laissés ? Exécute les tests toi-même : un « tout passe » rapporté par l'assistant n'est pas une preuve."
-    },
-    {
-      "title": "Automatiser le premier tri",
-      "content": "Les contrôles mécaniques s'écrivent en quelques lignes : git diff --cached --name-only liste les fichiers touchés, git diff --cached --numstat donne les lignes ajoutées et supprimées par fichier, git diff --cached -U0 | grep '^+.*TODO' repère les TODO ajoutés, git grep --cached -lE 'motif' cherche un secret dans l'index. Un script de revue qui échoue sur un secret ou une suppression massive donne un premier verdict objectif avant ta lecture ; il ne remplace pas la revue humaine, il la concentre sur ce qui compte."
+      "content": "L'assistant a indexé trois changements : un fichier m.py raccourci de 3 lignes à 1, un fichier c.py créé avec une clé en clair, et un TODO ajouté dans README.md.\n\nRaisonnement, étape par étape :\n1. Quels fichiers ? git diff --cached --name-only | wc -l donne 3.\n2. Quel type de changement ? git diff --cached --name-status affiche A c.py, M m.py, M README.md. Un D devant un fichier de test serait un signal d'alerte.\n3. Combien de lignes supprimées ? git diff --cached --numstat donne ajouts et suppressions par fichier ; additionner la deuxième colonne : awk '{s+=$2} END {print s}'.\n4. Un secret ? git grep --cached -lE 'sk-[a-z]+-[0-9]+' cherche dans l'index, c'est-à-dire dans ce qui sera réellement commité. Il liste c.py.\n5. Verdict : un secret détecté suffit à refuser, avant toute lecture détaillée.\n```bash\ngit diff --cached --numstat | awk '{s+=$2} END {print s}'   # 2 (m.py perd 2 lignes)\ngit grep --cached -lE 'sk-[a-z]+-[0-9]+'                    # c.py\n```\nCes contrôles ne remplacent pas ta lecture : ils la concentrent sur ce qui compte."
     },
     {
       "title": "Commits atomiques et retour arrière",
-      "content": "Fais travailler l'assistant sur une branche dédiée et valide par petites étapes : un commit par changement cohérent, avec un message qui explique l'intention. git add -p permet de choisir des morceaux de fichier pour couper un changement en deux commits. Un historique propre rend git revert, git bisect et la revue possibles ; un commit géant « refactorisation par l'IA » est invérifiable. Pour essayer plusieurs approches en parallèle sans mélanger les changements, git worktree crée des répertoires de travail séparés sur des branches différentes."
+      "content": "Fais travailler l'assistant sur une branche dédiée et valide par petites étapes : un commit par changement cohérent, avec un message qui explique l'intention. git add -p permet de choisir des morceaux d'un fichier pour couper un changement en deux commits. Un historique propre rend possibles git revert, git bisect et la revue ; un gros commit « refactorisation par l'IA » est invérifiable. git worktree crée des répertoires de travail séparés sur des branches différentes, pour essayer plusieurs approches sans les mélanger."
+    },
+    {
+      "title": "Erreurs fréquentes à reconnaître",
+      "content": "1. Lire seulement le résumé de l'assistant et pas le diff.\n2. Ne pas remarquer qu'un test a été supprimé ou assoupli (D ou lignes retirées dans tests/).\n3. Chercher un secret dans le répertoire de travail au lieu de l'index.\n4. Accepter un énorme commit unique.\n5. Se contenter d'un script de revue sans lecture humaine.\n\nRetrouve ces pièges de mémoire avant le quiz."
     }
   ],
   "keyConcepts": [
@@ -60,56 +65,80 @@
     {
       "code": "TERMINAL-22-Q1",
       "type": "SINGLE_CHOICE",
-      "prompt": "Pourquoi un « tout passe » rapporté par l'assistant ne suffit-il pas ?",
+      "prompt": "Prédis la sortie :\n```bash\n# git diff --cached --numstat affiche :\n# 1   0   c.py\n# 0   8   app.py\n# 1   0   README.md\ngit diff --cached --numstat | awk '{s+=$2} END {print s}'\n```\n",
       "choices": [
-        "Les tests ont pu être supprimés ou affaiblis pour passer",
-        "Les tests ne servent à rien",
-        "L'assistant ment toujours"
+        "2",
+        "8",
+        "10",
+        "3"
       ],
-      "correctChoice": 0,
-      "expectedKeywords": []
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "La deuxième colonne de numstat est le nombre de lignes supprimées : 0 + 8 + 0 = 8. La première colonne (ajouts) vaudrait 2."
     },
     {
       "code": "TERMINAL-22-Q2",
       "type": "SINGLE_CHOICE",
-      "prompt": "Quelle commande résume les lignes ajoutées et supprimées par fichier dans l'index ?",
+      "prompt": "Quelle commande repère immédiatement qu'un fichier a été supprimé dans l'index ?",
       "choices": [
-        "git diff --cached --numstat",
+        "git diff --cached --name-status (ligne D)",
         "git log --oneline",
-        "git status --ignored"
+        "git stash list",
+        "git remote -v"
       ],
       "correctChoice": 0,
-      "expectedKeywords": []
+      "expectedKeywords": [],
+      "explanation": "name-status préfixe chaque fichier par A (ajouté), M (modifié) ou D (supprimé). Un D sur un fichier de test doit t'alerter."
     },
     {
       "code": "TERMINAL-22-Q3",
       "type": "SINGLE_CHOICE",
-      "prompt": "Pourquoi préférer plusieurs petits commits à un seul commit géant ?",
+      "prompt": "Pourquoi chercher un secret avec git grep --cached plutôt qu'avec grep -r sur le dossier ?",
       "choices": [
-        "Ils se relisent, s'annulent et se déboguent plus facilement",
-        "Ils pèsent moins sur le disque",
-        "Git refuse les gros commits"
+        "C'est plus joli",
+        "Parce qu'on inspecte exactement ce qui sera commité (l'index), sans bruit venant de fichiers ignorés ou non suivis",
+        "Parce que grep -r est interdit",
+        "Parce que --cached chiffre les résultats"
       ],
-      "correctChoice": 0,
-      "expectedKeywords": []
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "La revue porte sur le changement qui va entrer dans l'historique. L'index est ce contenu ; grep -r lirait aussi des fichiers hors du commit."
     },
     {
       "code": "TERMINAL-22-Q4",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Trouve le défaut : l'assistant a regroupé en un seul commit « Refactorisation » 40 fichiers modifiés. Quel est le problème principal ?",
+      "choices": [
+        "Le message est trop court",
+        "Le commit est invérifiable et difficile à annuler ; il faut des commits atomiques",
+        "Git refuse plus de 30 fichiers",
+        "Il manque une branche"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Un commit par changement cohérent permet de relire, de revert et de bisecter. Un gros commit mélange tout et masque les erreurs."
+    },
+    {
+      "code": "TERMINAL-22-Q5",
       "type": "FREE_TEXT",
-      "prompt": "Un assistant propose un correctif et les tests passent. Quelles vérifications fais-tu avant de fusionner ?",
+      "prompt": "Que peut automatiser un script de revue, et pourquoi la lecture humaine reste-t-elle nécessaire ?",
       "choices": [],
       "correctChoice": null,
       "expectedKeywords": [
-        "diff",
-        "tests",
-        "secret"
-      ]
+        "secret",
+        "TODO",
+        "suppression",
+        "verdict",
+        "humain"
+      ],
+      "modelAnswer": "Un script peut compter les fichiers touchés, détecter un secret dans l'index, signaler des TODO ajoutés, additionner les suppressions et donner un verdict objectif. Il ne comprend pas l'intention : seul un humain juge si la logique est correcte, si un test a été affaibli intelligemment ou si le changement répond au besoin. Le script concentre la revue sur ce qui compte.",
+      "explanation": "Une bonne réponse cite des contrôles mécaniques (secret, TODO, suppressions, fichiers) et précise que le jugement sur la logique et l'intention reste humain."
     }
   ],
   "checklist": [
-    "Je relis le diff avec une checklist : périmètre, suppressions, secrets, tests, dépendances, TODO",
-    "J'automatise le premier tri avec git diff --cached et grep",
-    "Je travaille sur une branche et je fais des commits atomiques",
-    "Je lance moi-même les tests avant de fusionner"
+    "J'applique les cinq questions de revue à chaque diff d'assistant",
+    "Je cherche les secrets dans l'index avec git grep --cached",
+    "Je lis numstat et name-status pour repérer suppressions et tests retirés",
+    "Je demande des commits atomiques sur une branche dédiée"
   ]
 }

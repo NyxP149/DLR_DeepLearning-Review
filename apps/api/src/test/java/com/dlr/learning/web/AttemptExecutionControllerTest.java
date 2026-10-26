@@ -27,6 +27,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest
 @AutoConfigureMockMvc
 class AttemptExecutionControllerTest {
+    private static final String JAVA_01_OUTPUT =
+            "DLR Java Lab 1\nSource: Main.java\nBytecode: Main.class\nExécution: JVM\n";
+
 
     @Autowired
     private MockMvc mockMvc;
@@ -132,7 +135,7 @@ class AttemptExecutionControllerTest {
             var submission = invocation.getArgument(0, com.dlr.execution.domain.Submission.class);
             return new ExecutionResult(
                     UUID.randomUUID(), submission.id(), ExecutionStatus.SUCCESS, 0,
-                    "DLR Java Lab 1\n", "", 120, Instant.now());
+                    JAVA_01_OUTPUT, "", 120, Instant.now());
         });
 
         String attemptId = startAttempt();
@@ -141,12 +144,11 @@ class AttemptExecutionControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("SUCCESS"));
 
-        answerChoice(attemptId, 1);
-        answerFreeText(attemptId, "Le compilateur compile le code source en bytecode, ensuite la JVM l'exécute.");
+        answerAllCorrect(attemptId);
 
         mockMvc.perform(put("/api/attempts/{id}/checklist", attemptId)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"completed\":[true,true,true]}"))
+                        .content("{\"completed\":[true,true,true,true]}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.score").value(100));
 
@@ -169,10 +171,16 @@ class AttemptExecutionControllerTest {
         String submissionId = submit(attemptId);
         mockMvc.perform(post("/api/submissions/{id}/run", submissionId)).andExpect(status().isOk());
         answerChoice(attemptId, 0);
+        for (var question : new String[] {"JAVA-01-Q2", "JAVA-01-Q3", "JAVA-01-Q4"}) {
+            mockMvc.perform(put("/api/attempts/{id}/quiz/{question}", attemptId, question)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"selectedChoice\":0}"))
+                    .andExpect(status().isOk());
+        }
         answerFreeText(attemptId, "Le code source est transformé.");
         mockMvc.perform(put("/api/attempts/{id}/checklist", attemptId)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"completed\":[true,false,false]}"))
+                        .content("{\"completed\":[true,false,false,false]}"))
                 .andExpect(status().isOk());
 
         mockMvc.perform(post("/api/attempts/{id}/complete", attemptId))
@@ -198,7 +206,7 @@ class AttemptExecutionControllerTest {
                     var submission = invocation.getArgument(0, com.dlr.execution.domain.Submission.class);
                     return new ExecutionResult(
                             UUID.randomUUID(), submission.id(), ExecutionStatus.SUCCESS, 0,
-                            "DLR Java Lab 1\n", "", 120, Instant.now());
+                            JAVA_01_OUTPUT, "", 120, Instant.now());
                 });
 
         String attemptId = startAttempt();
@@ -207,11 +215,10 @@ class AttemptExecutionControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("TESTS_FAILED"));
 
-        answerChoice(attemptId, 1);
-        answerFreeText(attemptId, "Le compilateur compile le code source en bytecode, ensuite la JVM l'exécute.");
+        answerAllCorrect(attemptId);
         mockMvc.perform(put("/api/attempts/{id}/checklist", attemptId)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"completed\":[true,true,true]}"))
+                        .content("{\"completed\":[true,true,true,true]}"))
                 .andExpect(status().isOk());
 
         mockMvc.perform(post("/api/attempts/{id}/complete", attemptId))
@@ -246,7 +253,7 @@ class AttemptExecutionControllerTest {
             var submission = invocation.getArgument(0, com.dlr.execution.domain.Submission.class);
             return new ExecutionResult(
                     UUID.randomUUID(), submission.id(), ExecutionStatus.SUCCESS, 0,
-                    "DLR Java Lab 1\n", "", 120, Instant.now());
+                    JAVA_01_OUTPUT, "", 120, Instant.now());
         });
 
         String firstAttempt = completeLabOnce();
@@ -261,11 +268,10 @@ class AttemptExecutionControllerTest {
     private String completeLabOnce() throws Exception {
         String attemptId = startAttempt();
         mockMvc.perform(post("/api/submissions/{id}/run", submit(attemptId))).andExpect(status().isOk());
-        answerChoice(attemptId, 1);
-        answerFreeText(attemptId, "Le compilateur compile le code source en bytecode, ensuite la JVM l'exécute.");
+        answerAllCorrect(attemptId);
         mockMvc.perform(put("/api/attempts/{id}/checklist", attemptId)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"completed\":[true,true,true]}"))
+                        .content("{\"completed\":[true,true,true,true]}"))
                 .andExpect(status().isOk());
         mockMvc.perform(post("/api/attempts/{id}/complete", attemptId)).andExpect(status().isOk());
         return attemptId;
@@ -295,7 +301,7 @@ class AttemptExecutionControllerTest {
         answerChoice(attemptId, 1);
         mockMvc.perform(put("/api/attempts/{id}/checklist", attemptId)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"completed\":[true,false,true]}"))
+                        .content("{\"completed\":[true,false,true,false]}"))
                 .andExpect(status().isOk());
 
         mockMvc.perform(get("/api/labs/JAVA-01/attempts/current"))
@@ -334,9 +340,20 @@ class AttemptExecutionControllerTest {
                 .andExpect(status().isOk());
     }
 
+    private void answerAllCorrect(String attemptId) throws Exception {
+        answerChoice(attemptId, 1);
+        for (var question : new Object[][] {{"JAVA-01-Q2", 1}, {"JAVA-01-Q3", 2}, {"JAVA-01-Q4", 1}}) {
+            mockMvc.perform(put("/api/attempts/{id}/quiz/{question}", attemptId, question[0])
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"selectedChoice\":" + question[1] + "}"))
+                    .andExpect(status().isOk());
+        }
+        answerFreeText(attemptId, "Le compilateur javac compile le code source en bytecode, ensuite la JVM l'exécute ; une erreur de syntaxe est signalée à la compilation.");
+    }
+
     private void answerFreeText(String attemptId, String answer) throws Exception {
         JsonNode request = objectMapper.createObjectNode().put("answerText", answer);
-        mockMvc.perform(put("/api/attempts/{id}/quiz/JAVA-01-Q2", attemptId)
+        mockMvc.perform(put("/api/attempts/{id}/quiz/JAVA-01-Q5", attemptId)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsBytes(request)))
                 .andExpect(status().isOk());

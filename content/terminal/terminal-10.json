@@ -11,25 +11,30 @@
     "TERMINAL-09"
   ],
   "objectives": [
-    "Lire, écrire et ajouter du texte avec Get-Content, Set-Content et Add-Content",
-    "Chercher et remplacer avec Select-String et l'opérateur -replace",
-    "Copier, supprimer et tester l'existence avec Copy-Item, Remove-Item et Test-Path, en construisant les chemins avec Join-Path"
+    "Lire, écrire et ajouter du texte avec Get-Content, Set-Content et Add-Content.",
+    "Chercher avec Select-String et transformer avec -replace sans écrire de boucle.",
+    "Protéger une suppression avec Test-Path et -WhatIf, et construire les chemins avec Join-Path.",
+    "Prédire le résultat de Count, de -replace et de -like / -clike."
   ],
   "sections": [
     {
-      "title": "Lire et écrire du texte",
+      "title": "Le problème : transformer un fichier sans le casser",
+      "content": "Remplacer un mot dans un journal, compter ses erreurs, en garder une copie : trois opérations courantes, et chacune peut détruire l'original si elle est mal faite. Remove-Item n'a pas de corbeille, et réécrire un fichier avec le résultat de sa propre lecture est risqué.\n```powershell\nGet-Content app.log                 # un tableau de lignes\nAdd-Content app.log 'INFO arrêt'    # ajoute à la fin\nSet-Content app.log 'tout remplacé' # écrase !\n```\nGet-Content retourne un tableau de chaînes, une par ligne (Get-Content -Raw retourne tout en une seule chaîne)."
+    },
+    {
+      "title": "Exemple résolu : produire une copie transformée, puis vérifier",
       "conceptCodes": [
         "TERMINAL-POWERSHELL-FILES"
       ],
-      "content": "Get-Content lit un fichier ligne par ligne et retourne un tableau de chaînes (Get-Content -Raw retourne tout en une seule chaîne). Set-Content écrit en remplaçant le contenu, Add-Content ajoute à la fin, Out-File et l'opérateur > écrivent aussi. Précise -Encoding utf8 quand le fichier sera lu par d'autres outils : Windows PowerShell 5.1 écrit par défaut en UTF-16 ou en ANSI selon la cmdlet, alors que PowerShell 7 écrit en UTF-8 sans BOM, ce qui est une source classique de caractères accentués illisibles."
+      "content": "Objectif : remplacer ERROR par ALERTE dans un journal de trois lignes, sans toucher à l'original.\n\nRaisonnement, étape par étape :\n1. Compter : (Get-Content app.log).Count donne 3.\n2. Transformer en mémoire : (Get-Content app.log) -replace 'ERROR', 'ALERTE' applique l'opération à toutes les lignes d'un coup.\n3. Écrire dans un AUTRE fichier : | Set-Content alertes.log. L'original reste intact.\n4. Vérifier : (Select-String -Path alertes.log -Pattern 'ALERTE').Count.\n5. Protéger la suppression : Test-Path avant Remove-Item.\n```powershell\n(Get-Content app.log) -replace 'ERROR', 'ALERTE' | Set-Content alertes.log\n(Select-String -Path alertes.log -Pattern 'ALERTE').Count\nif (Test-Path app.log) { Remove-Item app.log -WhatIf }   # simule, ne supprime pas\n```\nÉcrire dans un autre fichier puis comparer est plus sûr que réécrire en place : on peut revenir en arrière."
     },
     {
-      "title": "Chercher et transformer",
-      "content": "Select-String -Path fichier -Pattern 'ERROR' est le grep de PowerShell : il retourne des objets MatchInfo (numéro de ligne, ligne, fichier). L'opérateur -replace applique une expression régulière : (Get-Content app.log) -replace 'ERROR', 'ALERTE' transforme toutes les lignes d'un coup, sans boucle. -match teste une correspondance et remplit $Matches, -like accepte les jokers (*.log). Les trois sont insensibles à la casse sauf si on utilise -cmatch, -creplace ou -clike."
+      "title": "Chercher, remplacer, tester",
+      "content": "Select-String -Path fichier -Pattern 'ERROR' est le grep de PowerShell : il retourne des objets MatchInfo (numéro de ligne, ligne, fichier). L'opérateur -replace applique une expression régulière ; -match teste une correspondance ; -like accepte les jokers (*.log). Tous sont insensibles à la casse par défaut, sauf -creplace, -cmatch, -clike.\n\nJoin-Path logs app.log construit un chemin avec le bon séparateur. Test-Path teste l'existence d'un fichier ou d'un dossier. Copy-Item, Move-Item et Remove-Item remplacent cp, mv et rm ; -Recurse s'applique aux dossiers et -WhatIf simule sans faire. Précise -Encoding utf8 quand le fichier sera lu par d'autres outils : Windows PowerShell 5.1 écrit par défaut en UTF-16 ou en ANSI selon la cmdlet."
     },
     {
-      "title": "Fichiers, chemins et prudence",
-      "content": "Join-Path logs app.log construit un chemin avec le bon séparateur pour la plateforme. Test-Path teste l'existence d'un fichier ou d'un dossier, ce qui permet de protéger une opération : if (Test-Path $f) { Remove-Item $f }. Copy-Item, Move-Item et Remove-Item sont les équivalents de cp, mv et rm ; -Recurse s'applique aux dossiers et -WhatIf simule l'opération sans la faire, une habitude précieuse avant toute suppression. Comme sous bash, il n'y a pas de corbeille pour Remove-Item."
+      "title": "Erreurs fréquentes à reconnaître",
+      "content": "1. Utiliser Set-Content au lieu de Add-Content et écraser le journal.\n2. Réécrire un fichier en place sans copie ni vérification.\n3. Oublier les parenthèses autour de Get-Content avant -replace.\n4. Supprimer sans Test-Path ni -WhatIf : il n'y a pas de corbeille.\n5. Ignorer l'encodage : les caractères accentués deviennent illisibles pour un autre outil.\n\nRetrouve ces pièges de mémoire avant le quiz."
     }
   ],
   "keyConcepts": [
@@ -60,56 +65,80 @@
     {
       "code": "TERMINAL-10-Q1",
       "type": "SINGLE_CHOICE",
-      "prompt": "Quelle cmdlet ajoute une ligne à la fin d'un fichier sans l'écraser ?",
+      "prompt": "Prédis la valeur :\n```powershell\n'ERROR disque plein' -replace 'ERROR', 'ALERTE'\n```\n",
       "choices": [
-        "Add-Content",
-        "Set-Content",
-        "Clear-Content"
+        "ERROR disque plein",
+        "ALERTE disque plein",
+        "ALERTE",
+        "ERROR ALERTE disque plein"
       ],
-      "correctChoice": 0,
-      "expectedKeywords": []
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "-replace remplace le motif par la nouvelle valeur dans la chaîne et retourne la chaîne transformée. La chaîne d'origine n'est pas modifiée."
     },
     {
       "code": "TERMINAL-10-Q2",
       "type": "SINGLE_CHOICE",
-      "prompt": "À quoi sert le paramètre -WhatIf ?",
+      "prompt": "Prédis la sortie :\n```powershell\n'Error' -like 'error'\n'Error' -clike 'error'\n```\n",
       "choices": [
-        "Simuler l'opération sans l'exécuter",
-        "Forcer l'opération sans confirmation",
-        "Afficher l'aide de la commande"
+        "True puis True",
+        "True puis False",
+        "False puis False",
+        "False puis True"
       ],
-      "correctChoice": 0,
-      "expectedKeywords": []
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "-like ignore la casse par défaut (True) ; -clike la respecte (False)."
     },
     {
       "code": "TERMINAL-10-Q3",
       "type": "SINGLE_CHOICE",
-      "prompt": "Pourquoi construire un chemin avec Join-Path ?",
+      "prompt": "Un fichier contient 3 lignes. Que retourne (Get-Content f -Raw).GetType().Name ?",
       "choices": [
-        "Pour utiliser le bon séparateur selon la plateforme",
-        "Pour chiffrer le chemin",
-        "Pour accélérer la lecture du fichier"
+        "String[]",
+        "String",
+        "Object",
+        "Int32"
       ],
-      "correctChoice": 0,
-      "expectedKeywords": []
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Avec -Raw, Get-Content retourne tout le contenu dans une seule chaîne (String). Sans -Raw, il retourne un tableau de chaînes, une par ligne."
     },
     {
       "code": "TERMINAL-10-Q4",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Quelle précaution simule une suppression sans rien effacer ?",
+      "choices": [
+        "Remove-Item f -Force",
+        "Remove-Item f -WhatIf",
+        "Remove-Item f -Recurse",
+        "Remove-Item f -Confirm:$false"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "-WhatIf affiche ce qui serait supprimé sans le faire. -Force et -Confirm:$false retirent des protections, -Recurse élargit la portée."
+    },
+    {
+      "code": "TERMINAL-10-Q5",
       "type": "FREE_TEXT",
-      "prompt": "Un script écrit sous Windows PowerShell 5.1 produit des accents illisibles lorsqu'un autre outil lit le fichier. Quelle est la cause probable et le correctif ?",
+      "prompt": "Tu dois remplacer un mot dans un fichier de configuration important. Quelle méthode prudente suis-tu ?",
       "choices": [],
       "correctChoice": null,
       "expectedKeywords": [
-        "encodage",
-        "utf8",
-        "Encoding"
-      ]
+        "copie",
+        "Test-Path",
+        "verifier",
+        "autre fichier",
+        "sauvegarde"
+      ],
+      "modelAnswer": "Je fais d'abord une sauvegarde (Copy-Item), je vérifie que le fichier existe avec Test-Path, j'écris le résultat dans un autre fichier plutôt qu'en place, puis je compare avant de remplacer l'original. Je précise l'encodage pour ne pas abîmer les accents.",
+      "explanation": "Une bonne réponse prévoit une copie ou un fichier de sortie séparé, une vérification (Test-Path, comparaison) et ne remplace l'original qu'après contrôle."
     }
   ],
   "checklist": [
-    "Je lis avec Get-Content et j'écris avec Set-Content ou Add-Content en précisant l'encodage utile",
-    "Je cherche avec Select-String et je transforme avec -replace",
-    "Je construis les chemins avec Join-Path et je teste avec Test-Path",
-    "Je simule une suppression avec -WhatIf avant de l'exécuter"
+    "Je distingue Set-Content (écrase) et Add-Content (ajoute)",
+    "Je prédis le résultat d'un -replace et d'un -like / -clike",
+    "J'écris le résultat dans un autre fichier et je vérifie avant de remplacer",
+    "Je teste avec Test-Path et je simule avec -WhatIf avant de supprimer"
   ]
 }

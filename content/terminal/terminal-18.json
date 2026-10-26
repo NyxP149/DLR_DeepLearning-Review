@@ -11,25 +11,30 @@
     "TERMINAL-17"
   ],
   "objectives": [
-    "Traduire les commandes courantes entre bash et PowerShell (navigation, fichiers, texte, environnement)",
-    "Choisir entre PowerShell natif, WSL et Git Bash selon la situation sous Windows",
-    "Écrire un script PowerShell portable entre Windows et Linux (Join-Path, séparateurs, détection de plateforme)"
+    "Traduire des commandes bash courantes en PowerShell et expliquer la différence texte contre objets.",
+    "Choisir entre PowerShell, WSL et Git Bash selon la cible du projet.",
+    "Écrire un script portable : Join-Path, séparateurs de la plateforme, $IsWindows.",
+    "Repérer ce qui casse un script entre Windows et Linux (séparateur, alias, fins de ligne)."
   ],
   "sections": [
     {
-      "title": "Table de correspondance",
+      "title": "Le problème : un script écrit pour une plateforme casse sur l'autre",
+      "content": "Un script qui construit ses chemins avec \"dossier\\\" + $nom fonctionne sous Windows et échoue sous Linux, où le séparateur est /. Un script qui s'appuie sur l'alias dir ou type n'existe pas partout. Entre bash et PowerShell, la difficulté n'est pas de changer les noms des commandes : bash enchaîne du texte, PowerShell des objets.\n```powershell\n$chemin = \"vrac\\\" + 'a.txt'              # casse sous Linux\n$chemin = Join-Path 'vrac' 'a.txt'       # portable\n```"
+    },
+    {
+      "title": "Exemple résolu : traduire un comptage par extension",
       "conceptCodes": [
         "TERMINAL-PORTABILITY"
       ],
-      "content": "pwd devient Get-Location, ls Get-ChildItem, cd Set-Location, cat Get-Content, grep Select-String, mkdir New-Item -ItemType Directory, cp Copy-Item, mv Move-Item, rm Remove-Item, echo Write-Output, export X=1 $env:X = '1', which Get-Command, wc -l | Measure-Object -Line. L'idée est la même, mais PowerShell travaille sur des objets : là où bash enchaîne du texte avec cut et awk, PowerShell lit des propriétés (Where-Object Length -gt 100). Traduire, c'est donc moins remplacer des noms que repenser le pipeline."
+      "content": "Version bash : ls vrac | sed 's/.*\\.//' | sort | uniq -c, qui découpe du texte. Objectif : le même comptage en PowerShell, portable.\n\nRaisonnement, étape par étape :\n1. ls devient Get-ChildItem : on obtient des objets avec une propriété Extension.\n2. Plus besoin de sed : on regroupe sur la propriété avec Group-Object Extension.\n3. Les fichiers sans extension ont une Extension vide : on la remplace par un libellé lisible.\n4. On trie par nom, de façon déterministe.\n5. Le chemin vient de Join-Path vrac, jamais d'une concaténation avec \\.\n```powershell\nGet-ChildItem (Join-Path 'vrac' '*') -File |\n    Group-Object Extension |\n    Sort-Object Name |\n    ForEach-Object { \"{0}={1}\" -f $(if ($_.Name) { $_.Name } else { '(aucune)' }), $_.Count }\n```\nSans extension, le nom du groupe est vide : le libellé (aucune) le rend lisible, et le tri place ce groupe en premier. La traduction remplace un découpage de texte par la lecture d'une propriété : c'est repenser le pipeline, pas renommer les commandes."
     },
     {
-      "title": "Windows : PowerShell, WSL ou Git Bash ?",
-      "content": "PowerShell est l'outil natif pour administrer Windows (services, registre, fichiers, Active Directory). WSL (Windows Subsystem for Linux) fait tourner une vraie distribution Linux dans Windows : c'est le choix quand le projet cible Linux (conteneurs, scripts bash, outils Unix) car l'environnement est identique à la production. Git Bash fournit un bash minimal fourni avec Git for Windows, pratique pour de petits scripts. Règle pratique : travaille dans WSL pour le code destiné à Linux, garde PowerShell pour piloter Windows, et évite de mélanger les deux sur les mêmes fichiers sans comprendre les conversions de fin de ligne (CRLF contre LF) et de chemins (C:\\ contre /mnt/c)."
+      "title": "Table d'équivalences et choix de l'environnement",
+      "content": "pwd → Get-Location, ls → Get-ChildItem, cd → Set-Location, cat → Get-Content, grep → Select-String, mkdir → New-Item -ItemType Directory, cp → Copy-Item, mv → Move-Item, rm → Remove-Item, export X=1 → $env:X = '1', which → Get-Command, wc -l → Measure-Object -Line.\n\nPowerShell est l'outil natif pour administrer Windows. WSL fait tourner une vraie distribution Linux dans Windows : c'est le choix quand le projet cible Linux (conteneurs, scripts bash, outils Unix), car l'environnement est identique à la production. Git Bash est un bash minimal livré avec Git for Windows. Pour la portabilité : Join-Path, $IsWindows / $IsLinux / $IsMacOS (PowerShell 7), [IO.Path]::DirectorySeparatorChar, pas d'alias spécifiques à Windows dans un script partagé, encodage fixé. Attention aux fins de ligne (CRLF contre LF) et aux chemins (C:\\ contre /mnt/c)."
     },
     {
-      "title": "Écrire un script portable",
-      "content": "Construis les chemins avec Join-Path et non par concaténation de \\ ; teste la plateforme avec $IsWindows, $IsLinux et $IsMacOS (disponibles dans PowerShell 7) ; utilise [IO.Path]::DirectorySeparatorChar et [IO.Path]::PathSeparator quand c'est nécessaire ; évite les alias spécifiques à Windows (dir, type) dans un script partagé ; fixe l'encodage de sortie. Teste ton script sur les deux systèmes : l'intégration continue peut le faire automatiquement avec une matrice Windows/Linux. Un script portable est souvent plus simple, car il oblige à nommer précisément ce qu'il fait."
+      "title": "Erreurs fréquentes à reconnaître",
+      "content": "1. Concaténer des chemins avec \\ en dur.\n2. Utiliser dir, type ou d'autres alias dans un script partagé.\n3. Mélanger WSL et PowerShell sur les mêmes fichiers sans comprendre les fins de ligne.\n4. Traduire ligne à ligne un pipeline de texte au lieu de lire des propriétés.\n5. Ne tester que sur sa propre plateforme.\n\nRetrouve ces pièges de mémoire avant le quiz."
     }
   ],
   "keyConcepts": [
@@ -60,56 +65,80 @@
     {
       "code": "TERMINAL-18-Q1",
       "type": "SINGLE_CHOICE",
-      "prompt": "Quel est l'équivalent PowerShell de grep -c ERROR app.log ?",
+      "prompt": "Quelle cmdlet est l'équivalent PowerShell de grep ?",
       "choices": [
-        "(Select-String -Path app.log -Pattern ERROR).Count",
-        "Get-Content app.log -Count ERROR",
-        "Find-Text ERROR app.log"
+        "Where-Object",
+        "Select-String",
+        "Get-Content",
+        "Find-Item"
       ],
-      "correctChoice": 0,
-      "expectedKeywords": []
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Select-String cherche un motif dans des fichiers ou du texte, comme grep. Where-Object filtre des objets par leurs propriétés."
     },
     {
       "code": "TERMINAL-18-Q2",
       "type": "SINGLE_CHOICE",
-      "prompt": "Dans quel cas WSL est-il particulièrement adapté ?",
+      "prompt": "Prédis la valeur sous Linux :\n```powershell\n[IO.Path]::DirectorySeparatorChar\n```\n",
       "choices": [
-        "Quand le projet cible Linux (conteneurs, scripts bash, outils Unix)",
-        "Pour administrer le registre Windows",
-        "Pour exécuter des .exe uniquement"
+        "\\",
+        "/",
+        ":",
+        ";"
       ],
-      "correctChoice": 0,
-      "expectedKeywords": []
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Sous Linux et macOS le séparateur de dossiers est /. Sous Windows c'est \\. Join-Path s'en occupe automatiquement."
     },
     {
       "code": "TERMINAL-18-Q3",
       "type": "SINGLE_CHOICE",
-      "prompt": "Comment construire un chemin portable en PowerShell ?",
+      "prompt": "Trouve le bug : ce script marche sous Windows et échoue sous Linux.\n```powershell\n$chemin = 'vrac\\' + $nom\n```\n",
       "choices": [
-        "Join-Path dossier fichier",
-        "\"dossier\\fichier\"",
-        "\"dossier/\" + \"fichier\""
+        "$nom est vide sous Linux",
+        "Le séparateur \\ est écrit en dur ; il faut Join-Path 'vrac' $nom",
+        "PowerShell n'existe pas sous Linux",
+        "La concaténation avec + est interdite"
       ],
-      "correctChoice": 0,
-      "expectedKeywords": []
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Le séparateur est propre à la plateforme. Join-Path construit un chemin correct partout."
     },
     {
       "code": "TERMINAL-18-Q4",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Ton projet tourne en production dans des conteneurs Linux et utilise des scripts bash. Quel environnement de développement sous Windows ?",
+      "choices": [
+        "PowerShell natif, avec des alias",
+        "WSL, pour avoir le même environnement que la production",
+        "L'invite de commandes cmd",
+        "Aucun : il faut changer d'OS"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "WSL fournit une vraie distribution Linux : mêmes outils, mêmes chemins et mêmes fins de ligne qu'en production. PowerShell reste le bon outil pour piloter Windows."
+    },
+    {
+      "code": "TERMINAL-18-Q5",
       "type": "FREE_TEXT",
-      "prompt": "Un script bash casse sous Windows chez tes collègues. Quelles causes de portabilité examines-tu ?",
+      "prompt": "Que fais-tu pour qu'un script PowerShell fonctionne à la fois sous Windows et sous Linux ?",
       "choices": [],
       "correctChoice": null,
       "expectedKeywords": [
-        "chemin",
-        "fin de ligne",
-        "WSL"
-      ]
+        "Join-Path",
+        "IsWindows",
+        "separateur",
+        "alias",
+        "tester"
+      ],
+      "modelAnswer": "Je construis les chemins avec Join-Path et non avec \\ en dur, j'évite les alias spécifiques (dir, type), j'utilise [IO.Path]::DirectorySeparatorChar si besoin et $IsWindows/$IsLinux pour les rares branches spécifiques, je fixe l'encodage, et je teste sur les deux systèmes, par exemple avec une matrice de CI.",
+      "explanation": "Une bonne réponse cite Join-Path, l'absence d'alias spécifiques, les variables $IsWindows/$IsLinux et un test sur les deux plateformes."
     }
   ],
   "checklist": [
-    "Je connais les équivalents PowerShell des commandes bash courantes",
-    "Je choisis entre PowerShell, WSL et Git Bash selon le contexte",
-    "Je construis les chemins avec Join-Path et je teste la plateforme avec $IsWindows/$IsLinux",
-    "Je traite le problème des fins de ligne CRLF/LF dans les dépôts partagés"
+    "Je traduis un pipeline de texte en lecture de propriétés, pas nom à nom",
+    "Je construis mes chemins avec Join-Path",
+    "Je choisis entre PowerShell, WSL et Git Bash selon la cible du projet",
+    "Je teste mon script sur Windows et sur Linux"
   ]
 }

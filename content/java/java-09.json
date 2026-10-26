@@ -1,9 +1,144 @@
 {
-  "code":"JAVA-09","language":"JAVA","number":9,"slug":"exceptions-validation-erreurs","title":"Exceptions, validation et gestion des erreurs","difficulty":"INTERMEDIAIRE","threshold":70,"activityType":"LAB","prerequisites":["JAVA-08"],
-  "objectives":["Valider aux frontières","Choisir une exception utile","Conserver le contexte d'une erreur"],
-  "sections":[{"title":"Échec explicite","content":"Une exception représente une impossibilité de poursuivre normalement. La validation doit intervenir près de l'entrée et produire un message exploitable.","conceptCodes":["JAVA-EXCEPTION-BOUNDARY"]},{"title":"Ne pas masquer l'erreur","content":"Capturer une exception n'est utile que pour ajouter du contexte, traduire l'erreur ou restaurer un état cohérent."}],
-  "keyConcepts":[{"code":"JAVA-EXCEPTION-BOUNDARY","name":"Frontière de validation","definition":"Une frontière refuse les données invalides avant qu'elles ne contaminent le domaine.","whyExists":"Elle localise les erreurs et protège les invariants internes.","whyImportant":"Une erreur contextualisée réduit fortement le temps de diagnostic.","minimalExample":"if (amount < 0) throw new IllegalArgumentException(...);","professionalExample":"Un endpoint de création de commande capturait autrefois toute exception avec catch (Exception e) {} pour éviter de faire planter la requête : un paiement refusé par la banque était ainsi avalé silencieusement et la commande apparaissait comme réussie côté client, alors qu'aucun débit n'avait eu lieu. La correction valide le montant dès l'entrée avec une IllegalArgumentException explicite et propage les échecs de paiement avec un message précis, ce qui a réduit le temps de diagnostic de l'incident de plusieurs heures à quelques minutes.","codeExample":"static Order createOrder(int amount) {\n    if (amount <= 0) {\n        throw new IllegalArgumentException(\"montant invalide: \" + amount);\n    }\n    return new Order(amount);\n}\n\ntry {\n    createOrder(-20);\n} catch (IllegalArgumentException e) {\n    log.warn(\"commande rejetée: {}\", e.getMessage()); // jamais un catch vide\n}","commonMistake":"Capturer Exception puis ignorer silencieusement l'échec.","masteryQuestion":"Où valider une donnée provenant d'une API ?","masteryProof":"Refuser un cas invalide avec une exception et un message précis."}],
-  "exercises":[{"code":"JAVA-09-E1","title":"Valider un montant","statement":"Intercepte l'erreur métier et affiche exactement : Erreur: montant négatif","starterCode":"public class Main {\n    static int validate(int amount) {\n        // TODO 1 : lance une IllegalArgumentException(\"montant négatif\") si amount < 0\n        return amount;\n    }\n    public static void main(String[] args) {\n        // TODO 2 : appelle validate(-1) dans un try, intercepte l'exception\n        //          puis affiche \"Erreur: \" suivi du message de l'erreur\n    }\n}\n","expectedOutput":"Erreur: montant négatif"}],
-  "quiz":[{"code":"JAVA-09-Q1","type":"SINGLE_CHOICE","prompt":"Pourquoi éviter un catch vide ?","choices":["Il masque la cause et laisse un état ambigu","Il accélère toujours le programme","Il valide automatiquement l'entrée"],"correctChoice":0,"expectedKeywords":[]},{"code":"JAVA-09-Q2","type":"FREE_TEXT","prompt":"Distingue validation et récupération après erreur.","choices":[],"correctChoice":null,"expectedKeywords":["validation","frontière","récupération","état"]}],
-  "checklist":["Je valide près de l'entrée","Je choisis une exception précise","Je conserve la cause et le contexte"]
+  "code": "JAVA-09",
+  "language": "JAVA",
+  "number": 9,
+  "slug": "exceptions-validation-erreurs",
+  "title": "Exceptions, validation et gestion des erreurs",
+  "difficulty": "INTERMEDIAIRE",
+  "threshold": 70,
+  "activityType": "LAB",
+  "prerequisites": [
+    "JAVA-08"
+  ],
+  "objectives": [
+    "Valider une donnée à la frontière et refuser l'invalide avec une exception et un message précis.",
+    "Prédire l'ordre d'exécution de try, catch et finally.",
+    "Choisir entre exception vérifiée (checked) et non vérifiée (unchecked).",
+    "Capturer une exception pour ajouter du contexte, jamais pour la masquer."
+  ],
+  "sections": [
+    {
+      "title": "Le problème : continuer avec une donnée invalide",
+      "content": "Une exception représente une impossibilité de poursuivre normalement. Sans validation, une donnée fausse (un montant négatif, un texte non numérique) traverse tout le programme et provoque une erreur lointaine, difficile à relier à sa cause.\n```java\nint montant = Integer.parseInt(\"12a\");   // NumberFormatException: For input string: \"12a\"\nint moyenne = total / 0;                 // ArithmeticException: / by zero\nString s = null; s.length();             // NullPointerException\n```\nValider près de l'entrée donne une erreur claire, au bon endroit."
+    },
+    {
+      "title": "Exemple résolu : valider à la frontière et traduire l'erreur",
+      "conceptCodes": [
+        "JAVA-EXCEPTION-BOUNDARY"
+      ],
+      "content": "Objectif : refuser un montant négatif et afficher un message exploitable.\n\nRaisonnement, étape par étape :\n1. Valider dès l'entrée de la méthode : if (amount < 0) throw new IllegalArgumentException(\"montant négatif\").\n2. Le message dit quoi et pourquoi, sans détail technique inutile.\n3. L'appelant décide quoi faire : ici afficher « Erreur: » suivi du message.\n4. Le bloc try contient seulement ce qui peut échouer ; catch cible le type précis ; finally s'exécute toujours (fermeture de ressource, nettoyage).\n```java\nstatic int validate(int amount) {\n    if (amount < 0) throw new IllegalArgumentException(\"montant négatif\");\n    return amount;\n}\n\ntry {\n    validate(-1);\n} catch (IllegalArgumentException e) {\n    System.out.println(\"Erreur: \" + e.getMessage());   // Erreur: montant négatif\n}\n```\nOrdre d'exécution : try { A; 1/0; B } catch (ArithmeticException) { C } finally { D } affiche A, C, D : B est sauté parce que l'exception interrompt le try."
+    },
+    {
+      "title": "Checked, unchecked et bonnes pratiques",
+      "content": "Une exception vérifiée (checked, par exemple IOException) doit être déclarée avec throws ou capturée : le compilateur l'impose, pour des échecs prévisibles hors du contrôle du programme (fichier absent, réseau). Une exception non vérifiée (unchecked : IllegalArgumentException, NullPointerException, ArithmeticException) signale généralement une erreur de programmation ou un argument invalide ; elle n'est pas imposée par le compilateur.\n\nRègles : lance l'exception la plus précise ; mets un message utile ; conserve la cause quand tu en traduis une (new IllegalStateException(\"lecture impossible\", e)) ; ne capture que pour ajouter du contexte, traduire l'erreur ou restaurer un état cohérent. Un catch vide ou qui avale l'exception cache la cause et laisse un état ambigu. Ne capture pas Exception en bloc quand un type précis suffit."
+    },
+    {
+      "title": "Erreurs fréquentes à reconnaître",
+      "content": "1. catch (Exception e) { } : l'erreur disparaît, le programme continue dans un état inconnu.\n2. Valider trop tard, au fond du code, au lieu de la frontière.\n3. Message vague : « erreur » ne dit ni quoi ni pourquoi.\n4. Perdre la cause en relançant une nouvelle exception sans la chaîner.\n5. Utiliser les exceptions pour le flux normal (boucle terminée par une exception).\n\nRetrouve ces pièges de mémoire avant le quiz."
+    }
+  ],
+  "keyConcepts": [
+    {
+      "code": "JAVA-EXCEPTION-BOUNDARY",
+      "name": "Frontière de validation",
+      "definition": "Une frontière refuse les données invalides avant qu'elles ne contaminent le domaine.",
+      "whyExists": "Elle localise les erreurs et protège les invariants internes.",
+      "whyImportant": "Une erreur contextualisée réduit fortement le temps de diagnostic.",
+      "minimalExample": "if (amount < 0) throw new IllegalArgumentException(...);",
+      "professionalExample": "Un endpoint de création de commande capturait autrefois toute exception avec catch (Exception e) {} pour éviter de faire planter la requête : un paiement refusé par la banque était ainsi avalé silencieusement et la commande apparaissait comme réussie côté client, alors qu'aucun débit n'avait eu lieu. La correction valide le montant dès l'entrée avec une IllegalArgumentException explicite et propage les échecs de paiement avec un message précis, ce qui a réduit le temps de diagnostic de l'incident de plusieurs heures à quelques minutes.",
+      "codeExample": "static Order createOrder(int amount) {\n    if (amount <= 0) {\n        throw new IllegalArgumentException(\"montant invalide: \" + amount);\n    }\n    return new Order(amount);\n}\n\ntry {\n    createOrder(-20);\n} catch (IllegalArgumentException e) {\n    log.warn(\"commande rejetée: {}\", e.getMessage()); // jamais un catch vide\n}",
+      "commonMistake": "Capturer Exception puis ignorer silencieusement l'échec.",
+      "masteryQuestion": "Où valider une donnée provenant d'une API ?",
+      "masteryProof": "Refuser un cas invalide avec une exception et un message précis."
+    }
+  ],
+  "exercises": [
+    {
+      "code": "JAVA-09-E1",
+      "title": "Valider un montant",
+      "statement": "Intercepte l'erreur métier et affiche exactement : Erreur: montant négatif",
+      "starterCode": "public class Main {\n    static int validate(int amount) {\n        // TODO 1 : lance une IllegalArgumentException(\"montant négatif\") si amount < 0\n        return amount;\n    }\n    public static void main(String[] args) {\n        // TODO 2 : appelle validate(-1) dans un try, intercepte l'exception\n        //          puis affiche \"Erreur: \" suivi du message de l'erreur\n    }\n}\n",
+      "expectedOutput": "Erreur: montant négatif"
+    }
+  ],
+  "quiz": [
+    {
+      "code": "JAVA-09-Q1",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Prédis l'affichage :\n```java\ntry {\n    System.out.print(\"A\");\n    int x = 1 / 0;\n    System.out.print(\"B\");\n} catch (ArithmeticException e) {\n    System.out.print(\"C\");\n} finally {\n    System.out.print(\"D\");\n}\n```\n",
+      "choices": [
+        "ABCD",
+        "ACD",
+        "AD",
+        "ACBD"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "A s'affiche, puis 1/0 lève l'exception : B est sauté, catch affiche C, finally affiche D. Résultat : ACD."
+    },
+    {
+      "code": "JAVA-09-Q2",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Pourquoi un catch vide est-il une mauvaise pratique ?",
+      "choices": [
+        "Il ralentit le programme",
+        "Il masque la cause et laisse le programme dans un état ambigu",
+        "Il est interdit par le compilateur",
+        "Il valide automatiquement l'entrée"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Une exception avalée disparaît : plus de trace, et le code continue comme si de rien n'était. Capture pour ajouter du contexte, traduire ou restaurer un état cohérent."
+    },
+    {
+      "code": "JAVA-09-Q3",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Quel message obtient-on avec « Integer.parseInt(\"12a\") » ?",
+      "choices": [
+        "Aucune erreur : la valeur est 12",
+        "NumberFormatException avec le message For input string: \"12a\"",
+        "ArithmeticException",
+        "NullPointerException"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "parseInt refuse une chaîne qui n'est pas entièrement numérique et lève NumberFormatException, dont le message contient la chaîne fautive."
+    },
+    {
+      "code": "JAVA-09-Q4",
+      "type": "SINGLE_CHOICE",
+      "prompt": "IOException est vérifiée (checked) et IllegalArgumentException ne l'est pas. Que cela implique-t-il ?",
+      "choices": [
+        "Aucune différence",
+        "Le compilateur impose de capturer ou déclarer IOException, mais pas IllegalArgumentException",
+        "IllegalArgumentException doit toujours être déclarée avec throws",
+        "IOException ne peut pas être capturée"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Les exceptions vérifiées font partie du contrat de la méthode (throws). Les non vérifiées signalent plutôt des erreurs de programmation ou d'arguments, sans obligation de déclaration."
+    },
+    {
+      "code": "JAVA-09-Q5",
+      "type": "FREE_TEXT",
+      "prompt": "Distingue validation et récupération après erreur, et dis où placer chacune.",
+      "choices": [],
+      "correctChoice": null,
+      "expectedKeywords": [
+        "validation",
+        "frontiere",
+        "recuperation",
+        "etat",
+        "exception"
+      ],
+      "modelAnswer": "La validation refuse une donnée invalide dès la frontière (entrée d'API, début de méthode) avec une exception claire, avant tout effet de bord. La récupération intervient plus haut, dans un catch, pour réagir à une erreur survenue : afficher un message, réessayer, traduire l'exception ou restaurer un état cohérent. Valider tôt réduit le besoin de récupérer tard.",
+      "explanation": "Une bonne réponse place la validation à la frontière, la récupération dans un catch ciblé, et parle d'état cohérent et de message exploitable."
+    }
+  ],
+  "checklist": [
+    "Je valide à la frontière avec un message précis",
+    "Je prédis l'ordre try, catch, finally",
+    "Je ne laisse jamais un catch vide",
+    "Je lance l'exception la plus précise et je conserve la cause"
+  ]
 }

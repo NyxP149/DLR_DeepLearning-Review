@@ -11,25 +11,30 @@
     "TERMINAL-07"
   ],
   "objectives": [
-    "Lire une commande PowerShell au format Verbe-Nom et retrouver une commande avec Get-Command et Get-Help",
-    "Naviguer avec Set-Location, Get-Location et Get-ChildItem et reconnaître leurs alias (cd, gci, dir)",
-    "Comprendre ce qui change entre Windows PowerShell 5.1, PowerShell 7 et un shell bash"
+    "Lire un nom Verbe-Nom et deviner la cmdlet voisine (Get-Process, Stop-Process).",
+    "Retrouver une commande inconnue avec Get-Command, Get-Help et Get-Alias.",
+    "Naviguer avec Set-Location, Get-Location et Get-ChildItem et reconnaître leurs alias.",
+    "Expliquer ce qui distingue PowerShell de bash : des objets plutôt que du texte."
   ],
   "sections": [
     {
-      "title": "PowerShell n'est pas un bash avec d'autres noms",
+      "title": "Le problème : PowerShell n'est pas un bash avec d'autres noms",
+      "content": "PowerShell est le shell de Windows, et PowerShell 7 fonctionne aussi sous Linux et macOS. Sa différence fondamentale : les commandes, appelées cmdlets, échangent des objets .NET structurés (avec des propriétés), et non des lignes de texte.\n\nUne cmdlet porte un nom Verbe-Nom tiré d'une liste de verbes approuvés : Get-ChildItem, Set-Location, Remove-Item. Cette régularité rend les commandes prévisibles : si tu connais Get-Process, tu devines Stop-Process.\n```powershell\nGet-Process      # lister\nStop-Process     # arrêter (même Nom, autre Verbe)\nGet-Service      # même verbe, autre Nom\n```"
+    },
+    {
+      "title": "Exemple résolu : trouver une commande dont on ne connaît pas le nom",
       "conceptCodes": [
         "TERMINAL-POWERSHELL-CMDLETS"
       ],
-      "content": "PowerShell est le shell de Windows depuis des années, et PowerShell 7 fonctionne aussi sous Linux et macOS. Sa différence fondamentale : les commandes (appelées cmdlets) échangent des objets .NET structurés, avec des propriétés, et non des lignes de texte. Une cmdlet porte un nom Verbe-Nom (Get-ChildItem, Set-Location, Remove-Item) tiré d'une liste de verbes approuvés, ce qui rend les commandes prévisibles : si tu connais Get-Process, tu devines Stop-Process."
+      "content": "Objectif : redémarrer un service Windows sans connaître la commande.\n\nRaisonnement, étape par étape :\n1. Le Nom est probablement Service, le Verbe est « redémarrer » donc Restart. Je cherche par Nom : Get-Command -Noun Service.\n2. La liste contient Get-Service, Start-Service, Stop-Service, Restart-Service : la commande existe.\n3. Je lis l'aide avec des exemples : Get-Help Restart-Service -Examples.\n4. Si je ne retrouve pas un alias, Get-Alias le donne : Get-Alias gci renvoie Get-ChildItem.\n5. Je vérifie la nature d'un nom avec (Get-Command Get-ChildItem).CommandType, qui répond Cmdlet.\n```powershell\nGet-Command -Noun Service\nGet-Help Restart-Service -Examples\n(Get-Alias gci).Definition               # Get-ChildItem\n(Get-Command Get-ChildItem).CommandType  # Cmdlet\n```\nLa découverte est intégrée à l'outil : on cherche par Verbe ou par Nom, puis on lit l'aide, sans moteur de recherche."
     },
     {
-      "title": "Se débrouiller seul : Get-Command, Get-Help, Get-Member",
-      "content": "Get-Command *service* cherche des commandes, Get-Command -Verb Get -Noun Process précise la recherche. Get-Help Get-ChildItem -Examples affiche l'aide avec des exemples (Update-Help télécharge l'aide complète). Get-Alias liste les alias : cd est Set-Location, gci et dir sont Get-ChildItem, pwd est Get-Location. Les alias abrègent la saisie au clavier mais sont à éviter dans les scripts partagés, où les noms complets sont plus lisibles. Sous Windows PowerShell 5.1, ls et cat existent comme alias ; sous Linux, PowerShell 7 laisse les vraies commandes ls et cat pour ne pas masquer les outils natifs."
+      "title": "Alias, chemins et comparaison avec bash",
+      "content": "Les alias abrègent la saisie : cd est Set-Location, gci et dir sont Get-ChildItem, pwd est Get-Location. Ils sont pratiques en interactif mais à éviter dans les scripts partagés, où les noms complets se lisent mieux. Sous Windows PowerShell 5.1, ls et cat existent comme alias ; sous Linux, PowerShell 7 laisse les vraies commandes ls et cat pour ne pas masquer les outils natifs.\n\nPour les chemins, Join-Path atelier docs construit un chemin avec le bon séparateur sur toutes les plateformes. Les noms de fichiers sont insensibles à la casse sous Windows et sensibles sous Linux. Équivalences : pwd devient Get-Location, ls devient Get-ChildItem, cat devient Get-Content."
     },
     {
-      "title": "Chemins et conventions",
-      "content": "PowerShell accepte / et \\ comme séparateurs sous Windows, mais écris tes scripts avec Join-Path (Join-Path atelier docs) pour qu'ils fonctionnent aussi sous Linux. Les noms de fichiers ne sont pas sensibles à la casse sous Windows et le sont sous Linux. Le lecteur est une partie du chemin sous Windows (C:\\Users\\ada) : (Get-Location).Path donne le chemin complet. Pour comparer avec bash : pwd devient Get-Location, ls devient Get-ChildItem, cd reste Set-Location, cat devient Get-Content."
+      "title": "Erreurs fréquentes à reconnaître",
+      "content": "1. Inventer un verbe : Delete-Item n'existe pas, le verbe approuvé est Remove (Get-Verb liste les verbes).\n2. Utiliser des alias dans un script partagé : le script devient illisible ou différent selon la plateforme.\n3. Traiter la sortie comme du texte alors que ce sont des objets avec des propriétés.\n4. Écrire des chemins avec \\ en dur : le script casse sous Linux.\n5. Ne pas lire l'aide : Get-Help -Examples répond à la plupart des questions.\n\nRetrouve ces pièges de mémoire avant le quiz."
     }
   ],
   "keyConcepts": [
@@ -60,56 +65,80 @@
     {
       "code": "TERMINAL-08-Q1",
       "type": "SINGLE_CHOICE",
-      "prompt": "Que signifie la convention Verbe-Nom des cmdlets ?",
+      "prompt": "Quel nom respecte la convention des cmdlets PowerShell pour supprimer un fichier ?",
       "choices": [
-        "Le nom décrit l'action puis l'objet visé, par exemple Get-Process",
-        "Le nom est toujours en majuscules",
-        "Le nom indique le langage de l'auteur"
+        "Delete-Item",
+        "Remove-Item",
+        "Erase-File",
+        "Kill-Item"
       ],
-      "correctChoice": 0,
-      "expectedKeywords": []
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Les cmdlets utilisent des verbes approuvés (Get-Verb). Le verbe pour supprimer est Remove ; Delete, Erase ou Kill n'en font pas partie."
     },
     {
       "code": "TERMINAL-08-Q2",
       "type": "SINGLE_CHOICE",
-      "prompt": "Quelle cmdlet affiche des exemples d'utilisation d'une commande ?",
+      "prompt": "Prédis le résultat :\n```powershell\n(Get-Alias gci).Definition\n```\n",
       "choices": [
-        "Get-Help <commande> -Examples",
-        "Get-Example <commande>",
-        "Show-Command <commande> -Run"
+        "gci",
+        "Get-ChildItem",
+        "Set-Location",
+        "Cmdlet"
       ],
-      "correctChoice": 0,
-      "expectedKeywords": []
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Get-Alias retourne l'objet alias ; sa propriété Definition contient la commande qu'il désigne, Get-ChildItem."
     },
     {
       "code": "TERMINAL-08-Q3",
       "type": "SINGLE_CHOICE",
-      "prompt": "Pourquoi éviter les alias dans un script partagé ?",
+      "prompt": "Trouve le bug : « Delete-Item ancien.txt » affiche une erreur. Que dit-elle et que faire ?",
       "choices": [
-        "Ils nuisent à la lisibilité et peuvent manquer selon la plateforme",
-        "Ils ralentissent fortement le script",
-        "Ils sont interdits par PowerShell 7"
+        "Accès refusé : lancer PowerShell en administrateur",
+        "CommandNotFoundException : la commande n'existe pas, chercher avec Get-Command -Verb Remove",
+        "Fichier verrouillé : redémarrer",
+        "Syntaxe invalide : ajouter des parenthèses"
       ],
-      "correctChoice": 0,
-      "expectedKeywords": []
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Delete-Item n'existe pas, PowerShell lève CommandNotFoundException. Get-Command -Verb Remove (ou -Noun Item) retrouve Remove-Item."
     },
     {
       "code": "TERMINAL-08-Q4",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Pourquoi éviter les alias comme gci ou dir dans un script partagé ?",
+      "choices": [
+        "Ils sont plus lents",
+        "Ils sont moins lisibles et peuvent différer selon la plateforme ou la version",
+        "Ils sont interdits par PowerShell",
+        "Ils ne marchent qu'en administrateur"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Les alias abrègent la saisie interactive. Dans un script, les noms complets sont plus clairs, et certains alias (ls, cat) ne sont pas définis de la même façon sous Windows PowerShell 5.1 et PowerShell 7 sous Linux."
+    },
+    {
+      "code": "TERMINAL-08-Q5",
       "type": "FREE_TEXT",
-      "prompt": "Tu ne connais pas la commande pour lister les processus. Décris la démarche PowerShell pour la découvrir et l'apprendre.",
+      "prompt": "Tu dois arrêter un service mais tu ne connais pas la commande PowerShell. Comment la retrouves-tu et comment apprends-tu à l'utiliser ?",
       "choices": [],
       "correctChoice": null,
       "expectedKeywords": [
         "Get-Command",
         "Get-Help",
-        "Process"
-      ]
+        "verbe",
+        "nom",
+        "exemple"
+      ],
+      "modelAnswer": "Je cherche par Nom ou par Verbe avec Get-Command -Noun Service (ou -Verb Stop), je repère Stop-Service, puis je lis Get-Help Stop-Service -Examples. Les noms suivent la convention Verbe-Nom, donc je peux deviner par analogie avec Get-Service.",
+      "explanation": "Une bonne réponse cite Get-Command pour chercher, Get-Help avec des exemples pour apprendre, et la convention Verbe-Nom qui rend la recherche prévisible."
     }
   ],
   "checklist": [
-    "Je lis une commande au format Verbe-Nom et je devine ses voisines",
-    "Je découvre une commande avec Get-Command et je l'apprends avec Get-Help -Examples",
-    "Je connais les alias courants (cd, gci, dir, pwd) et leurs cmdlets",
-    "Je sais que ls et cat ne sont pas des alias sous PowerShell 7 sur Linux"
+    "Je lis un nom Verbe-Nom et je devine la cmdlet voisine",
+    "Je retrouve une commande avec Get-Command et je lis Get-Help -Examples",
+    "Je connais les alias cd, gci, pwd et je les évite dans un script partagé",
+    "Je construis mes chemins avec Join-Path"
   ]
 }

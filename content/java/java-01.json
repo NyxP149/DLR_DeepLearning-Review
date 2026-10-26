@@ -9,19 +9,30 @@
   "activityType": "LAB",
   "prerequisites": [],
   "objectives": [
-    "Expliquer le rôle du compilateur Java et de la JVM",
-    "Compiler et exécuter un programme Java minimal",
-    "Reconnaître les éléments essentiels d'une classe Java",
-    "Interpréter une erreur de compilation simple"
+    "Décrire le trajet d'un programme : source .java, bytecode .class, exécution par la JVM.",
+    "Compiler avec javac et exécuter avec java, et dire quel fichier chaque commande produit ou lit.",
+    "Reconnaître l'anatomie minimale d'une application : classe, méthode main, instruction terminée par un point-virgule.",
+    "Lire un message d'erreur du compilateur et le relier à la ligne fautive."
   ],
   "sections": [
     {
-      "title": "Du code source au programme exécuté",
-      "content": "Le fichier .java contient le code source. javac le compile en bytecode dans un fichier .class. La JVM charge ensuite ce bytecode et l'exécute sur la machine courante."
+      "title": "Le problème : du texte que l'ordinateur ne comprend pas",
+      "content": "Un programme Java est d'abord du texte, que ni Windows, ni Linux, ni un processeur ne savent exécuter. Il faut le traduire. Java le fait en deux temps, ce qui explique à la fois son portage facile et ses messages d'erreur.\n```text\nMain.java  --javac-->  Main.class  --java-->  affichage à l'écran\n(source)              (bytecode)             (exécution par la JVM)\n```\njavac est le compilateur : il vérifie le code et produit du bytecode, un langage intermédiaire. La JVM (Java Virtual Machine) est le programme qui charge ce bytecode et l'exécute sur la machine courante. Le même fichier .class tourne donc sur tout système équipé d'une JVM."
     },
     {
-      "title": "Premier programme",
-      "content": "Une application Java commence dans une méthode public static void main(String[] args). La classe publique et le fichier source portent le même nom."
+      "title": "Exemple résolu : compiler et lancer son premier programme",
+      "conceptCodes": [
+        "JAVA-JVM-BYTECODE"
+      ],
+      "content": "Objectif : afficher un message en suivant le trajet complet.\n\nRaisonnement, étape par étape :\n1. Créer un fichier Main.java : le nom du fichier doit être celui de la classe publique.\n2. Écrire la méthode de départ, toujours public static void main(String[] args). La JVM la cherche pour démarrer.\n3. Afficher avec System.out.println, instruction terminée par un point-virgule.\n4. Compiler : javac Main.java produit Main.class. Si le code est faux, javac s'arrête ici avec un message et ne produit rien.\n5. Exécuter : java Main (sans extension) charge Main.class et lance main.\n```java\npublic class Main {\n    public static void main(String[] args) {\n        System.out.println(\"Bonjour DLR\");\n    }\n}\n```\n```bash\njavac Main.java     # produit Main.class\njava Main           # Bonjour DLR\n```\nDeux commandes, deux rôles : javac lit du source et écrit du bytecode, java lit du bytecode et exécute. Une erreur de syntaxe est donc signalée à la compilation, avant tout affichage."
+    },
+    {
+      "title": "Lire une erreur du compilateur",
+      "content": "Une erreur de compilation donne le fichier, la ligne et la nature du problème :\n```text\nMain.java:3: error: ';' expected\n        System.out.println(\"Bonjour\")\n                                     ^\n```\nLis-la de bas en haut de la page : le symbole ^ pointe l'endroit où le compilateur s'est arrêté, souvent juste après la vraie faute (ici, un point-virgule manquant à la fin de la ligne 3). Corrige la première erreur, recompile : les suivantes disparaissent souvent d'elles-mêmes.\n\nRègles à retenir : Java distingue majuscules et minuscules (Main n'est pas main), chaque instruction se termine par ;, les blocs sont entre accolades, et le fichier d'une classe publique porte son nom."
+    },
+    {
+      "title": "Erreurs fréquentes à reconnaître",
+      "content": "1. Nommer le fichier autrement que la classe publique : « class Hello is public, should be declared in a file named Hello.java ».\n2. Oublier le point-virgule : « ';' expected ».\n3. Écrire Main avec une minuscule ou System avec une minuscule : « cannot find symbol ».\n4. Lancer java Main.java au lieu de java Main après compilation (confusion entre source et bytecode).\n5. Croire qu'un programme qui ne compile pas affiche quand même quelque chose : tant qu'il y a une erreur de compilation, rien ne s'exécute.\n\nRetrouve ces pièges de mémoire avant d'aborder le quiz."
     }
   ],
   "keyConcepts": [
@@ -43,9 +54,9 @@
     {
       "code": "HELLO-DLR",
       "title": "Présenter son premier laboratoire",
-      "statement": "Complète la méthode main afin d'afficher exactement : DLR Java Lab 1",
-      "starterCode": "public class Main {\n    public static void main(String[] args) {\n        // Écris ton instruction ici\n    }\n}\n",
-      "expectedOutput": "DLR Java Lab 1"
+      "statement": "Complète la méthode main pour afficher exactement quatre lignes, une instruction System.out.println par ligne :\nDLR Java Lab 1\nSource: Main.java\nBytecode: Main.class\nExécution: JVM",
+      "starterCode": "public class Main {\n    public static void main(String[] args) {\n        // TODO 1 : affiche \"DLR Java Lab 1\"\n        // TODO 2 : affiche \"Source: Main.java\"\n        // TODO 3 : affiche \"Bytecode: Main.class\"\n        // TODO 4 : affiche \"Exécution: JVM\"\n    }\n}\n",
+      "expectedOutput": "DLR Java Lab 1\nSource: Main.java\nBytecode: Main.class\nExécution: JVM"
     }
   ],
   "quiz": [
@@ -53,22 +64,79 @@
       "code": "JAVA-01-Q1",
       "type": "SINGLE_CHOICE",
       "prompt": "Quel outil transforme un fichier .java en bytecode ?",
-      "choices": ["java", "javac", "JVM", "JAR"],
+      "choices": [
+        "java",
+        "javac",
+        "La JVM",
+        "Un fichier JAR"
+      ],
       "correctChoice": 1,
-      "expectedKeywords": []
+      "expectedKeywords": [],
+      "explanation": "javac est le compilateur : il lit le source .java et produit le bytecode .class. La commande java, elle, démarre la JVM pour exécuter ce bytecode."
     },
     {
       "code": "JAVA-01-Q2",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Trouve le bug : le fichier s'appelle Main.java mais contient « public class Hello { ... } ». Que se passe-t-il à la compilation ?",
+      "choices": [
+        "Rien, javac renomme la classe",
+        "Erreur : une classe publique doit être déclarée dans un fichier du même nom (Hello.java)",
+        "Le programme compile mais ne démarre pas",
+        "Warning uniquement"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Java impose qu'une classe publique porte le nom de son fichier. javac refuse de compiler : « class Hello is public, should be declared in a file named Hello.java »."
+    },
+    {
+      "code": "JAVA-01-Q3",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Prédis le résultat :\n```java\npublic class Main {\n    public static void main(String[] args) {\n        System.out.println(\"A\");\n        System.out.println(\"B\")\n    }\n}\n```\n",
+      "choices": [
+        "A puis B",
+        "A seulement",
+        "Erreur de compilation (« ';' expected »), rien n'est affiché",
+        "B seulement"
+      ],
+      "correctChoice": 2,
+      "expectedKeywords": [],
+      "explanation": "Le point-virgule manque après le deuxième println. javac refuse tout le fichier : aucun .class n'est produit, donc même la ligne « A » ne s'affiche pas."
+    },
+    {
+      "code": "JAVA-01-Q4",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Pourquoi un même fichier .class peut-il tourner sur Windows, Linux et macOS ?",
+      "choices": [
+        "Parce que javac produit trois versions",
+        "Parce que le bytecode est indépendant du système et que chaque système dispose de sa propre JVM",
+        "Parce que Java n'utilise pas de système d'exploitation",
+        "Parce que les .class contiennent le système d'exploitation"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Le bytecode est un langage intermédiaire commun. Chaque plateforme fournit une JVM qui sait l'exécuter : c'est le principe « compile une fois, exécute partout »."
+    },
+    {
+      "code": "JAVA-01-Q5",
       "type": "FREE_TEXT",
-      "prompt": "Explique avec tes propres mots la relation entre le code source, le bytecode et la JVM.",
+      "prompt": "Sans relire le cours, explique avec tes mots la relation entre le code source, le bytecode et la JVM, et ce qui se passe quand le code contient une erreur de syntaxe.",
       "choices": [],
       "correctChoice": null,
-      "expectedKeywords": ["source", "bytecode", "JVM", "compile"]
+      "expectedKeywords": [
+        "source",
+        "bytecode",
+        "JVM",
+        "compil",
+        "erreur"
+      ],
+      "modelAnswer": "Le code source .java est compilé par javac en bytecode .class, un langage intermédiaire indépendant du système. La JVM charge ce bytecode et l'exécute sur la machine courante. Si le source contient une erreur de syntaxe, javac la signale à la compilation et ne produit pas de .class : rien ne s'exécute.",
+      "explanation": "Une bonne réponse nomme javac, le bytecode et la JVM, explique le rôle de chacun et précise qu'une erreur de syntaxe arrête tout dès la compilation."
     }
   ],
   "checklist": [
-    "Je sais distinguer javac de java",
-    "Je peux expliquer le rôle du bytecode",
-    "Je peux compiler et exécuter une classe Main"
+    "Je sais dire ce que produisent javac et java",
+    "Je nomme le fichier comme la classe publique",
+    "Je lis un message du compilateur en repérant la ligne et le symbole ^",
+    "J'ai prédit l'effet d'une erreur de syntaxe avant de lire la correction"
   ]
 }

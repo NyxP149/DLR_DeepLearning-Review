@@ -11,25 +11,30 @@
     "TERMINAL-19"
   ],
   "objectives": [
-    "Expliquer pourquoi le contexte est une ressource limitée et à quoi sert un fichier d'instructions de dépôt (CLAUDE.md)",
-    "Rédiger un fichier d'instructions court, précis et vérifiable (commandes, architecture, conventions, interdits)",
-    "Générer et contrôler automatiquement ce fichier à partir de l'état réel du projet"
+    "Expliquer pourquoi un fichier d'instructions de dépôt (CLAUDE.md, AGENTS.md) est chargé à chaque session.",
+    "Décider ce qui y entre (commandes exactes, interdits, conventions) et ce qui reste dans le code.",
+    "Repérer un secret ou une règle périmée dans un fichier d'instructions.",
+    "Maintenir le fichier : ajouter une règle après deux erreurs répétées, supprimer ce qui n'est plus vrai."
   ],
   "sections": [
     {
-      "title": "Le contexte est la ressource rare",
+      "title": "Le problème : l'assistant ne se souvient de rien",
+      "content": "Un assistant ne retient pas ton projet d'une session à l'autre, et sa fenêtre de contexte est limitée : tout ce qu'il lit la consomme. Sans instructions, il redevine à chaque fois la commande de test, la structure du code et les conventions, et se trompe de façon répétée.\n\nUn fichier d'instructions à la racine du dépôt est chargé automatiquement au démarrage : CLAUDE.md pour Claude Code, AGENTS.md ou GEMINI.md pour d'autres outils. Un fichier personnel au niveau utilisateur (~/.claude/CLAUDE.md) porte tes préférences générales. La commande /init en génère un brouillon : à relire et à raccourcir, jamais à accepter tel quel. Les noms exacts des commandes et des options évoluent vite : vérifie la documentation de la version que tu utilises."
+    },
+    {
+      "title": "Exemple résolu : réduire un fichier d'instructions à l'essentiel",
       "conceptCodes": [
         "TERMINAL-PROJECT-CONTEXT"
       ],
-      "content": "Un assistant ne se souvient pas de ton projet d'une session à l'autre et sa fenêtre de contexte est limitée : tout ce qu'il lit la consomme. Un fichier d'instructions à la racine du dépôt est chargé automatiquement au démarrage : CLAUDE.md pour Claude Code, AGENTS.md ou GEMINI.md pour d'autres outils. Il existe aussi un fichier personnel au niveau utilisateur (~/.claude/CLAUDE.md) pour tes préférences générales. La commande /init en génère un premier brouillon à partir du dépôt : à relire et à raccourcir, jamais à accepter tel quel. Les noms exacts des commandes et des options évoluent vite : vérifie toujours la documentation de la version que tu utilises."
-    },
-    {
-      "title": "Ce qu'il faut y mettre, et ce qu'il faut éviter",
-      "content": "Mets-y ce que l'assistant ne peut pas deviner : les commandes exactes de build, de test et de lint (« make test »), l'architecture en quelques lignes (où sont les modules), les conventions (nommage, format des commits), les pièges connus et les interdits (ne jamais toucher à migrations/, ne pas modifier les tests pour les faire passer). Évite ce qui se lit dans le code, les longs tutoriels et tout secret. Court et concret vaut mieux que complet : chaque ligne inutile dilue les consignes importantes. Pour de la documentation volumineuse, référence-la avec une importation (@docs/architecture.md) plutôt que de la recopier."
+      "content": "Brouillon généré : 140 lignes qui racontent l'historique du projet, expliquent Python et recopient la documentation. Objectif : un fichier court qui change le comportement de l'assistant.\n\nRaisonnement, étape par étape :\n1. Garder ce qu'on ne peut pas deviner : la commande de test exacte (make test), le lint, la structure en quelques lignes.\n2. Garder les interdits : ne pas modifier migrations/, ne pas affaiblir un test pour le faire passer.\n3. Retirer ce qui se lit dans le code, les tutoriels et tout secret.\n4. Référencer la documentation longue au lieu de la recopier : @docs/architecture.md.\n5. Contrôler : quatre rubriques, moins de 30 lignes, aucune ligne qui ressemble à un secret.\n```text\n## Commandes\n- Tests : make test\n## Architecture\nsrc/ contient le code, tests/ les tests ; détails dans @docs/architecture.md.\n## Conventions\nNoms en snake_case ; messages de commit à l'impératif.\n## Interdits\nNe pas toucher à migrations/ ; ne pas modifier un test pour le faire passer.\n```\nChaque ligne inutile dilue les consignes importantes : court et concret vaut mieux que complet."
     },
     {
       "title": "Entretenir le fichier comme du code",
-      "content": "Le fichier d'instructions est versionné et relu en revue comme le reste. Règle d'entretien : quand l'assistant se trompe deux fois de la même manière, ajoute la règle correspondante ; quand une règle n'est plus vraie, supprime-la, car une consigne périmée est pire que l'absence de consigne. Vérifie les contradictions et teste le fichier : ouvre une session neuve et regarde si l'assistant applique bien les conventions. Un script peut aussi garder le fichier honnête, par exemple en vérifiant que la commande de test annoncée existe encore."
+      "content": "Le fichier est versionné et relu en revue comme le reste. Règle d'entretien : quand l'assistant se trompe deux fois de la même manière, ajoute la règle correspondante ; quand une règle n'est plus vraie, supprime-la, car une consigne périmée est pire que l'absence de consigne. Vérifie les contradictions et teste le fichier : ouvre une session neuve et regarde si les conventions sont appliquées.\n\nUn script peut aussi garder le fichier honnête : vérifier que la commande de test annoncée existe encore, que le fichier reste court et qu'aucune ligne ne ressemble à password=, api_key: ou token=. Les secrets n'ont rien à faire dans un fichier versionné qui est envoyé à un service."
+    },
+    {
+      "title": "Erreurs fréquentes à reconnaître",
+      "content": "1. Garder le brouillon de /init tel quel.\n2. Y écrire un mot de passe ou une clé d'API.\n3. Laisser une commande de test qui n'existe plus.\n4. Recopier la documentation au lieu de la référencer.\n5. Empiler des règles sans jamais en supprimer : les consignes importantes se noient.\n\nRetrouve ces pièges de mémoire avant le quiz."
     }
   ],
   "keyConcepts": [
@@ -60,56 +65,80 @@
     {
       "code": "TERMINAL-20-Q1",
       "type": "SINGLE_CHOICE",
-      "prompt": "Pourquoi un fichier d'instructions de dépôt est-il utile ?",
+      "prompt": "Quel contenu est le plus utile dans un fichier CLAUDE.md ?",
       "choices": [
-        "L'assistant repart de zéro à chaque session et y retrouve commandes et conventions",
-        "Il remplace les tests",
-        "Il accélère le processeur"
+        "Un tutoriel complet du langage utilisé",
+        "La commande exacte de test et les interdits du projet",
+        "L'historique des modifications du projet",
+        "Le mot de passe de la base de test"
       ],
-      "correctChoice": 0,
-      "expectedKeywords": []
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "On y met ce que l'assistant ne peut pas deviner : commandes exactes, architecture résumée, conventions, interdits. Un tutoriel dilue les consignes, l'historique est dans Git et un mot de passe n'a rien à faire dans un fichier versionné."
     },
     {
       "code": "TERMINAL-20-Q2",
       "type": "SINGLE_CHOICE",
-      "prompt": "Que faut-il éviter d'y mettre ?",
+      "prompt": "Un projet contient à la fois un package.json et un pom.xml. Que renvoie cette fonction ?\n```bash\ndetect_test() {\n  if [ -f \"$1/package.json\" ]; then echo \"npm test\"\n  elif [ -f \"$1/pom.xml\" ]; then echo \"mvn test\"\n  else echo \"(inconnu)\"; fi\n}\n```\n",
       "choices": [
-        "Des secrets et des pages de documentation recopiées",
-        "La commande de test",
-        "Les interdits du projet"
+        "mvn test",
+        "npm test",
+        "npm test puis mvn test",
+        "(inconnu)"
       ],
-      "correctChoice": 0,
-      "expectedKeywords": []
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "if/elif s'arrête au premier test vrai : package.json est testé en premier, donc npm test. L'ordre des tests décide du comportement avec plusieurs fichiers présents."
     },
     {
       "code": "TERMINAL-20-Q3",
       "type": "SINGLE_CHOICE",
-      "prompt": "Que faire quand l'assistant se trompe deux fois de la même manière ?",
+      "prompt": "Trouve le défaut : une ligne du CLAUDE.md versionné est « Mot de passe de la base: hunter2 ». Que faire ?",
       "choices": [
-        "Ajouter la règle correspondante au fichier d'instructions",
-        "Ignorer l'erreur",
-        "Désactiver les permissions"
+        "Rien : le fichier est interne",
+        "Retirer le secret du fichier et de l'historique, le déplacer dans une variable d'environnement et révoquer le mot de passe",
+        "Le mettre en majuscules",
+        "Le déplacer en dernière ligne"
       ],
-      "correctChoice": 0,
-      "expectedKeywords": []
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Tout ce que l'assistant lit peut être envoyé au service, et un fichier versionné se diffuse. Il faut retirer le secret, changer le mot de passe et passer par l'environnement."
     },
     {
       "code": "TERMINAL-20-Q4",
+      "type": "SINGLE_CHOICE",
+      "prompt": "L'assistant se trompe deux fois de la même manière (mauvaise commande de test). Que fais-tu ?",
+      "choices": [
+        "Rien : c'est la faute de l'assistant",
+        "J'ajoute la règle correspondante au fichier d'instructions",
+        "Je réécris tout le fichier",
+        "Je relance la même demande indéfiniment"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Une erreur répétée est un signal qu'une information manque. L'ajouter au fichier d'instructions règle le problème durablement pour toutes les sessions."
+    },
+    {
+      "code": "TERMINAL-20-Q5",
       "type": "FREE_TEXT",
-      "prompt": "Comment gardes-tu un fichier CLAUDE.md utile dans le temps, sans qu'il devienne un fourre-tout périmé ?",
+      "prompt": "Qu'est-ce qui doit figurer dans un fichier d'instructions de dépôt, et pourquoi doit-il rester court ?",
       "choices": [],
       "correctChoice": null,
       "expectedKeywords": [
-        "court",
-        "revue",
-        "règle"
-      ]
+        "commande",
+        "test",
+        "architecture",
+        "interdit",
+        "court"
+      ],
+      "modelAnswer": "Il doit contenir ce que l'assistant ne peut pas deviner : la commande exacte de test et de build, l'architecture en quelques lignes, les conventions et les interdits. Il reste court parce que chaque ligne consomme la fenêtre de contexte et dilue les consignes importantes ; la documentation longue est référencée plutôt que recopiée.",
+      "explanation": "Une bonne réponse cite commandes, architecture, conventions et interdits, et justifie la brièveté par le contexte limité et la dilution des consignes."
     }
   ],
   "checklist": [
-    "J'explique pourquoi le contexte est limité et comment un fichier d'instructions le soulage",
-    "J'y mets commandes, architecture, conventions et interdits, et aucun secret",
-    "Je garde le fichier court, versionné et relu en revue",
-    "Je supprime les règles périmées et j'ajoute celles qui préviennent une erreur répétée"
+    "Je mets dans le fichier ce que l'assistant ne peut pas deviner",
+    "Je n'y écris jamais de secret",
+    "Je supprime les règles périmées et j'ajoute celles des erreurs répétées",
+    "Je contrôle sa taille et ses rubriques par un script"
   ]
 }

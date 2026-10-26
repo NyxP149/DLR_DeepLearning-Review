@@ -1,9 +1,144 @@
 {
-  "code":"JAVA-04","language":"JAVA","number":4,"slug":"methodes-parametres-portee","title":"Méthodes, paramètres, retour, portée et surcharge","difficulty":"BASE","threshold":70,"activityType":"LAB","prerequisites":["JAVA-03"],
-  "objectives":["Extraire une opération dans une méthode","Distinguer paramètre et valeur de retour","Limiter la portée des variables"],
-  "sections":[{"title":"Un contrat nommé","content":"Une méthode donne un nom à une opération. Ses paramètres décrivent les entrées et son type de retour décrit le résultat observable."},{"title":"Portée et surcharge","content":"Une variable locale n'existe que dans son bloc. La surcharge autorise plusieurs signatures de même nom lorsque leurs paramètres diffèrent."}],
-  "keyConcepts":[{"code":"JAVA-METHOD-CONTRACT","name":"Contrat de méthode","definition":"La signature indique comment appeler une opération et quel résultat attendre.","whyExists":"Elle découpe un problème et rend une logique réutilisable et testable.","whyImportant":"Des méthodes courtes aux contrats clairs réduisent le couplage et facilitent les tests.","minimalExample":"static int add(int a, int b) { return a + b; }","professionalExample":"Un service de calcul de remises modifiait initialement un champ d'instance total au lieu de retourner sa valeur : deux appels successifs sur la même instance de service, utilisée par erreur comme singleton dans un contrôleur Spring, mélangeaient les montants de deux commandes différentes traitées en parallèle. Transformer la méthode en fonction pure, qui reçoit ses paramètres et retourne un résultat sans toucher d'état partagé, a supprimé le bug et rendu la méthode testable avec de simples assertions.","codeExample":"static int applyDiscount(int amount, int percent) {\n    return amount - (amount * percent / 100);\n}\n\n// Appel sans état partagé, sûr en environnement concurrent\nint order1 = applyDiscount(200, 10); // 180\nint order2 = applyDiscount(50, 20);  // 40","commonMistake":"Modifier un état caché au lieu de retourner explicitement le résultat.","masteryQuestion":"Pourquoi préférer un retour à un affichage dans une méthode de calcul ?","masteryProof":"Écrire une méthode pure et montrer deux appels avec des entrées différentes."}],
-  "exercises":[{"code":"SUM-METHOD","title":"Créer une méthode de somme","statement":"Crée une méthode sum(int a, int b), appelle-la avec 5 et 7, puis affiche exactement : 12","starterCode":"public class Main {\n    // Ajoute la méthode sum\n    public static void main(String[] args) {\n    }\n}\n","expectedOutput":"12"}],
-  "quiz":[{"code":"JAVA-04-Q1","type":"SINGLE_CHOICE","prompt":"Que décrit le type placé avant le nom d'une méthode ?","choices":["Sa visibilité","Son retour","Son nombre d'appels","Sa surcharge"],"correctChoice":1,"expectedKeywords":[]},{"code":"JAVA-04-Q2","type":"FREE_TEXT","prompt":"Relie portée locale et réduction des effets de bord.","choices":[],"correctChoice":null,"expectedKeywords":["portée","local","état","effet"]}],
-  "checklist":["Je définis une signature cohérente","Je retourne un résultat calculé","Je limite la portée des variables"]
+  "code": "JAVA-04",
+  "language": "JAVA",
+  "number": 4,
+  "slug": "methodes-parametres-portee",
+  "title": "Méthodes, paramètres, retour, portée et surcharge",
+  "difficulty": "BASE",
+  "threshold": 70,
+  "activityType": "LAB",
+  "prerequisites": [
+    "JAVA-03"
+  ],
+  "objectives": [
+    "Extraire une opération dans une méthode avec des paramètres typés et un type de retour.",
+    "Expliquer que Java passe les valeurs primitives par copie : modifier un paramètre ne modifie pas l'appelant.",
+    "Écrire des surcharges et prédire quelle version est appelée.",
+    "Préférer une méthode qui retourne un résultat à une méthode qui affiche."
+  ],
+  "sections": [
+    {
+      "title": "Le problème : le même calcul recopié partout",
+      "content": "Sans méthode, un calcul est recopié à chaque endroit où il sert, et une correction doit être refaite partout. Une méthode donne un nom à une opération : ses paramètres décrivent les entrées, son type de retour décrit le résultat observable.\n```java\nstatic int sum(int a, int b) {\n    return a + b;\n}\n```\nLe contrat tient dans la signature : sum prend deux int et rend un int. L'appelant n'a pas besoin de savoir comment."
+    },
+    {
+      "title": "Exemple résolu : une méthode pure et ses surcharges",
+      "conceptCodes": [
+        "JAVA-METHOD-CONTRACT"
+      ],
+      "content": "Objectif : additionner deux entiers, trois entiers ou deux décimaux avec le même nom.\n\nRaisonnement, étape par étape :\n1. La méthode retourne la somme au lieu de l'afficher : elle peut ainsi être réutilisée, comparée ou testée.\n2. Les trois variantes ont des paramètres différents : c'est une surcharge, le compilateur choisit selon les types des arguments.\n3. Les paramètres sont des copies : changer a dans la méthode ne change rien chez l'appelant.\n4. La portée d'une variable locale s'arrête à l'accolade fermante de son bloc.\n```java\nstatic int sum(int a, int b)            { return a + b; }\nstatic int sum(int a, int b, int c)     { return a + b + c; }\nstatic double sum(double a, double b)   { return a + b; }\n\nSystem.out.println(sum(5, 7));        // 12\nSystem.out.println(sum(1, 2, 3));     // 6\nSystem.out.println(sum(1.5, 2.0));    // 3.5\n```\nUne méthode pure (même entrées, même sortie, aucun effet ailleurs) se teste en une ligne et se réutilise sans surprise."
+    },
+    {
+      "title": "Passage par valeur, portée et surcharge",
+      "content": "Java passe toujours une copie de la valeur. Pour un primitif, la méthode reçoit une copie du nombre :\n```java\nstatic void inc(int n) { n = n + 1; }\nint a = 5;\ninc(a);\nSystem.out.println(a);   // 5\n```\nPour un objet, la copie est celle de la référence : la méthode peut modifier l'objet, mais pas faire pointer la variable de l'appelant ailleurs.\n\nSurcharge : mêmes noms, paramètres différents. À l'appel f(5) avec f(int), f(long) et f(double), Java choisit la version la plus précise (int) ; f('a') appelle aussi f(int) car char s'élargit en int. Le type de retour seul ne suffit pas à distinguer deux méthodes. Une variable locale n'existe que dans son bloc ; réduire la portée réduit les effets de bord. Chaque chemin d'une méthode non void doit se terminer par un return, sinon : « missing return statement »."
+    },
+    {
+      "title": "Erreurs fréquentes à reconnaître",
+      "content": "1. Afficher dans une méthode de calcul au lieu de retourner : impossible à réutiliser.\n2. Croire qu'une méthode peut modifier la variable int de l'appelant.\n3. Oublier un return sur une branche : « missing return statement ».\n4. Surcharger avec des paramètres ambigus (null, int/long) sans prédire la version appelée.\n5. Déclarer une variable en dehors de son besoin réel : portée trop large.\n\nRetrouve ces pièges de mémoire avant le quiz."
+    }
+  ],
+  "keyConcepts": [
+    {
+      "code": "JAVA-METHOD-CONTRACT",
+      "name": "Contrat de méthode",
+      "definition": "La signature indique comment appeler une opération et quel résultat attendre.",
+      "whyExists": "Elle découpe un problème et rend une logique réutilisable et testable.",
+      "whyImportant": "Des méthodes courtes aux contrats clairs réduisent le couplage et facilitent les tests.",
+      "minimalExample": "static int add(int a, int b) { return a + b; }",
+      "professionalExample": "Un service de calcul de remises modifiait initialement un champ d'instance total au lieu de retourner sa valeur : deux appels successifs sur la même instance de service, utilisée par erreur comme singleton dans un contrôleur Spring, mélangeaient les montants de deux commandes différentes traitées en parallèle. Transformer la méthode en fonction pure, qui reçoit ses paramètres et retourne un résultat sans toucher d'état partagé, a supprimé le bug et rendu la méthode testable avec de simples assertions.",
+      "codeExample": "static int applyDiscount(int amount, int percent) {\n    return amount - (amount * percent / 100);\n}\n\n// Appel sans état partagé, sûr en environnement concurrent\nint order1 = applyDiscount(200, 10); // 180\nint order2 = applyDiscount(50, 20);  // 40",
+      "commonMistake": "Modifier un état caché au lieu de retourner explicitement le résultat.",
+      "masteryQuestion": "Pourquoi préférer un retour à un affichage dans une méthode de calcul ?",
+      "masteryProof": "Écrire une méthode pure et montrer deux appels avec des entrées différentes."
+    }
+  ],
+  "exercises": [
+    {
+      "code": "SUM-METHOD",
+      "title": "Créer une méthode de somme",
+      "statement": "Écris trois méthodes statiques sum qui RETOURNENT leur résultat : sum(int, int), sum(int, int, int) et sum(double, double). Affiche ensuite sum(5, 7), sum(1, 2, 3) et sum(1.5, 2.0), chacun sur sa ligne. Sortie exacte :\n12\n6\n3.5",
+      "starterCode": "public class Main {\n    // TODO 1 : écris static int sum(int a, int b) qui RETOURNE la somme\n    // TODO 2 : surcharge-la : static int sum(int a, int b, int c)\n    // TODO 3 : surcharge-la : static double sum(double a, double b)\n\n    public static void main(String[] args) {\n        // TODO 4 : affiche sum(5, 7), sum(1, 2, 3) puis sum(1.5, 2.0), chacun sur sa ligne\n    }\n}\n",
+      "expectedOutput": "12\n6\n3.5"
+    }
+  ],
+  "quiz": [
+    {
+      "code": "JAVA-04-Q1",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Prédis l'affichage :\n```java\nstatic void inc(int n) { n = n + 1; }\n\nint a = 5;\ninc(a);\nSystem.out.println(a);\n```\n",
+      "choices": [
+        "6",
+        "5",
+        "0",
+        "Erreur de compilation"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Le paramètre n est une copie de la valeur de a. Modifier n dans inc ne change pas a, qui reste 5."
+    },
+    {
+      "code": "JAVA-04-Q2",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Avec ces trois méthodes, que choisit Java pour l'appel f(5) ?\n```java\nstatic void f(int n)    { System.out.println(\"int\"); }\nstatic void f(long n)   { System.out.println(\"long\"); }\nstatic void f(double n) { System.out.println(\"double\"); }\n```\n",
+      "choices": [
+        "long",
+        "double",
+        "int",
+        "Ambigu : erreur de compilation"
+      ],
+      "correctChoice": 2,
+      "expectedKeywords": [],
+      "explanation": "Le littéral 5 est un int : la surcharge exacte f(int) est préférée aux conversions élargissantes vers long ou double."
+    },
+    {
+      "code": "JAVA-04-Q3",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Trouve le bug : pourquoi cette méthode ne compile-t-elle pas ?\n```java\nstatic int signe(int n) {\n    if (n > 0) return 1;\n    if (n < 0) return -1;\n}\n```\n",
+      "choices": [
+        "if ne peut pas contenir return",
+        "Si n vaut 0, aucun return n'est exécuté : « missing return statement »",
+        "static est interdit ici",
+        "int n devrait être long"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Toutes les branches possibles doivent retourner une valeur. Il manque un return 0 final pour le cas où n vaut 0."
+    },
+    {
+      "code": "JAVA-04-Q4",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Pourquoi préférer une méthode de calcul qui retourne un résultat plutôt qu'une méthode qui affiche ?",
+      "choices": [
+        "Parce que println est lent",
+        "Parce que le résultat retourné peut être réutilisé, comparé et testé",
+        "Parce que void est interdit",
+        "Parce que l'affichage n'existe pas en Java"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Une méthode pure sépare le calcul de la présentation : l'appelant décide quoi faire du résultat, et un test peut simplement comparer la valeur retournée."
+    },
+    {
+      "code": "JAVA-04-Q5",
+      "type": "FREE_TEXT",
+      "prompt": "Relie la portée locale des variables à la réduction des effets de bord.",
+      "choices": [],
+      "correctChoice": null,
+      "expectedKeywords": [
+        "portee",
+        "local",
+        "etat",
+        "effet",
+        "bloc"
+      ],
+      "modelAnswer": "Une variable locale n'existe que dans son bloc : aucun autre morceau de code ne peut la lire ni la modifier. Moins une variable est visible, moins il y a d'endroits où l'état peut changer de façon inattendue, donc moins d'effets de bord et plus de facilité pour raisonner sur une méthode.",
+      "explanation": "Une bonne réponse relie portée réduite, état non partagé et prévisibilité de la méthode."
+    }
+  ],
+  "checklist": [
+    "J'écris des méthodes qui retournent un résultat plutôt que d'afficher",
+    "Je sais qu'une méthode reçoit une copie des valeurs primitives",
+    "Je prédis quelle surcharge sera appelée",
+    "Je vérifie que chaque chemin d'une méthode non void retourne une valeur"
+  ]
 }

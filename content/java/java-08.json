@@ -1,9 +1,144 @@
 {
-  "code":"JAVA-08","language":"JAVA","number":8,"slug":"interfaces-classes-abstraites-contrats","title":"Interfaces, classes abstraites et contrats","difficulty":"INTERMEDIAIRE","threshold":70,"activityType":"LAB","prerequisites":["JAVA-07"],
-  "objectives":["Définir une interface minimale","Partager un comportement abstrait","Exprimer les préconditions d'un contrat"],
-  "sections":[{"title":"Contrat explicite","content":"Une interface décrit ce qu'un composant garantit sans imposer son stockage. Une classe abstraite peut partager un état ou un algorithme commun.","conceptCodes":["JAVA-INTERFACE-CONTRACT"]},{"title":"Petites interfaces","content":"Un contrat ciblé est plus facile à implémenter, simuler et faire évoluer qu'une interface regroupant des responsabilités sans rapport."}],
-  "keyConcepts":[{"code":"JAVA-INTERFACE-CONTRACT","name":"Interface comme contrat","definition":"Une interface expose les opérations garanties par une famille de composants.","whyExists":"Elle sépare l'intention de l'implémentation concrète.","whyImportant":"Elle facilite les tests, le remplacement d'une dépendance et l'évolution modulaire.","minimalExample":"interface Report { String render(); }","professionalExample":"Une interface NotificationSender regroupait initialement sendEmail, sendSms et sendPush : le fournisseur SMS de l'entreprise n'exposant pas d'API push, son implémentation devait lancer UnsupportedOperationException pour deux méthodes sur trois. En séparant l'interface en EmailSender, SmsSender et PushSender, chaque fournisseur implémente uniquement le contrat qu'il honore réellement, et les tests peuvent simuler un seul canal sans se soucier des autres.","codeExample":"interface SmsSender {\n    void send(String phoneNumber, String message);\n}\n\nclass TwilioSmsSender implements SmsSender {\n    public void send(String phoneNumber, String message) {\n        // appel à l'API Twilio\n    }\n}\n\n// Le service ne dépend que du contrat SMS, pas d'un fournisseur multicanal complet\nvoid notifyLateDelivery(SmsSender sms, String phone) {\n    sms.send(phone, \"Votre colis est retardé\");\n}","commonMistake":"Créer une interface géante que chaque classe implémente partiellement.","masteryQuestion":"Que garantit une interface que son nom seul ne garantit pas ?","masteryProof":"Définir un contrat minimal et deux implémentations cohérentes."}],
-  "exercises":[{"code":"JAVA-08-E1","title":"Rendre un rapport","statement":"Implémente le contrat et affiche exactement : Rapport: prêt","starterCode":"interface Report { String render(); }\n\n// TODO 1 : crée une classe StatusReport qui implémente Report\n//          et dont render() retourne le texte \"Rapport: prêt\".\n\npublic class Main {\n    public static void main(String[] args) {\n        // TODO 2 : utilise le contrat Report pour manipuler un StatusReport\n        // TODO 3 : affiche le résultat de render()\n    }\n}\n","expectedOutput":"Rapport: prêt"}],
-  "quiz":[{"code":"JAVA-08-Q1","type":"SINGLE_CHOICE","prompt":"Quand une classe abstraite est-elle utile ?","choices":["Pour partager état et comportement communs","Pour éviter tout contrat","Pour exposer tous les champs"],"correctChoice":0,"expectedKeywords":[]},{"code":"JAVA-08-Q2","type":"FREE_TEXT","prompt":"Pourquoi préférer une petite interface ?","choices":[],"correctChoice":null,"expectedKeywords":["responsabilité","couplage","test","contrat"]}],
-  "checklist":["Je sépare contrat et implémentation","Je limite la taille des interfaces","Je documente les garanties"]
+  "code": "JAVA-08",
+  "language": "JAVA",
+  "number": 8,
+  "slug": "interfaces-classes-abstraites-contrats",
+  "title": "Interfaces, classes abstraites et contrats",
+  "difficulty": "INTERMEDIAIRE",
+  "threshold": 70,
+  "activityType": "LAB",
+  "prerequisites": [
+    "JAVA-07"
+  ],
+  "objectives": [
+    "Définir une interface minimale et écrire plusieurs implémentations cohérentes.",
+    "Distinguer interface et classe abstraite et choisir selon le besoin de partager un état.",
+    "Repérer l'erreur de compilation d'une classe qui n'implémente pas tout le contrat.",
+    "Programmer vers l'interface (List) plutôt que vers l'implémentation (ArrayList)."
+  ],
+  "sections": [
+    {
+      "title": "Le problème : dépendre d'une implémentation qu'on ne maîtrise pas",
+      "content": "Si ton code reçoit un ArrayList partout, tu ne peux plus passer une LinkedList ni un faux objet de test. Une interface décrit ce qu'un composant garantit sans imposer comment il stocke ou calcule.\n```java\nList<String> noms = new ArrayList<>();   // déclaré avec le contrat List\nnoms.add(\"Ada\");\n```\nDemain, une autre liste (LinkedList, liste immuable, liste de test) peut prendre sa place sans changer le code qui utilise noms."
+    },
+    {
+      "title": "Exemple résolu : un contrat de rapport et deux implémentations",
+      "conceptCodes": [
+        "JAVA-INTERFACE-CONTRACT"
+      ],
+      "content": "Objectif : produire un rapport d'état ou de ventes derrière le même contrat.\n\nRaisonnement, étape par étape :\n1. Une interface minimale : interface Report { String render(); }.\n2. Deux classes concrètes qui implémentent tout le contrat.\n3. Le code qui affiche dépend de Report seulement.\n4. Pour partager du code commun (un en-tête, une date), une classe abstraite peut porter l'état et l'algorithme commun, et laisser la partie variable à ses sous-classes.\n```java\ninterface Report { String render(); }\n\nclass StatusReport implements Report {\n    public String render() { return \"Rapport: prêt\"; }\n}\nclass SalesReport implements Report {\n    public String render() { return \"Ventes: 1200\"; }\n}\n\nstatic void print(Report r) { System.out.println(r.render()); }\n```\nQuand les implémentations partagent un état ou un squelette d'algorithme, une classe abstraite évite la duplication :\n```java\nabstract class BaseReport implements Report {\n    protected String titre() { return \"[DLR] \"; }\n    public String render() { return titre() + corps(); }   // algorithme commun\n    protected abstract String corps();                    // partie variable\n}\n```"
+    },
+    {
+      "title": "Interface ou classe abstraite ?",
+      "content": "Une interface exprime un contrat sans état : une classe peut en implémenter plusieurs. Une classe abstraite ne peut pas être instanciée (new BaseReport() est refusé), peut porter des champs, des constructeurs et du code commun, mais une classe n'en hérite qu'une. Règle pratique : interface par défaut pour exprimer un rôle ; classe abstraite pour factoriser un état ou un algorithme commun.\n\nUne classe concrète qui ne définit pas toutes les méthodes du contrat est refusée : « is not abstract and does not override abstract method ». Les petites interfaces ciblées (principe de ségrégation) sont plus faciles à implémenter, à simuler dans un test et à faire évoluer qu'une grosse interface qui mélange des responsabilités. La méthode appelée dépend toujours de l'objet réel : List<String> l = new ArrayList<>(); l.getClass().getSimpleName() renvoie ArrayList."
+    },
+    {
+      "title": "Erreurs fréquentes à reconnaître",
+      "content": "1. Une interface « fourre-tout » que personne n'implémente en entier.\n2. Déclarer les variables avec la classe concrète au lieu du contrat.\n3. Essayer d'instancier une classe abstraite ou une interface.\n4. Oublier public sur la méthode qui implémente l'interface (les méthodes d'interface sont publiques).\n5. Choisir une classe abstraite alors qu'aucun état ni code commun n'est partagé.\n\nRetrouve ces pièges de mémoire avant le quiz."
+    }
+  ],
+  "keyConcepts": [
+    {
+      "code": "JAVA-INTERFACE-CONTRACT",
+      "name": "Interface comme contrat",
+      "definition": "Une interface expose les opérations garanties par une famille de composants.",
+      "whyExists": "Elle sépare l'intention de l'implémentation concrète.",
+      "whyImportant": "Elle facilite les tests, le remplacement d'une dépendance et l'évolution modulaire.",
+      "minimalExample": "interface Report { String render(); }",
+      "professionalExample": "Une interface NotificationSender regroupait initialement sendEmail, sendSms et sendPush : le fournisseur SMS de l'entreprise n'exposant pas d'API push, son implémentation devait lancer UnsupportedOperationException pour deux méthodes sur trois. En séparant l'interface en EmailSender, SmsSender et PushSender, chaque fournisseur implémente uniquement le contrat qu'il honore réellement, et les tests peuvent simuler un seul canal sans se soucier des autres.",
+      "codeExample": "interface SmsSender {\n    void send(String phoneNumber, String message);\n}\n\nclass TwilioSmsSender implements SmsSender {\n    public void send(String phoneNumber, String message) {\n        // appel à l'API Twilio\n    }\n}\n\n// Le service ne dépend que du contrat SMS, pas d'un fournisseur multicanal complet\nvoid notifyLateDelivery(SmsSender sms, String phone) {\n    sms.send(phone, \"Votre colis est retardé\");\n}",
+      "commonMistake": "Créer une interface géante que chaque classe implémente partiellement.",
+      "masteryQuestion": "Que garantit une interface que son nom seul ne garantit pas ?",
+      "masteryProof": "Définir un contrat minimal et deux implémentations cohérentes."
+    }
+  ],
+  "exercises": [
+    {
+      "code": "JAVA-08-E1",
+      "title": "Rendre un rapport",
+      "statement": "Implémente le contrat et affiche exactement : Rapport: prêt",
+      "starterCode": "interface Report { String render(); }\n\n// TODO 1 : crée une classe StatusReport qui implémente Report\n//          et dont render() retourne le texte \"Rapport: prêt\".\n\npublic class Main {\n    public static void main(String[] args) {\n        // TODO 2 : utilise le contrat Report pour manipuler un StatusReport\n        // TODO 3 : affiche le résultat de render()\n    }\n}\n",
+      "expectedOutput": "Rapport: prêt"
+    }
+  ],
+  "quiz": [
+    {
+      "code": "JAVA-08-Q1",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Quand une classe abstraite est-elle plus adaptée qu'une interface ?",
+      "choices": [
+        "Pour éviter tout contrat",
+        "Pour partager un état ou un algorithme commun entre des sous-classes",
+        "Pour exposer tous les champs",
+        "Pour permettre l'héritage multiple"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Une classe abstraite peut porter des champs et du code commun. Une interface exprime un contrat sans état, et une classe peut en implémenter plusieurs."
+    },
+    {
+      "code": "JAVA-08-Q2",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Prédis le résultat :\n```java\nList<String> l = new ArrayList<>();\nSystem.out.println(l.getClass().getSimpleName());\n```\n",
+      "choices": [
+        "List",
+        "ArrayList",
+        "Object",
+        "Erreur de compilation"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Le type déclaré est List, mais getClass() renvoie la classe réelle de l'objet : ArrayList. C'est le polymorphisme à l'œuvre."
+    },
+    {
+      "code": "JAVA-08-Q3",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Trouve le bug : pourquoi cette classe ne compile-t-elle pas ?\n```java\ninterface Report { String render(); String titre(); }\nclass Status implements Report {\n    public String render() { return \"ok\"; }\n}\n```\n",
+      "choices": [
+        "Report doit être une classe",
+        "Status n'implémente pas titre() : elle devrait le faire ou être déclarée abstract",
+        "render() ne peut pas retourner un String",
+        "Il manque static"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Une classe concrète doit définir toutes les méthodes du contrat. Sinon : « Status is not abstract and does not override abstract method titre() in Report »."
+    },
+    {
+      "code": "JAVA-08-Q4",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Pourquoi préférer plusieurs petites interfaces à une grosse ?",
+      "choices": [
+        "Pour avoir plus de fichiers",
+        "Pour que chaque implémentation ne porte que les responsabilités dont elle a besoin et soit facile à simuler dans un test",
+        "Parce que Java l'impose",
+        "Pour éviter le polymorphisme"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Un contrat ciblé évite d'implémenter des méthodes inutiles, limite le couplage et simplifie les tests et l'évolution."
+    },
+    {
+      "code": "JAVA-08-Q5",
+      "type": "FREE_TEXT",
+      "prompt": "Pourquoi préférer une petite interface, et que garantit-elle qu'un nom de classe seul ne garantit pas ?",
+      "choices": [],
+      "correctChoice": null,
+      "expectedKeywords": [
+        "responsabilite",
+        "couplage",
+        "test",
+        "contrat",
+        "garantit"
+      ],
+      "modelAnswer": "Une interface fixe par le compilateur les méthodes disponibles, leurs types et leur visibilité : le client sait ce qu'il peut appeler. Une petite interface limite le couplage, se substitue facilement par un faux objet dans un test et reste simple à implémenter, parce qu'elle ne regroupe qu'une responsabilité.",
+      "explanation": "Une bonne réponse cite le contrat vérifié par le compilateur, la faible responsabilité, le couplage réduit et la facilité de test."
+    }
+  ],
+  "checklist": [
+    "Je déclare mes variables avec l'interface, pas la classe concrète",
+    "Je choisis interface ou classe abstraite selon l'état à partager",
+    "Je sais lire l'erreur « does not override abstract method »",
+    "Je garde des interfaces petites et ciblées"
+  ]
 }

@@ -11,25 +11,30 @@
     "TERMINAL-06"
   ],
   "objectives": [
-    "Combiner navigation, copie, déplacement, boucle et test pour automatiser un rangement",
-    "Écrire un script qui classe des fichiers par extension et produit un rapport vérifiable",
-    "Rendre le script sûr : aucune suppression, vérification de l'état final"
+    "Découper un rangement en boucle, extraction d'extension, case et déplacement sans écrasement.",
+    "Prédire ce que renvoie ${f##*.} selon le nom du fichier.",
+    "Rendre un script idempotent et vérifiable : mv -n, total avant/après, sortie triée.",
+    "Relire un script comme un reviewer : espaces dans les noms, dossier vide, doublons."
   ],
   "sections": [
     {
-      "title": "Cahier des charges",
+      "title": "Le problème : un dossier en désordre à ranger sans rien perdre",
+      "content": "Un dossier vrac/ mélange documents, images, données et scripts. Le cahier des charges : classer dans docs/, images/, data/, scripts/ et autres/, sans rien supprimer ni écraser, puis afficher le nombre de fichiers par catégorie et le total, dans un ordre alphabétique pour que deux exécutions soient comparables.\n\nC'est un petit projet : il combine navigation, boucle, test, déplacement et vérification, et il se juge à des garanties plus qu'à une sortie."
+    },
+    {
+      "title": "Exemple résolu : une boucle, un case, un contrôle",
       "conceptCodes": [
         "TERMINAL-AUTOMATION"
       ],
-      "content": "Un dossier vrac/ contient des fichiers de types variés : documents, images, données, scripts et fichiers sans extension. Le script doit les classer dans docs/, images/, data/, scripts/ et autres/, sans rien supprimer ni écraser, puis afficher le nombre de fichiers par catégorie et le total. L'ordre d'affichage doit être déterministe (alphabétique), pour qu'on puisse comparer deux exécutions."
+      "content": "Raisonnement, étape par étape :\n1. Parcourir : for f in vrac/* ; ignorer ce qui n'est pas un fichier ordinaire avec [ -f \"$f\" ] || continue.\n2. Extraire l'extension : ext=\"${f##*.}\" retire tout jusqu'au dernier point. Pour LISEZMOI (sans point), la valeur vaut le nom entier : tombera dans le cas « autre ».\n3. Choisir la catégorie avec un case.\n4. Déplacer sans écraser : mkdir -p puis mv -n, variables entre guillemets.\n5. Vérifier : compter chaque dossier, additionner, comparer au nombre initial.\n```bash\nfor f in vrac/*; do\n  [ -f \"$f\" ] || continue\n  case \"${f##*.}\" in\n    pdf|txt) dir=docs ;;\n    jpg)     dir=images ;;\n    csv)     dir=data ;;\n    sh)      dir=scripts ;;\n    *)       dir=autres ;;\n  esac\n  mkdir -p \"$dir\" && mv -n \"$f\" \"$dir/\"\ndone\n```\nLa preuve d'un bon rangement est un total identique avant et après, pas l'absence d'erreur."
     },
     {
-      "title": "Démarche : boucle, case et vérification",
-      "content": "Parcours les fichiers avec une boucle for f in vrac/*, ignore ce qui n'est pas un fichier ordinaire ([ -f \"$f\" ]), déduis l'extension (${f##*.} retire tout jusqu'au dernier point ; un fichier sans point renvoie son nom entier, à traiter à part) et choisis le dossier cible avec une instruction case. Utilise mkdir -p pour créer les catégories et mv pour déplacer ; cite toujours les variables. Termine par une vérification indépendante du classement : compte les fichiers de chaque dossier avec ls | wc -l et compare le total au nombre initial."
+      "title": "Ce qui rend un script d'automatisation fiable",
+      "content": "- Idempotent : le relancer ne change pas le résultat final.\n- Prévisible : même entrée, même sortie, ordre trié.\n- Prudent : il déplace (mv -n), il ne supprime pas, il s'arrête si une hypothèse est fausse.\n- Citant : toutes les variables entre guillemets, car un nom peut contenir une espace.\n- Documenté : les fichiers inclassables vont dans autres/, jamais à la corbeille.\n\nQuestions de revue : que se passe-t-il si le dossier est vide (le joker reste littéral sans [ -f ] || continue) ? si deux fichiers portent le même nom ? si un nom contient une espace ?"
     },
     {
-      "title": "Revue professionnelle",
-      "content": "Un bon script d'automatisation est idempotent (le relancer ne casse rien), prévisible (même sortie pour la même entrée) et prudent (il déplace, il ne supprime pas, il refuse de continuer si une hypothèse est fausse). Avant de livrer, relis-le comme un reviewer : que se passe-t-il si un nom contient une espace ? si le dossier est vide ? si deux fichiers portent le même nom dans des catégories différentes ? Documente la décision prise pour les fichiers inclassables : ils vont dans autres/, jamais à la corbeille."
+      "title": "Erreurs fréquentes à reconnaître",
+      "content": "1. mv $f docs/ sans guillemets : un nom avec espace casse la commande.\n2. Oublier mv -n : un fichier de même nom est écrasé et perdu.\n3. Classer sur ${f##*.} sans traiter les fichiers sans extension.\n4. Ne pas gérer le dossier vide : la boucle traite alors le texte littéral vrac/*.\n5. Afficher le rapport dans l'ordre du système de fichiers : la sortie n'est plus reproductible.\n\nRetrouve ces pièges de mémoire avant le quiz."
     }
   ],
   "keyConcepts": [
@@ -60,56 +65,80 @@
     {
       "code": "TERMINAL-07-Q1",
       "type": "SINGLE_CHOICE",
-      "prompt": "Quelle option de mv évite d'écraser un fichier existant ?",
+      "prompt": "Que renvoie ${f##*.} pour f=\"archive.tar.gz\" ?",
       "choices": [
-        "-n",
-        "-f",
-        "-r"
+        "archive",
+        "tar.gz",
+        "gz",
+        "archive.tar"
       ],
-      "correctChoice": 0,
-      "expectedKeywords": []
+      "correctChoice": 2,
+      "expectedKeywords": [],
+      "explanation": "## retire le plus long préfixe qui finit par un point : tout jusqu'au dernier point disparaît, il reste gz. Pour un fichier sans point, la valeur est le nom entier."
     },
     {
       "code": "TERMINAL-07-Q2",
       "type": "SINGLE_CHOICE",
-      "prompt": "Que renvoie ${f##*.} pour f=vrac/rapport.pdf ?",
+      "prompt": "Prédis le résultat : photo.jpg existe déjà dans images/, et un autre photo.jpg est dans vrac/.\n```bash\nmv -n vrac/photo.jpg images/\n```\n",
       "choices": [
-        "pdf",
-        "vrac/rapport",
-        "rapport.pdf"
+        "Le fichier de vrac écrase celui d'images",
+        "Rien n'est déplacé : -n refuse d'écraser",
+        "Les deux fichiers sont fusionnés",
+        "images/photo.jpg est supprimé"
       ],
-      "correctChoice": 0,
-      "expectedKeywords": []
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "-n signifie « no clobber » : mv ne remplace pas une destination existante. Le fichier reste dans vrac, ce qui permet un traitement explicite du doublon."
     },
     {
       "code": "TERMINAL-07-Q3",
       "type": "SINGLE_CHOICE",
-      "prompt": "Qu'est-ce qu'un script idempotent ?",
+      "prompt": "Trouve le bug : un fichier s'appelle « mon rapport.pdf ».\n```bash\nmv $f docs/\n```\n",
       "choices": [
-        "Un script qu'on peut relancer sans changer le résultat final",
-        "Un script qui s'exécute plus vite",
-        "Un script qui ne produit aucune sortie"
+        "Aucun : mv gère les espaces",
+        "Sans guillemets, mv reçoit deux arguments et échoue",
+        "mv ne peut pas déplacer un pdf",
+        "Il faut utiliser cp à la place"
       ],
-      "correctChoice": 0,
-      "expectedKeywords": []
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "La variable est découpée sur l'espace : mv voit « mon » et « rapport.pdf ». On écrit mv \"$f\" docs/ pour garder le nom d'un seul tenant."
     },
     {
       "code": "TERMINAL-07-Q4",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Quel test indépendant prouve qu'aucun fichier n'a été perdu ?",
+      "choices": [
+        "Aucune erreur affichée pendant la boucle",
+        "Le total de fichiers classés est égal au nombre de fichiers de départ",
+        "La commande mv a renvoyé 0 une fois",
+        "Le dossier vrac est vide"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Comparer deux comptes mesurés indépendamment est une preuve. L'absence d'erreur ou un dossier vide ne montre pas que tout est arrivé quelque part."
+    },
+    {
+      "code": "TERMINAL-07-Q5",
       "type": "FREE_TEXT",
       "prompt": "Quelles garanties vérifies-tu avant de livrer un script qui déplace des fichiers pour toute une équipe ?",
       "choices": [],
       "correctChoice": null,
       "expectedKeywords": [
-        "écraser",
+        "ecraser",
         "total",
-        "vérification"
-      ]
+        "verification",
+        "espace",
+        "idempot"
+      ],
+      "modelAnswer": "Je vérifie qu'il ne supprime rien et n'écrase rien (mv -n), qu'il gère les noms avec espaces en citant les variables, les fichiers sans extension et le dossier vide, que l'on peut le relancer sans changer le résultat (idempotence), et qu'il se termine par une vérification du total avant/après avec un rapport trié.",
+      "explanation": "Une bonne réponse cite l'absence de suppression ou d'écrasement, les cas limites (espaces, vide, sans extension), l'idempotence et un contrôle final du total."
     }
   ],
   "checklist": [
-    "Mon script classe sans supprimer ni écraser",
-    "Il gère les fichiers sans extension et les noms avec espaces",
-    "Il se termine par une vérification du total et un rapport trié",
-    "Je peux le relancer sans changer le résultat (idempotence)"
+    "Mon script classe sans supprimer ni écraser (mv -n)",
+    "Je prédis ce que renvoie ${f##*.} pour un nom donné",
+    "Il traite espaces, fichiers sans extension et dossier vide",
+    "Il finit par un total vérifié et un rapport trié, et peut être relancé"
   ]
 }

@@ -11,25 +11,30 @@
     "TERMINAL-15"
   ],
   "objectives": [
-    "Créer et changer de branche avec git switch et fusionner avec git merge",
-    "Reconnaître, comprendre et résoudre un conflit de fusion",
-    "Utiliser .gitignore et git stash pour garder un répertoire de travail propre"
+    "Créer une branche, la fusionner et expliquer ce qu'est un conflit de fusion.",
+    "Lire les marqueurs <<<<<<<, ======= et >>>>>>> et savoir quelle version est de quel côté.",
+    "Résoudre un conflit, valider la fusion, ou l'annuler avec git merge --abort.",
+    "Ignorer des fichiers avec .gitignore sans croire que cela retire un fichier déjà suivi."
   ],
   "sections": [
     {
-      "title": "Pourquoi des branches",
+      "title": "Le problème : deux personnes ont modifié la même ligne",
+      "content": "Une branche est un pointeur léger vers un commit : en créer une ne copie rien. Elle permet de développer sans toucher à la branche principale (git switch -c feature). Le jour de la fusion, deux cas : les modifications touchent des endroits différents et Git les combine seul, ou elles touchent les mêmes lignes et Git s'arrête, car il ne peut pas deviner laquelle garder.\n```bash\ngit merge feature\n# CONFLICT (content): Merge conflict in config.txt\n# Automatic merge failed; fix conflicts and then commit the result.\n```\nUn conflit n'est pas une erreur : c'est Git qui demande une décision humaine."
+    },
+    {
+      "title": "Exemple résolu : lire un conflit et le résoudre",
       "conceptCodes": [
         "TERMINAL-GIT-BRANCHING"
       ],
-      "content": "Une branche est un pointeur léger vers un commit : en créer une ne copie rien et ne coûte presque rien. Elle permet de développer une fonctionnalité ou de laisser un assistant IA travailler sans toucher à la branche principale : git switch -c feature crée et active la branche, git switch main revient, git branch liste. Une branche par tâche, courte et ciblée, est la base d'un travail en équipe et d'une revue facile."
+      "content": "config.txt vaut mode=test sur main et mode=prod sur feature. On fusionne feature dans main.\n\nRaisonnement, étape par étape :\n1. git status --short affiche UU config.txt : modifié des deux côtés.\n2. Le fichier contient des marqueurs : au-dessus de ======= la version de la branche courante (HEAD), en dessous celle de la branche fusionnée.\n```text\n<<<<<<< HEAD\nmode=test\n=======\nmode=prod\n>>>>>>> feature\n```\n3. Décider : ici, on garde mode=prod. Éditer le fichier pour ne laisser que cette ligne, SANS les marqueurs.\n4. git add config.txt puis git commit pour terminer la fusion.\n5. Vérifier : git log --first-parent --format=%s suit la ligne principale.\nSi l'on veut tout annuler : git merge --abort ramène exactement à l'état d'avant la fusion. Après la résolution, relancer les tests : un fichier sans marqueur peut quand même être incohérent."
     },
     {
-      "title": "Fusionner et résoudre un conflit",
-      "content": "git merge feature intègre la branche feature dans la branche courante. Si les deux branches ont modifié les mêmes lignes, Git ne peut pas choisir : il s'arrête, marque le fichier avec <<<<<<<, ======= et >>>>>>> et attend ta décision. Résoudre un conflit, c'est éditer le fichier pour garder la bonne version (celle de l'une, de l'autre ou une combinaison), supprimer les marqueurs, puis git add et git commit. git merge --abort annule la fusion. git diff --name-only --diff-filter=U liste les fichiers en conflit. Un conflit n'est pas une erreur : c'est Git qui demande une décision humaine."
+      "title": ".gitignore, stash et historique propre",
+      "content": "git diff --name-only --diff-filter=U liste les fichiers en conflit. .gitignore liste les motifs à ne jamais suivre (*.log, node_modules/, .env) ; git check-ignore -v fichier explique pourquoi un fichier est ignoré. Attention : ignorer un fichier déjà suivi ne l'enlève pas du dépôt ; git rm --cached le retire de l'index sans le supprimer du disque.\n\ngit stash met de côté les modifications en cours pour changer de branche, git stash pop les rapplique. git log --first-parent suit la ligne de la branche principale sans les détails des branches fusionnées. Une branche par tâche, courte et ciblée, rend la revue et la fusion plus simples."
     },
     {
-      "title": "Garder un espace propre : .gitignore et stash",
-      "content": ".gitignore liste les motifs de fichiers à ne jamais suivre (*.log, node_modules/, .env) ; git check-ignore -v fichier explique pourquoi un fichier est ignoré. Attention : ignorer un fichier déjà suivi ne l'enlève pas du dépôt (git rm --cached le fait). git stash met de côté des modifications en cours pour changer de branche, git stash pop les rapplique. Historique propre : git log --first-parent suit la ligne de la branche principale sans les détails des branches fusionnées."
+      "title": "Erreurs fréquentes à reconnaître",
+      "content": "1. Valider un fichier qui contient encore les marqueurs <<<<<<<.\n2. Confondre les deux côtés : au-dessus de =======, c'est la branche courante.\n3. Croire qu'ajouter un fichier à .gitignore l'enlève du suivi.\n4. Fusionner sans avoir validé ou mis de côté son travail en cours.\n5. Résoudre mécaniquement sans relancer les tests.\n\nRetrouve ces pièges de mémoire avant le quiz."
     }
   ],
   "keyConcepts": [
@@ -60,56 +65,80 @@
     {
       "code": "TERMINAL-16-Q1",
       "type": "SINGLE_CHOICE",
-      "prompt": "Que fait git switch -c feature ?",
+      "prompt": "Prédis ce que git status --short affiche pour config.txt juste après un merge en conflit :",
       "choices": [
-        "Crée la branche feature et s'y place",
-        "Supprime la branche feature",
-        "Fusionne feature dans main"
+        "M config.txt",
+        "UU config.txt",
+        "?? config.txt",
+        "A config.txt"
       ],
-      "correctChoice": 0,
-      "expectedKeywords": []
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "UU (unmerged, both modified) signale un fichier modifié des deux côtés et non résolu. Le fichier contient les marqueurs de conflit."
     },
     {
       "code": "TERMINAL-16-Q2",
       "type": "SINGLE_CHOICE",
-      "prompt": "Que faire après avoir résolu les fichiers en conflit ?",
+      "prompt": "Dans ce fichier en conflit, quelle version vient de la branche sur laquelle tu fusionnes (HEAD) ?\n```text\n<<<<<<< HEAD\nB\n=======\nA\n>>>>>>> feature\n```\n",
       "choices": [
-        "git add des fichiers puis git commit",
-        "git push --force",
-        "Supprimer le dépôt et recommencer"
+        "A, sous =======",
+        "B, entre <<<<<<< HEAD et =======",
+        "Les deux, mélangées",
+        "Aucune, elles viennent de l'index"
       ],
-      "correctChoice": 0,
-      "expectedKeywords": []
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Entre <<<<<<< HEAD et ======= se trouve la version de la branche courante ; entre ======= et >>>>>>> feature, celle de la branche fusionnée."
     },
     {
       "code": "TERMINAL-16-Q3",
       "type": "SINGLE_CHOICE",
-      "prompt": "Que fait git merge --abort pendant un conflit ?",
+      "prompt": "Trouve le bug : le projet compile mal après une fusion « résolue ». Le fichier contient encore la ligne <<<<<<< HEAD. Qu'a-t-on oublié ?",
       "choices": [
-        "Annule la fusion et revient à l'état d'avant",
-        "Valide automatiquement la version de l'autre branche",
-        "Supprime la branche fusionnée"
+        "git push",
+        "Supprimer les marqueurs en ne gardant que le contenu voulu, avant git add et commit",
+        "Relancer git init",
+        "Créer une nouvelle branche"
       ],
-      "correctChoice": 0,
-      "expectedKeywords": []
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Résoudre un conflit, c'est éditer le fichier pour garder la bonne version et effacer les marqueurs, puis indexer et valider. Les marqueurs ne sont pas du code valide."
     },
     {
       "code": "TERMINAL-16-Q4",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Tu veux annuler une fusion en conflit et revenir à l'état d'avant. Quelle commande ?",
+      "choices": [
+        "git reset --hard origin",
+        "git merge --abort",
+        "git stash drop",
+        "git clean -fdx"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "git merge --abort ramène l'arbre de travail et l'index à l'état précédant la fusion. Les autres commandes sont plus destructrices ou sans rapport."
+    },
+    {
+      "code": "TERMINAL-16-Q5",
       "type": "FREE_TEXT",
-      "prompt": "Une fusion s'arrête sur un conflit dans un fichier de configuration. Décris ta démarche avant de choisir quelle version garder.",
+      "prompt": "Tu rencontres un conflit de fusion dans un fichier de configuration. Décris ta démarche pour le résoudre en sécurité.",
       "choices": [],
       "correctChoice": null,
       "expectedKeywords": [
-        "comprendre",
+        "marqueurs",
+        "choisir",
+        "add",
         "commit",
-        "tests"
-      ]
+        "test"
+      ],
+      "modelAnswer": "Je liste les fichiers en conflit (git status), j'ouvre le fichier et je lis les marqueurs pour comprendre les deux versions, je choisis (ou combine) la bonne en supprimant les marqueurs, puis git add et git commit. Je relance les tests pour vérifier la cohérence, et je peux annuler avec git merge --abort si je me suis trompé.",
+      "explanation": "Une bonne réponse cite la lecture des marqueurs, le choix de la version, git add puis commit, et une vérification par les tests ou l'annulation avec --abort."
     }
   ],
   "checklist": [
-    "Je crée une branche par tâche et je reviens sur main avec git switch",
-    "Je reconnais les marqueurs de conflit et je les supprime avant de valider",
-    "J'utilise git merge --abort si je veux repartir de zéro",
-    "Je sais que .gitignore n'enlève pas un fichier déjà suivi"
+    "Je lis les marqueurs d'un conflit et je sais de quel côté vient chaque version",
+    "Je résous, j'indexe et je valide, puis je relance les tests",
+    "Je sais annuler une fusion avec git merge --abort",
+    "Je sais que .gitignore n'enlève pas un fichier déjà suivi (git rm --cached)"
   ]
 }

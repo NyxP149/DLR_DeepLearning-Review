@@ -11,25 +11,30 @@
     "TERMINAL-14"
   ],
   "objectives": [
-    "Initialiser un dépôt et suivre le cycle modifier, indexer, valider avec git status, add et commit",
-    "Lire les différences et l'historique avec git diff et git log",
-    "Écrire des messages de commit utiles et comprendre ce que Git enregistre réellement"
+    "Situer un fichier dans les trois zones Git : répertoire de travail, index, dépôt.",
+    "Lire git status --short (M, MM, ??) et git diff --staged pour savoir ce qui sera commité.",
+    "Écrire un commit cohérent avec un message d'une ligne qui dit pourquoi.",
+    "Relire l'historique avec git log --format=%s sans dépendre d'un hash."
   ],
   "sections": [
     {
-      "title": "Les trois zones de Git",
+      "title": "Le problème : « j'ai modifié le fichier, pourquoi n'est-il pas dans le commit ? »",
+      "content": "Git organise le travail en trois zones : le répertoire de travail (tes fichiers), l'index ou staging area (ce que tu prépares pour le prochain commit) et le dépôt (l'historique validé). Un fichier modifié n'entre dans un commit que s'il a été ajouté à l'index.\n```bash\necho v2 >> f.txt\ngit commit -m \"maj\"       # no changes added to commit : f.txt est modifié mais pas indexé\ngit add f.txt\ngit commit -m \"maj\"       # cette fois, il part dans le commit\n```\ngit add déplace vers l'index, git commit enregistre l'index sous forme d'instantané avec un message."
+    },
+    {
+      "title": "Exemple résolu : un fichier modifié deux fois",
       "conceptCodes": [
         "TERMINAL-GIT-BASICS"
       ],
-      "content": "Git organise le travail en trois zones : le répertoire de travail (tes fichiers), l'index ou « staging area » (ce que tu prépares pour le prochain commit) et le dépôt (l'historique validé). git add déplace des modifications vers l'index, git commit enregistre l'index sous forme d'instantané avec un message, git status montre où en sont les fichiers (git status --short en donne une version compacte : M modifié, ?? non suivi). Comprendre ces zones explique pourquoi un fichier modifié n'est pas dans le commit tant qu'il n'a pas été ajouté."
+      "content": "Situation : f.txt est suivi. On le modifie, on l'ajoute, puis on le modifie encore. Que contient le prochain commit ?\n\nRaisonnement, étape par étape :\n1. echo v2 >> f.txt : modification dans le répertoire de travail. git status --short affiche « M f.txt » avec le M en deuxième colonne ( M).\n2. git add f.txt : la version « v2 » est copiée dans l'index. Le statut devient « M » en première colonne.\n3. echo v3 >> f.txt : une nouvelle modification, non indexée. Le statut affiche MM : l'index et le répertoire de travail diffèrent.\n4. git diff --staged montre ce qui sera commité (la version v2) ; git diff montre ce qui reste hors du commit (v3).\n5. git commit enregistre la version indexée : v3 n'y est pas.\n```bash\ngit status --short       # MM f.txt\ngit diff --staged        # +v2\ngit diff                 # +v3\n```\nLa première colonne décrit l'index, la seconde le répertoire de travail ; ?? signale un fichier non suivi."
     },
     {
-      "title": "Lire les changements et l'historique",
-      "content": "git diff montre les modifications non indexées, git diff --staged celles de l'index, et git diff --numstat résume le nombre de lignes ajoutées et supprimées par fichier. git log --oneline liste les commits, git log --format=%s n'affiche que les titres, git log -p y ajoute les différences. Chaque commit a un identifiant (hash) unique : ne le copie pas dans un script qui doit être reproductible, il change avec le contenu, l'auteur et la date. Avant de valider, relis toujours git diff : c'est la première revue de ton propre travail."
+      "title": "Lire les changements et écrire de bons commits",
+      "content": "git diff --numstat résume les lignes ajoutées et supprimées par fichier. git log --oneline liste les commits, git log --format=%s n'affiche que les titres, git log -p ajoute les différences. Chaque commit a un identifiant (hash) unique qui change avec le contenu, l'auteur et la date : ne le copie pas dans un script qui doit rester reproductible.\n\nUn commit raconte un changement cohérent : « Ajoute la validation du montant », pas « modifs ». Titre d'environ 50 caractères, à l'impératif ou au présent ; un corps facultatif explique le pourquoi. De petits commits ciblés permettent de relire, d'annuler (git revert) et de chercher un bug (git bisect). Configure ton identité une fois (git config --global user.name et user.email) et exclus secrets et fichiers générés avec .gitignore."
     },
     {
-      "title": "Bons commits",
-      "content": "Un commit raconte un changement cohérent : « Ajoute la validation du montant », pas « modifs ». Le titre fait environ 50 caractères, à l'impératif ou au présent ; un corps facultatif explique le pourquoi. Des commits petits et ciblés rendent la revue, le retour en arrière (git revert) et la recherche d'un bug (git bisect) possibles. Configure ton identité une fois (git config --global user.name et user.email) et ignore ce qui ne doit pas être versionné (secrets, dépendances, fichiers générés) avec .gitignore."
+      "title": "Erreurs fréquentes à reconnaître",
+      "content": "1. Oublier git add et croire que le commit contient tout.\n2. Valider sans relire git diff --staged : on embarque un fichier de débogage ou un secret.\n3. Un message vague (« modifs ») : l'historique devient illisible.\n4. Mélanger plusieurs sujets dans un commit : impossible à annuler proprement.\n5. Copier un hash dans un script : il change dès que l'historique change.\n\nRetrouve ces pièges de mémoire avant le quiz."
     }
   ],
   "keyConcepts": [
@@ -60,56 +65,80 @@
     {
       "code": "TERMINAL-15-Q1",
       "type": "SINGLE_CHOICE",
-      "prompt": "Quelle commande montre ce qui sera inclus dans le prochain commit ?",
+      "prompt": "Prédis ce que git status --short affiche pour f.txt :\n```bash\necho v1 > f.txt && git add f.txt && git commit -qm un\necho v2 >> f.txt\ngit add f.txt\necho v3 >> f.txt\n```\n",
       "choices": [
-        "git diff --staged",
-        "git log",
-        "git status --ignored"
+        "M f.txt",
+        " M f.txt",
+        "MM f.txt",
+        "?? f.txt"
       ],
-      "correctChoice": 0,
-      "expectedKeywords": []
+      "correctChoice": 2,
+      "expectedKeywords": [],
+      "explanation": "La première M signifie « modifié et indexé » (v2 est dans l'index), la seconde « modifié dans le répertoire de travail depuis l'indexation » (v3). Le commit n'enregistrerait que v2."
     },
     {
       "code": "TERMINAL-15-Q2",
       "type": "SINGLE_CHOICE",
-      "prompt": "Que signifie « ?? » dans git status --short ?",
+      "prompt": "Trouve le bug : après avoir modifié app.txt, « git commit -m \"maj\" » répond « no changes added to commit ». Que faut-il faire ?",
       "choices": [
-        "Le fichier n'est pas suivi par Git",
-        "Le fichier est supprimé",
-        "Le fichier est en conflit"
+        "git push",
+        "Indexer le fichier avec git add app.txt (ou commit -a), puis valider",
+        "Supprimer le dossier .git",
+        "Relancer git init"
       ],
-      "correctChoice": 0,
-      "expectedKeywords": []
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Une modification n'est commitée que si elle est dans l'index. git add app.txt la place dans l'index ; git commit -a indexe les fichiers déjà suivis."
     },
     {
       "code": "TERMINAL-15-Q3",
       "type": "SINGLE_CHOICE",
-      "prompt": "Pourquoi éviter de recopier un hash de commit dans un script reproductible ?",
+      "prompt": "Quelle commande montre ce qui sera enregistré par le prochain commit ?",
       "choices": [
-        "Il change avec le contenu, l'auteur et la date",
-        "Il est secret",
-        "Il est limité à 7 caractères"
+        "git diff",
+        "git diff --staged",
+        "git log -p",
+        "git stash list"
       ],
-      "correctChoice": 0,
-      "expectedKeywords": []
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "git diff compare le répertoire de travail à l'index ; git diff --staged compare l'index au dernier commit, c'est-à-dire le contenu du prochain commit."
     },
     {
       "code": "TERMINAL-15-Q4",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Pourquoi éviter de copier un hash de commit dans un script reproductible ?",
+      "choices": [
+        "Les hash sont secrets",
+        "Le hash change dès que le contenu, l'auteur ou la date change",
+        "Git refuse de les afficher",
+        "Ils sont trop longs"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Un hash identifie un commit précis. Réécrire l'historique ou refaire le même commit produit un autre hash : pour un rapport reproductible, on lit les titres avec git log --format=%s."
+    },
+    {
+      "code": "TERMINAL-15-Q5",
       "type": "FREE_TEXT",
-      "prompt": "Quelles habitudes adoptes-tu avant chaque commit pour garder un historique exploitable ?",
+      "prompt": "Explique à un collègue pourquoi Git a un index entre le répertoire de travail et le dépôt, et comment tu l'utilises pour faire de bons commits.",
       "choices": [],
       "correctChoice": null,
       "expectedKeywords": [
-        "git diff",
-        "message",
-        "cohérent"
-      ]
+        "index",
+        "add",
+        "commit",
+        "coherent",
+        "diff"
+      ],
+      "modelAnswer": "L'index permet de composer le prochain commit : je choisis avec git add exactement les modifications qui forment un changement cohérent, même si j'en ai fait plusieurs à la fois. Je relis ensuite git diff --staged avant de valider, puis j'écris un message clair. Le dépôt contient alors des instantanés petits et ciblés.",
+      "explanation": "Une bonne réponse présente l'index comme zone de préparation, cite git add, git diff --staged et un commit cohérent à message explicite."
     }
   ],
   "checklist": [
-    "Je nomme les trois zones : répertoire de travail, index, dépôt",
-    "Je relis git diff avant chaque commit",
-    "J'écris des messages qui expliquent le changement",
-    "J'ignore secrets et fichiers générés avec .gitignore"
+    "Je situe un fichier dans le répertoire de travail, l'index ou le dépôt",
+    "Je lis M, MM et ?? dans git status --short",
+    "Je relis git diff --staged avant chaque commit",
+    "J'écris des commits petits et cohérents avec un message clair"
   ]
 }

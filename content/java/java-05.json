@@ -1,9 +1,144 @@
 {
-  "code":"JAVA-05","language":"JAVA","number":5,"slug":"tableaux-chaines-donnees","title":"Tableaux, chaînes et manipulation de données","difficulty":"BASE","threshold":70,"activityType":"LAB","prerequisites":["JAVA-04"],
-  "objectives":["Parcourir un tableau sans dépasser ses limites","Utiliser les opérations essentielles de String","Transformer une collection de valeurs"],
-  "sections":[{"title":"Une séquence indexée","content":"Un tableau possède une taille fixe et des indices de 0 à length - 1. Une boucle foreach convient lorsqu'on n'a pas besoin de l'indice."},{"title":"String est immuable","content":"Toute transformation de String produit une nouvelle valeur. StringBuilder évite les copies répétées lors de nombreuses concaténations."}],
-  "keyConcepts":[{"code":"JAVA-IMMUTABLE-STRING","name":"Immutabilité de String","definition":"Une chaîne existante ne change jamais après sa création.","whyExists":"Elle rend le partage des chaînes sûr et prévisible.","whyImportant":"Ignorer l'immutabilité provoque des résultats perdus et des concaténations coûteuses.","minimalExample":"String upper = name.toUpperCase();","professionalExample":"Un formulaire d'inscription compare l'email saisi à celui stocké en base après un trim() et un toLowerCase(), mais le code appelle simplement email.trim() sans réaffecter le résultat : la variable d'origine, avec ses espaces, reste inchangée et la comparaison échoue silencieusement pour certains utilisateurs. Comme String est immuable, chaque méthode de transformation renvoie une nouvelle chaîne qu'il faut explicitement capturer, sans quoi l'appel n'a aucun effet observable.","codeExample":"String rawEmail = \"  User@Example.com \";\nString normalized = rawEmail.trim().toLowerCase(); // nouvelle chaîne capturée\nif (normalized.equals(storedEmail)) {\n    login(normalized);\n}\n// Bug fréquent : rawEmail.trim(); puis comparer rawEmail (jamais modifié)","commonMistake":"Appeler trim() sans conserver la valeur retournée.","masteryQuestion":"Pourquoi une méthode de String retourne-t-elle une nouvelle chaîne ?","masteryProof":"Transformer une chaîne en conservant clairement chaque résultat."}],
-  "exercises":[{"code":"REVERSE-DLR","title":"Inverser une chaîne","statement":"Inverse la chaîne DLR avec une boucle ou StringBuilder et affiche exactement : RLD","starterCode":"public class Main {\n    public static void main(String[] args) {\n        String value = \"DLR\";\n    }\n}\n","expectedOutput":"RLD"}],
-  "quiz":[{"code":"JAVA-05-Q1","type":"SINGLE_CHOICE","prompt":"Quel est le dernier indice d'un tableau de longueur n ?","choices":["n","n - 1","1","n + 1"],"correctChoice":1,"expectedKeywords":[]},{"code":"JAVA-05-Q2","type":"FREE_TEXT","prompt":"Explique quand préférer StringBuilder à la concaténation répétée.","choices":[],"correctChoice":null,"expectedKeywords":["boucle","concaténation","copies","performance"]}],
-  "checklist":["Je respecte les bornes d'un tableau","Je comprends l'immutabilité de String","Je sais choisir StringBuilder"]
+  "code": "JAVA-05",
+  "language": "JAVA",
+  "number": 5,
+  "slug": "tableaux-chaines-donnees",
+  "title": "Tableaux, chaînes et manipulation de données",
+  "difficulty": "BASE",
+  "threshold": 70,
+  "activityType": "LAB",
+  "prerequisites": [
+    "JAVA-04"
+  ],
+  "objectives": [
+    "Parcourir un tableau avec ses indices de 0 à length - 1 sans les dépasser.",
+    "Expliquer l'immutabilité de String et choisir StringBuilder pour construire un texte.",
+    "Comparer deux chaînes avec equals et non avec ==.",
+    "Prédire les valeurs par défaut d'un tableau et l'exception d'un indice invalide."
+  ],
+  "sections": [
+    {
+      "title": "Le problème : manipuler plusieurs valeurs sans se tromper de case",
+      "content": "Un tableau range des valeurs de même type dans des cases numérotées à partir de 0. Sa taille est fixe, et l'accès hors limites est une erreur d'exécution, pas de compilation :\n```java\nint[] t = new int[3];       // [0, 0, 0] : trois cases, indices 0, 1, 2\nSystem.out.println(t[3]);   // ArrayIndexOutOfBoundsException : Index 3 out of bounds for length 3\n```\nLes chaînes (String) sont des suites de caractères avec leurs propres règles : elles sont immuables."
+    },
+    {
+      "title": "Exemple résolu : maximum, moyenne et initiales",
+      "conceptCodes": [
+        "JAVA-IMMUTABLE-STRING"
+      ],
+      "content": "Problème : à partir de notes {12, 8, 15, 10} et de la phrase « Deep Learning Review », trouver le maximum, la moyenne et les initiales.\n\nRaisonnement, étape par étape :\n1. Maximum : partir de la première valeur, parcourir le tableau, remplacer le maximum quand une valeur est plus grande. On commence à notes[0], pas à 0, pour gérer aussi les valeurs négatives.\n2. Moyenne : additionner dans un int, puis diviser par notes.length avec un opérande double pour éviter la division entière.\n3. Initiales : split(\" \") découpe la phrase en mots, charAt(0) prend le premier caractère de chacun, un StringBuilder rassemble le résultat.\n```java\nint max = notes[0];\nint sum = 0;\nfor (int note : notes) {          // foreach : pas besoin de l'indice\n    if (note > max) max = note;\n    sum += note;\n}\ndouble moyenne = (double) sum / notes.length;      // 11.25\n\nStringBuilder initiales = new StringBuilder();\nfor (String mot : \"Deep Learning Review\".split(\" \")) {\n    initiales.append(mot.charAt(0));               // DLR\n}\n```\nLe parcours foreach convient quand on n'a pas besoin de l'indice ; la boucle for classique sert quand l'indice compte (parcours inversé, deux tableaux en parallèle)."
+    },
+    {
+      "title": "String est immuable",
+      "content": "Aucune méthode de String ne modifie la chaîne : elle retourne une nouvelle valeur.\n```java\nString s = \"dlr\";\ns.toUpperCase();              // le résultat est jeté\nSystem.out.println(s);        // dlr\ns = s.toUpperCase();          // il faut le récupérer\n```\nConcaténer dans une boucle crée une nouvelle chaîne à chaque tour : utilise StringBuilder (append, reverse, toString), qui modifie un tampon unique.\n\nComparaison : == compare les références, equals compare le contenu. new String(\"java\") == \"java\" vaut false alors que equals vaut true. Utilise toujours equals pour les textes. Valeurs par défaut d'un tableau : 0 pour les nombres, false pour boolean, null pour les objets (donc String[] contient des null, et appeler length() dessus lève NullPointerException)."
+    },
+    {
+      "title": "Erreurs fréquentes à reconnaître",
+      "content": "1. Boucler jusqu'à <= length au lieu de < length.\n2. Comparer des String avec ==.\n3. Appeler toUpperCase() sans réaffecter le résultat.\n4. Concaténer dans une grande boucle avec +.\n5. Diviser une somme entière par length sans passer par double.\n\nRetrouve ces pièges de mémoire avant le quiz."
+    }
+  ],
+  "keyConcepts": [
+    {
+      "code": "JAVA-IMMUTABLE-STRING",
+      "name": "Immutabilité de String",
+      "definition": "Une chaîne existante ne change jamais après sa création.",
+      "whyExists": "Elle rend le partage des chaînes sûr et prévisible.",
+      "whyImportant": "Ignorer l'immutabilité provoque des résultats perdus et des concaténations coûteuses.",
+      "minimalExample": "String upper = name.toUpperCase();",
+      "professionalExample": "Un formulaire d'inscription compare l'email saisi à celui stocké en base après un trim() et un toLowerCase(), mais le code appelle simplement email.trim() sans réaffecter le résultat : la variable d'origine, avec ses espaces, reste inchangée et la comparaison échoue silencieusement pour certains utilisateurs. Comme String est immuable, chaque méthode de transformation renvoie une nouvelle chaîne qu'il faut explicitement capturer, sans quoi l'appel n'a aucun effet observable.",
+      "codeExample": "String rawEmail = \"  User@Example.com \";\nString normalized = rawEmail.trim().toLowerCase(); // nouvelle chaîne capturée\nif (normalized.equals(storedEmail)) {\n    login(normalized);\n}\n// Bug fréquent : rawEmail.trim(); puis comparer rawEmail (jamais modifié)",
+      "commonMistake": "Appeler trim() sans conserver la valeur retournée.",
+      "masteryQuestion": "Pourquoi une méthode de String retourne-t-elle une nouvelle chaîne ?",
+      "masteryProof": "Transformer une chaîne en conservant clairement chaque résultat."
+    }
+  ],
+  "exercises": [
+    {
+      "code": "REVERSE-DLR",
+      "title": "Inverser une chaîne et analyser des notes",
+      "statement": "Complète main pour afficher exactement :\nRLD\nmax=15\nmoyenne=11.25\nDLR\n(la chaîne DLR inversée, le maximum et la moyenne du tableau notes avec deux décimales, puis les initiales de la phrase).",
+      "starterCode": "import java.util.Locale;\n\npublic class Main {\n    public static void main(String[] args) {\n        String value = \"DLR\";\n        int[] notes = {12, 8, 15, 10};\n        String phrase = \"Deep Learning Review\";\n        // TODO 1 : inverse value avec StringBuilder (reverse) et affiche le résultat\n        // TODO 2 : parcours notes pour trouver le maximum ; affiche \"max=\" + max\n        // TODO 3 : calcule la moyenne en double ; affiche \"moyenne=\" suivie de la valeur à 2 décimales\n        //          (String.format(Locale.ROOT, \"%.2f\", moyenne))\n        // TODO 4 : construis les initiales de phrase (split(\" \") et charAt(0)) et affiche-les\n    }\n}\n",
+      "expectedOutput": "RLD\nmax=15\nmoyenne=11.25\nDLR"
+    }
+  ],
+  "quiz": [
+    {
+      "code": "JAVA-05-Q1",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Prédis l'affichage :\n```java\nString s = \"dlr\";\ns.toUpperCase();\nSystem.out.println(s);\n```\n",
+      "choices": [
+        "DLR",
+        "dlr",
+        "null",
+        "Erreur de compilation"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "String est immuable : toUpperCase() retourne une nouvelle chaîne que le code jette. s vaut toujours « dlr ». Il faut écrire s = s.toUpperCase()."
+    },
+    {
+      "code": "JAVA-05-Q2",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Prédis le résultat :\n```java\nint[] t = new int[3];\nSystem.out.println(t[3]);\n```\n",
+      "choices": [
+        "0",
+        "null",
+        "ArrayIndexOutOfBoundsException à l'exécution",
+        "Erreur de compilation"
+      ],
+      "correctChoice": 2,
+      "expectedKeywords": [],
+      "explanation": "Les indices valides vont de 0 à 2. Accéder à t[3] est détecté à l'exécution : « Index 3 out of bounds for length 3 »."
+    },
+    {
+      "code": "JAVA-05-Q3",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Prédis les deux valeurs :\n```java\nString a = \"java\";\nString b = new String(\"java\");\nSystem.out.println(a == b);\nSystem.out.println(a.equals(b));\n```\n",
+      "choices": [
+        "true puis true",
+        "false puis true",
+        "true puis false",
+        "false puis false"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "== compare les références : a et b sont deux objets distincts. equals compare le contenu et renvoie true. Pour du texte, utilise toujours equals."
+    },
+    {
+      "code": "JAVA-05-Q4",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Quelle valeur contient new int[3] avant toute affectation ?",
+      "choices": [
+        "null, null, null",
+        "0, 0, 0",
+        "Aucune : le tableau est vide",
+        "Des valeurs aléatoires"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Java initialise un tableau de int à zéro (false pour boolean, null pour les objets). Il n'y a jamais de valeur aléatoire."
+    },
+    {
+      "code": "JAVA-05-Q5",
+      "type": "FREE_TEXT",
+      "prompt": "Explique quand préférer StringBuilder à la concaténation répétée avec +, et pourquoi String est immuable.",
+      "choices": [],
+      "correctChoice": null,
+      "expectedKeywords": [
+        "boucle",
+        "concatenation",
+        "copie",
+        "performance",
+        "immuable"
+      ],
+      "modelAnswer": "Une String ne peut pas être modifiée : chaque concaténation crée une nouvelle chaîne et copie l'ancienne. Dans une boucle, cela multiplie les copies et dégrade la performance. StringBuilder modifie un tampon unique avec append, puis on appelle toString() une seule fois. L'immutabilité rend les chaînes sûres à partager et à utiliser comme clés.",
+      "explanation": "Une bonne réponse oppose les copies de la concaténation dans une boucle au tampon unique du StringBuilder et cite l'immutabilité."
+    }
+  ],
+  "checklist": [
+    "Je parcours un tableau avec les bons indices (0 à length - 1)",
+    "Je compare des String avec equals",
+    "Je récupère le résultat d'une méthode de String au lieu de le jeter",
+    "J'utilise StringBuilder pour construire un texte dans une boucle"
+  ]
 }

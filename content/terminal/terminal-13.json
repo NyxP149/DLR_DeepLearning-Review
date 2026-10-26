@@ -11,25 +11,30 @@
     "TERMINAL-12"
   ],
   "objectives": [
-    "Écrire un script avec shebang, arguments, fonctions, conditions et codes de sortie explicites",
-    "Activer le mode strict (set -euo pipefail) et comprendre ce qu'il protège",
-    "Nettoyer proprement avec trap, quel que soit le résultat du script"
+    "Écrire un script qui vérifie ses arguments et se termine avec des codes de sortie distincts.",
+    "Expliquer ce que protègent set -e, set -u et pipefail et prédire quand un script s'arrête.",
+    "Garantir un nettoyage final avec trap ... EXIT, même en cas d'échec.",
+    "Utiliser local et $(...) pour des fonctions qui ne polluent pas le script."
   ],
   "sections": [
     {
-      "title": "Structure d'un script",
+      "title": "Le problème : un script qui continue après une erreur",
+      "content": "Par défaut, bash continue après une commande qui échoue. Un script de sauvegarde dont la première étape échoue peut donc supprimer l'ancienne copie quand même :\n```bash\ncp -r projet sauvegarde      # échoue (disque plein)\nrm -rf ancienne_sauvegarde   # s'exécute malgré tout\n```\nUn script fiable décide à l'avance ce qui arrive en cas d'erreur : il vérifie ses arguments, renvoie un code de sortie qui dit ce qui s'est passé (0 succès, 1 erreur générale, 2 mauvais usage, 126/127 commande non exécutable ou introuvable) et nettoie derrière lui."
+    },
+    {
+      "title": "Exemple résolu : une fonction qui valide, échoue proprement et nettoie",
       "conceptCodes": [
         "TERMINAL-BASH-SCRIPTING"
       ],
-      "content": "Un script commence par un shebang (#!/usr/bin/env bash) qui indique l'interpréteur, puis les définitions de fonctions, puis le programme principal. Les arguments sont dans $1, $2, … ; $# donne leur nombre, \"$@\" les transmet tous en préservant les espaces, $0 est le nom du script. Un script doit documenter son usage et le rappeler quand les arguments sont faux, sur stderr, avec un code de sortie non nul."
+      "content": "Objectif : lire_config accepte un seul argument, qui doit être un fichier existant, et le script nettoie toujours son fichier temporaire.\n\nRaisonnement, étape par étape :\n1. Mode strict en tête : set -euo pipefail.\n2. Nettoyage garanti : une fonction cleanup, branchée avec trap cleanup EXIT. Elle s'exécute quand le script se termine, par succès, par erreur ou par exit.\n3. Vérifier le nombre d'arguments ($#) : sinon message sur stderr et return 2.\n4. Vérifier que c'est un fichier ([ -f \"$1\" ]) : sinon return 3.\n5. L'appelant lit le code : lire_config || echo \"code $?\".\n```bash\nset -euo pipefail\ncleanup() { echo \"nettoyage\"; }\ntrap cleanup EXIT\n\nlire_config() {\n  [ \"$#\" -eq 1 ] || { echo \"usage: lire_config fichier\" >&2; return 2; }\n  [ -f \"$1\" ]    || { echo \"fichier absent: $1\" >&2; return 3; }\n  wc -l < \"$1\"\n}\n\nlire_config 2>/dev/null || echo \"code $?\"   # code 2\nlire_config absent 2>/dev/null || echo \"code $?\"   # code 3\n```\nUn code par cause rend l'échec exploitable par l'appelant (humain, CI ou autre script), alors qu'un simple « erreur » ne l'est pas."
     },
     {
-      "title": "Codes de sortie et mode strict",
-      "content": "Chaque commande renvoie un code : 0 signifie succès, tout autre nombre un échec ; $? donne le dernier. if commande ; then utilise ce code, commande || action s'exécute en cas d'échec. Convention : 1 pour une erreur générale, 2 pour un mauvais usage, 126/127 pour commande non exécutable/introuvable. Le mode strict set -euo pipefail arrête le script à la première commande en échec (-e), refuse les variables non définies (-u) et fait échouer un pipeline si l'un de ses maillons échoue (pipefail). Il ne remplace pas de vrais contrôles, mais il évite qu'un script continue en terrain inconnu."
+      "title": "Mode strict, fonctions et trap",
+      "content": "set -e arrête le script à la première commande en échec ; set -u refuse une variable non définie (une faute de frappe devient une erreur) ; set -o pipefail fait échouer un pipeline si l'un de ses maillons échoue (sans cela, le code d'un pipeline est celui de la dernière commande). Le mode strict n'est pas une garantie : une commande suivie de || true est tolérée, et un test dans un if n'arrête pas le script.\n\nUne fonction retourne un code (return 2), pas une valeur : pour « retourner » du texte on l'affiche, et l'appelant le capture avec $(...). Déclare local les variables internes. trap 'commande' EXIT joue le rôle d'un finally. Contrôle la syntaxe avec bash -n et l'analyse statique avec ShellCheck."
     },
     {
-      "title": "Fonctions, local et trap",
-      "content": "Les fonctions retournent un code (return 2), pas une valeur : pour « retourner » du texte, on l'affiche et l'appelant le capture avec $(...). Déclare local les variables internes pour ne pas polluer le script. trap 'commande' EXIT exécute un nettoyage (fichiers temporaires, verrous) à la fin du script, qu'il réussisse, échoue ou soit interrompu : c'est l'équivalent d'un finally. Teste tes scripts avec ShellCheck (outil d'analyse statique) et exécute-les avec bash -n pour vérifier leur syntaxe."
+      "title": "Erreurs fréquentes à reconnaître",
+      "content": "1. Compter sur set -e sans pipefail : curl | tar réussit si tar réussit, même si curl a échoué.\n2. Oublier de citer \"$@\" et casser les arguments contenant des espaces.\n3. Utiliser une variable sans la déclarer local : elle fuit dans le reste du script.\n4. Écrire les messages d'erreur sur stdout : ils se mélangent aux résultats.\n5. Renvoyer toujours 1 : l'appelant ne sait pas si l'usage était faux ou si la ressource manquait.\n\nRetrouve ces pièges de mémoire avant le quiz."
     }
   ],
   "keyConcepts": [
@@ -60,56 +65,80 @@
     {
       "code": "TERMINAL-13-Q1",
       "type": "SINGLE_CHOICE",
-      "prompt": "Que fait set -u ?",
+      "prompt": "Prédis l'affichage :\n```bash\nset -e\nfalse\necho \"après\"\n```\n",
       "choices": [
-        "Provoque une erreur si on utilise une variable non définie",
-        "Désactive l'affichage des erreurs",
-        "Fait échouer le script en cas de pipe"
+        "après",
+        "Rien : le script s'arrête sur false avec le code 1",
+        "false puis après",
+        "Une erreur de syntaxe"
       ],
-      "correctChoice": 0,
-      "expectedKeywords": []
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Avec set -e, la première commande qui échoue (false renvoie 1) arrête le script avant la ligne suivante. Sans set -e, « après » s'afficherait."
     },
     {
       "code": "TERMINAL-13-Q2",
       "type": "SINGLE_CHOICE",
-      "prompt": "Quand la commande définie par trap ... EXIT s'exécute-t-elle ?",
+      "prompt": "Prédis l'ordre des lignes et le code de sortie :\n```bash\ntrap 'echo nettoyage' EXIT\necho travail\nexit 3\n```\n",
       "choices": [
-        "À la fin du script, qu'il réussisse ou échoue",
-        "Seulement en cas de succès",
-        "Seulement si l'utilisateur appuie sur Ctrl+C"
+        "travail puis nettoyage ; code 3",
+        "nettoyage puis travail ; code 0",
+        "travail seulement ; code 3",
+        "travail puis nettoyage ; code 0"
       ],
       "correctChoice": 0,
-      "expectedKeywords": []
+      "expectedKeywords": [],
+      "explanation": "trap EXIT s'exécute à la fin du script, y compris sur un exit explicite, et le code de sortie reste celui demandé (3)."
     },
     {
       "code": "TERMINAL-13-Q3",
       "type": "SINGLE_CHOICE",
-      "prompt": "Que contient \"$@\" ?",
+      "prompt": "Trouve le bug : « curl -f $URL | tar xz » échoue côté curl mais le script continue sans erreur. Pourquoi ?",
       "choices": [
-        "Tous les arguments, chacun préservé tel quel",
-        "Le nom du script",
-        "Le code de sortie de la dernière commande"
+        "tar ne signale jamais d'erreur",
+        "Sans pipefail, le code du pipeline est celui de la dernière commande (tar)",
+        "set -e n'existe pas dans un pipe",
+        "curl renvoie toujours 0"
       ],
-      "correctChoice": 0,
-      "expectedKeywords": []
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Dans un pipeline, bash renvoie par défaut le code de la dernière commande. set -o pipefail fait échouer le pipeline si un maillon échoue."
     },
     {
       "code": "TERMINAL-13-Q4",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Que se passe-t-il avec set -u quand le script lit une variable $nope non définie ?",
+      "choices": [
+        "Elle vaut une chaîne vide, le script continue",
+        "Le script s'arrête avec « unbound variable »",
+        "Elle vaut 0",
+        "Un avertissement est affiché puis le script continue"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "set -u transforme l'usage d'une variable non définie en erreur. Cela évite par exemple rm -rf \"$DOSSIER\"/* quand DOSSIER est vide ou mal orthographié."
+    },
+    {
+      "code": "TERMINAL-13-Q5",
       "type": "FREE_TEXT",
-      "prompt": "Un script de déploiement continue après l'échec d'une étape. Quelles mesures de robustesse ajoutes-tu ?",
+      "prompt": "Pourquoi un script devrait-il renvoyer des codes de sortie distincts (2 pour un mauvais usage, 3 pour un dossier absent) et écrire ses erreurs sur stderr ?",
       "choices": [],
       "correctChoice": null,
       "expectedKeywords": [
-        "set -e",
-        "code de sortie",
-        "trap"
-      ]
+        "code",
+        "sortie",
+        "usage",
+        "stderr",
+        "appelant"
+      ],
+      "modelAnswer": "Un code par cause permet à l'appelant (humain, intégration continue, autre script) de réagir différemment : corriger l'appel pour 2, créer le dossier pour 3. Écrire les messages sur stderr garde stdout propre pour les résultats exploitables et laisse la possibilité de journaliser les erreurs à part.",
+      "explanation": "Une bonne réponse relie le code à une décision de l'appelant et explique que stderr sépare erreurs et résultats."
     }
   ],
   "checklist": [
-    "Mes scripts valident leurs arguments et rappellent leur usage sur stderr",
-    "J'utilise des codes de sortie distincts et documentés",
     "J'active set -euo pipefail et je sais ce que chaque option protège",
-    "Je nettoie avec trap ... EXIT et je vérifie la syntaxe avec bash -n"
+    "Mes fonctions vérifient leurs arguments et renvoient des codes distincts",
+    "Je garantis le nettoyage avec trap ... EXIT",
+    "J'écris les erreurs sur stderr et les résultats sur stdout"
   ]
 }

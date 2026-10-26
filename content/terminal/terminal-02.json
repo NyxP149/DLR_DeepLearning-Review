@@ -11,25 +11,30 @@
     "TERMINAL-01"
   ],
   "objectives": [
-    "Créer des dossiers et des fichiers avec mkdir -p et touch",
-    "Copier, déplacer et renommer avec cp et mv, y compris avec des jokers (*.txt)",
-    "Supprimer avec rm en mesurant le risque, et vérifier le résultat avec find"
+    "Créer une arborescence avec mkdir -p et touch, puis copier avec cp et déplacer avec mv.",
+    "Prédire l'effet d'un cp ou d'un mv avec un joker, un dossier cible manquant ou une destination existante.",
+    "Réduire le risque d'un rm : afficher la cible avant, citer les variables, refuser une variable vide.",
+    "Prouver l'état final d'un rangement avec find . -type f | sort."
   ],
   "sections": [
     {
-      "title": "Créer et organiser",
+      "title": "Le problème : rm n'a pas de corbeille",
+      "content": "Au terminal, une suppression est définitive et un déplacement peut écraser sans prévenir. Un seul caractère mal placé suffit :\n```bash\nDOSSIER=\"\"\nrm -rf \"$DOSSIER\"/*     # la variable est vide : la commande devient rm -rf /*\n```\nPour travailler sans regret, on suit un cycle : afficher ce qu'on va toucher, agir, puis vérifier le résultat. Les commandes de base : mkdir -p crée toute une chaîne de dossiers sans erreur si elle existe, touch crée un fichier vide, cp copie, mv déplace ou renomme, rm supprime."
+    },
+    {
+      "title": "Exemple résolu : ranger des notes sans rien perdre",
       "conceptCodes": [
         "TERMINAL-FILE-OPERATIONS"
       ],
-      "content": "mkdir crée un dossier, et mkdir -p crée toute la chaîne sans erreur si elle existe déjà : c'est la forme à utiliser dans les scripts. touch crée un fichier vide (ou met à jour sa date). Les noms sans espace ni accent sont plus simples à manipuler ; si un nom contient des espaces, il faut le mettre entre guillemets : cp \"mon fichier.txt\" copie/."
+      "content": "Situation : le dossier notes contient a.txt, b.txt et c.log. On veut copier les .txt dans archive/2024 et déplacer c.log dans archive.\n\nRaisonnement, étape par étape :\n1. Créer la destination d'abord : mkdir -p archive/2024 (cp ne crée jamais un dossier).\n2. Copier avec un joker : cp notes/*.txt archive/2024/. Le shell remplace *.txt par la liste notes/a.txt notes/b.txt avant d'appeler cp.\n3. Déplacer : mv notes/c.log archive/. Le fichier quitte notes.\n4. Vérifier avec find . -type f | sort au lieu de croire.\n```bash\nmkdir -p archive/2024\ncp notes/*.txt archive/2024/\nmv notes/c.log archive/\nfind . -type f | sort\n# ./archive/2024/a.txt  ./archive/2024/b.txt  ./archive/c.log  ./notes/a.txt  ./notes/b.txt\n```\nLe copier laisse l'original en place (notes/a.txt existe encore), le déplacer non. Vérifier ensuite transforme une impression en preuve."
     },
     {
-      "title": "Copier, déplacer, renommer",
-      "content": "cp source destination copie un fichier ; cp -r copie un dossier et son contenu. mv source destination déplace, et renomme si la destination est dans le même dossier : mv ancien.txt nouveau.txt. Les jokers sont développés par le shell avant l'exécution : *.txt devient la liste des fichiers .txt du dossier courant. Attention : si la destination existe déjà, cp et mv l'écrasent silencieusement, sauf avec l'option -i qui demande confirmation."
+      "title": "Ce qu'il faut savoir avant de supprimer ou d'écraser",
+      "content": "- cp et mv écrasent la destination sans avertir si elle existe ; -i demande confirmation, -n refuse d'écraser.\n- Avec plusieurs sources (cp a b c), la destination doit être un dossier existant, sinon cp échoue.\n- rm -r supprime un dossier et son contenu, rm -f supprime sans poser de question. rm -rf avec un chemin mal construit a détruit des projets entiers.\n- Un nom avec une espace doit être cité : cp \"mon fichier.txt\" archive/.\n- Réflexes : ls ou echo avant rm, rm -i quand on hésite, \"${DOSSIER:?}\" pour refuser une variable vide.\nSous PowerShell : New-Item, Copy-Item, Move-Item, Remove-Item (avec -WhatIf pour simuler)."
     },
     {
-      "title": "Supprimer sans regret",
-      "content": "rm supprime définitivement : il n'y a pas de corbeille au terminal. rm -r supprime un dossier et tout ce qu'il contient, rm -f supprime sans poser de question. La combinaison rm -rf avec un chemin mal construit (une variable vide, un joker trop large) a détruit des projets entiers. Réflexes : afficher d'abord la liste avec ls ou echo, utiliser rm -i quand tu hésites, et vérifier le résultat avec find . -type f | sort. Sous PowerShell, les équivalents sont New-Item, Copy-Item, Move-Item et Remove-Item."
+      "title": "Erreurs fréquentes à reconnaître",
+      "content": "1. Oublier mkdir avant cp : « No such file or directory » ou copie dans un fichier nommé comme le dossier voulu.\n2. Écrire mv a.txt b.txt en pensant « renommer en b2 » : b.txt existant est écrasé.\n3. Utiliser rm -rf avec une variable non vérifiée.\n4. Croire qu'un joker liste les fichiers cachés : *.txt ne contient pas .secret.txt.\n5. Ne pas vérifier l'état final : un rangement « terminé » sans find ne prouve rien.\n\nRetrouve ces pièges de mémoire avant de commencer le quiz."
     }
   ],
   "keyConcepts": [
@@ -60,41 +65,61 @@
     {
       "code": "TERMINAL-02-Q1",
       "type": "SINGLE_CHOICE",
-      "prompt": "Quelle commande crée archive/2024 même si archive n'existe pas encore ?",
+      "prompt": "Prédis la liste des fichiers après ces commandes (a.txt contient « A », b.txt contient « B ») :\n```bash\nmv a.txt b.txt\nls\ncat b.txt\n```\n",
       "choices": [
-        "mkdir -p archive/2024",
-        "mkdir archive/2024",
-        "touch archive/2024"
+        "a.txt et b.txt ; b.txt contient « B »",
+        "b.txt seul ; b.txt contient « A »",
+        "b.txt seul ; b.txt contient « AB »",
+        "Une erreur : b.txt existe déjà"
       ],
-      "correctChoice": 0,
-      "expectedKeywords": []
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "mv remplace la destination existante sans avertir : a.txt devient b.txt et l'ancien contenu « B » est perdu. Avec mv -n l'écrasement serait évité, avec mv -i il y aurait une question."
     },
     {
       "code": "TERMINAL-02-Q2",
       "type": "SINGLE_CHOICE",
-      "prompt": "Que se passe-t-il avec mv a.txt b.txt si b.txt existe déjà ?",
+      "prompt": "Trouve le bug :\n```bash\nDOSSIER=\"$1\"\nrm -rf \"$DOSSIER\"/*\n```\nQue se passe-t-il si le script est lancé sans argument ?",
       "choices": [
-        "b.txt est écrasé sans avertissement (sauf option -i)",
-        "mv refuse toujours",
-        "Les deux fichiers sont fusionnés"
+        "Rien : rm refuse un chemin vide",
+        "La commande devient rm -rf /* et vise la racine du système",
+        "Le script affiche une aide",
+        "Seul le dossier courant est vidé"
       ],
-      "correctChoice": 0,
-      "expectedKeywords": []
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "$1 est vide, donc \"$DOSSIER\"/* devient /* : tout ce que l'utilisateur a le droit de supprimer est visé. Protection : rm -rf \"${DOSSIER:?argument manquant}\"/* ou un test [ -n \"$DOSSIER\" ] préalable."
     },
     {
       "code": "TERMINAL-02-Q3",
       "type": "SINGLE_CHOICE",
-      "prompt": "Quelle est la meilleure habitude avant un rm avec un joker ?",
+      "prompt": "notes contient a.txt et b.txt. Que fait « cp notes/*.txt archive » si archive n'existe pas ?",
       "choices": [
-        "Afficher d'abord la liste des fichiers visés (ls ou echo)",
-        "Ajouter -f pour éviter les questions",
-        "Lancer la commande en administrateur"
+        "Elle crée archive puis y copie les deux fichiers",
+        "Elle échoue : avec plusieurs sources, la destination doit être un dossier existant",
+        "Elle fusionne a.txt et b.txt dans un fichier nommé archive",
+        "Elle déplace les fichiers au lieu de les copier"
       ],
-      "correctChoice": 0,
-      "expectedKeywords": []
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Le shell développe le joker en deux sources. cp refuse alors une destination qui n'est pas un dossier existant. Il faut d'abord mkdir -p archive. (Avec une seule source, cp aurait créé un fichier nommé archive.)"
     },
     {
       "code": "TERMINAL-02-Q4",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Quelle séquence vérifie réellement l'état final d'un rangement ?",
+      "choices": [
+        "echo \"terminé\"",
+        "ls dans le dossier courant",
+        "find . -type f | sort",
+        "history | tail -1"
+      ],
+      "correctChoice": 2,
+      "expectedKeywords": [],
+      "explanation": "find . -type f | sort liste tous les fichiers, sous-dossiers compris, dans un ordre stable : on peut comparer avec l'état attendu. ls ne montre qu'un niveau, et echo n'affirme rien sur les fichiers."
+    },
+    {
+      "code": "TERMINAL-02-Q5",
       "type": "FREE_TEXT",
       "prompt": "Explique pourquoi rm -rf \"$DOSSIER\"/* est dangereux dans un script et comment tu t'en protèges.",
       "choices": [],
@@ -102,14 +127,18 @@
       "expectedKeywords": [
         "variable",
         "vide",
-        "set -u"
-      ]
+        "racine",
+        "set -u",
+        "verifier"
+      ],
+      "modelAnswer": "Si DOSSIER est vide ou non défini, la commande devient rm -rf /* et vise la racine. Je me protège avec set -u ou \"${DOSSIER:?}\" pour refuser une variable vide, en vérifiant le chemin avec ls ou echo avant la suppression, et en citant la variable.",
+      "explanation": "Une bonne réponse nomme la variable vide, le développement en /*, et au moins une protection (set -u, ${VAR:?}, test préalable, affichage avant suppression)."
     }
   ],
   "checklist": [
-    "Je crée des arborescences avec mkdir -p et des fichiers avec touch",
-    "Je distingue copier (cp), déplacer (mv) et renommer",
-    "Je sais que rm est définitif et je vérifie la cible avant de supprimer",
-    "Je contrôle le résultat final avec find ... | sort"
+    "Je crée la destination avec mkdir -p avant de copier",
+    "Je prédis si cp ou mv va écraser quelque chose",
+    "Je protège les variables dans rm avec des guillemets et ${VAR:?}",
+    "Je prouve le résultat avec find . -type f | sort"
   ]
 }

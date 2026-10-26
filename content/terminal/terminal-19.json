@@ -11,25 +11,30 @@
     "TERMINAL-18"
   ],
   "objectives": [
-    "Expliquer la boucle d'un assistant IA en terminal (lire, proposer, agir avec ton accord, observer) et ce qui le distingue d'un simple chat",
-    "Distinguer les modes interactif, plan et non interactif, et savoir reprendre ou réinitialiser une session",
-    "Rédiger une tâche structurée (objectif, contexte, contraintes, critères d'acceptation) qu'un assistant peut réussir et que tu peux vérifier"
+    "Décrire la boucle d'un assistant en terminal : lire, proposer, exécuter après accord, observer, recommencer.",
+    "Découper une demande en objectif, contexte, contraintes et critères d'acceptation vérifiables.",
+    "Choisir entre le mode interactif, le mode plan et le mode non interactif selon la tâche.",
+    "Expliquer pourquoi un « tout passe » rapporté par l'assistant n'est pas une preuve."
   ],
   "sections": [
     {
-      "title": "Un assistant qui agit dans ton dépôt",
+      "title": "Le problème : un assistant qui agit dans ton dépôt",
+      "content": "Un assistant IA en ligne de commande (Claude Code avec la commande claude, mais aussi d'autres outils) fonctionne en boucle : il lit des fichiers, propose une action (modifier un fichier, lancer une commande), l'exécute après ton accord, observe le résultat, puis recommence. Contrairement à un chat où tu recopies du code, il travaille dans ton projet avec tes outils : bien plus utile, et bien plus risqué, car il peut modifier, supprimer ou exécuter.\n\nToute la discipline de cette formation tient en une phrase : tu délègues l'exécution, tu gardes la décision et la vérification. Les noms exacts des commandes et des options évoluent vite : vérifie la documentation de la version que tu utilises."
+    },
+    {
+      "title": "Exemple résolu : transformer une demande vague en tâche vérifiable",
       "conceptCodes": [
         "TERMINAL-AI-AGENT-LOOP"
       ],
-      "content": "Un assistant IA en ligne de commande (Claude Code avec la commande claude, mais aussi Codex CLI ou Gemini CLI) fonctionne en boucle : il lit des fichiers, propose une action (modifier un fichier, lancer une commande), l'exécute après ton accord, observe le résultat, puis recommence. À la différence d'un chat où tu recopies du code, il travaille directement dans ton projet avec tes outils, ce qui le rend bien plus utile et bien plus risqué : il peut modifier, supprimer ou exécuter des choses. Toute la discipline de cette formation tient en une phrase : tu délègues l'exécution, tu gardes la décision et la vérification. Les noms exacts des commandes et des options évoluent vite : vérifie toujours la documentation de la version que tu utilises."
+      "content": "Demande initiale : « Corrige le bug du panier. » Un assistant devra deviner quel bug, où, et quand il aura fini.\n\nRaisonnement, étape par étape :\n1. Objectif : ce qui doit être vrai à la fin. « Le total du panier est arrondi au centime pour 19,99 × 3. »\n2. Contexte : où regarder, ce qui échoue. « Le test tests/test_panier.py::test_arrondi échoue dans src/panier.py. »\n3. Contraintes : ce qu'il ne faut pas toucher. « Ne pas modifier l'API publique, ne pas ajouter de dépendance, ne pas modifier les tests. »\n4. Critères d'acceptation : comment vérifier sans croire l'assistant sur parole. « make test passe ; le diff touche au plus deux fichiers. »\n```text\n## Objectif\nArrondir le total du panier au centime (19,99 x 3 = 59,97).\n## Contexte\ntests/test_panier.py::test_arrondi échoue ; la logique est dans src/panier.py.\n## Contraintes\nNe pas modifier l'API publique ni les tests ; aucune dépendance.\n## Critères d'acceptation\nmake test passe ; au plus 2 fichiers modifiés.\n```\nLes critères d'acceptation permettent de lancer la vérification toi-même : l'assistant peut se tromper avec aplomb (fonctions ou options inventées), donc aucun résultat ne se croit sans test."
     },
     {
       "title": "Modes de travail et sessions",
-      "content": "En mode interactif, tu converses et tu valides chaque action. En mode plan, l'assistant explore et propose un plan sans rien modifier : à privilégier pour une tâche non triviale, car relire un plan coûte moins cher que défaire un mauvais changement (avec Claude Code, le mode se change avec Maj+Tab ou l'option --permission-mode plan). En mode non interactif, une commande unique comme claude -p \"explique ce dépôt\" renvoie une réponse et s'intègre dans un script ou une chaîne d'intégration continue. Une session a une mémoire limitée (la fenêtre de contexte) : /clear repart de zéro entre deux tâches sans rapport, /compact résume une longue conversation, et des options comme --continue ou --resume reprennent une session précédente."
+      "content": "En mode interactif, tu converses et tu valides chaque action. En mode plan, l'assistant explore et propose un plan sans rien modifier : à privilégier pour une tâche non triviale, car relire un plan coûte moins cher que défaire un mauvais changement. En mode non interactif, une commande unique comme claude -p \"explique ce dépôt\" renvoie une réponse et s'intègre dans un script ou une intégration continue.\n\nUne session a une mémoire limitée (la fenêtre de contexte) : /clear repart de zéro entre deux tâches sans rapport, /compact résume une longue conversation, et des options comme --continue ou --resume reprennent une session précédente. Découpe les grosses tâches en étapes de la taille d'un commit et ne colle jamais de secrets dans le prompt. Les noms exacts des commandes et des options évoluent vite : vérifie la documentation de la version que tu utilises."
     },
     {
-      "title": "Une tâche bien cadrée",
-      "content": "Une bonne demande contient quatre éléments : l'objectif (ce qui doit être vrai à la fin), le contexte (où regarder, ce qui échoue), les contraintes (ce qu'il ne faut pas toucher ou introduire) et les critères d'acceptation (comment vérifier : une commande de test, un nombre maximal de fichiers modifiés). Découpe les grosses tâches en étapes de la taille d'un commit. Demande un plan avant le code, fournis un moyen de vérification que l'assistant peut exécuter lui-même, et ne colle jamais de secrets dans le prompt. L'assistant peut se tromper avec aplomb : il invente parfois des fonctions ou des options qui n'existent pas, c'est pourquoi chaque résultat se relit et se teste."
+      "title": "Erreurs fréquentes à reconnaître",
+      "content": "1. Une demande d'une ligne sans critère d'acceptation : impossible de dire quand c'est fini.\n2. Faire confiance à « tous les tests passent » sans lancer les tests soi-même.\n3. Une tâche trop grosse : le diff est invérifiable.\n4. Ne pas passer par un plan pour une tâche qui touche plusieurs fichiers.\n5. Coller un secret dans le prompt : il sort du poste.\n\nRetrouve ces pièges de mémoire avant le quiz."
     }
   ],
   "keyConcepts": [
@@ -60,56 +65,80 @@
     {
       "code": "TERMINAL-19-Q1",
       "type": "SINGLE_CHOICE",
-      "prompt": "Quelle est la différence essentielle entre un assistant en terminal et un simple chat ?",
+      "prompt": "Quelle rubrique d'un prompt te permet de vérifier le résultat sans croire l'assistant sur parole ?",
       "choices": [
-        "Il agit dans le projet : il lit des fichiers et exécute des commandes avec ton accord",
-        "Il est toujours exact",
-        "Il fonctionne sans contexte"
+        "Le contexte",
+        "Les critères d'acceptation (par exemple une commande de test à lancer)",
+        "L'objectif seul",
+        "Le ton de la demande"
       ],
-      "correctChoice": 0,
-      "expectedKeywords": []
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Les critères d'acceptation disent comment vérifier : make test, nombre maximal de fichiers modifiés... Tu les exécutes toi-même, l'assistant ne fait pas foi de sa propre correction."
     },
     {
       "code": "TERMINAL-19-Q2",
       "type": "SINGLE_CHOICE",
-      "prompt": "À quoi sert le mode plan ?",
+      "prompt": "Prédis le code de sortie :\n```bash\nprintf 'Corrige le bug.\\n' > p.md\ngrep -qF \"## Objectif\" p.md\necho $?\n```\n",
       "choices": [
-        "Faire explorer et proposer un plan sans rien modifier avant ta validation",
-        "Exécuter tous les tests automatiquement",
-        "Supprimer l'historique de la session"
+        "0",
+        "1",
+        "2",
+        "Rien : -q n'affiche rien et ne renvoie rien"
       ],
-      "correctChoice": 0,
-      "expectedKeywords": []
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "grep -q n'affiche rien mais renvoie 1 quand le motif est absent (0 s'il est présent). C'est ce qui permet au contrôleur de prompts de compter les rubriques."
     },
     {
       "code": "TERMINAL-19-Q3",
       "type": "SINGLE_CHOICE",
-      "prompt": "Quel élément d'une demande permet de vérifier le résultat ?",
+      "prompt": "Trouve le défaut : le prompt « Corrige le bug dans le code. » Quelle réécriture l'améliore le plus ?",
       "choices": [
-        "Les critères d'acceptation, par exemple une commande de test",
-        "Un ton poli",
-        "Une longue description du contexte historique"
+        "« Corrige le bug dans le code, vite et bien. »",
+        "Une demande avec objectif précis, fichier concerné, contraintes et une commande de test à faire passer",
+        "« Réécris tout le projet proprement. »",
+        "Le même prompt en majuscules"
       ],
-      "correctChoice": 0,
-      "expectedKeywords": []
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Un prompt vague force l'assistant à deviner. Objectif, contexte, contraintes et critères d'acceptation rendent la tâche précise et vérifiable."
     },
     {
       "code": "TERMINAL-19-Q4",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Pour une tâche qui touche plusieurs fichiers, pourquoi commencer en mode plan ?",
+      "choices": [
+        "Parce que c'est plus rapide",
+        "Parce que relire un plan coûte moins cher que défaire un mauvais changement",
+        "Parce que le mode plan exécute les tests automatiquement",
+        "Parce que le mode interactif est interdit"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "En mode plan, l'assistant explore et propose sans rien modifier. Corriger un plan avant l'exécution évite de produire un gros diff dans la mauvaise direction."
+    },
+    {
+      "code": "TERMINAL-19-Q5",
       "type": "FREE_TEXT",
-      "prompt": "Un assistant modifie quinze fichiers alors que tu attendais un correctif ciblé. Quels éléments de ta demande et de ton processus corriges-tu ?",
+      "prompt": "L'assistant te dit « tout passe ». Que fais-tu avant d'accepter son travail, et pourquoi ?",
       "choices": [],
       "correctChoice": null,
       "expectedKeywords": [
-        "contraintes",
-        "plan",
-        "critère"
-      ]
+        "executer",
+        "test",
+        "preuve",
+        "diff",
+        "relire"
+      ],
+      "modelAnswer": "Je lance moi-même la commande de test et je relis le diff, car le rapport de l'assistant n'est pas une preuve : il peut se tromper avec aplomb, avoir affaibli ou supprimé un test pour le faire passer, ou modifier d'autres fichiers que prévu. Je compare le résultat aux critères d'acceptation.",
+      "explanation": "Une bonne réponse exécute les tests soi-même, relit le diff, mentionne le risque d'erreur assurée ou de tests affaiblis et cite les critères d'acceptation."
     }
   ],
   "checklist": [
-    "Je décris la boucle lire, proposer, agir avec accord, observer",
-    "Je distingue les modes interactif, plan et non interactif",
-    "J'écris mes demandes avec objectif, contexte, contraintes et critères d'acceptation",
-    "Je vérifie toujours le résultat par un test ou une relecture de diff"
+    "J'écris objectif, contexte, contraintes et critères d'acceptation",
+    "Je choisis le mode plan pour une tâche à plusieurs fichiers",
+    "Je lance moi-même les tests avant d'accepter un résultat",
+    "Je ne colle jamais de secret dans un prompt"
   ]
 }

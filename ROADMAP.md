@@ -55,7 +55,7 @@
 - [x] Pratique de récupération : révisions par question de rappel sans le cours, confiance déclarée avant correction, feedback immédiat par question, indices comptés dans la note, score V2 pour les nouvelles tentatives (V3.25)
 - [x] Laboratoire pilote JAVA-10 réécrit avec le nouveau modèle (cours détaillé, exemple travaillé, 5 questions expliquées, exercice vérifié dans Docker) (V3.25)
 - [x] Modèle V3.25 déployé sur 138 laboratoires : Java 11-24, Spring Boot, Python, TypeScript, Angular, SQL, DevOps, LLM, Architecture (cours en sections, quiz expliqués, exercices validés dans le conteneur) (V3.26)
-- [ ] Réécrire JAVA-01 à 09 et vérifier les quiz du parcours Terminal avec le même modèle
+- [x] Modèle v2 appliqué aussi au parcours Terminal (24) et à JAVA-01 à 09 : les 172 laboratoires suivent le même format (V3.27)
 - [ ] Tableau de bord de calibration et d'historique d'erreurs, quiz de départ avant le cours, exercices de transfert, maîtrise fondée sur le rappel différé
 
 ## Déploiement cloud

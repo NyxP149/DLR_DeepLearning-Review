@@ -11,25 +11,30 @@
     "TERMINAL-22"
   ],
   "objectives": [
-    "Organiser un projet de bout en bout avec un assistant IA : spécification, plan, tâches courtes, vérification, fusion",
-    "Installer un hook Git qui refuse automatiquement un commit dangereux, indépendamment de la bonne volonté de l'assistant",
-    "Comprendre les hooks, commandes personnalisées et skills d'un assistant comme moyens de rendre un workflow reproductible"
+    "Installer un hook pre-commit exécutable et expliquer pourquoi un code de sortie non nul refuse le commit.",
+    "Diagnostiquer un hook ignoré (non exécutable) ou qui ne se déclenche pas.",
+    "Choisir entre une consigne dans CLAUDE.md (demande) et un hook (garde-fou déterministe).",
+    "Prouver un garde-fou par un essai qui doit échouer, puis par un essai qui doit réussir."
   ],
   "sections": [
     {
-      "title": "Cahier des charges du projet",
+      "title": "Le problème : une consigne se négocie, un hook non",
+      "content": "Écrire « ne jamais commiter de secret » dans CLAUDE.md est une demande : l'assistant peut mal la suivre, l'oublier dans une longue session ou être trompé par une instruction cachée. Un hook est un script exécuté automatiquement à un moment précis : si le script sort avec un code non nul, l'opération est refusée. C'est déterministe : il s'exécute toujours.\n\nGit propose ses hooks dans .git/hooks (pre-commit, commit-msg, pre-push). Les assistants ont aussi les leurs : avec Claude Code, des commandes configurées dans les réglages se déclenchent avant ou après un appel d'outil, reçoivent un descriptif JSON sur leur entrée standard et peuvent bloquer l'action (un code de sortie 2 renvoie le message d'erreur à l'assistant, qui corrige). Les noms exacts des commandes et des options évoluent vite : vérifie la documentation de la version que tu utilises."
+    },
+    {
+      "title": "Exemple résolu : un hook qui refuse les clés en clair",
       "conceptCodes": [
         "TERMINAL-AI-WORKFLOW"
       ],
-      "content": "Tu pilotes une petite application avec un assistant : le travail se déroule en boucles courtes. 1) Spécifier : écrire l'objectif et les critères d'acceptation. 2) Planifier : demander un plan en mode plan, le relire et le corriger. 3) Exécuter par tâches de la taille d'un commit, sur une branche. 4) Vérifier : lancer les tests, relire le diff avec le script de revue. 5) Fusionner et documenter. Le projet de ce laboratoire met en place le garde-fou central de ce workflow : un hook de pré-commit qui bloque les secrets et les fichiers interdits."
+      "content": "Objectif : refuser tout commit dont les lignes ajoutées contiennent sk-live-.\n\nRaisonnement, étape par étape :\n1. Le hook s'appelle exactement .git/hooks/pre-commit, sans extension.\n2. Il inspecte ce qui va être commité : git diff --cached -U0 (seulement l'index) et cherche les lignes ajoutées avec grep -q '^+.*sk-live-'.\n3. En cas de problème : message sur stderr (>&2) et exit 1.\n4. Il doit être exécutable : chmod +x. Sinon Git l'ignore et affiche seulement un avertissement.\n5. Preuve : un essai qui doit échouer, puis un essai corrigé qui doit réussir.\n```bash\ncat > .git/hooks/pre-commit <<'HOOK'\n#!/usr/bin/env bash\nif git diff --cached -U0 | grep -q '^+.*sk-live-'; then\n  echo \"secret détecté\" >&2\n  exit 1\nfi\nHOOK\nchmod +x .git/hooks/pre-commit\ngit commit -m \"ajout\"     # code 1 : refusé, le message s'affiche\n```\nUn commit refusé par un hook renvoie le code de sortie 1 à l'appelant ; un commit accepté, 0."
     },
     {
-      "title": "Hooks : automatiser ce qui ne doit jamais dépendre de la bonne volonté",
-      "content": "Un hook est un script exécuté automatiquement à un moment précis. Git en propose (pre-commit, commit-msg, pre-push) dans .git/hooks : si le script sort avec un code non nul, l'opération est refusée. Les assistants proposent leurs propres hooks : avec Claude Code, des commandes configurées dans les réglages se déclenchent avant ou après un appel d'outil (PreToolUse, PostToolUse), à la soumission d'un prompt ou à la fin d'une réponse ; elles reçoivent un descriptif JSON de l'action sur leur entrée standard et peuvent la bloquer (un code de sortie 2 renvoie le message d'erreur à l'assistant, qui corrige). La différence avec une instruction écrite dans CLAUDE.md : un hook est déterministe, il s'exécute toujours, alors qu'une consigne est une demande que l'assistant peut mal suivre. Réserve donc les hooks aux règles qui ne souffrent aucune exception. Les noms exacts des commandes et des options évoluent vite : vérifie toujours la documentation de la version que tu utilises."
+      "title": "Hooks, commandes et skills",
+      "content": "Réserve les hooks aux règles qui ne souffrent aucune exception (secrets, fichiers interdits, formatage obligatoire) ; garde les conventions souples dans le fichier d'instructions. Un hook est du code : il se teste, il se revoit, et un hook erroné bloque tout le monde.\n\nQuand un workflow se répète (préparer une tâche, lancer la revue, rédiger la description d'une PR), encode-le : des commandes personnalisées ou des skills (dossiers contenant des instructions et des scripts chargés à la demande) rendent la démarche reproductible et partageable via le dépôt. Des sous-agents isolent des tâches annexes (recherche, relecture) pour ne pas encombrer la conversation principale."
     },
     {
-      "title": "Capitaliser : commandes, skills et revue",
-      "content": "Quand un workflow se répète (préparer une tâche, lancer la revue, rédiger la description d'une PR), encode-le : des commandes personnalisées ou des skills (des dossiers contenant des instructions et des scripts que l'assistant charge à la demande) rendent la démarche reproductible et partageable avec l'équipe via le dépôt. Des sous-agents isolent des tâches annexes (recherche, relecture) pour ne pas encombrer la conversation principale. Chaque élément automatisé doit lui-même être revu comme du code : un hook ou un skill erroné se propage à tout le projet."
+      "title": "Erreurs fréquentes à reconnaître",
+      "content": "1. Oublier chmod +x : le hook est silencieusement ignoré (un simple avertissement) et le commit passe.\n2. Nommer le fichier pre-commit.sh : Git cherche pre-commit.\n3. Inspecter le répertoire de travail au lieu de l'index.\n4. Écrire le message sur stdout : il se mélange aux sorties.\n5. Contourner avec --no-verify sans le dire : le garde-fou n'existe plus.\n\nRetrouve ces pièges de mémoire avant le quiz."
     }
   ],
   "keyConcepts": [
@@ -60,56 +65,80 @@
     {
       "code": "TERMINAL-23-Q1",
       "type": "SINGLE_CHOICE",
-      "prompt": "Que se passe-t-il quand un hook pre-commit se termine avec un code non nul ?",
+      "prompt": "Un hook pre-commit se termine par « exit 1 ». Que se passe-t-il ?",
       "choices": [
-        "Git refuse le commit",
-        "Git ignore le hook",
-        "Git supprime les fichiers indexés"
+        "Le commit est enregistré avec un avertissement",
+        "Le commit est refusé et git commit renvoie un code non nul",
+        "Git supprime le hook",
+        "Le commit est enregistré en brouillon"
       ],
-      "correctChoice": 0,
-      "expectedKeywords": []
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Un code de sortie non nul d'un hook pre-commit annule le commit. Avec exit 0 (ou sans exit), le commit continue."
     },
     {
       "code": "TERMINAL-23-Q2",
       "type": "SINGLE_CHOICE",
-      "prompt": "Quel avantage a un hook sur une consigne dans CLAUDE.md ?",
+      "prompt": "Trouve le bug : le hook est écrit dans .git/hooks/pre-commit mais un commit contenant une clé passe quand même, avec un message « hook was ignored because it's not set as executable ». Que faire ?",
       "choices": [
-        "Il s'exécute toujours, de façon déterministe",
-        "Il est plus facile à écrire",
-        "Il n'a pas besoin d'être testé"
+        "Renommer le fichier en pre-commit.sh",
+        "chmod +x .git/hooks/pre-commit",
+        "Ajouter --no-verify",
+        "Réinitialiser le dépôt"
       ],
-      "correctChoice": 0,
-      "expectedKeywords": []
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Git ignore un hook non exécutable (avec un simple avertissement). chmod +x le rend actif."
     },
     {
       "code": "TERMINAL-23-Q3",
       "type": "SINGLE_CHOICE",
-      "prompt": "À quoi servent des skills ou commandes personnalisées ?",
+      "prompt": "Quelle commande donne exactement les lignes qui vont être commitées, pour que le hook les inspecte ?",
       "choices": [
-        "À encoder un workflow répété pour le rendre reproductible et partageable",
-        "À désactiver les permissions",
-        "À accélérer le réseau"
+        "git diff (répertoire de travail)",
+        "git diff --cached -U0 (index)",
+        "git log -p",
+        "git status"
       ],
-      "correctChoice": 0,
-      "expectedKeywords": []
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Le hook doit regarder l'index : git diff --cached. -U0 supprime le contexte, ce qui ne laisse que les lignes ajoutées (+) et supprimées (-)."
     },
     {
       "code": "TERMINAL-23-Q4",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Quelle règle doit devenir un hook plutôt qu'une consigne dans CLAUDE.md ?",
+      "choices": [
+        "Préférer des noms de variables clairs",
+        "Ne jamais commiter une clé d'API",
+        "Écrire des messages de commit à l'impératif",
+        "Documenter les fonctions publiques"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Une règle sans exception, dont la violation est grave et irréversible, doit être appliquée automatiquement. Les conventions souples restent des consignes."
+    },
+    {
+      "code": "TERMINAL-23-Q5",
       "type": "FREE_TEXT",
-      "prompt": "Décris les étapes d'une boucle de travail avec un assistant IA sur une fonctionnalité, de la spécification à la fusion, et les contrôles à chaque étape.",
+      "prompt": "Explique pourquoi un hook est plus fiable qu'une consigne écrite, et ce que tu fais pour prouver qu'il marche.",
       "choices": [],
       "correctChoice": null,
       "expectedKeywords": [
-        "plan",
-        "test",
-        "revue"
-      ]
+        "deterministe",
+        "toujours",
+        "consigne",
+        "echec",
+        "essai"
+      ],
+      "modelAnswer": "Un hook est déterministe : il s'exécute à chaque fois, sans dépendre de la bonne volonté ou de la mémoire de l'assistant, alors qu'une consigne est une demande qu'il peut mal suivre. Pour le prouver, je fais un essai qui doit échouer (commit avec une fausse clé, refusé avec un code non nul) puis un essai corrigé qui doit réussir.",
+      "explanation": "Une bonne réponse oppose exécution systématique du hook et simple demande de la consigne, et décrit un essai d'échec puis un essai de réussite."
     }
   ],
   "checklist": [
-    "J'organise le travail en boucles : spécifier, planifier, exécuter par petites tâches, vérifier, fusionner",
-    "J'installe un hook pour toute règle qui ne souffre aucune exception, et je le teste sur un cas refusé",
-    "J'encode les workflows répétés (commandes, skills) et je les relis comme du code",
-    "Je conserve la traçabilité par des commits atomiques et des messages clairs"
+    "J'installe .git/hooks/pre-commit avec le bon nom et chmod +x",
+    "Le hook inspecte l'index (git diff --cached) et écrit sur stderr",
+    "Je prouve le garde-fou par un essai refusé puis un essai accepté",
+    "Je réserve les hooks aux règles sans exception"
   ]
 }

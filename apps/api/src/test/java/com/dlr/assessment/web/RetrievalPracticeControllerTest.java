@@ -57,7 +57,7 @@ class RetrievalPracticeControllerTest {
         when(codeRunner.run(any())).thenAnswer(invocation -> {
             Submission submission = invocation.getArgument(0, Submission.class);
             return new ExecutionResult(UUID.randomUUID(), submission.id(), ExecutionStatus.SUCCESS, 0,
-                    "DLR Java Lab 1\n", "", 50, Instant.now());
+                    "DLR Java Lab 1\nSource: Main.java\nBytecode: Main.class\nExécution: JVM\n", "", 50, Instant.now());
         });
     }
 
@@ -70,6 +70,15 @@ class RetrievalPracticeControllerTest {
         answer(attemptId, choiceQuestion.code(), "{\"selectedChoice\":" + wrong + ",\"confidence\":3}");
         answer(attemptId, choiceQuestion.code(), "{\"selectedChoice\":" + choiceQuestion.correctChoice() + ",\"confidence\":3}");
         answer(attemptId, textQuestion.code(), "{\"answerText\":\"" + String.join(" ", textQuestion.expectedKeywords()) + "\"}");
+        // Les autres questions à choix reçoivent une première réponse fausse : le quiz reste à 0.
+        long otherChoices = lab.quiz().stream()
+                .filter(q -> "SINGLE_CHOICE".equals(q.type()) && !q.code().equals(choiceQuestion.code())).count();
+        for (var question : lab.quiz()) {
+            if ("SINGLE_CHOICE".equals(question.type()) && !question.code().equals(choiceQuestion.code())) {
+                int other = (question.correctChoice() + 1) % question.choices().size();
+                answer(attemptId, question.code(), "{\"selectedChoice\":" + other + "}");
+            }
+        }
         checklistAllDone(attemptId);
         jdbcTemplate.update("insert into attempt_hint (id, attempt_id, level, created_at) values (?, ?, 2, ?)",
                 UUID.randomUUID(), UUID.fromString(attemptId), Timestamp.from(Instant.now()));
@@ -82,13 +91,17 @@ class RetrievalPracticeControllerTest {
                 .andExpect(jsonPath("$.breakdown.practice").value(65))
                 .andExpect(jsonPath("$.attempt.score").value(68.0));
         assertThat(jdbcTemplate.queryForObject("select count(*) from quiz_answer_log where attempt_id = ?", Integer.class,
-                UUID.fromString(attemptId))).isEqualTo(3);
+                UUID.fromString(attemptId))).isEqualTo(3 + (int) otherChoices);
     }
 
     @Test
     void keepsTheV1RulesWhenAnAlreadyScoredAttemptIsRecalculated() throws Exception {
         String attemptId = startAndRunAttempt();
-        answer(attemptId, choiceQuestion.code(), "{\"selectedChoice\":" + choiceQuestion.correctChoice() + "}");
+        for (var question : lab.quiz()) {
+            if ("SINGLE_CHOICE".equals(question.type())) {
+                answer(attemptId, question.code(), "{\"selectedChoice\":" + question.correctChoice() + "}");
+            }
+        }
         answer(attemptId, textQuestion.code(), "{\"answerText\":\"" + String.join(" ", textQuestion.expectedKeywords()) + "\"}");
         checklistAllDone(attemptId);
         jdbcTemplate.update("insert into attempt_hint (id, attempt_id, level, created_at) values (?, ?, 3, ?)",
@@ -189,9 +202,11 @@ class RetrievalPracticeControllerTest {
 
     @Test
     void reviewsSoonerWhenAFreeTextAnswerIsOnlyPartiallyRight() throws Exception {
-        // Une révision déjà terminée sur ce labo fait passer à la question suivante : le texte libre.
-        UUID done = insertReview(0);
-        jdbcTemplate.update("update review_item set status = 'COMPLETED' where id = ?", done);
+        // Chaque révision terminée sur ce labo fait avancer d'une question : on en termine autant qu'il faut pour atteindre le texte libre.
+        for (int i = 0; i < lab.quiz().indexOf(textQuestion); i++) {
+            UUID done = insertReview(0);
+            jdbcTemplate.update("update review_item set status = 'COMPLETED' where id = ?", done);
+        }
         UUID reviewId = insertReview(2);
         List<String> keywords = textQuestion.expectedKeywords();
         String half = String.join(" ", keywords.subList(0, Math.max(1, keywords.size() / 2)));

@@ -41,15 +41,13 @@ class JavaContentRunnerIntegrationTest {
             assertThat(result.standardOutput().strip()).as(lab.code() + " ne doit pas donner la solution")
                     .isNotEqualTo(exercise.expectedOutput().strip());
 
-            if (lab.number() >= 7) {
-                var solution = new Submission(
-                        UUID.randomUUID(), UUID.randomUUID(), "JAVA", referenceSolution(exercise.code()),
-                        SubmissionOrigin.EDITOR, Instant.now());
-                var solved = runner.run(solution);
-                assertThat(solved.status()).as(lab.code() + ": " + solved.errorOutput()).isEqualTo(ExecutionStatus.SUCCESS);
-                assertThat(solved.standardOutput().strip()).as(lab.code() + " solution de référence")
-                        .isEqualTo(exercise.expectedOutput().strip());
-            }
+            var solution = new Submission(
+                    UUID.randomUUID(), UUID.randomUUID(), "JAVA", referenceSolution(exercise.code()),
+                    SubmissionOrigin.EDITOR, Instant.now());
+            var solved = runner.run(solution);
+            assertThat(solved.status()).as(lab.code() + ": " + solved.errorOutput()).isEqualTo(ExecutionStatus.SUCCESS);
+            assertThat(solved.standardOutput().strip()).as(lab.code() + " solution de référence")
+                    .isEqualTo(exercise.expectedOutput().strip());
         }
     }
 

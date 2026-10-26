@@ -55,7 +55,7 @@ class TutorControllerTest {
         mockMvc.perform(post("/api/tutor/review-answer")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"labCode":"JAVA-01","questionCode":"JAVA-01-Q2","answer":"Le bytecode rend le programme portable."}
+                                {"labCode":"JAVA-01","questionCode":"JAVA-01-Q5","answer":"Le bytecode rend le programme portable."}
                                 """))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.purpose").value("FREE_TEXT_REVIEW"))
@@ -65,7 +65,7 @@ class TutorControllerTest {
         var prompt = org.mockito.ArgumentCaptor.forClass(String.class);
         verify(tutor).complete(anyString(), prompt.capture());
         assertThat(prompt.getValue())
-                .contains("Références pédagogiques fiables", "Le fichier .java contient le code source")
+                .contains("Références pédagogiques fiables", "javac est le compilateur")
                 .doesNotContain("DLR Java Lab 1", "expectedKeywords");
     }
 

@@ -11,25 +11,30 @@
     "TERMINAL-23"
   ],
   "objectives": [
-    "Reprendre un projet en désordre et le mettre sous contrôle avec Git, .gitignore, un hook, un Makefile et des fichiers pour l'assistant",
-    "Prouver chaque garantie (secrets protégés, garde-fou actif, tests exécutables, historique atomique) par une vérification automatique",
-    "Produire un rapport final reproductible qu'un assistant IA ou un collègue peut relire"
+    "Ordonner la mise sous garde-fous : protéger les secrets d'abord, puis commits atomiques, puis vérification.",
+    "Prouver qu'un garde-fou est actif par un essai qui doit échouer, pas par sa seule présence.",
+    "Vérifier les protections avec git check-ignore, make test, jq et git status.",
+    "Produire un rapport dont chaque ligne est le résultat d'une commande."
   ],
   "sections": [
     {
-      "title": "Le défi",
+      "title": "Le défi : un projet hérité, sans historique, avec un secret dedans",
+      "content": "Tu hérites d'un dossier sans historique : du code, un test, des notes, des données, un fichier .env contenant un secret et un journal de build. Avant de laisser un assistant IA y travailler, tu dois le mettre sous garde-fous : ignorer les secrets et les journaux, initialiser Git avec des commits atomiques, installer un hook qui refuse les secrets, fournir un point d'entrée de vérification (make test), écrire les instructions de l'assistant (CLAUDE.md) et ses permissions (réglages JSON avec .env protégé), puis prouver que tout tient avec un rapport."
+    },
+    {
+      "title": "Exemple résolu : l'ordre compte, et la preuve aussi",
       "conceptCodes": [
         "TERMINAL-AI-READINESS"
       ],
-      "content": "Tu hérites d'un dossier de projet sans historique : du code, un test, des notes, des données, un fichier .env contenant un secret et un journal de build. Avant de laisser un assistant IA y travailler, tu dois le mettre sous garde-fous. Il faut : ignorer les secrets et les journaux, initialiser Git avec des commits atomiques, installer un hook qui refuse les secrets, fournir un point d'entrée de vérification (make test), écrire les instructions de l'assistant (CLAUDE.md) et ses permissions (réglages JSON avec .env protégé), puis prouver que tout tient avec un rapport."
+      "content": "Raisonnement, étape par étape :\n1. Protéger d'abord : .gitignore avec .env et *.log AVANT le premier git add. Si .env est commité avant d'être ignoré, il reste suivi et son secret est dans l'historique.\n2. Installer le hook ensuite, avant les commits suivants : c'est lui qui évite l'accident pendant la suite.\n3. Faire des commits atomiques : le code et .gitignore, la documentation, les données, puis les garde-fous.\n4. Vérifier chaque garantie par une commande, jamais de mémoire :\n```bash\ngit check-ignore .env build.log      # affiche les deux noms : ils sont bien ignorés\ngit add .env                         # refusé : \"paths are ignored by one of your .gitignore files\"\ngit add -f .env && git commit -m t   # le hook doit refuser (code 1) ; sinon le garde-fou est inactif\ngit rm --cached -q .env              # remet l'index d'équerre\nmake -s test                         # la vérification s'exécute\njq -e '.permissions.deny | index(\"Read(./.env)\")' .claude/settings.json\ngit status --short                   # vide : dépôt propre\n```\nDeux idées à retenir : un garde-fou « configuré » n'est pas un garde-fou « actif » tant qu'on n'a pas vu un essai échouer, et un rapport honnête est la sortie d'une commande."
     },
     {
-      "title": "Démarche conseillée",
-      "content": "Commence par la protection (.gitignore puis hook), car c'est ce qui évite l'accident irréversible pendant la suite. Fais ensuite des commits atomiques : le code et .gitignore, la documentation, les données, puis les garde-fous. Vérifie chaque garantie par une commande plutôt que par ta mémoire : git check-ignore pour les fichiers ignorés, une tentative de commit qui doit échouer pour le hook, make -s test pour la vérification, jq pour les permissions, git status pour la propreté. Écris le rapport en dernier : chaque ligne doit être le résultat d'une commande."
+      "title": "Critères de réussite et revue",
+      "content": "Le défi est réussi quand toutes les lignes du rapport sont exactes et reproductibles : fichiers ignorés, garde-fou actif, test exécutable, nombre de commits, rubriques du fichier d'instructions, protection du secret dans les permissions et dépôt propre.\n\nRelis ton script comme un reviewer : est-il relançable dans un dossier neuf ? ne contient-il aucune hypothèse cachée (un fichier créé à la main hors script) ? un collègue peut-il comprendre chaque garde-fou en le lisant ? Les secrets ne sont jamais affichés dans le rapport, seulement leur protection."
     },
     {
-      "title": "Critères de réussite",
-      "content": "Le défi est réussi quand toutes les lignes du rapport final sont exactes et reproductibles : fichiers ignorés, garde-fou actif, test exécutable, nombre de commits, rubriques du fichier d'instructions, protection du secret dans les permissions et dépôt propre. Relis ton script comme un reviewer : est-il relançable dans un dossier neuf ? ne contient-il aucune hypothèse cachée ? un collègue peut-il comprendre chaque garde-fou en le lisant ?"
+      "title": "Erreurs fréquentes à reconnaître",
+      "content": "1. Écrire .gitignore après avoir commité .env : le fichier reste suivi.\n2. Installer le hook sans chmod +x : il n'est pas appliqué.\n3. Rapporter « garde-fou actif » sans avoir tenté de le franchir.\n4. Mélanger les types de changements dans un seul commit.\n5. Laisser le dépôt sale (fichiers non suivis ou modifiés) après la mise en conformité.\n\nRetrouve ces pièges de mémoire avant le quiz."
     }
   ],
   "keyConcepts": [
@@ -60,56 +65,80 @@
     {
       "code": "TERMINAL-24-Q1",
       "type": "SINGLE_CHOICE",
-      "prompt": "Quelle est la première chose à mettre en place avant de laisser un assistant travailler sur un projet hérité ?",
+      "prompt": "Quel est le bon ordre pour mettre le projet sous garde-fous ?",
       "choices": [
-        "La protection des secrets et de l'historique (.gitignore, hook, Git)",
-        "Un refactoring complet",
-        "La désactivation des tests"
+        "Commits, puis .gitignore, puis hook",
+        "Protection des secrets (.gitignore, hook), puis commits atomiques, puis vérifications",
+        "Rapport final, puis commits",
+        "CLAUDE.md, puis suppression de .env"
       ],
-      "correctChoice": 0,
-      "expectedKeywords": []
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Protéger d'abord évite l'accident irréversible pendant la suite : un secret commité avant d'être ignoré reste dans l'historique."
     },
     {
       "code": "TERMINAL-24-Q2",
       "type": "SINGLE_CHOICE",
-      "prompt": "Comment prouver qu'un hook anti-secret est vraiment actif ?",
+      "prompt": "Prédis ce que fait cette commande si .env est listé dans .gitignore :\n```bash\ngit add .env\necho $?\n```\n",
       "choices": [
-        "Tenter un commit qui doit être refusé et constater l'échec",
-        "Lire son code attentivement",
-        "Vérifier qu'il existe dans le dossier"
+        "Elle indexe .env et affiche 0",
+        "Elle refuse (« paths are ignored ») et renvoie un code non nul",
+        "Elle supprime .env",
+        "Elle indexe .env et affiche 1"
       ],
-      "correctChoice": 0,
-      "expectedKeywords": []
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "git add refuse un fichier ignoré sans -f et renvoie 1. C'est pourquoi le test du hook utilise git add -f pour contourner .gitignore et vérifier la deuxième couche."
     },
     {
       "code": "TERMINAL-24-Q3",
       "type": "SINGLE_CHOICE",
-      "prompt": "Pourquoi chaque ligne du rapport final doit-elle être le résultat d'une commande ?",
+      "prompt": "Trouve le défaut : un script commite tout, puis crée .gitignore avec .env. Le secret est-il protégé ?",
       "choices": [
-        "Pour que le rapport soit reproductible et vérifiable, pas déclaratif",
-        "Pour qu'il soit plus long",
-        "Pour éviter d'utiliser Git"
+        "Oui : .gitignore l'efface du dépôt",
+        "Non : .env déjà suivi reste suivi et son contenu est dans l'historique",
+        "Oui : Git ignore .env dès qu'il le voit",
+        "Seulement sous Linux"
       ],
-      "correctChoice": 0,
-      "expectedKeywords": []
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": ".gitignore n'agit que sur les fichiers non suivis. Pour un fichier déjà commité, il faut git rm --cached, et le secret doit être considéré comme compromis puis révoqué."
     },
     {
       "code": "TERMINAL-24-Q4",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Quelle ligne de rapport est la plus convaincante ?",
+      "choices": [
+        "« Garde-fou : actif » écrit en dur dans le script",
+        "« Garde-fou : actif » affiché parce qu'un git add -f .env puis commit a été refusé",
+        "« Garde-fou : à vérifier »",
+        "Une capture d'écran de .git/hooks"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Un rapport honnête affiche le résultat d'une vérification : ici, un essai qui devait échouer et a bien échoué. Une valeur écrite en dur ne prouve rien."
+    },
+    {
+      "code": "TERMINAL-24-Q5",
       "type": "FREE_TEXT",
-      "prompt": "Un collègue veut démarrer une session d'assistant IA immédiatement sur un dépôt hérité contenant un fichier .env. Que lui réponds-tu et que mets-tu en place d'abord ?",
+      "prompt": "Comment démontres-tu qu'un projet est prêt pour un assistant IA, au-delà du fait que les fichiers de protection existent ?",
       "choices": [],
       "correctChoice": null,
       "expectedKeywords": [
-        "gitignore",
-        "hook",
-        "permissions"
-      ]
+        "essai",
+        "echouer",
+        "commande",
+        "rapport",
+        "verifier"
+      ],
+      "modelAnswer": "Je fais des essais qui doivent échouer (commit d'un secret refusé par le hook, git add d'un fichier ignoré), je lance la vérification (make test), je contrôle les permissions avec jq et la propreté avec git status, puis je produis un rapport dont chaque ligne est le résultat d'une commande, relançable dans un dossier neuf.",
+      "explanation": "Une bonne réponse insiste sur des essais d'échec, des commandes de vérification (make, jq, git status) et un rapport calculé plutôt qu'affirmé."
     }
   ],
   "checklist": [
-    "J'ai protégé les secrets (.gitignore, hook, permissions) avant tout travail assisté",
-    "Mon historique est fait de commits atomiques et mon dépôt est propre",
-    "Une commande unique (make test) vérifie le projet et un fichier d'instructions guide l'assistant",
-    "Mon rapport final est reproductible : chaque ligne vient d'une vérification"
+    "Je protège les secrets avant le premier commit",
+    "Je prouve le garde-fou par un essai qui échoue",
+    "Je vérifie chaque garantie par une commande, pas de mémoire",
+    "Mon rapport est calculé, reproductible et sans secret affiché"
   ]
 }

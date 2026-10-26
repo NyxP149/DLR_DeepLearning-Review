@@ -41,17 +41,17 @@ class PersonalNoteControllerTest {
 
     @Test
     void persistsAndDeletesAnOllamaReflectionAnalysis() throws Exception {
-        mockMvc.perform(put("/api/labs/JAVA-01/reflection-analyses/JAVA-01-Q2")
+        mockMvc.perform(put("/api/labs/JAVA-01/reflection-analyses/JAVA-01-Q5")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"content\":\"Bonne intuition. Précise le rôle du bytecode.\"}"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.questionId").value("JAVA-01-Q2"));
+                .andExpect(jsonPath("$.questionId").value("JAVA-01-Q5"));
 
         mockMvc.perform(get("/api/labs/JAVA-01/reflection-analyses"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].content").value("Bonne intuition. Précise le rôle du bytecode."));
 
-        mockMvc.perform(delete("/api/labs/JAVA-01/reflection-analyses/JAVA-01-Q2"))
+        mockMvc.perform(delete("/api/labs/JAVA-01/reflection-analyses/JAVA-01-Q5"))
                 .andExpect(status().isOk());
 
         mockMvc.perform(get("/api/labs/JAVA-01/reflection-analyses"))

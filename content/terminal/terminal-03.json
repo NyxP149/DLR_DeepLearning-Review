@@ -11,25 +11,30 @@
     "TERMINAL-02"
   ],
   "objectives": [
-    "Lire un fichier avec cat, head, tail et wc selon le besoin",
-    "Chercher du texte avec grep (options -c, -n, -i, -r) et des fichiers avec find",
-    "Extraire d'un journal des indicateurs précis (comptes, première occurrence, dernières lignes)"
+    "Choisir entre cat, head, tail et wc pour lire un fichier sans inonder le terminal.",
+    "Chercher avec grep (-c, -n, -i, -v, -r) et lister des fichiers avec find en citant le motif.",
+    "Prédire la sortie d'un grep et son code de sortie (0 trouvé, 1 non trouvé).",
+    "Retrouver la première erreur d'un journal pour remonter à la cause probable."
   ],
   "sections": [
     {
-      "title": "Lire sans tout ouvrir",
+      "title": "Le problème : un journal de 200 000 lignes",
+      "content": "Un incident survient, le journal est énorme. Ouvrir le fichier en entier est inutile : il faut l'interroger. Les outils de lecture partielle :\n- head -n 5 : les cinq premières lignes ; tail -n 5 : les cinq dernières ; tail -f : suit le fichier en direct.\n- wc -l : compte les lignes.\n- grep motif fichier : les lignes qui contiennent le motif.\n- find dossier -name '*.log' : les fichiers dont le nom correspond.\nLa vitesse et la précision de cette recherche déterminent le temps de résolution d'un incident."
+    },
+    {
+      "title": "Exemple résolu : trouver la cause d'une alerte",
       "conceptCodes": [
         "TERMINAL-SEARCH"
       ],
-      "content": "cat affiche un fichier entier : à réserver aux petits fichiers. head -n 5 affiche les cinq premières lignes, tail -n 5 les cinq dernières (tail -f suit un journal en direct), wc -l compte les lignes. Sur un fichier de plusieurs mégaoctets, ces commandes évitent d'inonder le terminal et de perdre l'information utile."
+      "content": "Journal app.log :\n```text\nINFO  démarrage\nWARN  disque à 85%\nERROR connexion refusée\nINFO  reprise\nERROR timeout\n```\nQuestion : combien d'erreurs, et laquelle est arrivée en premier ?\n\nRaisonnement, étape par étape :\n1. Mesurer l'ampleur : grep -c ERROR app.log donne 2 (le nombre de lignes).\n2. Localiser : grep -n ERROR app.log | head -1 donne 3:ERROR connexion refusée.\n3. Conclure : la première erreur est la cause probable, la seconde (timeout) peut en être la conséquence.\n4. Voir la situation actuelle : tail -n 2 app.log.\n```bash\ngrep -c ERROR app.log                 # 2\ngrep -n ERROR app.log | head -1       # 3:ERROR connexion refusée\ntail -n 2 app.log                     # INFO  reprise / ERROR timeout\n```\nLa première erreur compte plus que la dernière : les suivantes sont souvent des effets en cascade."
     },
     {
-      "title": "Chercher du texte avec grep",
-      "content": "grep motif fichier affiche les lignes qui contiennent le motif. Options essentielles : -c compte les lignes trouvées, -n affiche les numéros de ligne, -i ignore la casse, -v inverse la sélection, -r cherche récursivement dans un dossier, -E active les expressions régulières étendues. Le code de sortie de grep vaut 0 si trouvé, 1 sinon : c'est ce qui permet de l'utiliser dans un if. Sous PowerShell, l'équivalent est Select-String."
+      "title": "grep et find en pratique",
+      "content": "Options de grep : -c compte les lignes trouvées, -n affiche leur numéro, -i ignore la casse, -v inverse la sélection, -r cherche récursivement, -l liste seulement les noms de fichiers, -E active les expressions régulières étendues. Son code de sortie vaut 0 si trouvé, 1 sinon, ce qui permet de l'utiliser dans un if.\n\nfind dossier -name '*.log' -type f liste les fichiers ; -mtime -1 limite aux fichiers modifiés depuis moins d'un jour. Le motif doit être entre guillemets pour que ce soit find, et non le shell, qui développe le joker. Combiner : grep -rl ERROR logs/ répond à « dans quels fichiers apparaît l'erreur ? ». Sous PowerShell : Select-String."
     },
     {
-      "title": "Chercher des fichiers avec find",
-      "content": "find dossier -name '*.log' liste les fichiers dont le nom correspond au motif ; -type f limite aux fichiers, -mtime -1 aux fichiers modifiés depuis moins d'un jour, -size +10M aux gros fichiers. Le motif doit être entre guillemets pour que ce soit find, et non le shell, qui développe le joker. Combine find et grep pour répondre à des questions comme « dans quels fichiers apparaît cette erreur ? » : grep -rl ERREUR logs/."
+      "title": "Erreurs fréquentes à reconnaître",
+      "content": "1. Ouvrir un énorme fichier avec cat.\n2. Oublier les guillemets autour de '*.log' : le shell le remplace par les fichiers du dossier courant et find reçoit autre chose.\n3. Confondre grep -c (nombre de lignes) avec le nombre d'occurrences : deux « ERROR » sur la même ligne comptent une fois.\n4. Chercher « error » alors que le journal écrit « ERROR » : il faut -i.\n5. Lire seulement la dernière erreur au lieu de la première.\n\nRetrouve ces pièges de mémoire, puis réponds au quiz."
     }
   ],
   "keyConcepts": [
@@ -62,54 +67,78 @@
       "type": "SINGLE_CHOICE",
       "prompt": "Quelle commande affiche uniquement le nombre de lignes contenant « ERROR » ?",
       "choices": [
-        "grep -c ERROR app.log",
         "grep -n ERROR app.log",
-        "cat app.log | wc -c"
+        "cat app.log | wc -c",
+        "grep -c ERROR app.log",
+        "grep -v ERROR app.log"
       ],
-      "correctChoice": 0,
-      "expectedKeywords": []
+      "correctChoice": 2,
+      "expectedKeywords": [],
+      "explanation": "grep -c ERROR compte les lignes correspondantes. -n ajoute les numéros de ligne, wc -c compte les caractères, -v inverse la sélection."
     },
     {
       "code": "TERMINAL-03-Q2",
       "type": "SINGLE_CHOICE",
-      "prompt": "Pourquoi écrire find . -name '*.log' avec des guillemets ?",
+      "prompt": "Prédis la sortie pour un fichier de trois lignes « ERROR a », « INFO b », « ERROR c » :\n```bash\ngrep -n ERROR app.log | head -1\n```\n",
       "choices": [
-        "Pour que find reçoive le joker au lieu du shell",
-        "Pour que la recherche ignore la casse",
-        "Pour chercher aussi dans les sous-dossiers"
+        "1:ERROR a",
+        "ERROR a",
+        "2",
+        "3:ERROR c"
       ],
       "correctChoice": 0,
-      "expectedKeywords": []
+      "expectedKeywords": [],
+      "explanation": "-n préfixe chaque ligne trouvée par son numéro, head -1 garde la première : 1:ERROR a. Sans -n, il n'y aurait pas de préfixe."
     },
     {
       "code": "TERMINAL-03-Q3",
       "type": "SINGLE_CHOICE",
-      "prompt": "Que fait tail -f app.log ?",
+      "prompt": "Trouve le bug :\n```bash\nfind . -name *.log\n```\nIl y a trois fichiers .log dans le dossier courant (a.log, b.log, c.log). Que se passe-t-il ?",
       "choices": [
-        "Affiche les nouvelles lignes au fur et à mesure de leur écriture",
-        "Affiche la première ligne",
-        "Supprime les lignes anciennes"
+        "find liste les trois fichiers sans problème",
+        "Le shell développe *.log avant find, qui reçoit « -name a.log b.log c.log » et échoue",
+        "find cherche seulement dans les sous-dossiers",
+        "find supprime les fichiers trouvés"
       ],
-      "correctChoice": 0,
-      "expectedKeywords": []
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Sans guillemets, le shell remplace *.log par les fichiers du dossier courant. find reçoit alors des arguments en trop (« find: paths must precede expression »). Avec '*.log' entre guillemets, le motif est transmis tel quel à find."
     },
     {
       "code": "TERMINAL-03-Q4",
+      "type": "SINGLE_CHOICE",
+      "prompt": "grep ne trouve aucune ligne correspondante. Quel est son code de sortie ?",
+      "choices": [
+        "0",
+        "1",
+        "2",
+        "Aucun : il n'affiche rien donc il ne renvoie rien"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "grep renvoie 0 si au moins une ligne correspond, 1 sinon (et 2 en cas d'erreur, par exemple un fichier illisible). C'est ce qui permet if grep -q motif fichier; then ..."
+    },
+    {
+      "code": "TERMINAL-03-Q5",
       "type": "FREE_TEXT",
-      "prompt": "Tu dois trouver la cause probable d'un incident dans un gros journal. Quelle démarche de recherche proposes-tu ?",
+      "prompt": "Tu dois trouver la cause probable d'un incident dans un gros journal. Décris ta démarche de recherche, commandes à l'appui.",
       "choices": [],
       "correctChoice": null,
       "expectedKeywords": [
-        "première",
+        "premiere",
         "erreur",
-        "grep"
-      ]
+        "grep",
+        "tail",
+        "horodat"
+      ],
+      "modelAnswer": "Je mesure d'abord l'ampleur avec grep -c ERROR, puis je cherche la première erreur avec grep -n ERROR journal | head -1, car les erreurs suivantes sont souvent des conséquences. Je regarde ensuite les lignes autour de cette erreur et les plus récentes avec tail, en comparant les horodatages avec le début de l'alerte.",
+      "explanation": "Une bonne réponse cherche la première erreur (pas la dernière), utilise grep avec -c ou -n, tail ou head pour le contexte, et justifie par l'effet de cascade."
     }
   ],
   "checklist": [
     "Je choisis head, tail ou wc plutôt que cat sur un gros fichier",
-    "J'utilise grep avec -c, -n, -i, -v et -r selon la question",
-    "Je trouve des fichiers avec find et des motifs entre guillemets",
-    "Je sais que grep renvoie un code de sortie utilisable dans un if"
+    "Je prédis la sortie d'un grep avec -c, -n ou -v avant de l'exécuter",
+    "Je mets le motif de find entre guillemets",
+    "Je cherche la première erreur d'un journal avant la dernière"
   ]
 }

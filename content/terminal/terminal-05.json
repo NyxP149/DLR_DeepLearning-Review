@@ -11,25 +11,30 @@
     "TERMINAL-04"
   ],
   "objectives": [
-    "Lire et interpréter les permissions rwx (utilisateur, groupe, autres) et leur écriture octale",
-    "Rendre un script exécutable avec chmod et comprendre l'erreur « Permission denied »",
-    "Appliquer le principe du moindre privilège aux fichiers sensibles (clés, secrets)"
+    "Lire une chaîne comme -rwxr-xr-- et la traduire en mode octal (754).",
+    "Rendre un script exécutable avec chmod et expliquer le code d'erreur 126.",
+    "Prédire le mode d'un fichier créé selon l'umask.",
+    "Appliquer le moindre privilège : 600 pour une clé, jamais 777."
   ],
   "sections": [
     {
-      "title": "Lire les permissions",
+      "title": "Le problème : « Permission denied » sur un script qu'on vient d'écrire",
+      "content": "Un fichier créé avec un éditeur n'est pas exécutable. Lancer ./deploy.sh produit « Permission denied » (code 126), alors que bash deploy.sh marche : dans ce second cas, c'est bash, déjà exécutable, qui lit le fichier comme un simple texte.\n```bash\n$ ./deploy.sh\nbash: ./deploy.sh: Permission denied\n$ chmod +x deploy.sh\n$ ./deploy.sh\ndéploiement ok\n```\nLes permissions décident qui peut lire, modifier et exécuter chaque fichier. C'est la première barrière de sécurité d'un système Linux."
+    },
+    {
+      "title": "Exemple résolu : traduire rwx en octal",
       "conceptCodes": [
         "TERMINAL-PERMISSIONS"
       ],
-      "content": "ls -l affiche, pour chaque fichier, une chaîne comme -rwxr-xr-- : le premier caractère est le type (- fichier, d dossier), puis trois groupes de trois droits pour le propriétaire, le groupe et les autres. r permet de lire, w de modifier, x d'exécuter (ou de traverser, pour un dossier). En octal : r=4, w=2, x=1, donc rwx=7, r-x=5, r--=4 et rwxr-xr-- s'écrit 754. stat -c %a fichier affiche directement la valeur octale."
+      "content": "ls -l affiche -rwxr-xr--. Premier caractère : le type (- fichier, d dossier). Puis trois groupes de trois droits : propriétaire, groupe, autres.\n\nRaisonnement, étape par étape :\n1. Chaque droit vaut un nombre : r=4, w=2, x=1, absent=0.\n2. Propriétaire rwx : 4+2+1 = 7.\n3. Groupe r-x : 4+0+1 = 5.\n4. Autres r-- : 4+0+0 = 4.\n5. Le mode octal est donc 754.\n```bash\nchmod 754 script.sh\nstat -c %a script.sh     # 754\nls -l script.sh          # -rwxr-xr-- ...\n```\nLecture inverse : 640 donne 6=rw-, 4=r--, 0=--- soit rw-r-----. Pour un dossier, x signifie « pouvoir y entrer »."
     },
     {
-      "title": "Modifier les permissions",
-      "content": "chmod 755 script.sh fixe les droits en octal ; chmod +x script.sh ajoute le droit d'exécution ; chmod u+x,g-w modifie un groupe précis (u propriétaire, g groupe, o autres, a tous). Un script téléchargé ou créé avec un éditeur n'est pas exécutable par défaut : ./script.sh échoue avec « Permission denied » (code 126) tant qu'on n'a pas fait chmod +x, alors que bash script.sh fonctionne car c'est bash, déjà exécutable, qui lit le fichier. umask définit les droits retirés aux fichiers nouvellement créés (022 donne 644 pour un fichier)."
+      "title": "chmod, umask et moindre privilège",
+      "content": "chmod 755 fixe les droits en octal ; chmod +x ajoute l'exécution ; chmod u+x,g-w modifie un groupe précis (u propriétaire, g groupe, o autres). umask indique les droits retirés à la création : avec 022, un nouveau fichier reçoit 666 moins 022 soit 644, un dossier 777 moins 022 soit 755.\n\nMoindre privilège : donner le minimum nécessaire. Une clé privée SSH doit être en 600, sinon ssh refuse de l'utiliser (« permissions too open »). chmod 777 donne tous les droits à tout le monde et masque souvent un vrai problème de propriétaire. Sous Windows, les droits reposent sur des ACL (icacls, Get-Acl) et sur la politique d'exécution PowerShell, pas sur le bit x."
     },
     {
-      "title": "Moindre privilège et équivalent Windows",
-      "content": "Une clé privée SSH doit être en 600 (lisible uniquement par son propriétaire) : ssh refuse d'ailleurs de l'utiliser si elle est trop ouverte. Évite chmod 777, qui donne tous les droits à tout le monde et masque souvent un vrai problème de propriétaire. Sous Windows, les droits reposent sur des listes de contrôle d'accès (ACL) consultées avec icacls ou Get-Acl ; l'extension du fichier (.ps1, .exe) et la politique d'exécution PowerShell remplacent le bit x. Sous Linux, sudo exécute une commande avec les droits d'un autre utilisateur : à utiliser avec discernement."
+      "title": "Erreurs fréquentes à reconnaître",
+      "content": "1. Régler un problème de droits avec chmod 777.\n2. Oublier que le fichier est exécutable seulement pour certains : chmod u+x ne touche pas le groupe.\n3. Confondre le droit de lecture d'un dossier (voir les noms) et son x (y entrer).\n4. Laisser un secret en 644 : tout utilisateur de la machine peut le lire.\n5. Oublier #!/usr/bin/env bash en première ligne d'un script exécuté directement.\n\nRetrouve ces pièges de mémoire avant le quiz."
     }
   ],
   "keyConcepts": [
@@ -62,54 +67,78 @@
       "type": "SINGLE_CHOICE",
       "prompt": "Que représente le mode octal 754 ?",
       "choices": [
-        "rwxr-xr-- (propriétaire rwx, groupe r-x, autres r--)",
         "rw-r-xr-x",
-        "rwxrwxr--"
+        "rwxr-xr-- (propriétaire rwx, groupe r-x, autres r--)",
+        "rwxrwxr--",
+        "r-xr-xr--"
       ],
-      "correctChoice": 0,
-      "expectedKeywords": []
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "7 = 4+2+1 = rwx pour le propriétaire ; 5 = 4+1 = r-x pour le groupe ; 4 = r-- pour les autres."
     },
     {
       "code": "TERMINAL-05-Q2",
       "type": "SINGLE_CHOICE",
-      "prompt": "Quelle commande rend un script exécutable pour son propriétaire ?",
+      "prompt": "Prédis le mode affiché :\n```bash\numask 022\ntouch f.txt\nstat -c %a f.txt\n```\n",
       "choices": [
-        "chmod u+x script.sh",
-        "chown +x script.sh",
-        "chmod 000 script.sh"
+        "666",
+        "644",
+        "755",
+        "600"
       ],
-      "correctChoice": 0,
-      "expectedKeywords": []
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Un nouveau fichier part de 666 ; l'umask 022 retire l'écriture au groupe et aux autres : 644. (Un dossier partirait de 777 et donnerait 755.)"
     },
     {
       "code": "TERMINAL-05-Q3",
       "type": "SINGLE_CHOICE",
-      "prompt": "Pourquoi chmod 777 est-il déconseillé ?",
+      "prompt": "Trouve le bug : un script lancé avec ./deploy.sh répond « Permission denied » (code 126). Que faut-il faire en premier ?",
       "choices": [
-        "Il donne tous les droits à tout le monde et masque souvent le vrai problème",
-        "Il supprime le fichier",
-        "Il ne fonctionne que sous Windows"
+        "chmod 777 deploy.sh",
+        "chmod u+x deploy.sh",
+        "sudo ./deploy.sh",
+        "Supprimer la première ligne #!"
       ],
-      "correctChoice": 0,
-      "expectedKeywords": []
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Le fichier n'a pas le droit d'exécution. chmod u+x suffit pour le propriétaire. chmod 777 et sudo masquent le problème en donnant trop de pouvoir ; le shebang n'a aucun rapport avec l'erreur 126."
     },
     {
       "code": "TERMINAL-05-Q4",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Quelle valeur de chmod convient à une clé privée SSH ?",
+      "choices": [
+        "644",
+        "755",
+        "600",
+        "777"
+      ],
+      "correctChoice": 2,
+      "expectedKeywords": [],
+      "explanation": "600 = lecture et écriture pour le propriétaire seulement. ssh refuse une clé lisible par d'autres : c'est le moindre privilège appliqué."
+    },
+    {
+      "code": "TERMINAL-05-Q5",
       "type": "FREE_TEXT",
-      "prompt": "Une clé privée est refusée car « permissions too open ». Quelle valeur de chmod appliques-tu et pourquoi ?",
+      "prompt": "Une clé privée est refusée avec « permissions too open ». Quelle commande utilises-tu et pourquoi ?",
       "choices": [],
       "correctChoice": null,
       "expectedKeywords": [
         "600",
-        "propriétaire",
-        "privilège"
-      ]
+        "chmod",
+        "proprietaire",
+        "prive",
+        "privilege"
+      ],
+      "modelAnswer": "J'exécute chmod 600 sur la clé : seul le propriétaire peut la lire et la modifier. Une clé privée est un secret ; si d'autres utilisateurs peuvent la lire, elle n'est plus fiable, donc ssh refuse de l'utiliser. C'est le principe du moindre privilège.",
+      "explanation": "Une bonne réponse donne chmod 600, relie la règle au caractère secret de la clé et cite le moindre privilège ou le risque de lecture par d'autres utilisateurs."
     }
   ],
   "checklist": [
-    "Je lis une chaîne rwxr-xr-- et sa valeur octale",
-    "Je rends un script exécutable avec chmod et je comprends le code 126",
-    "Je limite les fichiers sensibles à 600 et j'évite chmod 777",
-    "Je sais que Windows utilise des ACL et la politique d'exécution plutôt que le bit x"
+    "Je lis -rwxr-xr-- et je donne son mode octal",
+    "Je rends un script exécutable avec chmod et j'explique le code 126",
+    "Je prédis le mode d'un nouveau fichier avec l'umask",
+    "Je mets les secrets en 600 et j'évite chmod 777"
   ]
 }
