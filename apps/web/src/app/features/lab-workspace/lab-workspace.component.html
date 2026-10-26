@@ -136,11 +136,11 @@
               }
             </section>
           }
-          @for (exercise of state.lab.exercises; track exercise.code) {
+          @for (exercise of guidedExercises(state.lab); track exercise.code) {
             <article class="panel exercise">
               <p class="eyebrow">Exercice guidé</p>
               <h2>{{ exercise.title }}</h2>
-              <p>{{ exercise.statement }}</p>
+              <p class="statement">{{ exercise.statement }}</p>
               <label class="editor-label" for="lab-source">Code {{ state.lab.language }}</label>
               <div class="import-row">
                 <span>Origine : {{ sourceOrigin() }}</span>
@@ -200,6 +200,48 @@
                 </section>
               }
               @if (executionError(); as message) {
+                <p class="execution-error" role="alert">{{ message }}</p>
+              }
+            </article>
+          }
+
+          @for (exercise of transferExercises(state.lab); track exercise.code) {
+            <article class="panel exercise transfer" [class.passed]="transferPassed()[exercise.code]">
+              <div class="transfer-heading">
+                <p class="eyebrow">Exercice de transfert · facultatif, hors score</p>
+                @if (transferPassed()[exercise.code]) { <span class="transfer-badge">✓ Transfert réussi</span> }
+              </div>
+              <h2>{{ exercise.title }}</h2>
+              <p class="statement">{{ exercise.statement }}</p>
+              <label class="editor-label" [attr.for]="'transfer-' + exercise.code">Code {{ state.lab.language }} · sans indice</label>
+              <dlr-code-editor
+                [attr.id]="'transfer-' + exercise.code"
+                [simple]="simpleEditor()"
+                [value]="transferCodes()[exercise.code]"
+                [language]="state.lab.language"
+                (valueChange)="onTransferCodeChange(exercise.code, $event)"
+              />
+              <div class="actions">
+                <button type="button" [disabled]="transferRunning() !== null || !executionAvailable()" (click)="runTransfer(exercise)">
+                  {{ transferRunning() === exercise.code ? 'Exécution…' : !executionAvailable() ? 'Runner hors ligne' : 'Compiler et exécuter' }}
+                </button>
+                <span>Même runner isolé · aucun indice, aucun effet sur le score</span>
+              </div>
+              @if (transferResults()[exercise.code]; as result) {
+                <section class="execution-result" [class.success]="result.status === 'SUCCESS'" aria-live="polite">
+                  <div>
+                    <strong>{{ result.status }}</strong>
+                    <span>{{ result.durationMs }} ms</span>
+                  </div>
+                  @if (result.standardOutput) {
+                    <pre><code>{{ result.standardOutput }}</code></pre>
+                  }
+                  @if (result.errorOutput) {
+                    <pre class="stderr"><code>{{ result.errorOutput }}</code></pre>
+                  }
+                </section>
+              }
+              @if (transferErrors()[exercise.code]; as message) {
                 <p class="execution-error" role="alert">{{ message }}</p>
               }
             </article>

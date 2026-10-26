@@ -2,7 +2,9 @@ package com.dlr.learning.web;
 
 import com.dlr.assessment.application.AssessmentRepository;
 import com.dlr.assessment.application.AssessmentService;
+import com.dlr.catalog.application.LabCatalog;
 import com.dlr.execution.application.ExecutionService;
+import com.dlr.execution.application.TransferService;
 import com.dlr.execution.domain.Submission;
 import com.dlr.learning.application.AttemptService;
 import com.dlr.learning.domain.Attempt;
@@ -21,15 +23,21 @@ public class AttemptWorkspaceController {
     private final AttemptService attemptService;
     private final ExecutionService executionService;
     private final AssessmentService assessmentService;
+    private final TransferService transferService;
+    private final LabCatalog labCatalog;
 
     public AttemptWorkspaceController(
             AttemptService attemptService,
             ExecutionService executionService,
-            AssessmentService assessmentService
+            AssessmentService assessmentService,
+            TransferService transferService,
+            LabCatalog labCatalog
     ) {
         this.attemptService = attemptService;
         this.executionService = executionService;
         this.assessmentService = assessmentService;
+        this.transferService = transferService;
+        this.labCatalog = labCatalog;
     }
 
     @GetMapping("/current")
@@ -48,7 +56,20 @@ public class AttemptWorkspaceController {
                 submission == null ? null : submission.sourceCode(),
                 submission == null ? null : submission.origin().name(),
                 assessment.answers().stream().map(QuizDraft::from).toList(),
-                assessment.checklist());
+                assessment.checklist(),
+                transfers(attempt));
+    }
+
+    /** Un état par exercice de transfert : dernier code de la tentative et réussite (toutes tentatives confondues). */
+    private List<TransferState> transfers(Attempt attempt) {
+        return labCatalog.findByCode(attempt.labCode()).map(lab -> lab.transferExercises().stream().map(exercise -> {
+            Submission submission = executionService.latestTransferSubmission(attempt.id(), exercise.code()).orElse(null);
+            return new TransferState(
+                    exercise.code(),
+                    submission == null ? null : submission.sourceCode(),
+                    submission == null ? null : submission.origin().name(),
+                    transferService.passed(attempt.labCode(), exercise.code()));
+        }).toList()).orElse(List.of());
     }
 
     public record WorkspaceResponse(
@@ -56,8 +77,12 @@ public class AttemptWorkspaceController {
             String sourceCode,
             String sourceOrigin,
             List<QuizDraft> quizAnswers,
-            List<Boolean> checklist
+            List<Boolean> checklist,
+            List<TransferState> transfers
     ) {
+    }
+
+    public record TransferState(String exerciseCode, String sourceCode, String sourceOrigin, boolean passed) {
     }
 
     public record QuizDraft(String questionId, Integer selectedChoice, String answerText, String feedback) {

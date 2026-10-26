@@ -73,6 +73,14 @@ export interface AttemptWorkspace {
   sourceOrigin: 'EDITOR' | 'PASTE' | 'IMPORT' | null;
   quizAnswers: { questionId: string; selectedChoice: number | null; answerText: string | null; feedback: string }[];
   checklist: boolean[];
+  transfers: TransferState[];
+}
+
+export interface TransferState {
+  exerciseCode: string;
+  sourceCode: string | null;
+  sourceOrigin: 'EDITOR' | 'PASTE' | 'IMPORT' | null;
+  passed: boolean;
 }
 
 export interface LabResetResult {
@@ -109,11 +117,12 @@ export class ExecutionApiService {
     attemptId: string,
     sourceCode: string,
     language: string,
-    origin: 'EDITOR' | 'PASTE' | 'IMPORT' = 'EDITOR'
+    origin: 'EDITOR' | 'PASTE' | 'IMPORT' = 'EDITOR',
+    exerciseCode?: string
   ): Observable<SubmissionResponse> {
     return this.http.post<SubmissionResponse>(
       `${this.apiUrl}/attempts/${encodeURIComponent(attemptId)}/submissions`,
-      { language, sourceCode, origin }
+      { language, sourceCode, origin, exerciseCode }
     );
   }
 

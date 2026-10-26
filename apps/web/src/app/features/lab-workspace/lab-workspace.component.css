@@ -729,3 +729,29 @@ pre {
   margin: 0;
   font-weight: 600;
 }
+
+.transfer-heading {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  justify-content: space-between;
+}
+
+.transfer-badge {
+  background: var(--success-soft);
+  border: 1px solid var(--success);
+  border-radius: 99px;
+  color: var(--success);
+  font-size: 0.72rem;
+  font-weight: 800;
+  padding: 0.25rem 0.65rem;
+}
+
+.exercise.transfer.passed {
+  border-color: var(--success);
+}
+
+.statement {
+  white-space: pre-line;
+}

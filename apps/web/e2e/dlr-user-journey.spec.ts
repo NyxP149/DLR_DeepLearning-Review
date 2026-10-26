@@ -73,6 +73,17 @@ test('le quiz de départ précède le cours et peut être validé sans voir la c
   ] });
 });
 
+test('JAVA-10 propose deux exercices de transfert facultatifs, sans indice ni score', async ({ page }) => {
+  await page.goto('/labs/JAVA-10');
+  const transfers = page.locator('.exercise.transfer');
+  await expect(transfers).toHaveCount(2);
+  await expect(transfers.first().getByText('Exercice de transfert · facultatif, hors score')).toBeVisible();
+  await expect(transfers.first().getByRole('button', { name: 'Compiler et exécuter' })).toBeEnabled();
+  await expect(transfers.first().getByRole('button', { name: /indice/i })).toHaveCount(0);
+  // Un seul bouton d'indice pour tout le laboratoire : celui de l'exercice guidé.
+  await expect(page.getByRole('button', { name: 'Obtenir un indice' })).toHaveCount(1);
+});
+
 test('le curseur CodeMirror se déplace librement et le texte reste modifiable', async ({ page }) => {
   await page.goto('/labs/JAVA-01');
   const editor = page.getByRole('textbox', { name: 'Code JAVA' });

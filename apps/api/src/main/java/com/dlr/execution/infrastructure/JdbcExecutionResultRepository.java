@@ -48,7 +48,7 @@ public class JdbcExecutionResultRepository implements ExecutionResultRepository 
                                er.error_output, er.duration_ms, er.created_at
                         from execution_result er
                         join submission s on s.id = er.submission_id
-                        where s.attempt_id = ?
+                        where s.attempt_id = ? and s.exercise_code is null
                         order by er.created_at desc
                         limit 1
                         """,

@@ -11,5 +11,8 @@ public interface SubmissionRepository {
 
     Optional<Submission> findById(UUID id);
 
+    /** Dernière soumission de l'exercice guidé (celle qui sert au score), jamais celle d'un exercice de transfert. */
     Optional<Submission> findLatestByAttemptId(UUID attemptId);
+
+    Optional<Submission> findLatestByAttemptIdAndExercise(UUID attemptId, String exerciseCode);
 }

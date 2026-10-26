@@ -30,24 +30,26 @@ class JavaContentRunnerIntegrationTest {
 
         assertThat(javaLabs).hasSize(24);
         for (var lab : javaLabs) {
-            var exercise = lab.exercises().getFirst();
-            var submission = new Submission(
-                    UUID.randomUUID(), UUID.randomUUID(), "JAVA", exercise.starterCode(),
-                    SubmissionOrigin.EDITOR, Instant.now());
-            var result = runner.run(submission);
-            assertThat(result.status()).as(lab.code() + ": " + result.errorOutput()).isEqualTo(ExecutionStatus.SUCCESS);
-            // Tous les starters sont des squelettes à compléter : ils compilent
-            // mais ne produisent pas encore la sortie attendue.
-            assertThat(result.standardOutput().strip()).as(lab.code() + " ne doit pas donner la solution")
-                    .isNotEqualTo(exercise.expectedOutput().strip());
+            // Exercice guidé et exercices de transfert : chacun a un squelette à compléter et une solution de référence.
+            for (var exercise : lab.exercises()) {
+                var submission = new Submission(
+                        UUID.randomUUID(), UUID.randomUUID(), "JAVA", exercise.starterCode(),
+                        SubmissionOrigin.EDITOR, Instant.now());
+                var result = runner.run(submission);
+                assertThat(result.status()).as(exercise.code() + ": " + result.errorOutput()).isEqualTo(ExecutionStatus.SUCCESS);
+                // Tous les starters sont des squelettes à compléter : ils compilent
+                // mais ne produisent pas encore la sortie attendue.
+                assertThat(result.standardOutput().strip()).as(exercise.code() + " ne doit pas donner la solution")
+                        .isNotEqualTo(exercise.expectedOutput().strip());
 
-            var solution = new Submission(
-                    UUID.randomUUID(), UUID.randomUUID(), "JAVA", referenceSolution(exercise.code()),
-                    SubmissionOrigin.EDITOR, Instant.now());
-            var solved = runner.run(solution);
-            assertThat(solved.status()).as(lab.code() + ": " + solved.errorOutput()).isEqualTo(ExecutionStatus.SUCCESS);
-            assertThat(solved.standardOutput().strip()).as(lab.code() + " solution de référence")
-                    .isEqualTo(exercise.expectedOutput().strip());
+                var solution = new Submission(
+                        UUID.randomUUID(), UUID.randomUUID(), "JAVA", referenceSolution(exercise.code()),
+                        SubmissionOrigin.EDITOR, Instant.now());
+                var solved = runner.run(solution);
+                assertThat(solved.status()).as(exercise.code() + ": " + solved.errorOutput()).isEqualTo(ExecutionStatus.SUCCESS);
+                assertThat(solved.standardOutput().strip()).as(exercise.code() + " solution de référence")
+                        .isEqualTo(exercise.expectedOutput().strip());
+            }
         }
     }
 

@@ -78,7 +78,7 @@ public class TutorService {
                 %s
 
                 Niveau d'indice : %d. %s
-                """.formatted(lab.title(), lab.exercises().getFirst().statement(), safeCode, level, instruction);
+                """.formatted(lab.title(), lab.guidedExercise().statement(), safeCode, level, instruction);
         return respond("HINT_" + level, prompt);
     }
 
@@ -144,7 +144,7 @@ public class TutorService {
                 Reste dans ce rôle. Distingue les faits du laboratoire de tes suggestions.
                 N'invente ni test privé, ni score, ni contrainte absente. Termine par une action concrète ou une question utile.
                 """.formatted(role, posture, lab.title(), String.join(" ; ", lab.objectives()),
-                lab.exercises().getFirst().statement(), safeContext, safeQuestion);
+                lab.guidedExercise().statement(), safeContext, safeQuestion);
         return respond("ROLE_" + role, prompt);
     }
 

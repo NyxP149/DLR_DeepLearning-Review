@@ -41,6 +41,7 @@ export interface Exercise {
   title: string;
   statement: string;
   starterCode: string;
+  kind: 'GUIDED' | 'TRANSFER';
 }
 
 export interface QuizQuestion {

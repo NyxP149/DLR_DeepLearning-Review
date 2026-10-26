@@ -59,6 +59,22 @@
       "statement": "Une commande contient plusieurs lignes avec le même sku. Complète Main pour garder la première ligne de chaque sku, trier par prix décroissant puis par nom croissant, et afficher exactement :\nProduits : Ecran (149.0), Clavier (49.9), Bloc (19.9), Souris (19.9), Cable (4.5)\nDoublons ignores : 2",
       "starterCode": "import java.util.*;\nimport java.util.stream.Collectors;\n\npublic class Main {\n    record Product(String sku, String name, double price) {\n        // TODO 1 : redéfinis equals et hashCode pour que seul le sku identifie un produit\n    }\n\n    public static void main(String[] args) {\n        List<Product> lines = List.of(\n                new Product(\"K-1\", \"Clavier\", 49.9),\n                new Product(\"S-2\", \"Souris\", 19.9),\n                new Product(\"K-1\", \"Clavier promo\", 39.9),\n                new Product(\"C-3\", \"Cable\", 4.5),\n                new Product(\"S-2\", \"Souris sans fil\", 24.9),\n                new Product(\"M-4\", \"Ecran\", 149.0),\n                new Product(\"B-5\", \"Bloc\", 19.9));\n        // TODO 2 : retire les doublons de sku avec un Set (la première ligne rencontrée est conservée)\n        // TODO 3 : trie les produits restants par prix décroissant, puis par nom croissant\n        // TODO 4 : affiche \"Produits : \" suivi de nom (prix) séparés par \", \",\n        //          puis \"Doublons ignores : \" et le nombre de lignes retirées\n    }\n}\n",
       "expectedOutput": "Produits : Ecran (149.0), Clavier (49.9), Bloc (19.9), Souris (19.9), Cable (4.5)\nDoublons ignores : 2"
+    },
+    {
+      "code": "JAVA-10-T1",
+      "title": "Transfert : fusionner des contacts importés",
+      "statement": "Même notion, autre contexte : un import de contacts contient des doublons dont l'adresse e-mail ne diffère que par la casse (Ana@Mail.io et ana@mail.io sont la même personne). Garde le premier contact rencontré pour chaque adresse, puis affiche les contacts triés par ville croissante puis par nom croissant, un par ligne au format « ville : nom <e-mail> » (l'e-mail est affiché tel qu'il a été conservé), et termine par le nombre de contacts fusionnés. Aucun indice n'est proposé et cet exercice ne compte pas dans le score. Sortie exacte :\nBrest : Dan <dan@mail.io>\nLyon : Ana <Ana@Mail.io>\nLyon : Cleo <cleo@mail.io>\nParis : Bob <bob@mail.io>\nFusionnes : 2",
+      "starterCode": "import java.util.*;\n\npublic class Main {\n    record Contact(String email, String name, String city) {\n    }\n\n    public static void main(String[] args) {\n        List<Contact> imported = List.of(\n                new Contact(\"Ana@Mail.io\", \"Ana\", \"Lyon\"),\n                new Contact(\"bob@mail.io\", \"Bob\", \"Paris\"),\n                new Contact(\"ana@mail.io\", \"Ana B.\", \"Lyon\"),\n                new Contact(\"cleo@mail.io\", \"Cleo\", \"Lyon\"),\n                new Contact(\"BOB@MAIL.IO\", \"Bob 2\", \"Paris\"),\n                new Contact(\"dan@mail.io\", \"Dan\", \"Brest\"));\n        // À toi : écris la suite, sans étapes imposées.\n    }\n}\n",
+      "expectedOutput": "Brest : Dan <dan@mail.io>\nLyon : Ana <Ana@Mail.io>\nLyon : Cleo <cleo@mail.io>\nParis : Bob <bob@mail.io>\nFusionnes : 2",
+      "kind": "TRANSFER"
+    },
+    {
+      "code": "JAVA-10-T2",
+      "title": "Transfert : classer les utilisateurs les plus actifs",
+      "statement": "Même notion, autre contexte : un journal liste une connexion par ligne (le nom de l'utilisateur). Choisis toi-même la collection adaptée, compte les connexions de chaque utilisateur puis affiche le classement du plus actif au moins actif, à égalité par ordre alphabétique, au format « nom : nombre », et termine par le nombre d'utilisateurs distincts. Aucun indice n'est proposé et cet exercice ne compte pas dans le score. Sortie exacte :\nzoe : 3\nana : 2\nbob : 2\ncleo : 1\nUtilisateurs distincts : 4",
+      "starterCode": "import java.util.*;\n\npublic class Main {\n    public static void main(String[] args) {\n        List<String> connexions = List.of(\"zoe\", \"ana\", \"zoe\", \"bob\", \"ana\", \"zoe\", \"cleo\", \"bob\");\n        // À toi : écris la suite, sans étapes imposées.\n    }\n}\n",
+      "expectedOutput": "zoe : 3\nana : 2\nbob : 2\ncleo : 1\nUtilisateurs distincts : 4",
+      "kind": "TRANSFER"
     }
   ],
   "quiz": [

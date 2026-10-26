@@ -25,15 +25,16 @@ public class JdbcSubmissionRepository implements SubmissionRepository {
     public Submission save(Submission submission) {
         jdbcTemplate.update(
                 """
-                insert into submission (id, attempt_id, language, source_code, origin, created_at)
-                values (?, ?, ?, ?, ?, ?)
+                insert into submission (id, attempt_id, language, source_code, origin, created_at, exercise_code)
+                values (?, ?, ?, ?, ?, ?, ?)
                 """,
                 submission.id(),
                 submission.attemptId(),
                 submission.language(),
                 submission.sourceCode(),
                 submission.origin().name(),
-                Timestamp.from(submission.createdAt()));
+                Timestamp.from(submission.createdAt()),
+                submission.exerciseCode());
         return submission;
     }
 
@@ -41,7 +42,7 @@ public class JdbcSubmissionRepository implements SubmissionRepository {
     public Optional<Submission> findById(UUID id) {
         return jdbcTemplate.query(
                         """
-                        select id, attempt_id, language, source_code, origin, created_at
+                        select id, attempt_id, language, source_code, origin, created_at, exercise_code
                         from submission
                         where id = ?
                         """,
@@ -55,11 +56,24 @@ public class JdbcSubmissionRepository implements SubmissionRepository {
     public Optional<Submission> findLatestByAttemptId(UUID attemptId) {
         return jdbcTemplate.query(
                         """
-                        select id, attempt_id, language, source_code, origin, created_at
-                        from submission where attempt_id = ? order by created_at desc limit 1
+                        select id, attempt_id, language, source_code, origin, created_at, exercise_code
+                        from submission where attempt_id = ? and exercise_code is null order by created_at desc limit 1
                         """,
                         this::mapSubmission,
                         attemptId)
+                .stream()
+                .findFirst();
+    }
+
+    @Override
+    public Optional<Submission> findLatestByAttemptIdAndExercise(UUID attemptId, String exerciseCode) {
+        return jdbcTemplate.query(
+                        """
+                        select id, attempt_id, language, source_code, origin, created_at, exercise_code
+                        from submission where attempt_id = ? and exercise_code = ? order by created_at desc limit 1
+                        """,
+                        this::mapSubmission,
+                        attemptId, exerciseCode)
                 .stream()
                 .findFirst();
     }
@@ -71,6 +85,7 @@ public class JdbcSubmissionRepository implements SubmissionRepository {
                 result.getString("language"),
                 result.getString("source_code"),
                 SubmissionOrigin.valueOf(result.getString("origin")),
-                result.getTimestamp("created_at").toInstant());
+                result.getTimestamp("created_at").toInstant(),
+                result.getString("exercise_code"));
     }
 }

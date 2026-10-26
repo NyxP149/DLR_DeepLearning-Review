@@ -98,9 +98,10 @@ public class LabController {
         }
     }
 
-    public record ExerciseResponse(String code, String title, String statement, String starterCode) {
+    public record ExerciseResponse(String code, String title, String statement, String starterCode, String kind) {
         static ExerciseResponse from(LabContent.Exercise exercise) {
-            return new ExerciseResponse(exercise.code(), exercise.title(), exercise.statement(), exercise.starterCode());
+            return new ExerciseResponse(exercise.code(), exercise.title(), exercise.statement(), exercise.starterCode(),
+                    exercise.kind());
         }
     }
 

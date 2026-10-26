@@ -59,7 +59,9 @@
 - [x] Tableau de bord de calibration sur la page Coach : confiance déclarée contre réussite réelle, verdict, sources quiz et révisions, angles morts reliés aux labos (V3.28)
 - [x] Quiz de départ avant le cours : trois questions sans correction ni effet sur le score, « Je ne sais pas » admis, comparées à la première réponse du quiz final dans le bilan (V3.29)
 - [x] Mesure de rétention différée sur la page Coach : rappels des révisions rangés par délai depuis la fin du labo, comparés au quiz initial, labos retenus durablement et oublis à revoir (V3.30)
-- [ ] Évolution de la calibration dans le temps, gain du quiz de départ agrégé au tableau de bord, exercices de transfert, maîtrise des concepts pilotée par la rétention
+- [x] Exercices de transfert : plusieurs exercices par labo (guidé noté, transferts facultatifs sans indice ni score), soumissions par exercice, indicateur « Transfert confirmé » alimenté ; pilote JAVA-10 avec 2 transferts validés dans Docker (V3.31)
+- [ ] Déployer les exercices de transfert aux autres labos (chaque solution validée dans Docker)
+- [ ] Évolution de la calibration dans le temps, gain du quiz de départ agrégé au tableau de bord, maîtrise des concepts pilotée par la rétention
 
 ## Déploiement cloud
 

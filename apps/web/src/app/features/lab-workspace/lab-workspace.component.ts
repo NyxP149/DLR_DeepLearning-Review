@@ -17,7 +17,7 @@ import { TutorApiService } from '../../core/api/tutor-api.service';
 import { DraftStoreService } from '../../core/storage/draft-store.service';
 import { LabMemoryStoreService } from '../../core/storage/lab-memory-store.service';
 import { NotesApiService } from '../../core/api/notes-api.service';
-import { KeyConcept, LabContent, LessonSection, QuizQuestion } from './lab.model';
+import { Exercise, KeyConcept, LabContent, LessonSection, QuizQuestion } from './lab.model';
 import { CodeEditorComponent } from '../../shared/code-editor/code-editor.component';
 import { EXECUTION_AVAILABLE } from '../../core/api/api-config';
 
@@ -85,6 +85,12 @@ export class LabWorkspaceComponent implements OnDestroy {
   readonly deletingAnalysis = signal<string | null>(null);
   /** Quiz de départ : `null` tant qu'il est inconnu ou sans objet ; il masque le cours tant qu'il est « PENDING ». */
   readonly pretest = signal<Pretest | null>(null);
+  /** Exercices de transfert : code, résultat, erreur et réussite par code d'exercice. */
+  readonly transferCodes = signal<Record<string, string>>({});
+  readonly transferResults = signal<Record<string, ExecutionResult>>({});
+  readonly transferErrors = signal<Record<string, string>>({});
+  readonly transferPassed = signal<Record<string, boolean>>({});
+  readonly transferRunning = signal<string | null>(null);
   /** Réponse choisie par question : un indice de choix, ou `null` pour « Je ne sais pas ». */
   readonly pretestValues = signal<Record<string, number | null>>({});
   readonly pretestBusy = signal(false);
@@ -97,6 +103,7 @@ export class LabWorkspaceComponent implements OnDestroy {
   private draftTimer: ReturnType<typeof setTimeout> | null = null;
   private noteTimer: ReturnType<typeof setTimeout> | null = null;
   private readonly reflectionTimers = new Map<string, ReturnType<typeof setTimeout>>();
+  private readonly transferDraftTimers = new Map<string, ReturnType<typeof setTimeout>>();
 
   constructor() {
     this.refreshRunnerStatus();
@@ -154,6 +161,7 @@ export class LabWorkspaceComponent implements OnDestroy {
           this.pretest.set(pretest);
           this.pretestValues.set({});
           this.pretestError.set(null);
+          this.initTransfers(lab, workspace);
           this.activeLabCode = lab.code;
           this.activeLanguage = lab.language;
           this.attemptId = workspace?.attempt.id ?? null;
@@ -387,6 +395,10 @@ export class LabWorkspaceComponent implements OnDestroy {
         this.draftTimer = null;
       }
       await this.drafts.remove(lab.code);
+      for (const exercise of this.transferExercises(lab)) {
+        await this.drafts.remove(this.transferDraftKey(lab.code, exercise.code));
+      }
+      this.initTransfers(lab, null);
       this.attemptId = null;
       this.code.set(lab.exercises[0]?.starterCode ?? '');
       this.sourceOrigin.set('EDITOR');
@@ -409,6 +421,79 @@ export class LabWorkspaceComponent implements OnDestroy {
       this.completionError.set(this.errorMessage(error));
     } finally {
       this.resetting.set(false);
+    }
+  }
+
+  guidedExercises(lab: LabContent): Exercise[] {
+    return lab.exercises.filter((exercise) => exercise.kind !== 'TRANSFER');
+  }
+
+  transferExercises(lab: LabContent): Exercise[] {
+    return lab.exercises.filter((exercise) => exercise.kind === 'TRANSFER');
+  }
+
+  private initTransfers(lab: LabContent, workspace: AttemptWorkspace | null): void {
+    const saved = new Map((workspace?.transfers ?? []).map((state) => [state.exerciseCode, state]));
+    const codes: Record<string, string> = {};
+    const passed: Record<string, boolean> = {};
+    for (const exercise of this.transferExercises(lab)) {
+      codes[exercise.code] = saved.get(exercise.code)?.sourceCode ?? exercise.starterCode;
+      passed[exercise.code] = saved.get(exercise.code)?.passed ?? false;
+    }
+    this.transferCodes.set(codes);
+    this.transferPassed.set(passed);
+    this.transferResults.set({});
+    this.transferErrors.set({});
+    this.transferRunning.set(null);
+    void this.restoreTransferDrafts(lab, saved);
+  }
+
+  private async restoreTransferDrafts(lab: LabContent, saved: Map<string, { sourceCode: string | null }>): Promise<void> {
+    for (const exercise of this.transferExercises(lab)) {
+      const draft = await this.drafts.load(this.transferDraftKey(lab.code, exercise.code));
+      if (draft === null || this.activeLabCode !== lab.code) continue;
+      if (draft === (saved.get(exercise.code)?.sourceCode ?? null)) {
+        await this.drafts.remove(this.transferDraftKey(lab.code, exercise.code));
+      } else {
+        this.transferCodes.update((codes) => ({ ...codes, [exercise.code]: draft }));
+      }
+    }
+  }
+
+  private transferDraftKey(labCode: string, exerciseCode: string): string {
+    return `${labCode}:${exerciseCode}`;
+  }
+
+  onTransferCodeChange(exerciseCode: string, value: string): void {
+    this.transferCodes.update((codes) => ({ ...codes, [exerciseCode]: value }));
+    const labCode = this.activeLabCode;
+    const previous = this.transferDraftTimers.get(exerciseCode);
+    if (previous !== undefined) clearTimeout(previous);
+    this.transferDraftTimers.set(exerciseCode, setTimeout(() => {
+      this.transferDraftTimers.delete(exerciseCode);
+      void this.drafts.save(this.transferDraftKey(labCode, exerciseCode), value);
+    }, 400));
+  }
+
+  /** Exécute un transfert : même runner, soumission rattachée à l'exercice, aucun effet sur le score du labo. */
+  async runTransfer(exercise: Exercise): Promise<void> {
+    const source = this.transferCodes()[exercise.code] ?? '';
+    if (!this.executionAvailable() || this.transferRunning() !== null || source.trim().length === 0) return;
+    this.transferRunning.set(exercise.code);
+    this.transferErrors.update((errors) => { const { [exercise.code]: _removed, ...rest } = errors; return rest; });
+    try {
+      const attemptId = await this.ensureAttempt();
+      const submission = await firstValueFrom(
+        this.executionApi.submit(attemptId, source, this.activeLanguage, 'EDITOR', exercise.code));
+      const result = await firstValueFrom(this.executionApi.run(submission.id));
+      this.transferResults.update((results) => ({ ...results, [exercise.code]: result }));
+      if (result.status === 'SUCCESS') {
+        this.transferPassed.update((passed) => ({ ...passed, [exercise.code]: true }));
+      }
+    } catch (error) {
+      this.transferErrors.update((errors) => ({ ...errors, [exercise.code]: this.errorMessage(error) }));
+    } finally {
+      this.transferRunning.set(null);
     }
   }
 
@@ -734,6 +819,7 @@ export class LabWorkspaceComponent implements OnDestroy {
   ngOnDestroy(): void {
     if (this.draftTimer !== null) clearTimeout(this.draftTimer);
     if (this.noteTimer !== null) clearTimeout(this.noteTimer);
+    for (const timer of this.transferDraftTimers.values()) clearTimeout(timer);
     this.clearReflectionTimers();
   }
 

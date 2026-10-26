@@ -45,7 +45,7 @@ public class ExecutionController {
             @Valid @RequestBody SubmissionRequest request
     ) {
         Submission submission = executionService.createSubmission(
-                attemptId, request.language(), request.sourceCode(), request.origin());
+                attemptId, request.language(), request.sourceCode(), request.origin(), request.exerciseCode());
         return SubmissionResponse.from(submission);
     }
 
@@ -57,7 +57,8 @@ public class ExecutionController {
     public record SubmissionRequest(
             @NotBlank String language,
             @NotBlank @Size(max = 65_536) String sourceCode,
-            @NotNull SubmissionOrigin origin
+            @NotNull SubmissionOrigin origin,
+            @Size(max = 60) String exerciseCode
     ) {
     }
 

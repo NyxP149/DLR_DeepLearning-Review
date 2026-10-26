@@ -1,6 +1,7 @@
 package com.dlr.adaptation.application;
 
 import com.dlr.catalog.application.LabCatalog;
+import com.dlr.execution.application.TransferService;
 import com.dlr.mastery.application.ConceptMasteryService;
 import com.dlr.mastery.application.ConceptMasteryService.ConceptMastery;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -26,17 +27,21 @@ public class AdaptationService {
     private final JdbcTemplate jdbcTemplate;
     private final ConceptMasteryService masteryService;
     private final LabCatalog catalog;
+    private final TransferService transferService;
     private final Clock clock;
 
     @Autowired
-    public AdaptationService(JdbcTemplate jdbcTemplate, ConceptMasteryService masteryService, LabCatalog catalog) {
-        this(jdbcTemplate, masteryService, catalog, Clock.systemUTC());
+    public AdaptationService(JdbcTemplate jdbcTemplate, ConceptMasteryService masteryService, LabCatalog catalog,
+                             TransferService transferService) {
+        this(jdbcTemplate, masteryService, catalog, transferService, Clock.systemUTC());
     }
 
-    AdaptationService(JdbcTemplate jdbcTemplate, ConceptMasteryService masteryService, LabCatalog catalog, Clock clock) {
+    AdaptationService(JdbcTemplate jdbcTemplate, ConceptMasteryService masteryService, LabCatalog catalog,
+                      TransferService transferService, Clock clock) {
         this.jdbcTemplate = jdbcTemplate;
         this.masteryService = masteryService;
         this.catalog = catalog;
+        this.transferService = transferService;
         this.clock = clock;
     }
 
@@ -123,10 +128,18 @@ public class AdaptationService {
         int estimatedWeeks = remaining == 0 ? 0 : (int) Math.ceil(remaining / (double) pace);
         int mastered = (int) masteryService.list().stream()
                 .filter(concept -> concept.status() == ConceptMasteryService.MasteryStatus.MASTERED).count();
-        int transfer = masteryService.list().isEmpty() ? 0 : mastered * 100 / masteryService.list().size();
-        return new Insights(autonomy, hintDependency, transfer, estimatedWeeks,
-                List.of("score moyen : " + averageScore + " %", "indices demandés : " + hints,
-                        "révisions validées : " + completedReviews, "séances terminées : " + completedSessions),
+        // Tant que les labos terminés n'ont aucun exercice de transfert, la maîtrise des concepts sert d'indicateur.
+        TransferService.Progress transferProgress = transferService.progress();
+        int transfer = transferProgress.available() > 0
+                ? transferProgress.percent()
+                : masteryService.list().isEmpty() ? 0 : mastered * 100 / masteryService.list().size();
+        List<String> factors = new java.util.ArrayList<>(List.of(
+                "score moyen : " + averageScore + " %", "indices demandés : " + hints,
+                "révisions validées : " + completedReviews, "séances terminées : " + completedSessions));
+        if (transferProgress.available() > 0) {
+            factors.add("transferts réussis : " + transferProgress.passed() + " sur " + transferProgress.available());
+        }
+        return new Insights(autonomy, hintDependency, transfer, estimatedWeeks, factors,
                 "Estimation locale fondée sur l'activité enregistrée ; elle ne constitue pas une certitude.");
     }
 

@@ -5,6 +5,7 @@ import com.dlr.execution.domain.Submission;
 import com.dlr.execution.domain.SubmissionOrigin;
 import com.dlr.learning.application.AttemptService;
 import com.dlr.catalog.application.LabCatalog;
+import com.dlr.catalog.domain.LabContent;
 import com.dlr.shared.web.ResourceNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -54,12 +55,18 @@ public class ExecutionService {
         this.clock = clock;
     }
 
+    public Submission createSubmission(UUID attemptId, String language, String sourceCode, SubmissionOrigin origin) {
+        return createSubmission(attemptId, language, sourceCode, origin, null);
+    }
+
+    /** `exerciseCode` vide : l'exercice guidé ; sinon un exercice de transfert du laboratoire. */
     @Transactional
     public Submission createSubmission(
             UUID attemptId,
             String language,
             String sourceCode,
-            SubmissionOrigin origin
+            SubmissionOrigin origin,
+            String exerciseCode
     ) {
         var attempt = attemptService.get(attemptId);
         var lab = labCatalog.findByCode(attempt.labCode()).orElseThrow(() ->
@@ -75,13 +82,22 @@ public class ExecutionService {
             throw new IllegalArgumentException("Le code source dépasse la limite de 64 Kio.");
         }
 
+        String transferCode = null;
+        if (exerciseCode != null && !exerciseCode.isBlank() && !exerciseCode.equals(lab.guidedExercise().code())) {
+            transferCode = lab.exercise(exerciseCode)
+                    .filter(LabContent.Exercise::transfer)
+                    .orElseThrow(() -> new IllegalArgumentException("Exercice inconnu pour ce laboratoire : " + exerciseCode))
+                    .code();
+        }
+
         return submissionRepository.save(new Submission(
                 UUID.randomUUID(),
                 attemptId,
                 expectedLanguage,
                 sourceCode,
                 origin,
-                Instant.now(clock)));
+                Instant.now(clock),
+                transferCode));
     }
 
     public ExecutionResult run(UUID submissionId) {
@@ -94,7 +110,9 @@ public class ExecutionService {
             var lab = labCatalog.findByCode(attempt.labCode())
                     .orElseThrow(() -> new ResourceNotFoundException(
                             "LAB_NOT_FOUND", "Laboratoire introuvable : " + attempt.labCode()));
-            String expected = lab.exercises().getFirst().expectedOutput().strip();
+            String expected = (submission.exerciseCode() == null
+                    ? lab.guidedExercise()
+                    : lab.exercise(submission.exerciseCode()).orElse(lab.guidedExercise())).expectedOutput().strip();
             String actual = result.standardOutput().strip();
             if (!actual.equals(expected)) {
                 result = new ExecutionResult(
@@ -106,6 +124,11 @@ public class ExecutionService {
             }
         }
         return resultRepository.save(result);
+    }
+
+    public java.util.Optional<Submission> latestTransferSubmission(UUID attemptId, String exerciseCode) {
+        attemptService.get(attemptId);
+        return submissionRepository.findLatestByAttemptIdAndExercise(attemptId, exerciseCode);
     }
 
     public java.util.Optional<Submission> latestSubmission(UUID attemptId) {

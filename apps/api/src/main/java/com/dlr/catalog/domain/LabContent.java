@@ -49,13 +49,42 @@ public record LabContent(
     ) {
     }
 
+    /** `kind` : GUIDED (l'exercice noté du laboratoire, toujours en premier) ou TRANSFER (même notion, contexte nouveau, hors score). */
     public record Exercise(
             String code,
             String title,
             String statement,
             String starterCode,
-            String expectedOutput
+            String expectedOutput,
+            String kind
     ) {
+        public static final String GUIDED = "GUIDED";
+        public static final String TRANSFER = "TRANSFER";
+
+        public Exercise {
+            kind = kind == null || kind.isBlank() ? GUIDED : kind;
+        }
+
+        public Exercise(String code, String title, String statement, String starterCode, String expectedOutput) {
+            this(code, title, statement, starterCode, expectedOutput, GUIDED);
+        }
+
+        public boolean transfer() {
+            return TRANSFER.equals(kind);
+        }
+    }
+
+    /** L'exercice noté du laboratoire : le premier qui n'est pas un transfert. */
+    public Exercise guidedExercise() {
+        return exercises.stream().filter(exercise -> !exercise.transfer()).findFirst().orElseGet(() -> exercises.getFirst());
+    }
+
+    public List<Exercise> transferExercises() {
+        return exercises.stream().filter(Exercise::transfer).toList();
+    }
+
+    public java.util.Optional<Exercise> exercise(String code) {
+        return exercises.stream().filter(exercise -> exercise.code().equals(code)).findFirst();
     }
 
     public record QuizQuestion(
