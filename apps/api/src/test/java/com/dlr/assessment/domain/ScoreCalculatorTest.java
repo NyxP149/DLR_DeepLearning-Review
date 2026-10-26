@@ -23,6 +23,25 @@ class ScoreCalculatorTest {
     }
 
     @Test
+    void v2WeighsRecallAndUnassistedPracticeMoreThanTheSelfDeclaredChecklist() {
+        var input = new ScoreCalculator.ScoreInput(
+                value("100"), value("50"), value("65"), value("100"), value("100"), 70);
+
+        var v1 = calculator.calculate(input);
+        var v2 = calculator.calculate(input, ScoreCalculator.V2);
+
+        // V1 : 40 + 10 + 13 + 10 + 10 ; V2 : 30 + 12.5 + 13 + 20 + 5
+        assertThat(v1.score()).isEqualByComparingTo("83.00");
+        assertThat(v2.score()).isEqualByComparingTo("80.50");
+    }
+
+    @Test
+    void rejectsWeightsThatDoNotTotalOneHundred() {
+        assertThatThrownBy(() -> new ScoreCalculator.Weights(30, 25, 20, 20, 10))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
     void keepsProgressPossibleWhileReportingThatThresholdWasNotReached() {
         var input = new ScoreCalculator.ScoreInput(
                 value("50"), value("60"), value("55"), value("40"), value("80"), 70);

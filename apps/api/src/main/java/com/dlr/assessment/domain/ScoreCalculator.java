@@ -8,18 +8,31 @@ import java.math.RoundingMode;
 @Service
 public class ScoreCalculator {
 
+    /** Pondérations V1 : tests 40, quiz 20, pratique 20, explication 10, checklist 10. */
+    public static final Weights V1 = new Weights(40, 20, 20, 10, 10);
+
+    /**
+     * Pondérations V2 : moins de poids sur l'exécution seule (30) et sur la checklist déclarative (5),
+     * davantage sur la récupération de mémoire (quiz 25, explication 20) et une pratique « sans aide » (20).
+     */
+    public static final Weights V2 = new Weights(30, 25, 20, 20, 5);
+
     public ScoreResult calculate(ScoreInput input) {
+        return calculate(input, V1);
+    }
+
+    public ScoreResult calculate(ScoreInput input, Weights weights) {
         validate(input.tests(), "tests");
         validate(input.quiz(), "quiz");
         validate(input.practice(), "practice");
         validate(input.connections(), "connections");
         validate(input.selfAssessment(), "selfAssessment");
 
-        BigDecimal total = weighted(input.tests(), 40)
-                .add(weighted(input.quiz(), 20))
-                .add(weighted(input.practice(), 20))
-                .add(weighted(input.connections(), 10))
-                .add(weighted(input.selfAssessment(), 10))
+        BigDecimal total = weighted(input.tests(), weights.tests())
+                .add(weighted(input.quiz(), weights.quiz()))
+                .add(weighted(input.practice(), weights.practice()))
+                .add(weighted(input.connections(), weights.connections()))
+                .add(weighted(input.selfAssessment(), weights.selfAssessment()))
                 .setScale(2, RoundingMode.HALF_UP);
 
         return new ScoreResult(total, total.compareTo(BigDecimal.valueOf(input.threshold())) >= 0);
@@ -52,6 +65,14 @@ public class ScoreCalculator {
     }
 
     public record ScoreResult(BigDecimal score, boolean thresholdReached) {
+    }
+
+    public record Weights(int tests, int quiz, int practice, int connections, int selfAssessment) {
+        public Weights {
+            if (tests + quiz + practice + connections + selfAssessment != 100) {
+                throw new IllegalArgumentException("Les pondérations doivent totaliser 100.");
+            }
+        }
     }
 }
 

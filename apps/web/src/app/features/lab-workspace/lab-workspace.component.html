@@ -46,7 +46,7 @@
 
           @for (section of state.lab.sections; track section.title; let sectionIndex = $index) {
             <article class="panel">
-              @for (concept of conceptsFor(section.conceptCodes, state.lab.keyConcepts, sectionIndex); track concept.code) {
+              @for (concept of conceptsFor(section.conceptCodes, state.lab.keyConcepts, sectionIndex, state.lab.sections); track concept.code) {
                 <section class="embedded-concept">
                   <p class="concept-label">Concept clé · {{ concept.code }}</p>
                   <h2>{{ concept.name }}</h2>
@@ -55,7 +55,10 @@
                 </section>
               }
               <h2>{{ section.title }}</h2>
-              <p>{{ section.content }}</p>
+              @for (block of lessonBlocks(section.content); track $index) {
+                @if (block.code) { <pre class="code-block"><code>{{ block.text }}</code></pre> }
+                @else { <p class="lesson-text">{{ block.text }}</p> }
+              }
             </article>
           }
 
@@ -198,7 +201,8 @@
             <div class="quiz-list">
               @for (question of state.lab.quiz; track question.code; let questionIndex = $index) {
                 <fieldset class="quiz-question">
-                  <legend><span>{{ questionIndex + 1 }}.</span> {{ question.prompt }}</legend>
+                  <legend><span>{{ questionIndex + 1 }}.</span> {{ promptText(question.prompt) }}</legend>
+                  @for (code of promptCode(question.prompt); track $index) { <pre class="code-block"><code>{{ code }}</code></pre> }
                   @if (question.type === 'SINGLE_CHOICE') {
                     <div class="choice-list">
                       @for (choice of question.choices; track choice; let choiceIndex = $index) {
@@ -241,6 +245,39 @@
                       </section>
                     }
                   }
+                  <div class="confidence" role="radiogroup" [attr.aria-label]="'Confiance pour la question ' + (questionIndex + 1)">
+                    <span>Ta confiance, avant la correction :</span>
+                    @for (level of confidenceLevels; track level.value) {
+                      <label>
+                        <input
+                          type="radio"
+                          [name]="'confidence-' + question.code"
+                          [checked]="quizConfidence()[question.code] === level.value"
+                          (change)="onConfidence(question.code, level.value)"
+                        />
+                        <span>{{ level.label }}</span>
+                      </label>
+                    }
+                  </div>
+                  <button
+                    class="verify-button"
+                    type="button"
+                    [disabled]="!canVerify(question) || verifying() !== null || !executionAvailable()"
+                    (click)="verifyAnswer(question)"
+                  >{{ verifying() === question.code ? 'Vérification…' : quizFeedback()[question.code] ? 'Vérifier à nouveau' : 'Vérifier ma réponse' }}</button>
+                  @if (quizFeedback()[question.code]; as feedback) {
+                    <section class="quiz-feedback" [class.correct]="feedback.correct" aria-live="polite">
+                      <strong>{{ feedback.correct ? '✓ Bonne réponse' : '✗ À retravailler' }}</strong>
+                      <p>{{ feedback.feedback }}</p>
+                      @if (question.type === 'SINGLE_CHOICE' && !feedback.correct && feedback.correctChoice !== null) {
+                        <p>Bonne réponse : <em>{{ question.choices[feedback.correctChoice] }}</em></p>
+                      }
+                      @if (feedback.explanation) { <p>{{ feedback.explanation }}</p> }
+                      @if (feedback.modelAnswer) { <p class="model-answer"><b>Réponse de référence :</b> {{ feedback.modelAnswer }}</p> }
+                      @if (calibrationNote(question.code); as note) { <p class="calibration">{{ note }}</p> }
+                      <small>Seule ta première réponse compte pour le score : refais la question pour t’entraîner.</small>
+                    </section>
+                  }
                 </fieldset>
               }
             </div>
@@ -273,11 +310,9 @@
                   <p>Seuil recommandé : {{ result.threshold }} %</p>
                 </div>
                 <dl class="score-breakdown">
-                  <div><dt>Tests</dt><dd>{{ result.breakdown.tests }} %</dd></div>
-                  <div><dt>Quiz</dt><dd>{{ result.breakdown.quiz }} %</dd></div>
-                  <div><dt>Pratique</dt><dd>{{ result.breakdown.practice }} %</dd></div>
-                  <div><dt>Connexion</dt><dd>{{ result.breakdown.connections }} %</dd></div>
-                  <div><dt>Auto-évaluation</dt><dd>{{ result.breakdown.selfAssessment }} %</dd></div>
+                  @for (row of breakdownRows(result); track row.label) {
+                    <div><dt>{{ row.label }}</dt><dd>{{ row.value }} %</dd></div>
+                  }
                 </dl>
                 <p class="completion-hint">
                   Un score te semble incorrect (pratique ou tests à 0 % par exemple) ? Corrige le code, le quiz ou la checklist

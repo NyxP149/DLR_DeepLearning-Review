@@ -52,6 +52,10 @@
 - [x] Exercices à compléter propres à chaque sujet rédigés pour les 81 laboratoires qui partageaient le gabarit « preuve » : Spring Boot (12), Angular (10), SQL (10), DevOps (8), Python 7 à 24 (18) et TypeScript 2 à 24 (23) (V3.22)
 - [x] Parcours « Terminal et IA en ligne de commande » (24 activités, sans prérequis) : bash, PowerShell, Git, automatisation et pilotage d'un projet avec Claude Code, exécutés dans un nouveau runner `dlr/shell-runner:1` ; catalogue à 172 activités sur dix parcours (V3.23)
 - [x] Portfolio : le brouillon du formulaire (preuves cochées, titre, résumé, décisions) est enregistré en base et restauré au chargement ; tableau de bord : panneau « Activité récente » repliable et mémorisé (V3.24)
+- [x] Pratique de récupération : révisions par question de rappel sans le cours, confiance déclarée avant correction, feedback immédiat par question, indices comptés dans la note, score V2 pour les nouvelles tentatives (V3.25)
+- [x] Laboratoire pilote JAVA-10 réécrit avec le nouveau modèle (cours détaillé, exemple travaillé, 5 questions expliquées, exercice vérifié dans Docker) (V3.25)
+- [ ] Déployer le modèle V3.25 sur JAVA-11 à 24 puis sur les autres parcours (cours enrichis, quiz expliqués, exercices validés dans le conteneur)
+- [ ] Tableau de bord de calibration et d'historique d'erreurs, quiz de départ avant le cours, exercices de transfert, maîtrise fondée sur le rappel différé
 
 ## Déploiement cloud
 

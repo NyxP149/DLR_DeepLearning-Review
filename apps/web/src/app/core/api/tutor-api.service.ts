@@ -14,8 +14,8 @@ export class TutorApiService {
   explain(labCode: string, conceptCode: string) {
     return this.http.post<TutorResponse>(`${this.url}/explain`, { labCode, conceptCode, question: 'Explique-moi ce concept progressivement avec un exemple concret.' });
   }
-  hint(labCode: string, sourceCode: string, level: number) {
-    return this.http.post<TutorResponse>(`${this.url}/hint`, { labCode, sourceCode, level });
+  hint(labCode: string, sourceCode: string, level: number, attemptId?: string) {
+    return this.http.post<TutorResponse>(`${this.url}/hint`, { labCode, sourceCode, level, attemptId });
   }
   reviewAnswer(labCode: string, questionCode: string, answer: string) {
     return this.http.post<TutorResponse>(`${this.url}/review-answer`, { labCode, questionCode, answer });

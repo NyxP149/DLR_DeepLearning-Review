@@ -22,6 +22,7 @@ DLR est une application locale d'apprentissage de la programmation, avec évalua
 - synchronisation V2 par appareils appairés, journal idempotent et conflits sans perte.
 - recommandations adaptatives expliquées, analytics d'autonomie et professeur Ollama à cinq rôles ;
 - portfolio privé avec aperçu Markdown, export ZIP GitHub-ready, filtrage des secrets et brouillon du formulaire enregistré en base ;
+- révisions par question de rappel sans le cours, confiance déclarée avant correction, feedback immédiat par question et score V2 sans aide (pilote JAVA-10) ;
 - catalogue extensible avec dix parcours complets, projets portfolio et défis de synthèse.
 - carnet personnel par laboratoire, page de notes groupée par langage et autosauvegarde des réponses de réflexion ;
 - analyses Ollama persistantes sous chaque réponse, avec suppression explicite ;
@@ -195,4 +196,5 @@ Les routes principales ajoutées sont :
 - `POST /api/tutor/consult` ;
 - `GET|POST /api/portfolio/projects`, aperçu README et export ZIP ;
 - `GET|PUT /api/portfolio/draft`, brouillon du formulaire de création de projet ;
+- `GET /api/reviews/{id}/question` et `POST /api/reviews/{id}/answer`, révision par question de rappel ;
 - `GET /api/paths/catalog`.

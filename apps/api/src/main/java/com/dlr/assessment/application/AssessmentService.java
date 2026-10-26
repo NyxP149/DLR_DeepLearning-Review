@@ -1,5 +1,6 @@
 package com.dlr.assessment.application;
 
+import com.dlr.assessment.domain.QuizGrader;
 import com.dlr.assessment.domain.ScoreCalculator;
 import com.dlr.catalog.application.LabCatalog;
 import com.dlr.mastery.application.ReviewService;
@@ -17,12 +18,10 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.text.Normalizer;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 import java.util.function.Function;
@@ -31,7 +30,11 @@ import java.util.stream.Collectors;
 @Service
 public class AssessmentService {
 
-    private static final String SCORE_VERSION = "V1";
+    /** Version des nouvelles tentatives ; une tentative déjà notée garde sa version lors d'un recalcul. */
+    private static final String CURRENT_SCORE_VERSION = "V2";
+    private static final String LEGACY_SCORE_VERSION = "V1";
+    /** Part de la pratique conservée selon le plus haut indice demandé (0 à 3). */
+    private static final int[] PRACTICE_AFTER_HINT_LEVEL = {100, 85, 65, 40};
 
     private final AttemptService attemptService;
     private final LabCatalog labCatalog;
@@ -68,12 +71,16 @@ public class AssessmentService {
     }
 
     @Transactional
-    public AssessmentRepository.QuizAnswer answer(
+    public AnswerResult answer(
             UUID attemptId,
             String questionId,
             Integer selectedChoice,
-            String answerText
+            String answerText,
+            Integer confidence
     ) {
+        if (confidence != null && (confidence < 1 || confidence > 3)) {
+            throw new IllegalArgumentException("La confiance doit être comprise entre 1 et 3.");
+        }
         Attempt attempt = requireAttempt(attemptId);
         LabContent lab = requireLab(attempt.labCode());
         LabContent.QuizQuestion question = lab.quiz().stream()
@@ -82,37 +89,20 @@ public class AssessmentService {
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "QUIZ_QUESTION_NOT_FOUND", "Question introuvable : " + questionId));
 
-        BigDecimal score;
-        String feedback;
-        if ("SINGLE_CHOICE".equals(question.type())) {
-            if (selectedChoice == null || selectedChoice < 0 || selectedChoice >= question.choices().size()) {
-                throw new IllegalArgumentException("Un choix valide est obligatoire.");
-            }
-            boolean correct = selectedChoice.equals(question.correctChoice());
-            score = correct ? BigDecimal.valueOf(100) : BigDecimal.ZERO;
-            feedback = correct ? "Bonne réponse." : "Réponse incorrecte. Relis le cours avant de réessayer.";
-        } else if ("FREE_TEXT".equals(question.type())) {
-            if (answerText == null || answerText.isBlank()) {
-                throw new IllegalArgumentException("Une réponse rédigée est obligatoire.");
-            }
-            long matched = question.expectedKeywords().stream()
-                    .map(this::normalize)
-                    .filter(normalize(answerText)::contains)
-                    .count();
-            score = question.expectedKeywords().isEmpty()
-                    ? BigDecimal.valueOf(100)
-                    : BigDecimal.valueOf(matched)
-                            .multiply(BigDecimal.valueOf(100))
-                            .divide(BigDecimal.valueOf(question.expectedKeywords().size()), 2, RoundingMode.HALF_UP);
-            feedback = matched == question.expectedKeywords().size()
-                    ? "Les idées essentielles sont présentes."
-                    : "Réponse enregistrée. Certaines idées essentielles restent à préciser.";
-        } else {
-            throw new IllegalStateException("Type de question non pris en charge : " + question.type());
-        }
+        QuizGrader.Grade grade = QuizGrader.grade(question, selectedChoice, answerText);
+        AssessmentRepository.QuizAnswer saved = new AssessmentRepository.QuizAnswer(
+                UUID.randomUUID(), attemptId, questionId, selectedChoice, answerText, grade.score(), grade.feedback(),
+                Instant.now(clock), confidence);
+        assessmentRepository.logAnswer(saved);
+        assessmentRepository.saveAnswer(saved);
+        return AnswerResult.of(saved, question, grade.missingIdeas());
+    }
 
-        return assessmentRepository.saveAnswer(new AssessmentRepository.QuizAnswer(
-                UUID.randomUUID(), attemptId, questionId, selectedChoice, answerText, score, feedback, Instant.now(clock)));
+    /** Enregistre le niveau d'indice demandé : il réduit la part « sans aide » de la pratique du score V2. */
+    @Transactional
+    public void recordHint(UUID attemptId, int level) {
+        requireAttempt(attemptId);
+        assessmentRepository.recordHint(attemptId, level, Instant.now(clock));
     }
 
     @Transactional
@@ -160,8 +150,15 @@ public class AssessmentService {
         BigDecimal executionScore = execution.status() == ExecutionStatus.SUCCESS
                 ? BigDecimal.valueOf(100)
                 : BigDecimal.ZERO;
-        BigDecimal quizScore = average(lab.quiz(), answers, "SINGLE_CHOICE");
-        BigDecimal connectionScore = average(lab.quiz(), answers, "FREE_TEXT");
+        boolean legacy = LEGACY_SCORE_VERSION.equals(attempt.scoreVersion());
+        String scoreVersion = legacy ? LEGACY_SCORE_VERSION : CURRENT_SCORE_VERSION;
+        // V2 : seule la première réponse de chaque question compte, pas celle donnée après avoir lu la correction.
+        Map<String, BigDecimal> firstScores = legacy ? Map.of() : assessmentRepository.firstScores(attemptId);
+        BigDecimal quizScore = average(lab.quiz(), answers, firstScores, "SINGLE_CHOICE");
+        BigDecimal connectionScore = average(lab.quiz(), answers, firstScores, "FREE_TEXT");
+        BigDecimal practiceScore = legacy || execution.status() != ExecutionStatus.SUCCESS
+                ? executionScore
+                : BigDecimal.valueOf(PRACTICE_AFTER_HINT_LEVEL[assessmentRepository.highestHintLevel(attemptId)]);
         BigDecimal selfAssessmentScore = assessmentRepository.findChecklist(attemptId)
                 .orElseThrow(() -> new IllegalStateException("Complète la checklist avant de terminer."))
                 .score();
@@ -169,12 +166,12 @@ public class AssessmentService {
         ScoreCalculator.ScoreResult calculated = scoreCalculator.calculate(new ScoreCalculator.ScoreInput(
                 executionScore,
                 quizScore,
-                executionScore,
+                practiceScore,
                 connectionScore,
                 selfAssessmentScore,
-                lab.threshold()));
+                lab.threshold()), legacy ? ScoreCalculator.V1 : ScoreCalculator.V2);
         AttemptRepository.ScoreBreakdown breakdown = new AttemptRepository.ScoreBreakdown(
-                executionScore, quizScore, executionScore, connectionScore, selfAssessmentScore, SCORE_VERSION);
+                executionScore, quizScore, practiceScore, connectionScore, selfAssessmentScore, scoreVersion);
         Attempt completed = attemptService.complete(attemptId, calculated.score(), breakdown, lab.threshold());
 
         boolean reviewScheduled = firstCompletion && !assessmentRepository.hasPendingReview(lab.code());
@@ -202,11 +199,12 @@ public class AssessmentService {
     private BigDecimal average(
             List<LabContent.QuizQuestion> questions,
             Map<String, AssessmentRepository.QuizAnswer> answers,
+            Map<String, BigDecimal> firstScores,
             String type
     ) {
         List<BigDecimal> scores = questions.stream()
                 .filter(question -> type.equals(question.type()))
-                .map(question -> answers.get(question.code()).score())
+                .map(question -> firstScores.getOrDefault(question.code(), answers.get(question.code()).score()))
                 .toList();
         if (scores.isEmpty()) {
             return BigDecimal.valueOf(100);
@@ -215,10 +213,21 @@ public class AssessmentService {
                 .divide(BigDecimal.valueOf(scores.size()), 2, RoundingMode.HALF_UP);
     }
 
-    private String normalize(String value) {
-        return Normalizer.normalize(value, Normalizer.Form.NFD)
-                .replaceAll("\\p{M}", "")
-                .toLowerCase(Locale.ROOT);
+    /** Réponse enregistrée plus ce qui peut être révélé une fois la question traitée. */
+    public record AnswerResult(
+            AssessmentRepository.QuizAnswer answer,
+            boolean correct,
+            Integer correctChoice,
+            String explanation,
+            String modelAnswer,
+            List<String> missingIdeas
+    ) {
+        static AnswerResult of(
+                AssessmentRepository.QuizAnswer answer, LabContent.QuizQuestion question, List<String> missingIdeas) {
+            boolean correct = answer.score().compareTo(BigDecimal.valueOf(100)) >= 0;
+            return new AnswerResult(answer, correct, question.correctChoice(), question.explanation(),
+                    question.modelAnswer(), missingIdeas);
+        }
     }
 
     public record CompletionResult(

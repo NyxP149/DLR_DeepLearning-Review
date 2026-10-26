@@ -39,6 +39,23 @@ public class ReviewController {
         return reviewService.complete(id, request.successful());
     }
 
+    @GetMapping("/{id}/question")
+    public ReviewService.ReviewQuestion question(@PathVariable UUID id) {
+        return reviewService.question(id);
+    }
+
+    @PostMapping("/{id}/answer")
+    public ReviewService.ReviewAnswerResult answer(
+            @PathVariable UUID id,
+            @RequestBody ReviewAnswerRequest request
+    ) {
+        return reviewService.answer(
+                id, request.questionId(), request.selectedChoice(), request.answerText(), request.confidence());
+    }
+
     public record ReviewRequest(boolean successful) {
+    }
+
+    public record ReviewAnswerRequest(String questionId, Integer selectedChoice, String answerText, Integer confidence) {
     }
 }

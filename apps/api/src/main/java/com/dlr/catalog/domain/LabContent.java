@@ -64,7 +64,9 @@ public record LabContent(
             String prompt,
             List<String> choices,
             Integer correctChoice,
-            List<String> expectedKeywords
+            List<String> expectedKeywords,
+            String explanation,
+            String modelAnswer
     ) {
         public QuizQuestion {
             choices = choices == null ? List.of() : List.copyOf(choices);

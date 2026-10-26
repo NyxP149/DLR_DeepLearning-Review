@@ -1,5 +1,6 @@
 package com.dlr.tutor.web;
 
+import com.dlr.assessment.application.AssessmentService;
 import com.dlr.tutor.application.AiTutorPort;
 import com.dlr.tutor.application.TutorService;
 import jakarta.validation.Valid;
@@ -19,9 +20,11 @@ import org.springframework.web.bind.annotation.RestController;
 public class TutorController {
 
     private final TutorService tutorService;
+    private final AssessmentService assessmentService;
 
-    public TutorController(TutorService tutorService) {
+    public TutorController(TutorService tutorService, AssessmentService assessmentService) {
         this.tutorService = tutorService;
+        this.assessmentService = assessmentService;
     }
 
     @GetMapping("/status")
@@ -36,7 +39,12 @@ public class TutorController {
 
     @PostMapping("/hint")
     public TutorService.TutorResponse hint(@Valid @RequestBody HintRequest request) {
-        return tutorService.hint(request.labCode(), request.sourceCode(), request.level());
+        TutorService.TutorResponse response = tutorService.hint(request.labCode(), request.sourceCode(), request.level());
+        // Le niveau n'est compté qu'une fois l'indice réellement fourni : il pèse sur la pratique « sans aide » du score V2.
+        if (request.attemptId() != null) {
+            assessmentService.recordHint(request.attemptId(), request.level());
+        }
+        return response;
     }
 
     @PostMapping("/review-answer")
@@ -58,7 +66,8 @@ public class TutorController {
     public record HintRequest(
             @NotBlank String labCode,
             @Size(max = 65_536) String sourceCode,
-            @Min(1) @Max(3) int level
+            @Min(1) @Max(3) int level,
+            java.util.UUID attemptId
     ) {}
 
     public record ReviewAnswerRequest(

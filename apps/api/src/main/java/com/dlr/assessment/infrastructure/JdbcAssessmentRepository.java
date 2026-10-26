@@ -29,19 +29,55 @@ public class JdbcAssessmentRepository implements AssessmentRepository {
         jdbcTemplate.update(
                 """
                 insert into quiz_answer
-                    (id, attempt_id, question_id, selected_choice, answer_text, score, feedback, updated_at)
-                values (?, ?, ?, ?, ?, ?, ?, ?)
+                    (id, attempt_id, question_id, selected_choice, answer_text, score, feedback, updated_at, confidence)
+                values (?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 answer.id(), answer.attemptId(), answer.questionId(), answer.selectedChoice(), answer.answerText(),
-                answer.score(), answer.feedback(), Timestamp.from(answer.updatedAt()));
+                answer.score(), answer.feedback(), Timestamp.from(answer.updatedAt()), answer.confidence());
         return answer;
+    }
+
+    @Override
+    public void logAnswer(QuizAnswer answer) {
+        jdbcTemplate.update(
+                """
+                insert into quiz_answer_log
+                    (id, attempt_id, question_id, selected_choice, answer_text, score, confidence, answered_at)
+                values (?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                UUID.randomUUID(), answer.attemptId(), answer.questionId(), answer.selectedChoice(), answer.answerText(),
+                answer.score(), answer.confidence(), Timestamp.from(answer.updatedAt()));
+    }
+
+    @Override
+    public java.util.Map<String, java.math.BigDecimal> firstScores(UUID attemptId) {
+        java.util.Map<String, java.math.BigDecimal> first = new java.util.HashMap<>();
+        jdbcTemplate.query(
+                "select question_id, score from quiz_answer_log where attempt_id = ? order by answered_at, id",
+                result -> { first.putIfAbsent(result.getString("question_id"), result.getBigDecimal("score")); },
+                attemptId);
+        return first;
+    }
+
+    @Override
+    public void recordHint(UUID attemptId, int level, Instant at) {
+        jdbcTemplate.update(
+                "insert into attempt_hint (id, attempt_id, level, created_at) values (?, ?, ?, ?)",
+                UUID.randomUUID(), attemptId, level, Timestamp.from(at));
+    }
+
+    @Override
+    public int highestHintLevel(UUID attemptId) {
+        Integer level = jdbcTemplate.queryForObject(
+                "select coalesce(max(level), 0) from attempt_hint where attempt_id = ?", Integer.class, attemptId);
+        return level == null ? 0 : level;
     }
 
     @Override
     public List<QuizAnswer> findAnswers(UUID attemptId) {
         return jdbcTemplate.query(
                 """
-                select id, attempt_id, question_id, selected_choice, answer_text, score, feedback, updated_at
+                select id, attempt_id, question_id, selected_choice, answer_text, score, feedback, updated_at, confidence
                 from quiz_answer where attempt_id = ?
                 """,
                 this::mapAnswer,
@@ -123,6 +159,7 @@ public class JdbcAssessmentRepository implements AssessmentRepository {
                 result.getString("answer_text"),
                 result.getBigDecimal("score"),
                 result.getString("feedback"),
-                result.getTimestamp("updated_at").toInstant());
+                result.getTimestamp("updated_at").toInstant(),
+                result.getObject("confidence", Integer.class));
     }
 }

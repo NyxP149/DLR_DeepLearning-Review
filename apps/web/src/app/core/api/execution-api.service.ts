@@ -46,6 +46,11 @@ export interface QuizAnswerResponse {
   questionId: string;
   score: number;
   feedback: string;
+  correct: boolean;
+  correctChoice: number | null;
+  explanation: string | null;
+  modelAnswer: string | null;
+  missingIdeas: string[];
 }
 
 export interface CompletionResult {
@@ -122,7 +127,7 @@ export class ExecutionApiService {
   answerQuiz(
     attemptId: string,
     questionId: string,
-    answer: { selectedChoice?: number; answerText?: string }
+    answer: { selectedChoice?: number; answerText?: string; confidence?: number }
   ): Observable<QuizAnswerResponse> {
     return this.http.put<QuizAnswerResponse>(
       `${this.apiUrl}/attempts/${encodeURIComponent(attemptId)}/quiz/${encodeURIComponent(questionId)}`,

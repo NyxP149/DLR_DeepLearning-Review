@@ -416,3 +416,16 @@ Sur l'écran Portfolio, les cases « Preuves à inclure », le titre, le résum�
 
 **Solution**
 Le formulaire est enregistré automatiquement en base (table `portfolio_draft`, migration V21, routes `GET|PUT /api/portfolio/draft`) et restauré au chargement, avec un indicateur « Brouillon enregistré ». La sauvegarde attend la fin de la restauration pour ne pas écraser le brouillon par les valeurs par défaut. Couvert par `PortfolioControllerTest`. Reste connu : la création d'un projet refuse plus de 12 preuves.
+
+---
+
+## Les révisions et le score validaient sans test de mémoire
+- severity: medium
+- date: 2026-10
+- tags: Pédagogie, Score, Révisions
+
+**Problème**
+Une révision se validait en cliquant « Réussi » avec le cours sous les yeux, donc sans restituer quoi que ce soit, et la maîtrise découlait de ces déclarations. Le score donnait 60 % à une seule exécution (tests 40 % et pratique 20 % reposaient sur le même résultat), les indices n'avaient aucun effet, le quiz se limitait à une question à choix et une question libre à mots-clés, et rien ne disait si l'apprenant se trompait avec assurance.
+
+**Solution**
+Chaque révision pose désormais une question de rappel du laboratoire, sans le cours, corrigée par un `QuizGrader` partagé avec le quiz ; le résultat et la confiance déclarée règlent l'intervalle suivant (migration V22, `review_answer`). Le quiz corrige chaque question tout de suite avec explication et journalise les réponses (seule la première compte). Le score V2 (tests 30, quiz 25, pratique sans aide 20, explication 20, checklist 5) retire les indices de la note de pratique ; les tentatives déjà enregistrées restent en V1. Couvert par `RetrievalPracticeControllerTest` et `ScoreCalculatorTest`. Reste à étendre au-delà de JAVA-10.

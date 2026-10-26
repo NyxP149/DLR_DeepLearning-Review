@@ -629,3 +629,80 @@ pre {
     animation: none;
   }
 }
+
+.confidence {
+  align-items: center;
+  color: var(--text-muted);
+  display: flex;
+  flex-wrap: wrap;
+  font-size: 0.85rem;
+  gap: 0.5rem 0.9rem;
+  margin-top: 0.8rem;
+}
+
+.confidence label {
+  align-items: center;
+  cursor: pointer;
+  display: inline-flex;
+  gap: 0.35rem;
+}
+
+.confidence input {
+  accent-color: var(--accent);
+}
+
+.verify-button {
+  background: transparent;
+  border: 1px solid var(--accent);
+  border-radius: 0.6rem;
+  color: var(--accent);
+  cursor: pointer;
+  font: inherit;
+  font-weight: 700;
+  margin-top: 0.7rem;
+  padding: 0.5rem 0.9rem;
+}
+
+.verify-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.quiz-feedback {
+  background: var(--surface-raised);
+  border: 1px solid var(--danger);
+  border-radius: 0.7rem;
+  display: grid;
+  gap: 0.4rem;
+  margin-top: 0.8rem;
+  padding: 0.8rem;
+}
+
+.quiz-feedback.correct {
+  border-color: var(--success);
+}
+
+.quiz-feedback p {
+  margin: 0;
+}
+
+.quiz-feedback .calibration,
+.quiz-feedback small {
+  color: var(--text-muted);
+}
+
+.lesson-text {
+  white-space: pre-line;
+}
+
+.code-block {
+  background: var(--background);
+  border: 1px solid var(--border);
+  border-radius: 0.6rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.82rem;
+  line-height: 1.55;
+  margin: 0.7rem 0;
+  overflow-x: auto;
+  padding: 0.8rem 1rem;
+}

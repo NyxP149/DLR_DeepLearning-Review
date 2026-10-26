@@ -9,14 +9,15 @@ import {
   AttemptWorkspace,
   ExecutionApiService,
   ExecutionResult,
-  CompletionResult
+  CompletionResult,
+  QuizAnswerResponse
 } from '../../core/api/execution-api.service';
 import { LabApiService } from '../../core/api/lab-api.service';
 import { TutorApiService } from '../../core/api/tutor-api.service';
 import { DraftStoreService } from '../../core/storage/draft-store.service';
 import { LabMemoryStoreService } from '../../core/storage/lab-memory-store.service';
 import { NotesApiService } from '../../core/api/notes-api.service';
-import { KeyConcept, LabContent } from './lab.model';
+import { KeyConcept, LabContent, LessonSection, QuizQuestion } from './lab.model';
 import { CodeEditorComponent } from '../../shared/code-editor/code-editor.component';
 import { EXECUTION_AVAILABLE } from '../../core/api/api-config';
 
@@ -54,6 +55,14 @@ export class LabWorkspaceComponent implements OnDestroy {
   readonly executionError = signal<string | null>(null);
   readonly quizValues = signal<Record<string, number | string>>({});
   readonly checklist = signal<boolean[]>([]);
+  readonly confidenceLevels = [
+    { value: 1, label: 'Pas sûr·e' },
+    { value: 2, label: 'Plutôt sûr·e' },
+    { value: 3, label: 'Sûr·e' }
+  ];
+  readonly quizConfidence = signal<Record<string, number>>({});
+  readonly quizFeedback = signal<Record<string, QuizAnswerResponse>>({});
+  readonly verifying = signal<string | null>(null);
   readonly completing = signal(false);
   readonly completion = signal<CompletionResult | null>(null);
   readonly completionError = signal<string | null>(null);
@@ -143,6 +152,8 @@ export class LabWorkspaceComponent implements OnDestroy {
             answer.selectedChoice ?? answer.answerText ?? ''
           ]));
           this.quizValues.set({ ...serverAnswers, ...this.memory.loadReflections(lab.code) });
+          this.quizConfidence.set({});
+          this.quizFeedback.set({});
           this.checklist.set(workspace?.checklist.length === lab.checklist.length
             ? workspace.checklist
             : lab.checklist.map(() => false));
@@ -316,7 +327,9 @@ export class LabWorkspaceComponent implements OnDestroy {
         await firstValueFrom(this.executionApi.answerQuiz(
           attemptId,
           question.code,
-          question.type === 'SINGLE_CHOICE' ? { selectedChoice: value as number } : { answerText: value as string }
+          question.type === 'SINGLE_CHOICE'
+            ? { selectedChoice: value as number, confidence: this.quizConfidence()[question.code] }
+            : { answerText: value as string, confidence: this.quizConfidence()[question.code] }
         ));
       }
       await firstValueFrom(this.executionApi.saveChecklist(attemptId, this.checklist()));
@@ -366,6 +379,8 @@ export class LabWorkspaceComponent implements OnDestroy {
       this.execution.set(null);
       this.executionError.set(null);
       this.quizValues.set({});
+      this.quizConfidence.set({});
+      this.quizFeedback.set({});
       this.memory.removeReflections(lab.code);
       this.checklist.set(lab.checklist.map(() => false));
       this.completion.set(null);
@@ -388,7 +403,97 @@ export class LabWorkspaceComponent implements OnDestroy {
   async requestHint(): Promise<void> {
     const level = Math.min(3, this.hintLevel() + 1);
     this.hintLevel.set(level);
-    await this.askTutor(() => firstValueFrom(this.tutorApi.hint(this.activeLabCode, this.code(), level)));
+    // Le niveau demandé est rattaché à la tentative : il pèse sur la pratique « sans aide » du score V2.
+    let attemptId: string | undefined;
+    try {
+      attemptId = await this.ensureAttempt();
+    } catch {
+      attemptId = undefined;
+    }
+    await this.askTutor(() => firstValueFrom(this.tutorApi.hint(this.activeLabCode, this.code(), level, attemptId)));
+  }
+
+  /** Découpe un texte en paragraphes et blocs de code délimités par ``` (le texte simple reste un seul paragraphe). */
+  lessonBlocks(content: string): { code: boolean; text: string }[] {
+    return content.split(/```[a-zA-Z]*\n?/)
+      .map((part, index) => ({ code: index % 2 === 1, text: part.replace(/^\n+|\n+$/g, '') }))
+      .filter((block) => block.text.length > 0);
+  }
+
+  promptText(prompt: string): string {
+    return this.lessonBlocks(prompt).filter((block) => !block.code).map((block) => block.text).join(' ');
+  }
+
+  promptCode(prompt: string): string[] {
+    return this.lessonBlocks(prompt).filter((block) => block.code).map((block) => block.text);
+  }
+
+  onConfidence(questionId: string, level: number): void {
+    this.quizConfidence.update((values) => ({ ...values, [questionId]: level }));
+  }
+
+  canVerify(question: QuizQuestion): boolean {
+    const value = this.quizValues()[question.code];
+    const answered = question.type === 'SINGLE_CHOICE'
+      ? typeof value === 'number'
+      : typeof value === 'string' && value.trim().length > 0;
+    return answered && this.quizConfidence()[question.code] !== undefined;
+  }
+
+  /** Corrige la question tout de suite : confiance déclarée d'abord, explication ensuite. */
+  async verifyAnswer(question: QuizQuestion): Promise<void> {
+    if (this.verifying() !== null || !this.canVerify(question)) return;
+    this.verifying.set(question.code);
+    this.completionError.set(null);
+    try {
+      const attemptId = await this.ensureAttempt();
+      const value = this.quizValues()[question.code];
+      const confidence = this.quizConfidence()[question.code];
+      const feedback = await firstValueFrom(this.executionApi.answerQuiz(
+        attemptId,
+        question.code,
+        question.type === 'SINGLE_CHOICE'
+          ? { selectedChoice: value as number, confidence }
+          : { answerText: value as string, confidence }
+      ));
+      this.quizFeedback.update((all) => ({ ...all, [question.code]: feedback }));
+    } catch (error) {
+      this.completionError.set(this.errorMessage(error));
+    } finally {
+      this.verifying.set(null);
+    }
+  }
+
+  /** Compare la confiance déclarée au résultat, pour apprendre à mieux juger ce que l'on sait. */
+  calibrationNote(questionId: string): string | null {
+    const feedback = this.quizFeedback()[questionId];
+    const confidence = this.quizConfidence()[questionId];
+    if (!feedback || confidence === undefined) return null;
+    if (feedback.correct) {
+      return confidence === 1 ? 'Tu avais un doute mais tu avais raison : tu en sais plus que tu ne le crois.' : null;
+    }
+    return confidence === 3
+      ? 'Tu étais sûr(e) de toi : c’est la notion à retravailler en priorité.'
+      : 'Ton doute était justifié : relis l’explication puis refais l’exercice.';
+  }
+
+  breakdownRows(result: CompletionResult): { label: string; value: number }[] {
+    const b = result.breakdown;
+    return b.version === 'V1'
+      ? [
+          { label: 'Tests', value: b.tests },
+          { label: 'Quiz', value: b.quiz },
+          { label: 'Pratique', value: b.practice },
+          { label: 'Connexion', value: b.connections },
+          { label: 'Auto-évaluation', value: b.selfAssessment }
+        ]
+      : [
+          { label: 'Tests', value: b.tests },
+          { label: 'Quiz (1re réponse)', value: b.quiz },
+          { label: 'Pratique sans aide', value: b.practice },
+          { label: 'Explication', value: b.connections },
+          { label: 'Checklist', value: b.selfAssessment }
+        ];
   }
 
   async reviewFreeText(questionCode: string): Promise<void> {
@@ -595,8 +700,10 @@ export class LabWorkspaceComponent implements OnDestroy {
     return "Impossible de terminer le laboratoire. Vérifie les réponses, l'exécution et la connexion à l'API.";
   }
 
-  conceptsFor(codes: string[], concepts: KeyConcept[], sectionIndex: number): KeyConcept[] {
-    if (codes.length === 0 && sectionIndex === 0) return concepts;
+  conceptsFor(codes: string[], concepts: KeyConcept[], sectionIndex: number, sections: LessonSection[]): KeyConcept[] {
+    // Sans aucune section assignée, tous les concepts s'affichent dans la première ; sinon chacun suit sa section.
+    const anyAssigned = sections.some((section) => section.conceptCodes.length > 0);
+    if (!anyAssigned && sectionIndex === 0) return concepts;
     return concepts.filter((concept) => codes.includes(concept.code));
   }
 

@@ -1,9 +1,144 @@
 {
-  "code":"JAVA-10","language":"JAVA","number":10,"slug":"collections-egalite-tri","title":"Collections, égalité, tri et comparateurs","difficulty":"INTERMEDIAIRE","threshold":70,"activityType":"LAB","prerequisites":["JAVA-09"],
-  "objectives":["Choisir List, Set ou Map","Définir une égalité cohérente","Trier sans modifier le domaine"],
-  "sections":[{"title":"Collection adaptée","content":"List préserve l'ordre, Set garantit l'unicité et Map associe une clé à une valeur. Le choix exprime une règle métier.","conceptCodes":["JAVA-EQUALITY-COLLECTIONS"]},{"title":"Égalité et ordre","content":"equals et hashCode doivent être cohérents. Comparator permet plusieurs ordres sans enfermer le modèle dans un tri unique."}],
-  "keyConcepts":[{"code":"JAVA-EQUALITY-COLLECTIONS","name":"Égalité métier","definition":"Deux objets égaux représentent la même identité ou la même valeur selon le contrat du domaine.","whyExists":"Les ensembles et dictionnaires utilisent cette règle pour retrouver et dédupliquer.","whyImportant":"Une égalité incohérente provoque des données dupliquées ou introuvables.","minimalExample":"record User(String name) {}","professionalExample":"Une classe Customer redéfinissait equals en comparant l'email mais oubliait de redéfinir hashCode : un HashSet censé dédupliquer les abonnés à une newsletter avant l'envoi laissait passer des doublons, car deux objets égaux selon equals tombaient dans des buckets différents du HashSet. Utiliser un record, qui génère equals et hashCode cohérents automatiquement à partir des mêmes champs, a éliminé cette classe de bug.","codeExample":"record Customer(String email) {}\n\nSet<Customer> subscribers = new HashSet<>();\nsubscribers.add(new Customer(\"ada@example.com\"));\nsubscribers.add(new Customer(\"ada@example.com\")); // rejeté : equals/hashCode cohérents\nSystem.out.println(subscribers.size()); // 1","commonMistake":"Redéfinir equals sans hashCode.","masteryQuestion":"Pourquoi un HashSet dépend-il de equals et hashCode ?","masteryProof":"Dédupliquer puis trier une collection de valeurs."}],
-  "exercises":[{"code":"JAVA-10-E1","title":"Dédupliquer et trier","statement":"Trie les noms uniques et affiche exactement : Ada, Grace, Linus","starterCode":"import java.util.*;\npublic class Main {\n    public static void main(String[] args) {\n        List<String> names = List.of(\"Linus\", \"Ada\", \"Grace\", \"Ada\");\n        // TODO 1 : retire les doublons et trie les noms par ordre alphabétique\n        // TODO 2 : affiche les noms séparés par \", \"\n    }\n}\n","expectedOutput":"Ada, Grace, Linus"}],
-  "quiz":[{"code":"JAVA-10-Q1","type":"SINGLE_CHOICE","prompt":"Quelle collection impose l'unicité ?","choices":["Set","List","StringBuilder"],"correctChoice":0,"expectedKeywords":[]},{"code":"JAVA-10-Q2","type":"FREE_TEXT","prompt":"Explique le contrat entre equals et hashCode.","choices":[],"correctChoice":null,"expectedKeywords":["equals","hashCode","égal","cohérent"]}],
-  "checklist":["Je choisis la collection selon le besoin","Je maintiens equals/hashCode cohérents","J'utilise Comparator pour les tris alternatifs"]
+  "code": "JAVA-10",
+  "language": "JAVA",
+  "number": 10,
+  "slug": "collections-egalite-tri",
+  "title": "Collections, égalité, tri et comparateurs",
+  "difficulty": "INTERMEDIAIRE",
+  "threshold": 70,
+  "activityType": "LAB",
+  "prerequisites": [
+    "JAVA-09"
+  ],
+  "objectives": [
+    "Choisir entre List, Set et Map à partir d'une règle métier (ordre, unicité, association) et justifier ce choix.",
+    "Expliquer le contrat entre equals et hashCode et prédire le comportement d'un HashSet quand il est rompu.",
+    "Trier avec Comparable ou Comparator, y compris sur plusieurs critères, sans modifier la classe métier.",
+    "Repérer une implémentation incorrecte de equals, hashCode ou d'un comparateur et la corriger."
+  ],
+  "sections": [
+    {
+      "title": "Choisir la collection d'après la règle métier",
+      "content": "Avant d'écrire new, pose trois questions : l'ordre compte-t-il ? les doublons sont-ils permis ? faut-il retrouver une valeur à partir d'une clé ? Les réponses désignent la famille : List garde l'ordre et accepte les doublons, Set refuse les doublons, Map associe une clé unique à une valeur.\n\nEnsuite on choisit l'implémentation : ArrayList pour parcourir ou accéder par position ; HashSet et HashMap pour tester l'appartenance ou retrouver par clé en temps quasi constant, sans ordre garanti ; LinkedHashSet et LinkedHashMap pour conserver l'ordre d'arrivée ; TreeSet et TreeMap pour un parcours trié.\n\nLe choix est d'abord métier : « un client n'a qu'une adresse e-mail » est une règle, et c'est elle qui impose un Set ou une clé de Map."
+    },
+    {
+      "title": "Exemple résolu : une égalité qui déduplique",
+      "conceptCodes": [
+        "JAVA-EQUALITY-COLLECTIONS"
+      ],
+      "content": "Problème : une commande contient plusieurs lignes avec le même sku, et on veut garder chaque produit une seule fois.\n\nRaisonnement, étape par étape :\n1. Quelle propriété identifie un produit ? Le sku, pas le nom ni le prix.\n2. equals compare uniquement ce qui identifie.\n3. hashCode utilise exactement les mêmes champs : deux objets égaux doivent avoir le même hashCode.\n4. Vérification : ajouter deux produits de même sku dans un HashSet doit donner une taille de 1.\n```java\nrecord Product(String sku, String name, double price) {\n    @Override public boolean equals(Object o) {\n        return o instanceof Product p && p.sku.equals(sku);\n    }\n    @Override public int hashCode() { return sku.hashCode(); }\n}\n\nSet<Product> set = new HashSet<>();\nset.add(new Product(\"K-1\", \"Clavier\", 49.9));\nset.add(new Product(\"K-1\", \"Clavier promo\", 39.9)); // ignoré : même sku\nSystem.out.println(set.size()); // 1\n```\nSans hashCode cohérent, le HashSet range les deux objets dans des cases différentes avant même d'appeler equals : le doublon passe. Le contrat est : si a.equals(b), alors a.hashCode() == b.hashCode(). L'inverse est faux, deux objets différents peuvent partager un hashCode."
+    },
+    {
+      "title": "Trier avec Comparable et Comparator",
+      "content": "Comparable donne à une classe son ordre naturel, défini une seule fois dans la classe. Comparator décrit un ordre alternatif sans toucher au modèle : c'est l'outil du tri par prix, puis par nom. Les comparateurs se composent :\n```java\nComparator<Product> parPrixDecroissantPuisNom =\n    Comparator.comparingDouble(Product::price).reversed()\n              .thenComparing(Product::name);\nliste.sort(parPrixDecroissantPuisNom);\n```\nreversed() inverse le comparateur construit jusque-là : placé juste après comparingDouble, il n'inverse que le prix. Un comparateur doit rester cohérent : si compare(a, b) est négatif, compare(b, a) doit être positif."
+    },
+    {
+      "title": "Erreurs fréquentes à reconnaître",
+      "content": "1. Redéfinir equals sans hashCode : des doublons passent dans un HashSet.\n2. Mettre un champ modifiable dans hashCode : l'objet « disparaît » du HashSet après modification.\n3. Écrire un comparateur par soustraction : (a, b) -> (int) (a.price() - b.price()) tronque les écarts inférieurs à 1 ; utilise Double.compare ou comparingDouble.\n4. Appeler contains sur une List dans une boucle : un Set ou une Map rend la recherche bien plus rapide.\n\nAvant de lancer l'exercice, essaie de retrouver ces quatre erreurs de mémoire, puis vérifie avec les questions du quiz : c'est la récupération, pas la relecture, qui fixe la notion."
+    }
+  ],
+  "keyConcepts": [
+    {
+      "code": "JAVA-EQUALITY-COLLECTIONS",
+      "name": "Égalité métier",
+      "definition": "Deux objets égaux représentent la même identité ou la même valeur selon le contrat du domaine.",
+      "whyExists": "Les ensembles et dictionnaires utilisent cette règle pour retrouver et dédupliquer.",
+      "whyImportant": "Une égalité incohérente provoque des données dupliquées ou introuvables.",
+      "minimalExample": "record User(String name) {}",
+      "professionalExample": "Une classe Customer redéfinissait equals en comparant l'email mais oubliait de redéfinir hashCode : un HashSet censé dédupliquer les abonnés à une newsletter avant l'envoi laissait passer des doublons, car deux objets égaux selon equals tombaient dans des buckets différents du HashSet. Utiliser un record, qui génère equals et hashCode cohérents automatiquement à partir des mêmes champs, a éliminé cette classe de bug.",
+      "codeExample": "record Customer(String email) {}\n\nSet<Customer> subscribers = new HashSet<>();\nsubscribers.add(new Customer(\"ada@example.com\"));\nsubscribers.add(new Customer(\"ada@example.com\")); // rejeté : equals/hashCode cohérents\nSystem.out.println(subscribers.size()); // 1",
+      "commonMistake": "Redéfinir equals sans hashCode.",
+      "masteryQuestion": "Pourquoi un HashSet dépend-il de equals et hashCode, et que se passe-t-il si seul equals est redéfini ?",
+      "masteryProof": "Dédupliquer des produits par sku puis les trier par prix décroissant et nom croissant."
+    }
+  ],
+  "exercises": [
+    {
+      "code": "JAVA-10-E1",
+      "title": "Dédupliquer par sku puis trier",
+      "statement": "Une commande contient plusieurs lignes avec le même sku. Complète Main pour garder la première ligne de chaque sku, trier par prix décroissant puis par nom croissant, et afficher exactement :\nProduits : Ecran (149.0), Clavier (49.9), Bloc (19.9), Souris (19.9), Cable (4.5)\nDoublons ignores : 2",
+      "starterCode": "import java.util.*;\nimport java.util.stream.Collectors;\n\npublic class Main {\n    record Product(String sku, String name, double price) {\n        // TODO 1 : redéfinis equals et hashCode pour que seul le sku identifie un produit\n    }\n\n    public static void main(String[] args) {\n        List<Product> lines = List.of(\n                new Product(\"K-1\", \"Clavier\", 49.9),\n                new Product(\"S-2\", \"Souris\", 19.9),\n                new Product(\"K-1\", \"Clavier promo\", 39.9),\n                new Product(\"C-3\", \"Cable\", 4.5),\n                new Product(\"S-2\", \"Souris sans fil\", 24.9),\n                new Product(\"M-4\", \"Ecran\", 149.0),\n                new Product(\"B-5\", \"Bloc\", 19.9));\n        // TODO 2 : retire les doublons de sku avec un Set (la première ligne rencontrée est conservée)\n        // TODO 3 : trie les produits restants par prix décroissant, puis par nom croissant\n        // TODO 4 : affiche \"Produits : \" suivi de nom (prix) séparés par \", \",\n        //          puis \"Doublons ignores : \" et le nombre de lignes retirées\n    }\n}\n",
+      "expectedOutput": "Produits : Ecran (149.0), Clavier (49.9), Bloc (19.9), Souris (19.9), Cable (4.5)\nDoublons ignores : 2"
+    }
+  ],
+  "quiz": [
+    {
+      "code": "JAVA-10-Q1",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Tu dois garder des identifiants de clients sans doublon ET les parcourir dans l'ordre où ils sont arrivés. Quelle structure choisis-tu ?",
+      "choices": [
+        "ArrayList",
+        "HashSet",
+        "LinkedHashSet",
+        "TreeSet"
+      ],
+      "correctChoice": 2,
+      "expectedKeywords": [],
+      "explanation": "LinkedHashSet impose l'unicité (via equals et hashCode) et conserve l'ordre d'insertion. HashSet est unique mais sans ordre garanti ; TreeSet est unique mais trié selon l'ordre naturel, pas l'ordre d'arrivée ; ArrayList garde l'ordre mais accepte les doublons."
+    },
+    {
+      "code": "JAVA-10-Q2",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Prédis la sortie avant de répondre. Dans ce code, equals est redéfini mais pas hashCode : que peut afficher le programme ?\n```java\nclass Point {\n    final int x;\n    Point(int x) { this.x = x; }\n    @Override public boolean equals(Object o) { return o instanceof Point p && p.x == x; }\n}\nSet<Point> s = new HashSet<>();\ns.add(new Point(1));\ns.add(new Point(1));\nSystem.out.println(s.size());\n```\n",
+      "choices": [
+        "Toujours 1",
+        "Toujours 2",
+        "1 ou 2 : le comportement n'est pas garanti",
+        "Une erreur de compilation"
+      ],
+      "correctChoice": 2,
+      "expectedKeywords": [],
+      "explanation": "Sans hashCode cohérent, les deux objets ont en général des hashCode différents et tombent dans des cases différentes : le HashSet ne les compare même pas avec equals. On obtient le plus souvent 2, mais le contrat (si a.equals(b), alors même hashCode) est rompu : rien n'est garanti. Le code compile sans problème."
+    },
+    {
+      "code": "JAVA-10-Q3",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Trouve le bug : ce comparateur doit trier des produits par prix croissant. Quel est son défaut ?\n```java\nlist.sort((a, b) -> (int) (a.price() - b.price()));\n```\n",
+      "choices": [
+        "Il trie par prix décroissant",
+        "Le cast en int tronque : un écart de 0,5 devient 0 et deux prix différents sont jugés égaux",
+        "Il ne compile pas",
+        "Il modifie les produits de la liste"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "(int) tronque vers zéro : 19.9 - 19.4 vaut 0.5 puis 0, donc deux prix différents sont considérés comme égaux et l'ordre est faux. Utilise Double.compare(a.price(), b.price()) ou Comparator.comparingDouble(Product::price). La soustraction peut aussi déborder avec des int."
+    },
+    {
+      "code": "JAVA-10-Q4",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Quelle expression trie par prix décroissant, puis par nom croissant à prix égal ?",
+      "choices": [
+        "Comparator.comparingDouble(Product::price).thenComparing(Product::name)",
+        "Comparator.comparingDouble(Product::price).reversed().thenComparing(Product::name)",
+        "Comparator.comparing(Product::name).reversed().thenComparingDouble(Product::price)",
+        "Comparator.comparingDouble(Product::price).thenComparing(Product::name).reversed()"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "reversed() inverse le comparateur construit jusque-là. Juste après comparingDouble, il n'inverse que le prix, puis thenComparing départage par nom croissant. Placé en fin de chaîne (dernier choix), il inverserait aussi le nom ; le premier choix trie le prix par ordre croissant ; le troisième trie d'abord par nom."
+    },
+    {
+      "code": "JAVA-10-Q5",
+      "type": "FREE_TEXT",
+      "prompt": "Sans relire le cours, explique avec tes mots le contrat entre equals et hashCode, et ce qui se passe dans un HashSet quand on le rompt.",
+      "choices": [],
+      "correctChoice": null,
+      "expectedKeywords": [
+        "equals",
+        "hashCode",
+        "egaux",
+        "meme",
+        "HashSet"
+      ],
+      "modelAnswer": "Si a.equals(b), alors a.hashCode() == b.hashCode() (l'inverse est faux : deux objets différents peuvent avoir le même hashCode). Un HashSet range d'abord par hashCode puis compare avec equals ; si le contrat est rompu, deux objets égaux peuvent atterrir dans des cases différentes et être conservés tous les deux.",
+      "explanation": "Une bonne réponse relie les deux méthodes (equals décide de l'égalité, hashCode choisit la case) et donne la conséquence : des doublons ou des objets introuvables dans un HashSet ou une HashMap."
+    }
+  ],
+  "checklist": [
+    "Je justifie le choix entre List, Set et Map à partir d'une règle métier",
+    "Je peux expliquer le contrat equals/hashCode sans relire le cours",
+    "J'ai prédit la sortie avant de vérifier mes réponses",
+    "Je trie sur plusieurs critères avec un Comparator sans modifier le modèle"
+  ]
 }

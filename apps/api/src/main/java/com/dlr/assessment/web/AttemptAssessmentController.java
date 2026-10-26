@@ -32,7 +32,7 @@ public class AttemptAssessmentController {
             @RequestBody QuizAnswerRequest request
     ) {
         return QuizAnswerResponse.from(assessmentService.answer(
-                attemptId, questionId, request.selectedChoice(), request.answerText()));
+                attemptId, questionId, request.selectedChoice(), request.answerText(), request.confidence()));
     }
 
     @DeleteMapping("/quiz/{questionId}")
@@ -54,12 +54,23 @@ public class AttemptAssessmentController {
         return assessmentService.complete(attemptId);
     }
 
-    public record QuizAnswerRequest(Integer selectedChoice, String answerText) {
+    public record QuizAnswerRequest(Integer selectedChoice, String answerText, Integer confidence) {
     }
 
-    public record QuizAnswerResponse(String questionId, java.math.BigDecimal score, String feedback) {
-        static QuizAnswerResponse from(AssessmentRepository.QuizAnswer answer) {
-            return new QuizAnswerResponse(answer.questionId(), answer.score(), answer.feedback());
+    public record QuizAnswerResponse(
+            String questionId,
+            java.math.BigDecimal score,
+            String feedback,
+            boolean correct,
+            Integer correctChoice,
+            String explanation,
+            String modelAnswer,
+            List<String> missingIdeas
+    ) {
+        static QuizAnswerResponse from(AssessmentService.AnswerResult result) {
+            return new QuizAnswerResponse(result.answer().questionId(), result.answer().score(), result.answer().feedback(),
+                    result.correct(), result.correctChoice(), result.explanation(), result.modelAnswer(),
+                    result.missingIdeas());
         }
     }
 

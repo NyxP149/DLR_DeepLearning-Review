@@ -10,6 +10,17 @@ public interface AssessmentRepository {
 
     QuizAnswer saveAnswer(QuizAnswer answer);
 
+    /** Journalise chaque réponse : la première de chaque question (avant correction) alimente le score V2. */
+    void logAnswer(QuizAnswer answer);
+
+    /** Score de la première réponse enregistrée pour chaque question de la tentative. */
+    java.util.Map<String, BigDecimal> firstScores(UUID attemptId);
+
+    void recordHint(UUID attemptId, int level, Instant at);
+
+    /** Plus haut niveau d'indice demandé pendant la tentative, 0 si aucun. */
+    int highestHintLevel(UUID attemptId);
+
     List<QuizAnswer> findAnswers(UUID attemptId);
 
     void deleteAnswer(UUID attemptId, String questionId);
@@ -30,7 +41,8 @@ public interface AssessmentRepository {
             String answerText,
             BigDecimal score,
             String feedback,
-            Instant updatedAt
+            Instant updatedAt,
+            Integer confidence
     ) {
     }
 
