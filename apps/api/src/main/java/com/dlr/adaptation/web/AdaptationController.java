@@ -2,6 +2,7 @@ package com.dlr.adaptation.web;
 
 import com.dlr.adaptation.application.AdaptationService;
 import com.dlr.adaptation.application.CalibrationService;
+import com.dlr.adaptation.application.PretestGainService;
 import com.dlr.adaptation.application.RetentionService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
@@ -22,12 +23,19 @@ public class AdaptationController {
     private final CalibrationService calibrationService;
 
     private final RetentionService retentionService;
+    private final PretestGainService pretestGainService;
 
     public AdaptationController(AdaptationService service, CalibrationService calibrationService,
-                                RetentionService retentionService) {
+                                RetentionService retentionService, PretestGainService pretestGainService) {
         this.service = service;
         this.calibrationService = calibrationService;
         this.retentionService = retentionService;
+        this.pretestGainService = pretestGainService;
+    }
+
+    @GetMapping("/pretest-gain")
+    public PretestGainService.PretestGain pretestGain() {
+        return pretestGainService.gain();
     }
 
     @GetMapping("/calibration")

@@ -15,7 +15,7 @@ export interface LabSummary {
   activityType: 'LAB' | 'PROJECT' | 'CHALLENGE';
   prerequisites: string[];
 }
-export interface PretestGain { total: number; correctAtStart: number; correctAtEnd: number }
+export interface PretestGain { total: number; correctAtStart: number; correctAtEnd: number; learned: number; lost: number; unknownAtStart: number }
 export interface Pretest {
   status: 'PENDING' | 'ANSWERED' | 'SKIPPED' | 'NOT_APPLICABLE';
   questionCodes: string[];

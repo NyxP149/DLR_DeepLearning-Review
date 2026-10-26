@@ -112,6 +112,31 @@ export interface Retention {
   forgotten: RetentionForgotten[];
 }
 
+export interface PretestGainLab {
+  labCode: string;
+  title: string;
+  total: number;
+  correctAtStart: number;
+  correctAtEnd: number;
+  gainPoints: number;
+}
+
+export interface PretestGainSummary {
+  pretestsAnswered: number;
+  pretestsSkipped: number;
+  labsCompared: number;
+  questions: number;
+  startCorrectPercent: number;
+  endCorrectPercent: number;
+  gainPoints: number;
+  learned: number;
+  lost: number;
+  unknownAtStartPercent: number;
+  verdict: 'INSUFFICIENT_DATA' | 'ALREADY_KNOWN' | 'STRONG_GAIN' | 'MODERATE_GAIN' | 'LOW_GAIN';
+  message: string;
+  labs: PretestGainLab[];
+}
+
 @Injectable({ providedIn: 'root' })
 export class AdaptationApiService {
   private readonly http = inject(HttpClient);
@@ -123,6 +148,10 @@ export class AdaptationApiService {
 
   insights() {
     return this.http.get<AdaptationInsights>(`${this.url}/insights`);
+  }
+
+  pretestGain() {
+    return this.http.get<PretestGainSummary>(`${this.url}/pretest-gain`);
   }
 
   calibration() {

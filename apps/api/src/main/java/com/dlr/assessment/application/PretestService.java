@@ -149,19 +149,24 @@ public class PretestService {
 
         int atStart = 0;
         int atEnd = 0;
+        int learned = 0;
+        int lost = 0;
+        int unknown = 0;
         for (LabContent.QuizQuestion question : questions) {
             BigDecimal end = firstScores.getOrDefault(question.code(), finalScores.get(question.code()));
             if (end == null || !answered.contains(question.code())) {
                 return null;
             }
-            if (question.correctChoice() != null && question.correctChoice().equals(startChoices.get(question.code()))) {
-                atStart++;
-            }
-            if (end.compareTo(BigDecimal.valueOf(100)) >= 0) {
-                atEnd++;
-            }
+            boolean rightAtStart = question.correctChoice() != null
+                    && question.correctChoice().equals(startChoices.get(question.code()));
+            boolean rightAtEnd = end.compareTo(BigDecimal.valueOf(100)) >= 0;
+            if (rightAtStart) atStart++;
+            if (rightAtEnd) atEnd++;
+            if (!rightAtStart && rightAtEnd) learned++;
+            if (rightAtStart && !rightAtEnd) lost++;
+            if (!startChoices.containsKey(question.code())) unknown++;
         }
-        return new Gain(questions.size(), atStart, atEnd);
+        return new Gain(questions.size(), atStart, atEnd, learned, lost, unknown);
     }
 
     private LabContent requireLab(String labCode) {
@@ -173,7 +178,7 @@ public class PretestService {
     }
 
     /** Résultat du quiz de départ comparé à la première réponse du quiz final, sur les mêmes questions. */
-    public record Gain(int total, int correctAtStart, int correctAtEnd) {
+    public record Gain(int total, int correctAtStart, int correctAtEnd, int learned, int lost, int unknownAtStart) {
     }
 
     public record Pretest(String status, List<String> questionCodes, Gain gain) {
