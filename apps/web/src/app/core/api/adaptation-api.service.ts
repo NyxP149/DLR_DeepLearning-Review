@@ -52,6 +52,23 @@ export interface CalibrationBlindSpot {
   answeredAt: string;
 }
 
+export interface CalibrationPeriod {
+  weekStart: string;
+  total: number;
+  confidencePercent: number;
+  accuracyPercent: number;
+  gapPoints: number;
+  sureTotal: number;
+  overconfidencePercent: number;
+  reliable: boolean;
+}
+
+export interface CalibrationTrend {
+  verdict: 'INSUFFICIENT_DATA' | 'IMPROVING' | 'STABLE' | 'WORSENING';
+  message: string;
+  periods: CalibrationPeriod[];
+}
+
 export interface Calibration {
   totalAnswers: number;
   levels: CalibrationLevel[];
@@ -61,6 +78,7 @@ export interface Calibration {
   overconfidencePercent: number;
   underconfidencePercent: number;
   blindSpots: CalibrationBlindSpot[];
+  trend: CalibrationTrend;
 }
 
 export interface RetentionBucket {

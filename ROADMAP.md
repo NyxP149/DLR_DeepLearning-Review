@@ -61,7 +61,8 @@
 - [x] Mesure de rétention différée sur la page Coach : rappels des révisions rangés par délai depuis la fin du labo, comparés au quiz initial, labos retenus durablement et oublis à revoir (V3.30)
 - [x] Exercices de transfert : plusieurs exercices par labo (guidé noté, transferts facultatifs sans indice ni score), soumissions par exercice, indicateur « Transfert confirmé » alimenté ; pilote JAVA-10 avec 2 transferts validés dans Docker (V3.31)
 - [x] Exercices de transfert déployés aux 172 labos : un transfert par labo, chaque solution validée dans le runner Docker réel, tests de contenu étendus à tous les exercices (V3.32)
-- [ ] Évolution de la calibration dans le temps, gain du quiz de départ agrégé au tableau de bord, maîtrise des concepts pilotée par la rétention
+- [x] Évolution de la calibration dans le temps : écart hebdomadaire entre confiance déclarée et réussite réelle, tendance (amélioration, stable, dégradation) sur la page Coach (V3.33)
+- [ ] Gain du quiz de départ agrégé au tableau de bord, maîtrise des concepts pilotée par la rétention
 
 ## Déploiement cloud
 

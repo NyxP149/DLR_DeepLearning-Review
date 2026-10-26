@@ -43,7 +43,65 @@ class CalibrationControllerTest {
                 .andExpect(jsonPath("$.totalAnswers").value(1))
                 .andExpect(jsonPath("$.verdict").value("INSUFFICIENT_DATA"))
                 .andExpect(jsonPath("$.levels.length()").value(3))
-                .andExpect(jsonPath("$.blindSpots.length()").value(0));
+                .andExpect(jsonPath("$.blindSpots.length()").value(0))
+                .andExpect(jsonPath("$.trend.verdict").value("INSUFFICIENT_DATA"));
+    }
+
+    @Test
+    void showsAnImprovingCalibrationWhenTheGapBetweenConfidenceAndResultsShrinks() throws Exception {
+        week("2026-01-05", 3, 0, 5);
+        week("2026-01-12", 3, 4, 1);
+
+        mockMvc.perform(get("/api/adaptation/calibration"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.trend.verdict").value("IMPROVING"))
+                .andExpect(jsonPath("$.trend.periods.length()").value(2))
+                .andExpect(jsonPath("$.trend.periods[0].weekStart").value("2026-01-05"))
+                .andExpect(jsonPath("$.trend.periods[0].confidencePercent").value(100))
+                .andExpect(jsonPath("$.trend.periods[0].accuracyPercent").value(0))
+                .andExpect(jsonPath("$.trend.periods[0].gapPoints").value(100))
+                .andExpect(jsonPath("$.trend.periods[0].overconfidencePercent").value(100))
+                .andExpect(jsonPath("$.trend.periods[1].accuracyPercent").value(80))
+                .andExpect(jsonPath("$.trend.periods[1].gapPoints").value(20))
+                .andExpect(jsonPath("$.trend.message").value(org.hamcrest.Matchers.containsString("de 100 à 20 points")));
+    }
+
+    @Test
+    void showsAWorseningCalibrationAndGroupsAnswersByWeek() throws Exception {
+        week("2026-01-05", 3, 5, 0);
+        // Un mardi : rattaché au lundi 12 janvier.
+        week("2026-01-13", 3, 2, 3);
+
+        mockMvc.perform(get("/api/adaptation/calibration"))
+                .andExpect(jsonPath("$.trend.verdict").value("WORSENING"))
+                .andExpect(jsonPath("$.trend.periods[1].weekStart").value("2026-01-12"))
+                .andExpect(jsonPath("$.trend.periods[1].total").value(5))
+                .andExpect(jsonPath("$.trend.periods[1].gapPoints").value(60));
+    }
+
+    @Test
+    void reportsAStableGapAndIgnoresWeeksWithTooFewAnswers() throws Exception {
+        week("2026-01-05", 3, 3, 2);
+        week("2026-01-12", 3, 3, 2);
+        week("2026-01-19", 3, 0, 2);
+
+        mockMvc.perform(get("/api/adaptation/calibration"))
+                .andExpect(jsonPath("$.trend.verdict").value("STABLE"))
+                .andExpect(jsonPath("$.trend.periods.length()").value(3))
+                .andExpect(jsonPath("$.trend.periods[2].reliable").value(false))
+                .andExpect(jsonPath("$.trend.periods[0].reliable").value(true));
+    }
+
+    @Test
+    void measuresUnderconfidenceAsANegativeGap() throws Exception {
+        week("2026-01-05", 1, 5, 0);
+        week("2026-01-12", 1, 5, 0);
+
+        mockMvc.perform(get("/api/adaptation/calibration"))
+                .andExpect(jsonPath("$.trend.periods[0].confidencePercent").value(33))
+                .andExpect(jsonPath("$.trend.periods[0].gapPoints").value(-67))
+                .andExpect(jsonPath("$.trend.periods[0].sureTotal").value(0))
+                .andExpect(jsonPath("$.trend.verdict").value("STABLE"));
     }
 
     @Test
@@ -118,6 +176,23 @@ class CalibrationControllerTest {
                 .andExpect(jsonPath("$.sources[1].code").value("REVIEW"))
                 .andExpect(jsonPath("$.sources[1].total").value(1))
                 .andExpect(jsonPath("$.levels[2].correctPercent").value(100));
+    }
+
+    /** Une semaine de réponses à une confiance donnée : `correct` justes puis `wrong` fausses, toutes datées de cette semaine. */
+    private void week(String monday, int confidence, int correct, int wrong) {
+        UUID attempt = UUID.randomUUID();
+        Instant base = Instant.parse(monday + "T10:00:00Z");
+        jdbcTemplate.update("insert into attempt (id, lab_id, started_at, status) values (?, 'JAVA-01', ?, 'IN_PROGRESS')",
+                attempt, Timestamp.from(base));
+        int question = 1;
+        for (int index = 0; index < correct; index++) logAt(attempt, question++, 100, confidence, base.plusSeconds(question));
+        for (int index = 0; index < wrong; index++) logAt(attempt, question++, 0, confidence, base.plusSeconds(question));
+    }
+
+    private void logAt(UUID attempt, int question, int score, int confidence, Instant at) {
+        jdbcTemplate.update(
+                "insert into quiz_answer_log (id, attempt_id, question_id, score, confidence, answered_at) values (?, ?, ?, ?, ?, ?)",
+                UUID.randomUUID(), attempt, "JAVA-01-Q" + question, score, confidence, Timestamp.from(at));
     }
 
     private UUID attempt() {

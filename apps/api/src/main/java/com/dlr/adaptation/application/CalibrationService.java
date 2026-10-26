@@ -4,7 +4,12 @@ import com.dlr.assessment.domain.QuizGrader;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
+import java.time.DayOfWeek;
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneOffset;
+import java.time.format.DateTimeFormatter;
+import java.time.temporal.TemporalAdjusters;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashSet;
@@ -12,6 +17,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.TreeMap;
 
 /**
  * Calibration : compare la confiance déclarée avant la correction au résultat réel.
@@ -25,6 +31,12 @@ public class CalibrationService {
     static final int MIN_LEVEL_SAMPLES = 5;
     static final int SOLID_ACCURACY = 70;
     static final int MAX_BLIND_SPOTS = 8;
+    static final int MAX_PERIODS = 8;
+    static final int MIN_PERIOD_SAMPLES = 5;
+    static final int TREND_THRESHOLD = 5;
+    /** Confiance déclarée convertie en probabilité de réussite annoncée : pas sûr·e, plutôt sûr·e, sûr·e. */
+    private static final int[] CONFIDENCE_PERCENT = {0, 33, 67, 100};
+    private static final DateTimeFormatter DAY = DateTimeFormatter.ofPattern("dd/MM");
 
     private final JdbcTemplate jdbcTemplate;
     private final QuestionPrompts prompts;
@@ -49,7 +61,54 @@ public class CalibrationService {
         Level high = levels.get(2);
         Verdict verdict = verdict(samples.size(), low, high);
         return new Calibration(samples.size(), levels, List.of(quiz, review), verdict.code(), verdict.message(),
-                overconfidenceRate(high), underconfidenceRate(low), blindSpots(samples));
+                overconfidenceRate(high), underconfidenceRate(low), blindSpots(samples), trend(samples));
+    }
+
+    /**
+     * Évolution semaine par semaine : écart entre la confiance moyenne déclarée et la réussite réelle.
+     * Seules les semaines avec assez de réponses comptent pour la tendance.
+     */
+    private Trend trend(List<Sample> samples) {
+        Map<LocalDate, List<Sample>> byWeek = new TreeMap<>();
+        for (Sample sample : samples) {
+            LocalDate week = sample.at().atZone(ZoneOffset.UTC).toLocalDate()
+                    .with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
+            byWeek.computeIfAbsent(week, key -> new ArrayList<>()).add(sample);
+        }
+        List<Period> all = byWeek.entrySet().stream().map(entry -> period(entry.getKey(), entry.getValue())).toList();
+        List<Period> periods = all.subList(Math.max(0, all.size() - MAX_PERIODS), all.size());
+        List<Period> reliable = periods.stream().filter(Period::reliable).toList();
+
+        if (reliable.size() < 2) {
+            return new Trend("INSUFFICIENT_DATA", "Il faut au moins deux semaines avec " + MIN_PERIOD_SAMPLES
+                    + " réponses ou plus (avec confiance) pour suivre l'évolution de ta calibration.", periods);
+        }
+        Period first = reliable.getFirst();
+        Period last = reliable.getLast();
+        int from = Math.abs(first.gapPoints());
+        int to = Math.abs(last.gapPoints());
+        String span = " (semaine du " + DAY.format(first.weekStart()) + " à celle du " + DAY.format(last.weekStart()) + ")";
+        if (to - from <= -TREND_THRESHOLD) {
+            return new Trend("IMPROVING", "Ta confiance colle de mieux en mieux à tes résultats : l'écart est passé de "
+                    + from + " à " + to + " points" + span + ".", periods);
+        }
+        if (to - from >= TREND_THRESHOLD) {
+            return new Trend("WORSENING", "L'écart entre ta confiance et tes résultats se creuse : de " + from + " à "
+                    + to + " points" + span + ". Reprends les angles morts avant d'avancer.", periods);
+        }
+        return new Trend("STABLE", "L'écart entre ta confiance et tes résultats reste stable (" + from + " puis " + to
+                + " points)" + span + ".", periods);
+    }
+
+    private Period period(LocalDate weekStart, List<Sample> samples) {
+        long correct = samples.stream().filter(sample -> sample.outcome() == QuizGrader.Outcome.CORRECT).count();
+        int confidence = (int) Math.round(samples.stream().mapToInt(sample -> CONFIDENCE_PERCENT[sample.confidence()]).average().orElse(0));
+        int accuracy = percent(correct, samples.size());
+        long sure = samples.stream().filter(sample -> sample.confidence() == 3).count();
+        long sureNotCorrect = samples.stream()
+                .filter(sample -> sample.confidence() == 3 && sample.outcome() != QuizGrader.Outcome.CORRECT).count();
+        return new Period(weekStart, samples.size(), confidence, accuracy, confidence - accuracy, (int) sure,
+                percent(sureNotCorrect, sure), samples.size() >= MIN_PERIOD_SAMPLES);
     }
 
     private Verdict verdict(int total, Level low, Level high) {
@@ -173,8 +232,17 @@ public class CalibrationService {
             String message,
             int overconfidencePercent,
             int underconfidencePercent,
-            List<BlindSpot> blindSpots
+            List<BlindSpot> blindSpots,
+            Trend trend
     ) {
+    }
+
+    /** gapPoints > 0 : confiance supérieure à la réussite (sur-confiance), < 0 : sous-confiance. */
+    public record Period(LocalDate weekStart, int total, int confidencePercent, int accuracyPercent, int gapPoints,
+                         int sureTotal, int overconfidencePercent, boolean reliable) {
+    }
+
+    public record Trend(String verdict, String message, List<Period> periods) {
     }
 
     public record Level(int confidence, int total, int correct, int partial, int wrong, int correctPercent) {
