@@ -157,13 +157,21 @@ public class AdaptationService {
             case MASTERED -> "statut : maîtrisé";
             case NOT_STARTED -> "statut : à découvrir";
         };
-        String reviewFactor = target.completedReviewStage() < 0
-                ? "aucune révision différée validée"
-                : "dernière révision validée : J" + List.of(1, 3, 7, 14, 30)
-                        .get(Math.min(target.completedReviewStage(), 4));
+        String reviewFactor = switch (target.retention()) {
+            case FORGOTTEN -> "dernier rappel raté, à J+" + target.lastRecallDays() + " après la fin du labo";
+            case SHAKY -> "dernier rappel partiel, à J+" + target.lastRecallDays() + " après la fin du labo";
+            case RETAINED -> "dernier rappel juste, à J+" + target.lastRecallDays() + " après la fin du labo";
+            case NONE -> target.completedReviewStage() < 0
+                    ? "aucune révision différée validée"
+                    : "dernière révision validée : J" + List.of(1, 3, 7, 14, 30).get(Math.min(target.completedReviewStage(), 4));
+        };
         String reason = switch (target.status()) {
-            case TO_REVIEW -> "Ce concept est sous le seuil recommandé et mérite un renforcement ciblé.";
-            case CONSOLIDATING -> "Le score est suffisant, mais la maîtrise différée n'est pas encore confirmée.";
+            case TO_REVIEW -> target.retention() == ConceptMasteryService.RecallState.FORGOTTEN
+                    ? "Tu avais réussi ce laboratoire mais le dernier rappel est raté : cette notion s'efface, c'est le signal à traiter en priorité."
+                    : "Ce concept est sous le seuil recommandé et mérite un renforcement ciblé.";
+            case CONSOLIDATING -> target.retention() == ConceptMasteryService.RecallState.SHAKY
+                    ? "Le dernier rappel n'est que partiel : la notion tient encore mal sans le cours."
+                    : "Le score est suffisant, mais la maîtrise différée n'est pas encore confirmée.";
             case MASTERED -> "Ce concept est solide ; un transfert vers un contexte nouveau entretiendra l'autonomie.";
             case NOT_STARTED -> "C'est le prochain concept obligatoire non encore travaillé dans le parcours fixe.";
         };
@@ -175,11 +183,12 @@ public class AdaptationService {
     }
 
     private int priority(ConceptMastery concept) {
+        // Un oubli constaté au rappel passe avant un concept simplement sous le seuil.
         return switch (concept.status()) {
-            case TO_REVIEW -> 0;
-            case CONSOLIDATING -> 1;
-            case NOT_STARTED -> 2;
-            case MASTERED -> 3;
+            case TO_REVIEW -> concept.retention() == ConceptMasteryService.RecallState.FORGOTTEN ? 0 : 1;
+            case CONSOLIDATING -> 2;
+            case NOT_STARTED -> 3;
+            case MASTERED -> 4;
         };
     }
 

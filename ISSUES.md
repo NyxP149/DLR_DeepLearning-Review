@@ -455,3 +455,16 @@ Le test Playwright « le bilan d'un laboratoire terminé reste affiché après u
 
 **Solution**
 Le test écrit les quatre lignes attendues, répond aux quatre questions à choix par leur indice et rédige la question libre avec les mots-clés attendus. Les autres tests de laboratoire ignorent désormais le quiz de départ (V3.29) par un mock de `/api/labs/*/pretest`, et un test dédié couvre ce quiz. Suite complète : 18 tests e2e verts sur une base neuve ; le test de planning dépend de l'état de la base et échoue si JAVA-01 a déjà une tentative.
+
+---
+
+## Un concept restait « maîtrisé » après une dernière révision ratée
+- severity: medium
+- date: 2026-10
+- tags: Maîtrise, Rétention
+
+**Problème**
+La carte de maîtrise déclarait un concept « maîtrisé » dès qu'une révision de l'étape J+30 était terminée. Or une révision se termine aussi quand la réponse est fausse (elle est alors replanifiée à la même étape) : un concept dont le rappel à J+30 était raté s'affichait quand même comme acquis, et un oubli constaté plus tard n'avait aucun effet sur le statut ni sur les recommandations du coach.
+
+**Solution**
+Le statut dépend maintenant du dernier rappel enregistré : « maîtrisé » exige une réponse juste, faite avec confiance, à l'étape finale et 7 jours ou plus après la fin du labo ; un dernier rappel raté renvoie le concept à revoir (« Oublié : à revoir ») et la recommandation du coach le traite avant les concepts simplement sous le seuil. Les labos sans aucune réponse de rappel (anciennes révisions validées d'un bouton) gardent l'ancienne règle. `ConceptMasteryControllerTest` couvre huit cas, dont l'étape finale ratée, la réponse hésitante et la primauté du dernier rappel.

@@ -33,7 +33,7 @@ import { ConceptMastery, MasteryApiService, MasteryStatus } from '../../core/api
             <article class="concept-card">
               <div class="meta">
                 <span>{{ concept.labCode }}</span>
-                <span class="badge" [class]="'badge ' + concept.status.toLowerCase()">{{ statusLabel(concept.status) }}</span>
+                <span class="badge" [class]="'badge ' + concept.status.toLowerCase()">{{ statusLabel(concept) }}</span>
               </div>
               <h2>{{ concept.name }}</h2>
               <p>{{ concept.definition }}</p>
@@ -76,21 +76,30 @@ export class ConceptsComponent {
     return concepts.filter((concept) => concept.status === status).length;
   }
 
-  statusLabel(status: MasteryStatus): string {
-    return ({ NOT_STARTED: 'À découvrir', TO_REVIEW: 'À revoir', CONSOLIDATING: 'En consolidation', MASTERED: 'Maîtrisé' })[status];
+  statusLabel(concept: ConceptMastery): string {
+    if (concept.status === 'TO_REVIEW' && concept.retention === 'FORGOTTEN') return 'Oublié : à revoir';
+    return ({ NOT_STARTED: 'À découvrir', TO_REVIEW: 'À revoir', CONSOLIDATING: 'En consolidation', MASTERED: 'Maîtrisé' })[concept.status];
+  }
+
+  /** Dernier rappel sans le cours, quand il existe : c'est lui qui pilote la maîtrise. */
+  recallLabel(concept: ConceptMastery): string {
+    const days = concept.lastRecallDays === null ? '' : ` à J+${concept.lastRecallDays}`;
+    return ({ NONE: '', RETAINED: `Dernier rappel juste${days}`, SHAKY: `Dernier rappel partiel${days}`, FORGOTTEN: `Dernier rappel raté${days}` })[concept.retention];
   }
 
   progress(concept: ConceptMastery): number {
     if (concept.status === 'MASTERED') return 100;
     if (concept.status === 'CONSOLIDATING') return 55 + Math.max(0, concept.completedReviewStage + 1) * 9;
-    if (concept.status === 'TO_REVIEW') return Math.round(concept.score ?? 25);
+    if (concept.status === 'TO_REVIEW') return concept.retention === 'FORGOTTEN' ? Math.min(30, Math.round(concept.score ?? 25)) : Math.round(concept.score ?? 25);
     return 0;
   }
 
   progressLabel(concept: ConceptMastery): string {
     if (concept.status === 'NOT_STARTED') return 'Aucune tentative terminée';
-    if (concept.status === 'MASTERED') return 'Cycle J+30 validé';
-    if (concept.status === 'TO_REVIEW') return `Dernier meilleur score : ${concept.score ?? 0} %`;
+    const recall = this.recallLabel(concept);
+    if (concept.status === 'MASTERED') return recall ? `${recall} · rétention durable confirmée` : 'Cycle J+30 validé';
+    if (concept.status === 'TO_REVIEW') return recall ? `${recall} · meilleur score : ${concept.score ?? 0} %` : `Dernier meilleur score : ${concept.score ?? 0} %`;
+    if (recall) return `Score ${concept.score} % · ${recall.charAt(0).toLowerCase()}${recall.slice(1)}`;
     return concept.completedReviewStage < 0
       ? `Score ${concept.score} % · première révision à venir`
       : `Score ${concept.score} % · étape J${[1, 3, 7, 14, 30][Math.min(concept.completedReviewStage, 4)]} validée`;

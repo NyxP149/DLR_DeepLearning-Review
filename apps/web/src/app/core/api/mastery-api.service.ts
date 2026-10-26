@@ -4,6 +4,8 @@ import { API_BASE_URL } from './api-config';
 
 export type MasteryStatus = 'NOT_STARTED' | 'TO_REVIEW' | 'CONSOLIDATING' | 'MASTERED';
 
+export type RecallState = 'NONE' | 'RETAINED' | 'SHAKY' | 'FORGOTTEN';
+
 export interface ConceptMastery {
   code: string;
   name: string;
@@ -22,6 +24,8 @@ export interface ConceptMastery {
   status: MasteryStatus;
   score: number | null;
   completedReviewStage: number;
+  retention: RecallState;
+  lastRecallDays: number | null;
 }
 
 @Injectable({ providedIn: 'root' })
