@@ -58,7 +58,8 @@
 - [x] Modèle v2 appliqué aussi au parcours Terminal (24) et à JAVA-01 à 09 : les 172 laboratoires suivent le même format (V3.27)
 - [x] Tableau de bord de calibration sur la page Coach : confiance déclarée contre réussite réelle, verdict, sources quiz et révisions, angles morts reliés aux labos (V3.28)
 - [x] Quiz de départ avant le cours : trois questions sans correction ni effet sur le score, « Je ne sais pas » admis, comparées à la première réponse du quiz final dans le bilan (V3.29)
-- [ ] Évolution de la calibration dans le temps, gain du quiz de départ agrégé au tableau de bord, exercices de transfert, maîtrise fondée sur le rappel différé
+- [x] Mesure de rétention différée sur la page Coach : rappels des révisions rangés par délai depuis la fin du labo, comparés au quiz initial, labos retenus durablement et oublis à revoir (V3.30)
+- [ ] Évolution de la calibration dans le temps, gain du quiz de départ agrégé au tableau de bord, exercices de transfert, maîtrise des concepts pilotée par la rétention
 
 ## Déploiement cloud
 

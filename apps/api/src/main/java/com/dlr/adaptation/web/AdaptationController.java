@@ -2,6 +2,7 @@ package com.dlr.adaptation.web;
 
 import com.dlr.adaptation.application.AdaptationService;
 import com.dlr.adaptation.application.CalibrationService;
+import com.dlr.adaptation.application.RetentionService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -20,14 +21,23 @@ public class AdaptationController {
     private final AdaptationService service;
     private final CalibrationService calibrationService;
 
-    public AdaptationController(AdaptationService service, CalibrationService calibrationService) {
+    private final RetentionService retentionService;
+
+    public AdaptationController(AdaptationService service, CalibrationService calibrationService,
+                                RetentionService retentionService) {
         this.service = service;
         this.calibrationService = calibrationService;
+        this.retentionService = retentionService;
     }
 
     @GetMapping("/calibration")
     public CalibrationService.Calibration calibration() {
         return calibrationService.calibration();
+    }
+
+    @GetMapping("/retention")
+    public RetentionService.Retention retention() {
+        return retentionService.retention();
     }
 
     @GetMapping("/recommendation")

@@ -63,6 +63,37 @@ export interface Calibration {
   blindSpots: CalibrationBlindSpot[];
 }
 
+export interface RetentionBucket {
+  label: string;
+  fromDays: number;
+  toDays: number | null;
+  total: number;
+  correct: number;
+  partial: number;
+  wrong: number;
+  correctPercent: number;
+  initialSamples: number;
+  initialPercent: number;
+}
+
+export interface RetentionForgotten {
+  labCode: string;
+  questionId: string;
+  prompt: string;
+  outcome: 'PARTIAL' | 'WRONG';
+  delayDays: number;
+  answeredAt: string;
+}
+
+export interface Retention {
+  totalRecalls: number;
+  buckets: RetentionBucket[];
+  verdict: 'INSUFFICIENT_DATA' | 'TOO_EARLY' | 'DURABLE' | 'MIXED' | 'FRAGILE';
+  message: string;
+  retainedLabs: { labCode: string; delayDays: number }[];
+  forgotten: RetentionForgotten[];
+}
+
 @Injectable({ providedIn: 'root' })
 export class AdaptationApiService {
   private readonly http = inject(HttpClient);
@@ -78,6 +109,10 @@ export class AdaptationApiService {
 
   calibration() {
     return this.http.get<Calibration>(`${this.url}/calibration`);
+  }
+
+  retention() {
+    return this.http.get<Retention>(`${this.url}/retention`);
   }
 
   decide(id: string, decision: AdaptationDecision) {

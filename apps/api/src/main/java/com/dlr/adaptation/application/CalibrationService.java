@@ -1,8 +1,6 @@
 package com.dlr.adaptation.application;
 
 import com.dlr.assessment.domain.QuizGrader;
-import com.dlr.catalog.application.LabCatalog;
-import com.dlr.catalog.domain.LabContent;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
@@ -29,11 +27,11 @@ public class CalibrationService {
     static final int MAX_BLIND_SPOTS = 8;
 
     private final JdbcTemplate jdbcTemplate;
-    private final LabCatalog catalog;
+    private final QuestionPrompts prompts;
 
-    public CalibrationService(JdbcTemplate jdbcTemplate, LabCatalog catalog) {
+    public CalibrationService(JdbcTemplate jdbcTemplate, QuestionPrompts prompts) {
         this.jdbcTemplate = jdbcTemplate;
-        this.catalog = catalog;
+        this.prompts = prompts;
     }
 
     public Calibration calibration() {
@@ -152,16 +150,8 @@ public class CalibrationService {
     }
 
     private BlindSpot blindSpot(Sample sample) {
-        LabContent.QuizQuestion question = catalog.findByCode(sample.labCode())
-                .flatMap(lab -> lab.quiz().stream().filter(q -> q.code().equals(sample.questionId())).findFirst())
-                .orElse(null);
-        String prompt = question == null ? sample.questionId() : shorten(question.prompt());
-        return new BlindSpot(sample.labCode(), sample.questionId(), prompt, sample.outcome().name(), sample.source(), sample.at());
-    }
-
-    private static String shorten(String text) {
-        String flat = text.replaceAll("```[\\s\\S]*?```", "[code]").replaceAll("\\s+", " ").strip();
-        return flat.length() <= 160 ? flat : flat.substring(0, 157) + "...";
+        return new BlindSpot(sample.labCode(), sample.questionId(), prompts.prompt(sample.labCode(), sample.questionId()),
+                sample.outcome().name(), sample.source(), sample.at());
     }
 
     private static int percent(long part, long whole) {
