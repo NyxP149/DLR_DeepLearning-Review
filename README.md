@@ -174,6 +174,8 @@ Le site Angular peut rester sur Render tandis que l'API, Docker et Ollama tourne
 .\infrastructure\scripts\start-hybrid.ps1 -FrontendOrigin "https://dlr-web.onrender.com"
 ```
 
+Au quotidien, `DLR.cmd` (double-clic) fait tout cela à partir de `dlr.config.json` : attente de l'API prête, ouverture du site, `DLR.cmd stop` pour tout arrêter, `DLR.cmd -Mode local` pour tout faire tourner sur le PC sans Render ni Neon.
+
 Reporter ensuite l'URL HTTPS affichée par `tailscale serve status` dans `DLR_HYBRID_API_BASE_URL` sur le service statique Render, puis redéployer celui-ci. Le navigateur doit être connecté au même tailnet. Le bouton Runner s'active seulement lorsque `GET /api/execution/status` confirme que Docker et les quatre images sont prêts. Le guide complet se trouve dans `docs/DLR_Deploye.md`.
 
 Pour réutiliser Neon au lieu de PostgreSQL local, ajouter `-DatabaseUrl` (au format JDBC) et `-DatabaseUser` ; le mot de passe est alors demandé de façon masquée.

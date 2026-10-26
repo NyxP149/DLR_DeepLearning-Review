@@ -26,3 +26,6 @@ backups/
 # OS
 .DS_Store
 Thumbs.db
+
+# Configuration locale du lanceur (sans mot de passe)
+dlr.config.json

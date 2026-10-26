@@ -502,19 +502,36 @@ Cette commande utilise PostgreSQL local. Pour conserver la progression dans Neon
 
 Le script demande ensuite le mot de passe Neon dans une saisie masquée. Ne jamais écrire ce mot de passe dans le dépôt ni dans la commande. Utiliser l'hôte complet fourni par Neon, y compris le préfixe propre au projet (`ep-...`) ; ne pas le raccourcir en `pooler...`.
 
-### Raccourci de lancement
+### Lancement en un double-clic (`DLR.cmd`)
 
-Pour éviter de retaper la commande ci-dessus (avec les paramètres Render/Neon) à chaque démarrage, `start-hybrid.sh` (racine du dépôt) l'enveloppe pour un lancement depuis Git Bash :
+`DLR.cmd` (racine du dépôt) remplace l'ancien couple `start-hybrid.sh` + raccourci `.lnk`, qui contenaient chemin et URL en dur. Les réglages vivent dans `dlr.config.json` (racine, ignoré par Git, **sans mot de passe**) ; le modèle est `dlr.config.example.json`. Au premier lancement le fichier est créé à partir des paramètres donnés ou demandés.
 
-```bash
-./start-hybrid.sh
+```json
+{ "mode": "hybrid", "apiPort": 8081, "frontendOrigin": "https://dlr-web.onrender.com",
+  "databaseUrl": "jdbc:postgresql://ep-...-pooler.eu-west-2.aws.neon.tech/neondb?sslmode=require", "databaseUser": "neondb_owner" }
 ```
 
-Le script se place lui-même à la racine du dépôt (chemin absolu en dur), donc il peut être appelé depuis n'importe quel dossier. Un raccourci Bureau (`DLR - Demarrer API.lnk`, également suivi dans le dépôt) lance ce script via `bash.exe` et ajoute une pause en fin d'exécution pour que la fenêtre ne se ferme pas avant qu'une erreur ait pu être lue. Dans les deux cas, le mot de passe Neon reste demandé de façon interactive — il n'est jamais écrit sur disque. Ces deux fichiers contiennent des chemins absolus propres au poste qui les a créés et doivent être adaptés (ou régénérés) sur un autre poste.
+```powershell
+.\DLR.cmd                    # démarrer (mode du fichier de configuration)
+.\DLR.cmd stop               # tout arrêter : API, publication Tailscale Serve, PostgreSQL local
+.\DLR.cmd status             # état de l'API, de la base locale et de Tailscale
+.\DLR.cmd -Mode local        # site, API et PostgreSQL entièrement sur ce PC (sans Render ni Neon)
+.\DLR.cmd -Rebuild           # force la reconstruction du jar
+.\infrastructure\scripts\install-shortcut.ps1   # crée le raccourci « DLR » sur le Bureau
+```
 
-Le script :
+Ce que le lanceur fait de plus que l'ancien script :
 
-- vérifie Docker Desktop et Tailscale ;
+- l'API démarre depuis un **jar** (`java -jar`) reconstruit seulement si le code, le `pom.xml` ou `content/` ont changé, au lieu d'un `mvn spring-boot:run` complet à chaque fois ;
+- il attend que `/actuator/health` réponde `UP`, affiche l'adresse puis ouvre le site (Render en mode hybride, `http://localhost:4200` en mode local, où il démarre aussi le site) ;
+- à la fermeture (Ctrl+C) ou avec `stop`, il arrête l'API et le site, retire la publication Tailscale Serve du port 443 (les autres réglages Tailscale restent) et arrête PostgreSQL local ; les données sont conservées ;
+- le mode local ne touche **jamais** la base Neon de la configuration, sauf si `-DatabaseUrl` est donné explicitement.
+
+Le mot de passe Neon et la clé DeepSeek restent demandés à chaque lancement (saisie masquée, jamais écrits sur disque). `start-hybrid.ps1` est conservé comme enveloppe de compatibilité autour de `dlr.ps1`.
+
+Le lanceur :
+
+- vérifie Docker Desktop (et Tailscale en mode hybride) ;
 - utilise Neon si ses paramètres sont fournis, sinon démarre PostgreSQL local ;
 - construit les images Runner manquantes ;
 - demande la clé API DeepSeek (saisie masquée) ; si elle est fournie, active DeepSeek comme professeur IA, sinon bascule sur Ollama et vérifie qu'il répond, sans bloquer le reste de l'application ;
