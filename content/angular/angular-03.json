@@ -11,21 +11,30 @@
     "ANGULAR-02"
   ],
   "objectives": [
-    "Expliquer composants, inputs, outputs et composition",
-    "Construire une preuve exécutable et déterministe",
-    "Relier le concept à une décision professionnelle"
+    "Concevoir un composant de présentation avec inputs et outputs et sans dépendance au métier.",
+    "Expliquer le flux de données : valeurs vers le bas (inputs), événements vers le haut (outputs).",
+    "N'émettre un événement que lorsque l'état change vraiment, avec une valeur validée.",
+    "Repérer une mutation d'input, un output trop bavard ou un composant qui connaît son parent."
   ],
   "sections": [
     {
-      "title": "Concept et usage professionnel",
-      "content": "Composants, inputs, outputs et composition répond à un besoin concret de maintenabilité, de sûreté ou de performance. Le laboratoire demande de rendre la décision observable et vérifiable.",
-      "conceptCodes": [
-        "ANGULAR-COMPONENTS"
-      ]
+      "title": "Les données descendent, les événements remontent",
+      "content": "Un composant enfant reçoit des données par ses inputs et signale ce qui s'est passé par des outputs. Il ne modifie pas ses inputs et ne connaît pas son parent.\n```ts\n@Component({\n  selector: 'app-star-rating',\n  changeDetection: ChangeDetectionStrategy.OnPush,\n  template: `\n    @for (star of stars(); track star) {\n      <button type=\"button\" (click)=\"select(star)\" [attr.aria-pressed]=\"star <= value()\">★</button>\n    }`,\n})\nexport class StarRatingComponent {\n  value = input.required<number>();          // lecture seule, vient du parent\n  rated = output<number>();                  // événement vers le parent\n  stars = computed(() => [1, 2, 3, 4, 5]);\n\n  select(star: number) {\n    if (star === this.value()) return;       // pas de bruit si rien ne change\n    this.rated.emit(star);\n  }\n}\n```\nParent : <app-star-rating [value]=\"note()\" (rated)=\"note.set($event)\" />. L'état appartient au parent (une seule source de vérité) ; l'enfant propose, le parent décide."
     },
     {
-      "title": "Mise en pratique",
-      "content": "La preuve TypeScript isole le contrat réactif ; son intégration dans un composant Angular est décrite sans rendre le runner dépendant d'un navigateur."
+      "title": "Exemple résolu : un composant de notation",
+      "conceptCodes": [
+        "ANGULAR-COMPONENTS"
+      ],
+      "content": "Problème : un composant de notation de 1 à 5 étoiles doit émettre une note seulement si elle change et reste valide ; le parent affiche les notes reçues.\n\nRaisonnement, étape par étape :\n1. Un petit émetteur (subscribe/emit) simule l'output Angular : c'est l'équivalent d'EventEmitter ou de output().\n2. Le composant garde la note courante (entrée du parent).\n3. select(note) refuse une valeur hors de [1, 5] (entrée non fiable, même venant de l'interface) et ignore une note identique à la courante.\n4. Sinon il émet la nouvelle note ; c'est le parent qui met à jour son état.\n5. Le parent s'abonne et affiche chaque note reçue.\n6. Vérification : sélectionner 4 puis 4 (ignoré), puis 5, puis 9 (refusé) produit deux émissions : 4 et 5.\n```ts\nclass Rating {\n  private current = 3;\n  readonly rated = new Emitter<number>();\n  select(note: number): void {\n    if (note < 1 || note > 5 || note === this.current) return;\n    this.current = note;\n    this.rated.emit(note);\n  }\n}\n```\nDans Angular, le même rôle est tenu par output<number>() ; le parent écoute avec (rated)."
+    },
+    {
+      "title": "Composition, OnPush et pièges",
+      "content": "- Composants de présentation : inputs et outputs seulement, pas de service injecté ni d'appel HTTP ; faciles à réutiliser et à tester. Composants conteneurs : ils injectent les services, gèrent l'état et passent les données.\n- OnPush : le composant n'est revérifié que si un input change de référence, qu'un événement du template survient ou qu'un signal lu change. Combiné à l'immutabilité, il évite beaucoup de travail inutile.\n- Ne mute jamais un objet reçu en input : le parent ne le sait pas, et OnPush ne détectera pas le changement. Copie, modifie, puis émets.\n- Projection de contenu (<ng-content>) pour des composants de mise en page : le parent fournit le contenu, le composant fournit la structure.\n- Input à deux sens : model() (valeur modifiable par l'enfant et le parent) pour les composants de formulaire ; à utiliser sobrement.\n- Nomme les outputs d'après ce qui s'est passé (rated, closed), pas d'après le gestionnaire (onRate), et n'émets pas à chaque frappe si seul le résultat final importe.\n- Accessibilité : un composant interactif doit être utilisable au clavier et exposer un nom accessible (aria-label), un état (aria-pressed)."
+    },
+    {
+      "title": "Erreurs fréquentes à reconnaître",
+      "content": "1. Modifier la propriété d'un objet reçu en input.\n2. Un enfant qui injecte le composant parent ou en connaît le type.\n3. Un output émis à chaque clic même sans changement : le parent refait du travail inutile.\n4. Faire confiance à la valeur émise par l'interface sans la valider.\n5. Un composant de présentation qui appelle l'API HTTP.\n6. Un état dupliqué dans le parent et l'enfant, qui divergent.\n\nRetrouve ces erreurs de mémoire avant l'exercice, puis vérifie-toi avec le quiz : c'est la récupération, pas la relecture, qui fixe la notion."
     }
   ],
   "keyConcepts": [
@@ -39,8 +48,8 @@
       "professionalExample": "Une bibliothèque de composants internes expose un DataTableComponent générique avec un input() pour les lignes et un output() rowSelected émis au clic, réutilisé dans les écrans clients, factures et commandes sans dupliquer le HTML du tableau. La composition se fait par projection de contenu (ng-content) pour permettre à chaque écran de personnaliser la colonne d'actions sans modifier le composant partagé. L'erreur courante est d'ajouter un second @Input() qui duplique l'état déjà porté par un output, créant un binding implicite qui désynchronise le parent et l'enfant dès que le composant est réutilisé ailleurs.",
       "codeExample": "@Component({\n  selector: 'app-data-table',\n  standalone: true,\n  imports: [NgFor],\n  template: `\n    <table>\n      <tr *ngFor=\"let row of rows()\" (click)=\"rowSelected.emit(row)\">\n        <td>{{ row.label }}</td>\n        <td><ng-content select=\"[actions]\"></ng-content></td>\n      </tr>\n    </table>\n  `,\n})\nexport class DataTableComponent<T extends { label: string }> {\n  rows = input.required<T[]>();\n  rowSelected = output<T>();\n}\n\n// Utilisation dans l'écran factures\n// <app-data-table [rows]=\"invoices()\" (rowSelected)=\"openInvoice($event)\">\n//   <button actions (click)=\"archive()\">Archiver</button>\n// </app-data-table>",
       "commonMistake": "Appliquer la technique sans mesurer son effet ni documenter sa frontière.",
-      "masteryQuestion": "Quelle contrainte de composants, inputs, outputs et composition doit rester vraie lorsque le système évolue ?",
-      "masteryProof": "Exécuter la preuve, expliquer son invariant et proposer un cas d’échec."
+      "masteryQuestion": "Pourquoi les données descendent par des inputs et les événements remontent par des outputs, et pourquoi ne pas muter un input ?",
+      "masteryProof": "Écrire un composant de notation qui n'émet que sur un vrai changement de note valide, et un parent qui affiche les notes reçues."
     }
   ],
   "exercises": [
@@ -56,32 +65,80 @@
     {
       "code": "ANGULAR-03-Q1",
       "type": "SINGLE_CHOICE",
-      "prompt": "Quelle preuve est la plus utile en revue ?",
+      "prompt": "Dans le flux de données d'Angular, que fait normalement un composant enfant quand l'utilisateur choisit une valeur ?",
       "choices": [
-        "Une exécution déterministe avec invariant explicite",
-        "Une sortie aléatoire",
-        "Une capture sans code"
+        "Il modifie directement l'état du parent",
+        "Il émet un output avec la nouvelle valeur ; le parent décide de mettre à jour son état",
+        "Il écrit dans un service global sans prévenir",
+        "Il recrée son parent"
       ],
-      "correctChoice": 0,
-      "expectedKeywords": []
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Une source de vérité unique appartient au parent. L'enfant se contente de notifier, ce qui garde le flux prévisible et le composant réutilisable."
     },
     {
       "code": "ANGULAR-03-Q2",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Prédis les notes émises :\n```ts\nconst r = new Rating();    // note courante : 3\nr.select(4); r.select(4); r.select(5); r.select(9);\n```\nselon une règle « émettre seulement si la note est valide (1 à 5) et différente de la courante ».",
+      "choices": [
+        "4, 4, 5, 9",
+        "4, 5",
+        "4, 5, 9",
+        "Aucune"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "4 est valide et change : émise. Le second 4 est identique à la courante : ignoré. 5 est émise. 9 est hors de [1, 5] : refusé."
+    },
+    {
+      "code": "ANGULAR-03-Q3",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Trouve le défaut :\n```ts\nupdate(user: User) {\n  user.name = this.newName;     // user vient d'un @Input\n  this.saved.emit();\n}\n```\navec ChangeDetectionStrategy.OnPush dans le parent.",
+      "choices": [
+        "emit est interdit",
+        "L'input est muté en place : le parent ne voit pas le changement de référence et l'affichage peut rester périmé ; il faut émettre une copie modifiée",
+        "newName est trop long",
+        "Il manque async"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Avec OnPush, un changement n'est détecté que si la référence de l'input change. Une copie ({ ...user, name }) émise vers le parent respecte le flux de données et la détection de changement."
+    },
+    {
+      "code": "ANGULAR-03-Q4",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Qu'est-ce qu'un composant de présentation ?",
+      "choices": [
+        "Un composant qui appelle l'API pour charger ses données",
+        "Un composant qui reçoit ses données par inputs et signale ce qui se passe par outputs, sans connaître les services",
+        "Un composant sans template",
+        "Un composant routé uniquement"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Il ne dépend que de ses inputs/outputs : facile à tester isolément et à réutiliser. Le conteneur, lui, injecte les services et orchestre."
+    },
+    {
+      "code": "ANGULAR-03-Q5",
       "type": "FREE_TEXT",
-      "prompt": "Explique une décision liée à composants, inputs, outputs et composition.",
+      "prompt": "Sans relire le cours, explique avec tes mots pourquoi un composant de notation doit valider la valeur qu'il émet même si elle vient de son propre template.",
       "choices": [],
       "correctChoice": null,
       "expectedKeywords": [
-        "contrat",
-        "preuve",
-        "test"
-      ]
+        "valide",
+        "entree",
+        "borne",
+        "emet",
+        "parent"
+      ],
+      "modelAnswer": "Un composant réutilisable ne peut pas supposer qu'il sera toujours appelé avec des valeurs correctes : un autre développeur, un test ou une manipulation du DOM peuvent produire une note hors des bornes. En validant la valeur (entre 1 et 5) et en n'émettant que sur un vrai changement, le composant garantit son contrat au parent, qui peut compter sur des valeurs valides et ne refait pas de travail inutile.",
+      "explanation": "Une bonne réponse dit qu'un composant réutilisable ne peut pas faire confiance à ses appelants et garantit donc son contrat avant d'émettre."
     }
   ],
   "checklist": [
-    "Je peux expliquer le concept sans réciter une définition",
-    "Je sais exécuter et modifier la preuve",
-    "Je peux nommer un risque et son contrôle",
-    "Je relie cette étape à la suivante"
+    "Mes composants de présentation n'ont que des inputs et des outputs",
+    "Je ne mute jamais un input",
+    "N'émets un output que sur un vrai changement validé",
+    "Ma source de vérité est unique (le parent)"
   ]
 }

@@ -11,21 +11,30 @@
     "SPRING_BOOT-09"
   ],
   "objectives": [
-    "Expliquer profils, métriques, logs et observabilité",
-    "Construire une preuve exécutable et déterministe",
-    "Relier le concept à une décision professionnelle"
+    "Utiliser les profils pour changer la configuration sans changer le code.",
+    "Exposer des métriques utiles et éviter les étiquettes à cardinalité explosive.",
+    "Produire des logs structurés avec niveau et identifiant de corrélation, sans secret.",
+    "Choisir quels endpoints Actuator exposer et lesquels protéger."
   ],
   "sections": [
     {
-      "title": "Concept et usage professionnel",
-      "content": "Profils, métriques, logs et observabilité répond à un besoin concret de maintenabilité, de sûreté ou de performance. Le laboratoire demande de rendre la décision observable et vérifiable.",
-      "conceptCodes": [
-        "SPRING-OBSERVABILITY"
-      ]
+      "title": "Même code, comportements différents selon l'environnement",
+      "content": "Un profil Spring (dev, test, prod) active des beans ou des fichiers de configuration différents : application-dev.yml, application-prod.yml. On l'active par spring.profiles.active ou une variable d'environnement. Un profil change des valeurs (niveau de log, URL de service, taille de pool), pas la logique métier : sinon on ne teste plus ce qu'on déploie.\n\nLe niveau de log suit la même règle : DEBUG en développement, INFO ou WARN en production. Une propriété absente d'un profil retombe sur la valeur par défaut de application.yml. Règle de sécurité : les secrets ne sont pas dans les fichiers de profil versionnés."
     },
     {
-      "title": "Mise en pratique",
-      "content": "La preuve unifichier valide ici la frontière d'architecture hors réseau ; le laboratoire explique ensuite son branchement aux annotations et dépendances Spring Boot réelles."
+      "title": "Exemple résolu : un niveau de log par profil et un compteur par statut",
+      "conceptCodes": [
+        "SPRING-OBSERVABILITY"
+      ],
+      "content": "Problème : afficher le niveau de log effectif selon le profil et compter les requêtes par statut HTTP au format d'une métrique.\n\nRaisonnement, étape par étape :\n1. Valeur par défaut : log.level = INFO.\n2. Profil dev : DEBUG. Profil prod : WARN. Profil test (sans surcharge) : retombe sur INFO.\n3. Lecture : la valeur du profil si elle existe, sinon la valeur par défaut.\n4. Compteur : une entrée par statut (200, 404, 500) incrémentée à chaque requête, affichée triée.\n5. Vérification : 3 requêtes 200, 1 de 404 et 1 de 500 donnent trois lignes, 3, 1 et 1.\n```java\nString level = PROFILES.getOrDefault(profile, Map.of()).getOrDefault(\"log.level\", DEFAULTS.get(\"log.level\"));\n\nCounter.builder(\"requests_total\").tag(\"status\", \"200\").register(registry).increment();\n// affichage de type Prometheus :  requests_total{status=\"200\"} 3\n```\nAvec Micrometer, une métrique a un nom et des étiquettes (tags). Les étiquettes permettent de découper (par statut, par méthode) mais chaque combinaison distincte crée une série : c'est la cardinalité."
+    },
+    {
+      "title": "Métriques, logs, traces et Actuator",
+      "content": "- Cardinalité : un tag avec peu de valeurs (statut, méthode, route) est sain ; un tag avec des milliers ou millions de valeurs (identifiant utilisateur, URL complète avec id) sature le système de métriques. Utilise le gabarit de route (/orders/{id}), jamais l'URL brute.\n- Quatre signaux d'or : latence, trafic, erreurs, saturation.\n- Logs structurés : une ligne clé=valeur ou JSON, avec niveau, message et identifiant de corrélation (MDC) pour suivre une requête. Pas de secret ni de donnée personnelle.\n- Actuator expose /actuator/health, /info, /metrics, /prometheus. En production, n'expose que ce qui est nécessaire (management.endpoints.web.exposure.include=health,info,prometheus) ; /env, /heapdump et /beans révèlent des secrets et la mémoire.\n- Les sondes de santé : liveness (le processus vit) et readiness (prêt à recevoir du trafic) servent à l'orchestrateur.\n```java\nMDC.put(\"trace\", traceId);          // chaque log de la requête portera trace=...\nlog.warn(\"paiement refusé order={}\", orderId);\n```"
+    },
+    {
+      "title": "Erreurs fréquentes à reconnaître",
+      "content": "1. Exposer tout Actuator (include=*) : fuite de configuration et de mémoire.\n2. Un tag de métrique à forte cardinalité (identifiant utilisateur, URL brute).\n3. Un profil qui change la logique métier au lieu de simples valeurs.\n4. Mettre un secret dans application-prod.yml versionné.\n5. Des logs DEBUG en production : coût et fuite de données.\n6. Aucune corrélation : impossible de relier les logs d'une même requête.\n\nRetrouve ces erreurs de mémoire avant l'exercice, puis vérifie-toi avec le quiz : c'est la récupération, pas la relecture, qui fixe la notion."
     }
   ],
   "keyConcepts": [
@@ -39,8 +48,8 @@
       "professionalExample": "Lors d'un pic de latence en production, l'équipe n'avait aucun moyen de savoir si le ralentissement venait de la base de données, d'un appel externe ou du garbage collector, faute de métriques exposées. Après coup, elle active Spring Boot Actuator avec Micrometer pour exporter les temps de réponse par endpoint vers Prometheus, ajoute un compteur métier dédié pour les échecs d'appel au fournisseur de paiement, et sépare la configuration via des profils Spring (application-dev.yml, application-prod.yml) pour que les logs restent en DEBUG en local mais en INFO structuré en JSON en production, exploitable par l'outil de log centralisé.",
       "codeExample": "@Service\npublic class PaymentGatewayClient {\n\n    private final Counter paymentFailures;\n\n    public PaymentGatewayClient(MeterRegistry registry) {\n        this.paymentFailures = Counter.builder(\"payment.gateway.failures\")\n                .description(\"Nombre d'appels échoués au fournisseur de paiement\")\n                .register(registry);\n    }\n\n    public PaymentResponse charge(ChargeRequest request) {\n        try {\n            return callExternalGateway(request);\n        } catch (GatewayException e) {\n            paymentFailures.increment();\n            throw e;\n        }\n    }\n}\n\n# application-prod.yml\nmanagement:\n  endpoints:\n    web:\n      exposure:\n        include: health,metrics,prometheus\nlogging:\n  level:\n    com.dlr.payment: INFO",
       "commonMistake": "Appliquer la technique sans mesurer son effet ni documenter sa frontière.",
-      "masteryQuestion": "Quelle contrainte de profils, métriques, logs et observabilité doit rester vraie lorsque le système évolue ?",
-      "masteryProof": "Exécuter la preuve, expliquer son invariant et proposer un cas d’échec."
+      "masteryQuestion": "Pourquoi un tag de métrique à forte cardinalité est-il dangereux, et que doit-on exposer d'Actuator en production ?",
+      "masteryProof": "Résoudre le niveau de log d'un profil avec repli sur la valeur par défaut et compter des requêtes par statut dans une map triée."
     }
   ],
   "exercises": [
@@ -56,32 +65,80 @@
     {
       "code": "SPRING_BOOT-10-Q1",
       "type": "SINGLE_CHOICE",
-      "prompt": "Quelle preuve est la plus utile en revue ?",
+      "prompt": "Le profil test ne définit pas log.level, alors que application.yml le fixe à INFO. Quel niveau est utilisé en test ?",
       "choices": [
-        "Une exécution déterministe avec invariant explicite",
-        "Une sortie aléatoire",
-        "Une capture sans code"
+        "Aucun, erreur au démarrage",
+        "INFO : la valeur par défaut",
+        "DEBUG",
+        "WARN"
       ],
-      "correctChoice": 0,
-      "expectedKeywords": []
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Un profil ne surcharge que ce qu'il redéfinit. Une propriété absente retombe sur application.yml."
     },
     {
       "code": "SPRING_BOOT-10-Q2",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Prédis les lignes affichées pour les statuts 200, 500, 200, 404, 200 avec un compteur trié par statut.",
+      "choices": [
+        "200 : 3, 404 : 1, 500 : 1",
+        "200 : 1, 500 : 1, 404 : 1",
+        "200 : 3, 500 : 1, 404 : 1 dans l'ordre d'arrivée",
+        "Une seule ligne"
+      ],
+      "correctChoice": 0,
+      "expectedKeywords": [],
+      "explanation": "On regroupe par statut : trois 200, un 404, un 500, affichés triés par statut. Le tri est indispensable pour que la sortie soit reproductible."
+    },
+    {
+      "code": "SPRING_BOOT-10-Q3",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Trouve le défaut :\n```java\nCounter.builder(\"orders_total\").tag(\"userId\", user.getId()).register(registry).increment();\n```\n",
+      "choices": [
+        "Un compteur ne peut pas avoir de tag",
+        "Cardinalité explosive : une série par utilisateur sature les métriques ; on étiquette par statut ou par type",
+        "builder est déprécié",
+        "increment doit être appelé deux fois"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Chaque valeur distincte d'un tag crée une série temporelle stockée. Un identifiant utilisateur peut en créer des millions. Garde des tags à valeurs bornées."
+    },
+    {
+      "code": "SPRING_BOOT-10-Q4",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Que penser de management.endpoints.web.exposure.include=* en production ?",
+      "choices": [
+        "C'est la configuration recommandée",
+        "C'est dangereux : /env, /heapdump ou /beans peuvent révéler des secrets et la mémoire ; on expose health, info et ce qui est nécessaire, protégé",
+        "Cela n'a aucun effet",
+        "Cela désactive Actuator"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Actuator expose des détails sensibles de l'application. On limite les endpoints aux besoins réels (health, info, prometheus), on les protège et on les place sur un port ou un réseau de gestion séparé."
+    },
+    {
+      "code": "SPRING_BOOT-10-Q5",
       "type": "FREE_TEXT",
-      "prompt": "Explique une décision liée à profils, métriques, logs et observabilité.",
+      "prompt": "Sans relire le cours, explique avec tes mots à quoi sert un identifiant de corrélation dans les logs et ce qu'il ne faut jamais y écrire.",
       "choices": [],
       "correctChoice": null,
       "expectedKeywords": [
-        "contrat",
-        "preuve",
-        "test"
-      ]
+        "requete",
+        "correlation",
+        "suivre",
+        "secret",
+        "personnel"
+      ],
+      "modelAnswer": "Un identifiant de corrélation (placé dans le MDC) est ajouté à chaque ligne de log d'une même requête, ce qui permet de la suivre à travers les couches et les services. On n'y écrit jamais de secret (mot de passe, jeton, clé) ni de donnée personnelle superflue, car les logs sont copiés, indexés et lus par beaucoup de monde.",
+      "explanation": "Une bonne réponse relie l'identifiant au suivi d'une requête et cite secrets et données personnelles comme interdits."
     }
   ],
   "checklist": [
-    "Je peux expliquer le concept sans réciter une définition",
-    "Je sais exécuter et modifier la preuve",
-    "Je peux nommer un risque et son contrôle",
-    "Je relie cette étape à la suivante"
+    "Je sais quelle valeur de configuration gagne selon le profil",
+    "Mes tags de métriques ont une cardinalité bornée",
+    "Mes logs ont un niveau, un identifiant de corrélation et aucun secret",
+    "J'expose le minimum d'Actuator en production"
   ]
 }

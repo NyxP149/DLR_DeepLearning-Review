@@ -1,9 +1,144 @@
 {
-  "code":"JAVA-21","language":"JAVA","number":21,"slug":"rest-dto-validation-jpa-securite","title":"API REST, DTO, validation, JPA/Hibernate et sécurité de base","difficulty":"PROFESSIONNEL","threshold":75,"activityType":"LAB","prerequisites":["JAVA-20"],
-  "objectives":["Concevoir un contrat HTTP","Séparer DTO et domaine","Valider et autoriser aux frontières"],
-  "sections":[{"title":"Contrat HTTP","content":"Une API REST associe ressources, méthodes, statuts et représentations. Un DTO stabilise le contrat externe sans exposer l'entité persistée.","conceptCodes":["JAVA-REST-CONTRACT"]},{"title":"Validation et sécurité","content":"La validation protège la forme et le domaine protège ses invariants. Authentification, autorisation et limitation des données exposées répondent à des risques distincts."}],
-  "keyConcepts":[{"code":"JAVA-REST-CONTRACT","name":"Contrat REST","definition":"Un endpoint définit entrée, sortie, statut et erreurs observables.","whyExists":"Les clients doivent évoluer contre une interface stable et documentée.","whyImportant":"Un contrat imprécis propage le couplage jusque dans le stockage et l'interface.","minimalExample":"POST /orders -> 201 Created + OrderResponse","professionalExample":"Un endpoint GET /users retournait directement l'entité JPA User en JSON : un champ passwordHash, ajouté plus tard pour l'authentification, s'est retrouvé exposé dans la réponse HTTP faute d'un DTO filtrant explicitement les champs publics. Introduire un UserResponse distinct de l'entité a permis de contrôler précisément ce que l'API expose, indépendamment des colonnes ajoutées ou renommées côté base de données.","codeExample":"record UserResponse(Long id, String displayName) {}\n\n@GetMapping(\"/users/{id}\")\nResponseEntity<UserResponse> getUser(@PathVariable Long id) {\n    User entity = userRepository.findById(id).orElseThrow();\n    return ResponseEntity.ok(new UserResponse(entity.getId(), entity.getDisplayName()));\n    // passwordHash et autres colonnes internes ne quittent jamais cette méthode\n}","commonMistake":"Retourner directement une entité JPA avec tous ses champs.","masteryQuestion":"Pourquoi séparer DTO, entité et objet métier ?","masteryProof":"Définir les réponses nominale et invalide d'un endpoint."}],
-  "exercises":[{"code":"JAVA-21-E1","title":"Créer une réponse HTTP","statement":"Modélise la réponse et affiche exactement : HTTP 201 | commande-42","starterCode":"// TODO 1 : définis un record OrderResponse(int status, String id)\n\npublic class Main {\n    public static void main(String[] args) {\n        // TODO 2 : crée la réponse de statut 201 et d'identifiant \"commande-42\"\n        // TODO 3 : affiche \"HTTP 201 | commande-42\" en lisant les champs du record\n    }\n}\n","expectedOutput":"HTTP 201 | commande-42"}],
-  "quiz":[{"code":"JAVA-21-Q1","type":"SINGLE_CHOICE","prompt":"Quel statut convient à une création réussie ?","choices":["201","404","500"],"correctChoice":0,"expectedKeywords":[]},{"code":"JAVA-21-Q2","type":"FREE_TEXT","prompt":"Pourquoi ne pas exposer directement l'entité JPA ?","choices":[],"correctChoice":null,"expectedKeywords":["DTO","contrat","persistance","sécurité"]}],
-  "checklist":["Je choisis les statuts HTTP","Je sépare DTO et entité","Je valide et autorise explicitement"]
+  "code": "JAVA-21",
+  "language": "JAVA",
+  "number": 21,
+  "slug": "rest-dto-validation-jpa-securite",
+  "title": "API REST, DTO, validation, JPA/Hibernate et sécurité de base",
+  "difficulty": "PROFESSIONNEL",
+  "threshold": 75,
+  "activityType": "LAB",
+  "prerequisites": [
+    "JAVA-20"
+  ],
+  "objectives": [
+    "Concevoir un contrat HTTP : verbe, chemin, corps, statut et format d'erreur.",
+    "Choisir le bon code de statut (200, 201, 400, 404, 409) pour un cas donné.",
+    "Séparer DTO d'entrée, DTO de sortie et entité, et valider aux frontières.",
+    "Expliquer ce que protègent l'authentification, l'autorisation et la validation côté serveur."
+  ],
+  "sections": [
+    {
+      "title": "Un endpoint est un contrat observable",
+      "content": "Un endpoint REST se décrit par ce qu'un client peut observer : le verbe HTTP, le chemin, le corps attendu, le statut renvoyé et le format d'erreur. Si ces éléments sont stables, le client et le serveur évoluent séparément.\n\nVerbes : GET lit (sans effet de bord), POST crée, PUT remplace, PATCH modifie partiellement, DELETE supprime. Statuts : 200 succès, 201 création (avec l'en-tête Location), 204 succès sans corps, 400 requête invalide, 401 non authentifié, 403 interdit, 404 introuvable, 409 conflit (doublon), 500 erreur serveur. Une erreur s'accompagne d'un corps lisible : code, message, détails par champ.\n```java\n@PostMapping(\"/orders\")\nResponseEntity<OrderView> create(@Valid @RequestBody CreateOrderRequest request) {\n    OrderView created = service.create(request);\n    return ResponseEntity.created(URI.create(\"/orders/\" + created.id())).body(created);\n}\n```"
+    },
+    {
+      "title": "Exemple résolu : valider, créer, répondre sans fuite",
+      "conceptCodes": [
+        "JAVA-REST-CONTRACT"
+      ],
+      "content": "Problème : exposer POST /orders et GET /orders/{id}. L'entité stockée contient un coût interne qu'aucun client ne doit voir.\n\nRaisonnement, étape par étape :\n1. DTO d'entrée CreateOrderRequest(customer, quantity) : ce que le client a le droit d'envoyer.\n2. Valider à la frontière : client non vide, quantité > 0. Toutes les erreurs sont collectées, pas seulement la première.\n3. Erreurs de validation : 400 avec la liste des problèmes.\n4. Création réussie : 201 avec l'identifiant.\n5. L'entité (id, customer, quantity, internalCost) ne sort jamais : on la convertit en DTO de sortie OrderView(id, customer, quantity).\n6. Identifiant inconnu : 404, pas 200 avec un corps vide.\n```java\nrecord CreateOrderRequest(String customer, int quantity) {}\nrecord OrderView(String id, String customer, int quantity) {}      // pas de internalCost\n\nList<String> erreurs = new ArrayList<>();\nif (request.customer() == null || request.customer().isBlank()) erreurs.add(\"client requis\");\nif (request.quantity() <= 0) erreurs.add(\"quantite > 0\");\n```\nValider côté client améliore le confort, mais seule la validation côté serveur protège : n'importe quel client HTTP peut contourner un formulaire."
+    },
+    {
+      "title": "Entité, DTO et sécurité de base",
+      "content": "Ne renvoie jamais l'entité JPA directement : elle expose des champs internes (mot de passe haché, coût), lie le contrat HTTP au schéma de la base (renommer une colonne casse les clients) et peut déclencher un chargement paresseux ou une boucle de sérialisation. Un record DTO fixe le contrat.\n\nSécurité de base :\n- Authentification : qui es-tu ? (jeton, session). Sans identité valide, 401.\n- Autorisation : as-tu le droit ? Connecté mais interdit, 403. Vérifie la propriété de la ressource : un utilisateur ne doit pas lire /orders/42 d'un autre (contrôle d'accès cassé, premier risque du Top 10 OWASP).\n- Les mots de passe sont hachés avec un algorithme dédié (BCrypt), jamais stockés en clair ; les secrets viennent de l'environnement.\n- CORS n'est pas une protection d'API : c'est une règle de navigateur.\n- Ne mets pas de détail interne (trace de pile, requête SQL) dans une réponse d'erreur."
+    },
+    {
+      "title": "Erreurs fréquentes à reconnaître",
+      "content": "1. Répondre 200 avec un message d'erreur dans le corps : le client ne peut plus se fier au statut.\n2. Renvoyer l'entité JPA : fuite de champs et couplage au schéma.\n3. Valider seulement dans le formulaire du navigateur.\n4. Confondre 401 (non authentifié) et 403 (authentifié mais interdit).\n5. Un GET qui modifie des données.\n6. Une trace de pile Java renvoyée au client en cas d'erreur 500.\n\nRetrouve ces six erreurs de mémoire avant l'exercice, puis passe au quiz."
+    }
+  ],
+  "keyConcepts": [
+    {
+      "code": "JAVA-REST-CONTRACT",
+      "name": "Contrat REST",
+      "definition": "Un endpoint définit entrée, sortie, statut et erreurs observables.",
+      "whyExists": "Les clients doivent évoluer contre une interface stable et documentée.",
+      "whyImportant": "Un contrat imprécis propage le couplage jusque dans le stockage et l'interface.",
+      "minimalExample": "POST /orders -> 201 Created + OrderResponse",
+      "professionalExample": "Un endpoint GET /users retournait directement l'entité JPA User en JSON : un champ passwordHash, ajouté plus tard pour l'authentification, s'est retrouvé exposé dans la réponse HTTP faute d'un DTO filtrant explicitement les champs publics. Introduire un UserResponse distinct de l'entité a permis de contrôler précisément ce que l'API expose, indépendamment des colonnes ajoutées ou renommées côté base de données.",
+      "codeExample": "record UserResponse(Long id, String displayName) {}\n\n@GetMapping(\"/users/{id}\")\nResponseEntity<UserResponse> getUser(@PathVariable Long id) {\n    User entity = userRepository.findById(id).orElseThrow();\n    return ResponseEntity.ok(new UserResponse(entity.getId(), entity.getDisplayName()));\n    // passwordHash et autres colonnes internes ne quittent jamais cette méthode\n}",
+      "commonMistake": "Retourner directement une entité JPA avec tous ses champs.",
+      "masteryQuestion": "Pourquoi ne pas exposer l'entité JPA, et comment choisir entre 400, 401, 403 et 404 ?",
+      "masteryProof": "Écrire un mini contrôleur qui valide, crée avec un 201, répond 404 pour un inconnu et ne fuit aucun champ interne."
+    }
+  ],
+  "exercises": [
+    {
+      "code": "JAVA-21-E1",
+      "title": "Un contrat HTTP sans framework",
+      "statement": "Modélise le contrat d'un endpoint : un record Response(status, body), une validation qui collecte toutes les erreurs, une entité interne et son DTO de sortie. Affiche exactement :\nPOST valide -> 201 id=ord-1\nPOST invalide -> 400 [client requis, quantite > 0]\nGET ord-1 -> 200 {customer=Nyx, quantity=2}\nGET ord-9 -> 404\nDTO sans cout interne : true",
+      "starterCode": "import java.util.*;\n\npublic class Main {\n    record CreateOrderRequest(String customer, int quantity) {}\n    record OrderEntity(String id, String customer, int quantity, double internalCost) {}\n    // TODO 1 : record OrderView(String id, String customer, int quantity) — le DTO de sortie, sans internalCost\n    // TODO 2 : record Response(int status, String body)\n\n    static final Map<String, OrderEntity> store = new LinkedHashMap<>();\n\n    // TODO 3 : static Response post(CreateOrderRequest request)\n    //          - collecte TOUTES les erreurs : \"client requis\" (client null ou vide), \"quantite > 0\" (quantité <= 0)\n    //          - s'il y en a : Response(400, erreurs.toString())\n    //          - sinon : crée \"ord-\" + (store.size() + 1), enregistre l'entité (internalCost = 3.5) et renvoie Response(201, \"id=\" + id)\n\n    // TODO 4 : static Response get(String id)\n    //          - inconnu : Response(404, \"\") ; connu : Response(200, \"{customer=..., quantity=...}\") construit depuis le DTO\n\n    public static void main(String[] args) {\n        // TODO 5 : affiche \"POST valide -> \" + statut + \" \" + corps pour post(new CreateOrderRequest(\"Nyx\", 2))\n        // TODO 6 : affiche \"POST invalide -> ...\" pour post(new CreateOrderRequest(\"\", 0))\n        // TODO 7 : affiche \"GET ord-1 -> 200 {customer=Nyx, quantity=2}\" via get(\"ord-1\"), puis \"GET ord-9 -> 404\" (corps vide : pas d'espace final)\n        // TODO 8 : affiche \"DTO sans cout interne : \" + true si aucun composant de OrderView.class.getRecordComponents() ne s'appelle internalCost\n    }\n}\n",
+      "expectedOutput": "POST valide -> 201 id=ord-1\nPOST invalide -> 400 [client requis, quantite > 0]\nGET ord-1 -> 200 {customer=Nyx, quantity=2}\nGET ord-9 -> 404\nDTO sans cout interne : true"
+    }
+  ],
+  "quiz": [
+    {
+      "code": "JAVA-21-Q1",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Un client crée une commande avec succès. Quel statut est le plus approprié ?",
+      "choices": [
+        "200 OK",
+        "201 Created, avec l'en-tête Location",
+        "204 No Content",
+        "302 Found"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "201 signale qu'une ressource a été créée et Location indique où la lire. 200 est correct pour une lecture ; 204 n'a pas de corps ; 302 est une redirection."
+    },
+    {
+      "code": "JAVA-21-Q2",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Un utilisateur connecté demande GET /orders/42 qui appartient à quelqu'un d'autre. Que doit répondre l'API ?",
+      "choices": [
+        "200 avec la commande",
+        "401 Unauthorized",
+        "403 Forbidden (ou 404 pour ne pas révéler l'existence)",
+        "500 Internal Server Error"
+      ],
+      "correctChoice": 2,
+      "expectedKeywords": [],
+      "explanation": "L'utilisateur est authentifié, donc pas 401 ; il n'a pas le droit, donc 403 (certaines API renvoient 404 pour ne pas confirmer l'existence). Répondre 200 est un contrôle d'accès cassé, le premier risque du Top 10 OWASP."
+    },
+    {
+      "code": "JAVA-21-Q3",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Trouve le défaut :\n```java\n@GetMapping(\"/orders/{id}\")\nOrderEntity get(@PathVariable String id) {\n    return repository.findById(id).orElseThrow();\n}\n```\n",
+      "choices": [
+        "Il manque @Valid",
+        "L'entité est exposée directement : fuite de champs internes et couplage du contrat au schéma de la base",
+        "orElseThrow est interdit",
+        "GET ne peut pas renvoyer d'objet"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Il faut renvoyer un DTO de sortie qui liste explicitement les champs publics. Renvoyer l'entité expose des champs internes (coût, hash de mot de passe) et fige le schéma de la base dans le contrat."
+    },
+    {
+      "code": "JAVA-21-Q4",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Prédis la réponse :\n```java\nPOST /orders  {\"customer\": \"\", \"quantity\": 0}\n```\nsur une API qui collecte toutes les erreurs de validation.",
+      "choices": [
+        "400 avec une seule erreur : client requis",
+        "400 avec deux erreurs : client requis et quantité > 0",
+        "201 avec une commande vide",
+        "500"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Collecter toutes les erreurs évite au client de corriger un champ à la fois. Les deux contraintes sont violées, la réponse est donc 400 avec les deux messages."
+    },
+    {
+      "code": "JAVA-21-Q5",
+      "type": "FREE_TEXT",
+      "prompt": "Sans relire le cours, explique avec tes mots pourquoi la validation côté serveur est indispensable même avec un formulaire qui valide déjà, et quelle est la différence entre 401 et 403.",
+      "choices": [],
+      "correctChoice": null,
+      "expectedKeywords": [
+        "serveur",
+        "contourn",
+        "401",
+        "403",
+        "authentifi"
+      ],
+      "modelAnswer": "Un formulaire peut être contourné : n'importe quel client HTTP peut envoyer une requête arbitraire, donc seul le serveur peut garantir la validité des données. 401 signifie non authentifié (identité absente ou invalide) ; 403 signifie authentifié mais sans droit sur la ressource.",
+      "explanation": "Une bonne réponse dit que la validation côté client n'est qu'un confort contournable, et distingue authentification (401) et autorisation (403)."
+    }
+  ],
+  "checklist": [
+    "Je choisis le bon code de statut pour chaque cas",
+    "Je ne renvoie jamais une entité : j'utilise un DTO de sortie",
+    "Je valide côté serveur et je renvoie toutes les erreurs",
+    "Je distingue authentification (401) et autorisation (403)"
+  ]
 }

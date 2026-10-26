@@ -11,21 +11,30 @@
     "ANGULAR-09"
   ],
   "objectives": [
-    "Expliquer défi final : optimiser une application complexe",
-    "Construire une preuve exécutable et déterministe",
-    "Relier le concept à une décision professionnelle"
+    "Expliquer ce que fait la détection de changement d'Angular et comment OnPush, signals et track la réduisent.",
+    "Mesurer le gain de track (identité des éléments) sur une liste en opérations DOM.",
+    "Choisir les leviers d'optimisation selon une mesure : @defer, chargement différé, virtualisation, computed.",
+    "Défendre une optimisation avec des chiffres, pas avec des impressions."
   ],
   "sections": [
     {
-      "title": "Concept et usage professionnel",
-      "content": "Défi final : optimiser une application complexe répond à un besoin concret de maintenabilité, de sûreté ou de performance. Le laboratoire demande de rendre la décision observable et vérifiable.",
-      "conceptCodes": [
-        "ANGULAR-CHALLENGE"
-      ]
+      "title": "Optimiser une application Angular : mesurer d'abord",
+      "content": "Angular met à jour le DOM quand les données changent. Trois coûts dominent : la détection de changement (quels composants revérifier), le rendu (créer, mettre à jour, détruire des nœuds DOM) et le téléchargement (taille du bundle). On optimise celui qui est mesuré comme goulot, avec Angular DevTools (profileur de détection de changement), l'onglet Performance du navigateur et les budgets de bundle.\n\nLeviers par coût :\n- Détection de changement : ChangeDetectionStrategy.OnPush, signals, valeurs immuables, pas d'appel de fonction coûteux dans le template (utilise computed ou un pipe pur).\n- Rendu de listes : track dans @for (ou trackBy dans *ngFor), virtualisation pour des milliers de lignes.\n- Téléchargement : routes en chargement différé, @defer pour des blocs lourds, images optimisées (NgOptimizedImage)."
     },
     {
-      "title": "Défi de synthèse",
-      "content": "Le défi s’appuie sur projects/angular-professional-dashboard : mesure le build de production, conserve le typage strict et fais évoluer le composant, le service et le template comme des fichiers indépendants."
+      "title": "Exemple résolu : le gain de track sur une liste",
+      "conceptCodes": [
+        "ANGULAR-CHALLENGE"
+      ],
+      "content": "Problème : une liste de trois éléments A, B, C est remplacée par une liste de trois éléments B, C modifié et D (l'API renvoie de nouveaux objets). A disparaît, D est nouveau, B est identique, C garde son identité mais change de contenu. Que fait Angular avec et sans identité ?\n\nRaisonnement, étape par étape :\n1. Sans identité utile (ou avec l'identité par référence d'objet), si les objets sont recréés à chaque mise à jour des données (réponse d'API), Angular considère chaque élément comme nouveau : il détruit les anciens nœuds DOM et en crée de nouveaux. Perte de l'état local (saisie dans un champ, focus, animation) et coût de rendu.\n2. Avec track item.id, Angular associe ancien et nouvel élément par leur identifiant : un élément de même id est conservé (et mis à jour si ses données changent), un id disparu est supprimé, un id nouveau est créé.\n3. On compte les opérations : supprimés, créés, mis à jour, conservés.\n4. Exemple de l'exercice : sur un changement où un élément disparaît, un arrive et un est modifié, track conserve l'élément identique ; sans track, tout est détruit puis recréé.\n5. Opérations DOM évitées = (supprimés + créés sans track) − (supprimés + créés avec track).\n6. Vérification : 6 opérations sans track (3 suppressions + 3 créations), 3 avec (1 suppression + 1 création + 1 mise à jour) : 3 évitées.\n```html\n@for (order of orders(); track order.id) {\n  <app-order-row [order]=\"order\" />\n}\n```\nDans les templates récents, track est obligatoire dans @for : le framework a décidé que l'identité ne devait plus être laissée au hasard."
+    },
+    {
+      "title": "Autres leviers, et défendre ses choix avec des chiffres",
+      "content": "- @defer (on viewport) retarde le chargement d'un bloc lourd (graphique, éditeur) jusqu'à ce qu'il soit visible, avec un @placeholder.\n- Virtualisation (cdk-virtual-scroll) : ne rend que les lignes visibles d'une longue liste.\n- Pipes purs et computed : un calcul coûteux est refait seulement si ses entrées changent.\n- Mise en cache HTTP (shareReplay, en-têtes de cache), pagination serveur.\n- Hors Angular : images dimensionnées et compressées, polices limitées, compression Brotli côté serveur, CDN.\n- Zoneless (signals sans zone.js) réduit encore le travail de détection de changement.\n\nDéfendre une optimisation : indique la mesure avant (par exemple 480 ms d'INP sur le filtrage de 5 000 lignes), le changement (virtualisation + track), la mesure après (90 ms), et ce que tu n'as pas fait (réécriture complète) et pourquoi. Une optimisation sans mesure avant/après est une opinion. Surveille aussi le coût de maintenance : une optimisation qui rend le code illisible doit rapporter un gain visible. Les budgets de CI empêchent la régression."
+    },
+    {
+      "title": "Erreurs fréquentes à reconnaître",
+      "content": "1. Optimiser sans profil : on améliore ce qui ne ralentit pas.\n2. @for ou *ngFor sans identité stable : tous les nœuds sont recréés à chaque réponse d'API.\n3. Un track basé sur l'index quand la liste est réordonnée ou filtrée : les états locaux se mélangent.\n4. Un appel de fonction lourd dans le template, exécuté à chaque détection.\n5. Tout charger au démarrage au lieu de différer les routes et les blocs lourds.\n6. Annoncer « c'est plus rapide » sans mesure avant/après.\n\nRetrouve ces erreurs de mémoire avant l'exercice, puis vérifie-toi avec le quiz : c'est la récupération, pas la relecture, qui fixe la notion."
     }
   ],
   "keyConcepts": [
@@ -39,8 +48,8 @@
       "professionalExample": "Sur le dashboard métier devenu lent avec la croissance du catalogue, le passage de la détection de changement par défaut à ChangeDetectionStrategy.OnPush sur les composants de liste, combiné à un track explicite dans le @for, réduit drastiquement le nombre de cycles de rendu déclenchés à chaque mise à jour d'un signal isolé. Le widget de graphiques, rarement visible au premier écran, est chargé avec @defer (on viewport) pour ne pas alourdir le bundle initial mesuré par les budgets de performance. L'erreur fréquente est d'activer OnPush sans vérifier que toutes les mutations passent par de nouvelles références ou des signals, ce qui fait qu'une partie de l'interface cesse silencieusement de se mettre à jour.",
       "codeExample": "@Component({\n  selector: 'app-invoice-list',\n  standalone: true,\n  changeDetection: ChangeDetectionStrategy.OnPush,\n  template: `\n    @for (invoice of invoices(); track invoice.id) {\n      <app-invoice-row [invoice]=\"invoice\" />\n    }\n\n    @defer (on viewport) {\n      <app-revenue-chart [data]=\"chartData()\" />\n    } @placeholder {\n      <div class=\"chart-placeholder\"></div>\n    }\n  `,\n})\nexport class InvoiceListComponent {\n  invoices = input.required<Invoice[]>();\n  chartData = input.required<ChartPoint[]>();\n}",
       "commonMistake": "Appliquer la technique sans mesurer son effet ni documenter sa frontière.",
-      "masteryQuestion": "Quelle contrainte de défi final : optimiser une application complexe doit rester vraie lorsque le système évolue ?",
-      "masteryProof": "Exécuter la preuve, expliquer son invariant et proposer un cas d’échec."
+      "masteryQuestion": "Pourquoi track item.id conserve-t-il des nœuds DOM que track par référence recréerait, et comment défendre une optimisation avec des chiffres ?",
+      "masteryProof": "Comparer deux stratégies sur le même changement de liste et afficher les opérations DOM évitées par track."
     }
   ],
   "exercises": [
@@ -56,32 +65,80 @@
     {
       "code": "ANGULAR-10-Q1",
       "type": "SINGLE_CHOICE",
-      "prompt": "Quelle preuve est la plus utile en revue ?",
+      "prompt": "Une API renvoie de nouveaux objets à chaque requête. Une liste utilise @for sans identité par id (identité par référence). Que se passe-t-il à chaque rafraîchissement ?",
       "choices": [
-        "Une exécution déterministe avec invariant explicite",
-        "Une sortie aléatoire",
-        "Une capture sans code"
+        "Les nœuds sont conservés",
+        "Tous les éléments sont considérés comme nouveaux : suppression et recréation de tous les nœuds, avec perte de l'état local (focus, saisie)",
+        "La liste ne change pas",
+        "Une erreur de compilation"
       ],
-      "correctChoice": 0,
-      "expectedKeywords": []
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Sans identité stable, Angular ne peut pas apparier ancien et nouvel élément. Avec track item.id, les éléments de même identifiant sont conservés et mis à jour."
     },
     {
       "code": "ANGULAR-10-Q2",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Prédis les opérations : ancienne liste [1, 2, 3], nouvelle liste [2, 3, 4], track par id.",
+      "choices": [
+        "3 suppressions, 3 créations",
+        "1 suppression (id 1), 1 création (id 4), 2 éléments conservés",
+        "0 opération",
+        "1 mise à jour seulement"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Les ids 2 et 3 existent dans les deux listes : conservés. L'id 1 disparaît (supprimé), l'id 4 apparaît (créé). Sans track par id : tout supprimé et recréé."
+    },
+    {
+      "code": "ANGULAR-10-Q3",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Trouve le défaut :\n```html\n@for (row of rows(); track $index) {\n  <app-row [data]=\"row\" />\n}\n```\nsur une liste triable et filtrable dont les lignes contiennent des champs de saisie.",
+      "choices": [
+        "$index est interdit",
+        "Avec un tri ou un filtre, l'index d'une ligne change : Angular réutilise le mauvais composant et les saisies se mélangent ; il faut track row.id",
+        "@for ne fonctionne pas avec app-row",
+        "rows() est lent"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "L'index identifie une position, pas un élément. Quand les éléments bougent, Angular réutilise le composant de la position pour un autre élément, ce qui mélange l'état local."
+    },
+    {
+      "code": "ANGULAR-10-Q4",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Quelle est la première étape avant d'optimiser une application lente ?",
+      "choices": [
+        "Ajouter OnPush partout",
+        "Mesurer et profiler pour identifier le goulot (détection de changement, rendu ou téléchargement)",
+        "Réécrire en JavaScript",
+        "Désactiver TypeScript"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Chaque levier traite un coût différent. Sans mesure, on peut passer du temps à optimiser une partie qui pèse 1 % du problème."
+    },
+    {
+      "code": "ANGULAR-10-Q5",
       "type": "FREE_TEXT",
-      "prompt": "Explique une décision liée à défi final : optimiser une application complexe.",
+      "prompt": "Sans relire le cours, défends à l'oral une optimisation de liste en citant la mesure avant, le changement, la mesure après et ce que tu n'as pas fait.",
       "choices": [],
       "correctChoice": null,
       "expectedKeywords": [
-        "contrat",
-        "preuve",
-        "test"
-      ]
+        "mesure",
+        "avant",
+        "apres",
+        "track",
+        "profil"
+      ],
+      "modelAnswer": "J'ai mesuré avec le profileur que le filtrage de 5 000 lignes prenait 480 ms (recréation de tous les nœuds à chaque réponse). J'ai ajouté track par id et la virtualisation du défilement, ce qui a ramené le temps à 90 ms, vérifié par une nouvelle mesure. Je n'ai pas réécrit le composant ni changé de bibliothèque : le gain mesuré suffisait au budget d'interaction de 200 ms, et un budget en CI empêche la régression.",
+      "explanation": "Une bonne réponse donne un chiffre avant et après, le changement précis, ce qui n'a pas été fait et le garde-fou (budget en CI)."
     }
   ],
   "checklist": [
-    "Je peux expliquer le concept sans réciter une définition",
-    "Je sais exécuter et modifier la preuve",
-    "Je peux nommer un risque et son contrôle",
-    "Je peux présenter cette preuve dans mon portfolio"
+    "Je profile avant d'optimiser",
+    "Mes boucles de template utilisent une identité stable (track par id)",
+    "Je diffère routes et blocs lourds",
+    "Je défends une optimisation par une mesure avant/après"
   ]
 }

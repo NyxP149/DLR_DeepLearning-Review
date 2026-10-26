@@ -11,21 +11,30 @@
     "SPRING_BOOT-10"
   ],
   "objectives": [
-    "Expliquer projet professionnel : api métier postgresql",
-    "Construire une preuve exécutable et déterministe",
-    "Relier le concept à une décision professionnelle"
+    "Modéliser un cycle de vie par un enum aux transitions contrôlées.",
+    "Représenter l'argent sans erreur d'arrondi (centimes entiers ou BigDecimal).",
+    "Poser les garanties dans la base (contraintes, migrations versionnées) en plus du code.",
+    "Présenter l'API : contrat, règles, tests et limites."
   ],
   "sections": [
     {
-      "title": "Concept et usage professionnel",
-      "content": "Projet professionnel : API métier PostgreSQL répond à un besoin concret de maintenabilité, de sûreté ou de performance. Le laboratoire demande de rendre la décision observable et vérifiable.",
-      "conceptCodes": [
-        "SPRING-PROJECT"
-      ]
+      "title": "Un agrégat protège ses invariants",
+      "content": "Une commande n'est pas un simple sac de champs : elle suit un cycle de vie (CREATED, PAID, SHIPPED) et ne doit jamais passer par un état interdit (livrée avant d'être payée, retour en arrière). Un agrégat (OrderAggregate) regroupe les données et les règles qui les protègent : on ne modifie pas son statut depuis l'extérieur, on appelle moveTo(next), qui refuse les transitions interdites.\n\nLa règle de transition est une donnée du domaine : ici, seul l'état immédiatement suivant est autorisé. Si les règles se compliquent (annulation depuis PAID mais pas SHIPPED), on décrit explicitement la table des transitions permises plutôt que de multiplier les if."
     },
     {
-      "title": "Projet portfolio",
-      "content": "La preuve rapide valide l’invariant dans le runner. Le workspace réel projects/spring-professional-api fournit ensuite un pom.xml, une application Spring Boot, un contrôleur, un service, un modèle et un test d’intégration MockMvc exécutables avec mvn test."
+      "title": "Exemple résolu : transitions et total en centimes",
+      "conceptCodes": [
+        "SPRING-PROJECT"
+      ],
+      "content": "Problème : une commande va de CREATED à PAID puis SHIPPED. Un retour à PAID doit être refusé. Le total de lignes à 25,00, 25,00 et 35,50 doit être exact.\n\nRaisonnement, étape par étape :\n1. Enum Status avec canMoveTo(next) : next.ordinal() == ordinal() + 1.\n2. moveTo : si la transition est interdite, IllegalStateException avec l'état actuel et demandé ; sinon on change l'état.\n3. Les montants sont stockés en centimes entiers : 2500 + 2500 + 3550 = 8550.\n4. Formatage : 8550 / 100 = 85 euros et 8550 % 100 = 50 centimes, donc « 85.50 ».\n5. Vérification : le total est identique quel que soit l'ordre d'addition (pas de dérive d'arrondi).\n```java\nenum Status {\n    CREATED, PAID, SHIPPED;\n    boolean canMoveTo(Status next) { return next.ordinal() == ordinal() + 1; }\n}\n\nint cents = lines.stream().mapToInt(Integer::intValue).sum();\nString total = String.format(Locale.ROOT, \"%d.%02d\", cents / 100, cents % 100);\n```\ndouble donne 0.1 + 0.2 = 0.30000000000000004 : inacceptable pour de l'argent. Utilise des centimes entiers, ou BigDecimal avec un RoundingMode explicite."
+    },
+    {
+      "title": "De l'agrégat à une API professionnelle sur PostgreSQL",
+      "content": "Les garanties du code ne suffisent pas : la base est la dernière ligne de défense, car plusieurs applications ou une erreur de déploiement peuvent écrire dedans.\n- Migrations versionnées (Flyway ou Liquibase) : le schéma évolue par fichiers V1__..., V2__..., rejouables et revues comme du code. Hibernate ne doit pas modifier le schéma en production.\n- Contraintes : NOT NULL, UNIQUE (clé d'idempotence, e-mail), CHECK (montant > 0, statut dans une liste), clés étrangères.\n- Type d'argent : colonne NUMERIC(12,2) ou entier en centimes, jamais double precision.\n- Transitions de statut : mise à jour conditionnelle (UPDATE ... WHERE id = ? AND status = 'CREATED') pour résister à deux requêtes simultanées, ou verrouillage optimiste (@Version).\n- Tests avec Testcontainers : une vraie PostgreSQL jetable pour valider migrations et requêtes.\n- README du projet : contrat de l'API, règles, ce qui est testé, limites connues et comment lancer."
+    },
+    {
+      "title": "Erreurs fréquentes à reconnaître",
+      "content": "1. Un statut en simple String modifiable partout : aucune règle de transition.\n2. double pour l'argent.\n3. Seulement des contrôles en Java, aucune contrainte en base.\n4. ddl-auto=update en production au lieu de migrations versionnées.\n5. Deux requêtes simultanées qui passent toutes les deux CREATED vers PAID (pas de verrou ni de mise à jour conditionnelle).\n6. Un projet de portfolio sans tests ni limites déclarées.\n\nRetrouve ces erreurs de mémoire avant l'exercice, puis vérifie-toi avec le quiz : c'est la récupération, pas la relecture, qui fixe la notion."
     }
   ],
   "keyConcepts": [
@@ -39,8 +48,8 @@
       "professionalExample": "Ce projet reproduit la mise en production d'une vraie API métier : une base H2 en mémoire suffit pour les tests unitaires rapides, mais avant le déploiement l'équipe bascule sur PostgreSQL avec un pool de connexions HikariCP dimensionné explicitement (maximum-pool-size) pour éviter qu'un pic de trafic n'épuise les connexions disponibles côté base, et utilise Flyway pour versionner le schéma afin que chaque environnement (recette, production) applique exactement les mêmes migrations dans le même ordre, au lieu de dépendre de ddl-auto: update qui a déjà provoqué des pertes de colonnes en production ailleurs dans l'entreprise.",
       "codeExample": "# application-prod.yml\nspring:\n  datasource:\n    url: jdbc:postgresql://prod-db:5432/orders\n    username: ${DB_USER}\n    password: ${DB_PASSWORD}\n    hikari:\n      maximum-pool-size: 20\n      connection-timeout: 3000\n  jpa:\n    hibernate:\n      ddl-auto: validate\n  flyway:\n    enabled: true\n\n-- src/main/resources/db/migration/V1__create_orders_table.sql\nCREATE TABLE orders (\n    id BIGSERIAL PRIMARY KEY,\n    customer_id BIGINT NOT NULL,\n    total_amount NUMERIC(10,2) NOT NULL,\n    status VARCHAR(20) NOT NULL\n);",
       "commonMistake": "Appliquer la technique sans mesurer son effet ni documenter sa frontière.",
-      "masteryQuestion": "Quelle contrainte de projet professionnel : api métier postgresql doit rester vraie lorsque le système évolue ?",
-      "masteryProof": "Exécuter la preuve, expliquer son invariant et proposer un cas d’échec."
+      "masteryQuestion": "Pourquoi encapsuler les transitions de statut dans l'agrégat et poser des contraintes dans la base en plus du code ?",
+      "masteryProof": "Faire passer une commande de CREATED à SHIPPED, refuser un retour en arrière et calculer un total exact en centimes."
     }
   ],
   "exercises": [
@@ -56,32 +65,80 @@
     {
       "code": "SPRING_BOOT-11-Q1",
       "type": "SINGLE_CHOICE",
-      "prompt": "Quelle preuve est la plus utile en revue ?",
+      "prompt": "Quelle représentation convient pour un montant de 85,50 euros ?",
       "choices": [
-        "Une exécution déterministe avec invariant explicite",
-        "Une sortie aléatoire",
-        "Une capture sans code"
+        "double 85.5",
+        "Un entier de 8550 centimes ou un BigDecimal avec arrondi explicite",
+        "float 85.5f",
+        "Un String \"85,50\" manipulé à la main"
       ],
-      "correctChoice": 0,
-      "expectedKeywords": []
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Les nombres à virgule flottante ne représentent pas exactement la plupart des décimaux et les erreurs s'accumulent. Des centimes entiers ou un BigDecimal donnent un calcul exact."
     },
     {
       "code": "SPRING_BOOT-11-Q2",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Prédis le résultat :\n```java\norder.moveTo(Status.PAID);\norder.moveTo(Status.SHIPPED);\norder.moveTo(Status.PAID);\n```\navec une règle « seul l'état immédiatement suivant est permis ».",
+      "choices": [
+        "Les trois appels réussissent",
+        "Le troisième lève IllegalStateException : SHIPPED vers PAID est un retour en arrière",
+        "Le deuxième échoue",
+        "Le troisième remet la commande à CREATED"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "PAID vers SHIPPED est le suivant immédiat. Revenir de SHIPPED à PAID ne l'est pas : la transition est refusée avec un message qui nomme les deux états."
+    },
+    {
+      "code": "SPRING_BOOT-11-Q3",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Deux requêtes simultanées passent la même commande de CREATED à PAID. Quelle protection est la plus solide ?",
+      "choices": [
+        "Un if (status == CREATED) dans le code Java uniquement",
+        "Une mise à jour conditionnelle en base (UPDATE ... WHERE status = 'CREATED') ou un verrou optimiste @Version",
+        "Un System.out.println",
+        "Un sleep avant la mise à jour"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Le contrôle en Java et l'écriture sont séparés : deux requêtes peuvent passer le contrôle avant l'écriture. La base, elle, arbitre atomiquement avec une condition dans le UPDATE ou une version."
+    },
+    {
+      "code": "SPRING_BOOT-11-Q4",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Pourquoi utiliser Flyway ou Liquibase plutôt que spring.jpa.hibernate.ddl-auto=update en production ?",
+      "choices": [
+        "C'est plus rapide à écrire",
+        "Les migrations sont versionnées, relues, rejouables et prévisibles ; ddl-auto peut produire des changements non maîtrisés",
+        "Hibernate ne sait pas créer de tables",
+        "Flyway chiffre la base"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Le schéma de production doit évoluer de façon contrôlée et traçable. ddl-auto décide seul de ce qu'il modifie et ne supprime ni ne migre les données correctement."
+    },
+    {
+      "code": "SPRING_BOOT-11-Q5",
       "type": "FREE_TEXT",
-      "prompt": "Explique une décision liée à projet professionnel : api métier postgresql.",
+      "prompt": "Sans relire le cours, explique avec tes mots pourquoi les règles métier ne doivent pas reposer uniquement sur le code Java et quelles contraintes la base doit porter.",
       "choices": [],
       "correctChoice": null,
       "expectedKeywords": [
-        "contrat",
-        "preuve",
-        "test"
-      ]
+        "base",
+        "contrainte",
+        "unique",
+        "not null",
+        "ecrit"
+      ],
+      "modelAnswer": "D'autres applications, des scripts ou une erreur de déploiement peuvent écrire directement dans la base : elle est la dernière ligne de défense. Elle doit porter les garanties essentielles : NOT NULL, UNIQUE (clé d'idempotence, e-mail), CHECK (montant positif, statut valide) et clés étrangères, en plus des contrôles du code.",
+      "explanation": "Une bonne réponse cite la base comme dernière défense et nomme au moins NOT NULL, UNIQUE, CHECK ou clés étrangères."
     }
   ],
   "checklist": [
-    "Je peux expliquer le concept sans réciter une définition",
-    "Je sais exécuter et modifier la preuve",
-    "Je peux nommer un risque et son contrôle",
-    "Je peux présenter cette preuve dans mon portfolio"
+    "Mes transitions de statut sont contrôlées dans l'agrégat",
+    "Je ne stocke jamais d'argent en double",
+    "Mes migrations sont versionnées et mes contraintes sont en base",
+    "Mon README énonce le contrat, les tests et les limites"
   ]
 }

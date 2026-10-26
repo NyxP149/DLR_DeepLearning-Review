@@ -1,9 +1,144 @@
 {
-  "code":"JAVA-13","language":"JAVA","number":13,"slug":"fichiers-dates-api-standard","title":"Fichiers, sérialisation, dates et API standard","difficulty":"INTERMEDIAIRE","threshold":70,"activityType":"LAB","prerequisites":["JAVA-12"],
-  "objectives":["Lire et écrire en UTF-8","Manipuler java.time","Fermer correctement les ressources"],
-  "sections":[{"title":"Ressources déterministes","content":"Files et les gestionnaires try-with-resources permettent de manipuler les fichiers en fermant les ressources même en cas d'erreur.","conceptCodes":["JAVA-RESOURCE-LIFECYCLE"]},{"title":"Temps explicite","content":"java.time fournit des types immuables. Une date, un instant et un fuseau représentent des concepts différents et ne doivent pas être confondus."}],
-  "keyConcepts":[{"code":"JAVA-RESOURCE-LIFECYCLE","name":"Cycle de vie d'une ressource","definition":"Une ressource externe doit être acquise, utilisée puis libérée de façon garantie.","whyExists":"Les fichiers et connexions consomment des capacités limitées du système.","whyImportant":"Une libération déterministe évite les fuites et les corruptions partielles.","minimalExample":"try (var reader = Files.newBufferedReader(path)) { ... }","professionalExample":"Un job d'import traitait plusieurs milliers de fichiers CSV en ouvrant chaque BufferedReader sans try-with-resources, en comptant sur le ramasse-miettes pour libérer les descripteurs de fichiers : après quelques heures, le système d'exploitation a renvoyé Too many open files et le job s'est arrêté au milieu d'un lot. Réécrire la lecture avec try-with-resources garantit la fermeture immédiate de chaque fichier, même en cas d'exception pendant le traitement d'une ligne.","codeExample":"Path importDir = Path.of(\"/data/imports\");\ntry (var files = Files.list(importDir)) {\n    for (Path file : files.toList()) {\n        try (var reader = Files.newBufferedReader(file, StandardCharsets.UTF_8)) {\n            reader.lines().forEach(this::processLine);\n        } // fermeture garantie même si processLine lève une exception\n    }\n}","commonMistake":"Dépendre du ramasse-miettes pour fermer un fichier.","masteryQuestion":"Que garantit try-with-resources ?","masteryProof":"Écrire et relire un fichier UTF-8 dans un bloc sûr."}],
-  "exercises":[{"code":"JAVA-13-E1","title":"Écrire un journal daté","statement":"Écris puis relis une ligne et affiche exactement : 2026-08-30 | DLR","starterCode":"import java.nio.file.*;\nimport java.nio.charset.StandardCharsets;\npublic class Main {\n    public static void main(String[] args) throws Exception {\n        Path path = Path.of(\"journal.txt\");\n        // TODO 1 : écris la ligne \"2026-08-30 | DLR\" dans ce fichier (UTF-8)\n        // TODO 2 : relis le fichier puis affiche son contenu\n    }\n}\n","expectedOutput":"2026-08-30 | DLR"}],
-  "quiz":[{"code":"JAVA-13-Q1","type":"SINGLE_CHOICE","prompt":"Quel paquet moderne gère les dates ?","choices":["java.time","java.legacy","java.thread"],"correctChoice":0,"expectedKeywords":[]},{"code":"JAVA-13-Q2","type":"FREE_TEXT","prompt":"Pourquoi déclarer explicitement UTF-8 ?","choices":[],"correctChoice":null,"expectedKeywords":["encodage","portable","caractère","UTF-8"]}],
-  "checklist":["Je ferme les ressources","Je déclare l'encodage","Je distingue date, instant et fuseau"]
+  "code": "JAVA-13",
+  "language": "JAVA",
+  "number": 13,
+  "slug": "fichiers-dates-api-standard",
+  "title": "Fichiers, sérialisation, dates et API standard",
+  "difficulty": "INTERMEDIAIRE",
+  "threshold": 70,
+  "activityType": "LAB",
+  "prerequisites": [
+    "JAVA-12"
+  ],
+  "objectives": [
+    "Lire et écrire un fichier texte avec java.nio.file en précisant UTF-8.",
+    "Garantir la fermeture d'une ressource avec try-with-resources.",
+    "Manipuler LocalDate, YearMonth et DateTimeFormatter plutôt que les anciennes classes Date et Calendar.",
+    "Expliquer les risques de la sérialisation Java native et choisir un format explicite."
+  ],
+  "sections": [
+    {
+      "title": "Une ressource externe a un cycle de vie : ouvrir, utiliser, fermer",
+      "content": "Un fichier, une connexion ou un flux réseau est une ressource que le système d'exploitation compte. Si tu ne la fermes pas, elle reste ouverte jusqu'au ramasse-miettes (ou jamais), et sous Windows elle peut verrouiller le fichier.\n\ntry-with-resources ferme automatiquement toute ressource AutoCloseable, même si une exception survient :\n```java\ntry (BufferedWriter out = Files.newBufferedWriter(path, StandardCharsets.UTF_8)) {\n    out.write(\"2026-08-30;Java;45\");\n    out.newLine();\n}   // out.close() est appelé ici, quoi qu'il arrive\n```\nPour de petits fichiers, Files.readAllLines et Files.write suffisent et gèrent l'ouverture et la fermeture. Pour un gros fichier, lis ligne à ligne (Files.lines dans un try-with-resources) plutôt que de tout charger en mémoire."
+    },
+    {
+      "title": "Exemple résolu : cumuler des minutes d'étude par mois",
+      "conceptCodes": [
+        "JAVA-RESOURCE-LIFECYCLE"
+      ],
+      "content": "Problème : un journal contient des lignes « date;sujet;minutes ». On veut le total par mois.\n\nRaisonnement, étape par étape :\n1. Écrire les lignes avec un encodage explicite (UTF-8), pour que les accents survivent d'une machine à l'autre.\n2. Relire avec Files.readAllLines(path, UTF_8).\n3. Découper chaque ligne avec split(\";\") puis parser la date : LocalDate.parse(\"2026-08-30\") (format ISO par défaut).\n4. Regrouper par YearMonth.from(date) dans une TreeMap triée, et additionner.\n5. Vérification : la somme de tous les mois doit égaler la somme des minutes lues.\n```java\nMap<YearMonth, Integer> parMois = new TreeMap<>();\nfor (String ligne : Files.readAllLines(path, StandardCharsets.UTF_8)) {\n    String[] champs = ligne.split(\";\");\n    YearMonth mois = YearMonth.from(LocalDate.parse(champs[0]));\n    parMois.merge(mois, Integer.parseInt(champs[2]), Integer::sum);\n}\n```\nLes classes de java.time sont immuables : plusDays renvoie une nouvelle date, il faut récupérer le résultat. LocalDate représente un jour sans fuseau ; pour un instant précis, utilise Instant ou ZonedDateTime."
+    },
+    {
+      "title": "Encodage, dates et sérialisation : les pièges qui coûtent cher",
+      "content": "Encodage : sans charset explicite, certaines API utilisent l'encodage par défaut de la machine ; un fichier écrit sous Windows peut être lu de travers sous Linux. Précise toujours StandardCharsets.UTF_8.\n\nDates : évite java.util.Date, Calendar et SimpleDateFormat (mutables, non thread-safe, mois numérotés depuis 0). Utilise java.time : LocalDate, LocalDateTime, Instant, Duration (écart en temps), Period (écart en jours/mois), DateTimeFormatter.ofPattern(\"dd/MM/yyyy\").\n\nSérialisation : Serializable écrit l'état interne d'un objet. Lire un flux non fiable peut exécuter du code inattendu et le format casse dès qu'on change la classe. Pour échanger ou stocker des données, choisis un format explicite et versionné (JSON, CSV), et valide ce que tu lis.\n```java\nLocalDate debut = LocalDate.of(2026, 8, 30);\nLocalDate suivant = debut.plusDays(3);                 // debut ne change pas\nString jour = debut.getDayOfWeek().toString();         // SUNDAY\nlong ecart = ChronoUnit.DAYS.between(debut, suivant);  // 3\n```"
+    },
+    {
+      "title": "Erreurs fréquentes à reconnaître",
+      "content": "1. Oublier de fermer un flux (ou le fermer seulement dans le chemin sans exception).\n2. Lire ou écrire sans préciser UTF-8.\n3. Ignorer le résultat de plusDays ou withMonth : la date d'origine n'a pas changé.\n4. Utiliser new Date() ou SimpleDateFormat dans du code neuf.\n5. Confondre LocalDateTime (sans fuseau) et Instant (un point précis de l'histoire).\n6. Faire confiance à ObjectInputStream sur des données extérieures.\n\nCherche ces six erreurs de mémoire avant l'exercice, puis passe au quiz."
+    }
+  ],
+  "keyConcepts": [
+    {
+      "code": "JAVA-RESOURCE-LIFECYCLE",
+      "name": "Cycle de vie d'une ressource",
+      "definition": "Une ressource externe doit être acquise, utilisée puis libérée de façon garantie.",
+      "whyExists": "Les fichiers et connexions consomment des capacités limitées du système.",
+      "whyImportant": "Une libération déterministe évite les fuites et les corruptions partielles.",
+      "minimalExample": "try (var reader = Files.newBufferedReader(path)) { ... }",
+      "professionalExample": "Un job d'import traitait plusieurs milliers de fichiers CSV en ouvrant chaque BufferedReader sans try-with-resources, en comptant sur le ramasse-miettes pour libérer les descripteurs de fichiers : après quelques heures, le système d'exploitation a renvoyé Too many open files et le job s'est arrêté au milieu d'un lot. Réécrire la lecture avec try-with-resources garantit la fermeture immédiate de chaque fichier, même en cas d'exception pendant le traitement d'une ligne.",
+      "codeExample": "Path importDir = Path.of(\"/data/imports\");\ntry (var files = Files.list(importDir)) {\n    for (Path file : files.toList()) {\n        try (var reader = Files.newBufferedReader(file, StandardCharsets.UTF_8)) {\n            reader.lines().forEach(this::processLine);\n        } // fermeture garantie même si processLine lève une exception\n    }\n}",
+      "commonMistake": "Dépendre du ramasse-miettes pour fermer un fichier.",
+      "masteryQuestion": "Pourquoi try-with-resources et un charset explicite évitent-ils des bugs qui n'apparaissent qu'en production ?",
+      "masteryProof": "Écrire un journal en UTF-8, le relire et cumuler les minutes par mois avec java.time."
+    }
+  ],
+  "exercises": [
+    {
+      "code": "JAVA-13-E1",
+      "title": "Écrire un journal et cumuler par mois",
+      "statement": "Complète Main : écris les lignes du journal en UTF-8 dans journal.txt, relis-les, cumule les minutes par mois (YearMonth, TreeMap), trouve le jour de la semaine de la première date et vérifie que l'accent de « Révision » a survécu. Affiche exactement :\n2026-08 : 75 min\n2026-09 : 80 min\nJour : SUNDAY\nAccent conserve : true",
+      "starterCode": "import java.io.IOException;\nimport java.nio.charset.StandardCharsets;\nimport java.nio.file.*;\nimport java.time.*;\nimport java.util.*;\n\npublic class Main {\n    public static void main(String[] args) throws IOException {\n        Path path = Path.of(\"journal.txt\");\n        List<String> lines = List.of(\n                \"2026-08-30;Java;45\",\n                \"2026-08-31;SQL;30\",\n                \"2026-09-01;Révision;60\",\n                \"2026-09-03;Docker;20\");\n        // TODO 1 : écris les lignes dans le fichier en UTF-8 (Files.write)\n        // TODO 2 : relis le fichier en UTF-8 (Files.readAllLines)\n        // TODO 3 : cumule les minutes par YearMonth dans une TreeMap puis affiche \"2026-08 : 75 min\", etc.\n        // TODO 4 : affiche \"Jour : \" suivi du jour de la semaine de la première date (getDayOfWeek)\n        // TODO 5 : affiche \"Accent conserve : \" suivi de true si la 3e ligne relue contient \"Révision\"\n    }\n}\n",
+      "expectedOutput": "2026-08 : 75 min\n2026-09 : 80 min\nJour : SUNDAY\nAccent conserve : true"
+    }
+  ],
+  "quiz": [
+    {
+      "code": "JAVA-13-Q1",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Pourquoi utiliser try-with-resources pour un BufferedWriter ?",
+      "choices": [
+        "Pour que l'écriture soit plus rapide",
+        "Pour fermer le flux automatiquement même si une exception survient",
+        "Pour ne plus avoir besoin d'écrire de fichier",
+        "Pour convertir le fichier en UTF-8"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "try-with-resources appelle close() à la sortie du bloc, y compris en cas d'exception. Il n'accélère rien et ne gère pas l'encodage : le charset reste à préciser à l'ouverture."
+    },
+    {
+      "code": "JAVA-13-Q2",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Prédis la sortie :\n```java\nLocalDate d = LocalDate.of(2026, 8, 30);\nd.plusDays(3);\nSystem.out.println(d);\n```\n",
+      "choices": [
+        "2026-09-02",
+        "2026-08-30",
+        "2026-08-33",
+        "Une exception"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "LocalDate est immuable : plusDays renvoie une nouvelle date que le code ignore. d reste 2026-08-30. Il fallait écrire d = d.plusDays(3) ou LocalDate suivant = d.plusDays(3)."
+    },
+    {
+      "code": "JAVA-13-Q3",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Trouve le bug : ce code lit un fichier écrit en UTF-8 sur un autre poste. Quel est le risque ?\n```java\nList<String> lignes = Files.readAllLines(path, Charset.defaultCharset());\n```\n",
+      "choices": [
+        "Aucun risque, l'encodage par défaut est toujours UTF-8",
+        "Sur une machine dont l'encodage par défaut diffère, les accents sont mal décodés",
+        "readAllLines ne fonctionne qu'avec Charset.defaultCharset()",
+        "Le fichier est supprimé après lecture"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "L'encodage par défaut dépend de la machine et de sa configuration. Les accents peuvent être altérés ou lever MalformedInputException. Il faut passer StandardCharsets.UTF_8 explicitement des deux côtés."
+    },
+    {
+      "code": "JAVA-13-Q4",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Pour échanger des données avec une autre application, que vaut-il mieux éviter ?",
+      "choices": [
+        "Un fichier JSON versionné",
+        "Un fichier CSV avec en-têtes",
+        "La sérialisation Java native (ObjectOutputStream) lue depuis une source non fiable",
+        "Un format texte validé à la lecture"
+      ],
+      "correctChoice": 2,
+      "expectedKeywords": [],
+      "explanation": "La désérialisation Java native reconstruit des objets arbitraires : c'est une surface d'attaque connue, et le format se brise quand la classe évolue. Un format explicite, validé, est plus sûr et plus durable."
+    },
+    {
+      "code": "JAVA-13-Q5",
+      "type": "FREE_TEXT",
+      "prompt": "Sans relire le cours, explique avec tes mots pourquoi on précise UTF-8 à chaque lecture ou écriture, et pourquoi on préfère java.time à Date et Calendar.",
+      "choices": [],
+      "correctChoice": null,
+      "expectedKeywords": [
+        "utf",
+        "defaut",
+        "machine",
+        "immuable",
+        "thread"
+      ],
+      "modelAnswer": "L'encodage par défaut dépend de la machine : sans UTF-8 explicite, un fichier peut être lu de travers ailleurs (accents corrompus). java.time offre des classes immuables, donc sûres à partager entre threads, avec une API claire (mois numérotés à partir de 1), alors que Date et Calendar sont mutables et sources d'erreurs.",
+      "explanation": "Une bonne réponse relie l'encodage par défaut à la portabilité et explique l'immuabilité et la clarté de java.time par opposition aux classes historiques mutables."
+    }
+  ],
+  "checklist": [
+    "Je ferme mes ressources avec try-with-resources",
+    "Je précise UTF-8 à chaque lecture ou écriture",
+    "J'utilise le résultat de plusDays plutôt que de l'ignorer",
+    "Je sais pourquoi éviter la sérialisation Java native sur des données extérieures"
+  ]
 }

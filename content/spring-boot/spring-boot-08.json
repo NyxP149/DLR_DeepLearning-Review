@@ -11,21 +11,30 @@
     "SPRING_BOOT-07"
   ],
   "objectives": [
-    "Expliquer tests unitaires, slices et intégration",
-    "Construire une preuve exécutable et déterministe",
-    "Relier le concept à une décision professionnelle"
+    "Choisir entre test unitaire, test de tranche (slice) et test d'intégration selon le risque à couvrir.",
+    "Utiliser des doublures (fake, stub, mock) pour isoler une dépendance externe.",
+    "Écrire un test qui vérifie un comportement de repli sans réseau.",
+    "Repérer un test lent, fragile ou qui teste le framework."
   ],
   "sections": [
     {
-      "title": "Concept et usage professionnel",
-      "content": "Tests unitaires, slices et intégration répond à un besoin concret de maintenabilité, de sûreté ou de performance. Le laboratoire demande de rendre la décision observable et vérifiable.",
-      "conceptCodes": [
-        "SPRING-TESTS"
-      ]
+      "title": "Plusieurs niveaux de test, plusieurs risques",
+      "content": "Un test unitaire exerce une classe seule, sans Spring : le plus rapide, il couvre la logique. Un test de tranche charge une partie du contexte : @WebMvcTest vérifie un contrôleur (routes, validation, JSON) avec MockMvc sans serveur, @DataJpaTest vérifie un repository avec une base embarquée. Un test d'intégration (@SpringBootTest) charge toute l'application : plus lent, il vérifie le câblage et la configuration. Testcontainers permet d'utiliser une vraie base PostgreSQL jetable, plus fidèle qu'une base en mémoire.\n\nRègle pratique : beaucoup de tests unitaires, des tranches pour les frontières (HTTP, persistance), peu de tests d'intégration complets."
     },
     {
-      "title": "Mise en pratique",
-      "content": "La preuve unifichier valide ici la frontière d'architecture hors réseau ; le laboratoire explique ensuite son branchement aux annotations et dépendances Spring Boot réelles."
+      "title": "Exemple résolu : tester un repli sans réseau",
+      "conceptCodes": [
+        "SPRING-TESTS"
+      ],
+      "content": "Problème : PriceService appelle un client de taxe distant. Si le service de taxe est indisponible, le prix doit se replier sur 0 % de taxe. Comment le tester sans réseau ?\n\nRaisonnement, étape par étape :\n1. La dépendance est une interface TaxClient, injectée dans PriceService.\n2. Test 1 : un faux client qui répond 20 %, prix net 100, on attend 120.\n3. Test 2 : un faux client qui lève IllegalStateException, on attend 100 (repli).\n4. Chaque test crée son propre service (pas d'état partagé).\n5. Vérification : un échec affiche le nom du test, l'attendu et l'obtenu.\n```java\nTaxClient fake = () -> 20;\nTaxClient broken = () -> { throw new IllegalStateException(\"service taxe indisponible\"); };\n\nassertEquals(120, new PriceService(fake).withTax(100));\nassertEquals(100, new PriceService(broken).withTax(100));\n```\nDoublures : un stub renvoie des valeurs préprogrammées, un fake est une implémentation simplifiée mais fonctionnelle (dépôt en mémoire), un mock vérifie en plus les appels reçus (Mockito). Préfère vérifier le résultat observable plutôt que « telle méthode a été appelée deux fois »."
+    },
+    {
+      "title": "Ce qui rend un test d'application utile",
+      "content": "- @MockBean (ou @MockitoBean selon la version de Boot) remplace un bean du contexte par un mock ; chaque combinaison différente force un nouveau contexte et ralentit la suite.\n- Un test de contrôleur vérifie le statut, le corps JSON et la validation, pas la logique métier du service.\n- Un test de repository vérifie une vraie requête, y compris les contraintes de la base.\n- Un test ne dépend pas de l'ordre d'exécution, de l'heure courante (injecte une Clock) ni du réseau.\n- Ne teste pas le framework : vérifier qu'@Autowired injecte un bean ne prouve rien.\n```java\n@WebMvcTest(OrderController.class)\nclass OrderControllerTest {\n    @Autowired MockMvc mvc;\n    @MockBean OrderService service;\n\n    @Test void refuseUnClientVide() throws Exception {\n        mvc.perform(post(\"/orders\").contentType(APPLICATION_JSON).content(\"{\\\"customer\\\":\\\"\\\"}\"))\n           .andExpect(status().isBadRequest());\n    }\n}\n```"
+    },
+    {
+      "title": "Erreurs fréquentes à reconnaître",
+      "content": "1. @SpringBootTest partout : une suite lente que plus personne ne lance.\n2. Mocker la classe testée, ou tout mocker : le test vérifie le mock.\n3. Un test qui appelle le vrai réseau ou dépend de l'heure.\n4. Des tests dépendants les uns des autres via un état partagé.\n5. Une couverture élevée avec des assertions faibles.\n6. Ne tester que le chemin heureux : le repli et l'erreur sont là où se logent les bugs.\n\nRetrouve ces erreurs de mémoire avant l'exercice, puis vérifie-toi avec le quiz : c'est la récupération, pas la relecture, qui fixe la notion."
     }
   ],
   "keyConcepts": [
@@ -39,8 +48,8 @@
       "professionalExample": "Avant une mise en production, l'équipe ne testait que manuellement le contrôleur REST des avis clients, ce qui n'a pas détecté qu'un filtre de mots interdits mal branché laissait passer du contenu à modérer. Le correctif ajoute un test de tranche @WebMvcTest qui vérifie le comportement HTTP du contrôleur avec un service mocké (rapide, sans base de données), complété par un test @DataJpaTest pour la requête de filtrage en base, et un seul test @SpringBootTest de bout en bout pour garantir que les deux couches s'assemblent correctement au démarrage réel du contexte Spring.",
       "codeExample": "@WebMvcTest(ReviewController.class)\nclass ReviewControllerTest {\n\n    @Autowired\n    private MockMvc mockMvc;\n\n    @MockBean\n    private ReviewModerationService moderationService;\n\n    @Test\n    void rejectsReviewWithBannedWords() throws Exception {\n        when(moderationService.isAcceptable(\"contenu injurieux\")).thenReturn(false);\n\n        mockMvc.perform(post(\"/api/reviews\")\n                        .contentType(MediaType.APPLICATION_JSON)\n                        .content(\"{\\\"text\\\":\\\"contenu injurieux\\\"}\"))\n                .andExpect(status().isUnprocessableEntity());\n    }\n}",
       "commonMistake": "Appliquer la technique sans mesurer son effet ni documenter sa frontière.",
-      "masteryQuestion": "Quelle contrainte de tests unitaires, slices et intégration doit rester vraie lorsque le système évolue ?",
-      "masteryProof": "Exécuter la preuve, expliquer son invariant et proposer un cas d’échec."
+      "masteryQuestion": "Quand choisir un test unitaire, une tranche ou un @SpringBootTest, et qu'apporte un faux client par rapport au vrai réseau ?",
+      "masteryProof": "Tester un service avec un client de taxe fictif et un client en panne, avec un mini exécuteur qui compte les tests réussis."
     }
   ],
   "exercises": [
@@ -56,32 +65,80 @@
     {
       "code": "SPRING_BOOT-08-Q1",
       "type": "SINGLE_CHOICE",
-      "prompt": "Quelle preuve est la plus utile en revue ?",
+      "prompt": "Tu veux vérifier la validation JSON et les codes de statut d'un contrôleur. Quel test est le plus adapté ?",
       "choices": [
-        "Une exécution déterministe avec invariant explicite",
-        "Une sortie aléatoire",
-        "Une capture sans code"
+        "Un @SpringBootTest complet avec base réelle",
+        "Un @WebMvcTest avec MockMvc et un service mocké",
+        "Un test manuel avec un navigateur",
+        "Un test unitaire du service seulement"
       ],
-      "correctChoice": 0,
-      "expectedKeywords": []
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "@WebMvcTest ne charge que la couche web : rapide, il vérifie routes, désérialisation, validation et statuts. @SpringBootTest est plus lent et teste trop de choses à la fois pour ce risque."
     },
     {
       "code": "SPRING_BOOT-08-Q2",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Prédis le résultat :\n```java\nTaxClient broken = () -> { throw new IllegalStateException(\"indisponible\"); };\nSystem.out.println(new PriceService(broken).withTax(100));\n```\navec un service qui se replie sur 0 % en cas d'IllegalStateException.",
+      "choices": [
+        "120",
+        "100",
+        "Une exception",
+        "0"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Le service capture l'échec et applique 0 % de taxe : 100 + 100 × 0 / 100 = 100. C'est le comportement de repli que le test doit prouver, ce qu'un test du chemin heureux seul ne ferait jamais."
+    },
+    {
+      "code": "SPRING_BOOT-08-Q3",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Trouve le défaut :\n```java\n@Test void testService() {\n    OrderService service = mock(OrderService.class);\n    when(service.create(any())).thenReturn(order);\n    assertEquals(order, service.create(items));\n}\n```\n",
+      "choices": [
+        "Il manque @Transactional",
+        "Le test vérifie le mock lui-même : il passera quel que soit le vrai code",
+        "any() est interdit",
+        "assertEquals est déprécié"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "On mocke les dépendances de la classe testée, jamais la classe testée. Ce test n'exécute aucun code réel du service : il ne protège rien."
+    },
+    {
+      "code": "SPRING_BOOT-08-Q4",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Pourquoi injecter une Clock plutôt que d'appeler Instant.now() dans le service ?",
+      "choices": [
+        "Pour économiser de la mémoire",
+        "Pour pouvoir fixer l'heure dans un test et rendre le résultat déterministe",
+        "Parce que Instant.now() est déprécié",
+        "Pour changer de fuseau horaire"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Une dépendance à l'heure courante rend les tests instables (un test passe à 11 h et échoue à minuit). Injecter une Clock permet d'utiliser Clock.fixed(...) en test."
+    },
+    {
+      "code": "SPRING_BOOT-08-Q5",
       "type": "FREE_TEXT",
-      "prompt": "Explique une décision liée à tests unitaires, slices et intégration.",
+      "prompt": "Sans relire le cours, explique avec tes mots la différence entre un stub, un fake et un mock, et pourquoi il faut éviter de tout mocker.",
       "choices": [],
       "correctChoice": null,
       "expectedKeywords": [
-        "contrat",
-        "preuve",
-        "test"
-      ]
+        "stub",
+        "fake",
+        "mock",
+        "appel",
+        "implementation"
+      ],
+      "modelAnswer": "Un stub renvoie des valeurs préprogrammées ; un fake est une implémentation simplifiée mais réelle (par exemple un dépôt en mémoire) ; un mock vérifie en plus les appels reçus. Tout mocker lie les tests à l'implémentation interne : ils cassent au moindre refactoring et ne prouvent plus le comportement observable. On garde les doublures pour les frontières externes (réseau, base, horloge).",
+      "explanation": "Une bonne réponse distingue les trois doublures et explique que l'excès de mocks teste l'implémentation et non le comportement."
     }
   ],
   "checklist": [
-    "Je peux expliquer le concept sans réciter une définition",
-    "Je sais exécuter et modifier la preuve",
-    "Je peux nommer un risque et son contrôle",
-    "Je relie cette étape à la suivante"
+    "Je choisis le bon niveau de test pour chaque risque",
+    "J'isole le réseau et l'heure avec des doublures",
+    "Je teste le repli et l'erreur, pas seulement le cas heureux",
+    "Je ne mocke pas la classe testée"
   ]
 }

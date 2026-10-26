@@ -11,25 +11,30 @@
     "ARCHITECTURE-23"
   ],
   "objectives": [
-    "Arbitrer coût, fiabilité, sécurité et délai puis défendre une architecture déployable",
-    "Justifier les compromis et nommer un risque opérationnel",
-    "Produire une preuve reproductible avant d’élargir la solution"
+    "Choisir une architecture sous contraintes (équipe, budget, délai) en séparant filtres éliminatoires et score pondéré.",
+    "Produire une décision d'architecture écrite (ADR) : contexte, options, décision, conséquences.",
+    "Définir des conditions de réévaluation mesurables.",
+    "Défendre le choix à l'oral en assumant ses compromis."
   ],
   "sections": [
     {
-      "title": "Concept clé et décision",
+      "title": "Décider face à des contraintes réelles",
+      "content": "Le défi final ressemble à une vraie situation : une équipe de quatre personnes, un budget d'exploitation limité, douze semaines pour livrer, des exigences de fiabilité et de sécurité. Il n'y a pas de bonne réponse unique : il y a une décision défendable, c'est-à-dire fondée sur des contraintes explicites, des critères pondérés, des mesures ou des estimations, et des compromis assumés.\n\nMéthode :\n1. Écrire les contraintes dures (budget maximal, délai, compétences minimales, conformité). Elles éliminent des options.\n2. Écrire les critères de préférence (rapidité de livraison, fiabilité, coût, évolutivité, sécurité) avec leurs poids.\n3. Noter les options restantes avec des preuves ou des estimations argumentées.\n4. Tester la sensibilité du résultat.\n5. Rédiger la décision et ses conditions de réévaluation."
+    },
+    {
+      "title": "Exemple résolu : de la matrice à la décision écrite",
       "conceptCodes": [
         "ARCHITECTURE-CHALLENGE"
       ],
-      "content": "Défi final : architecture complète sous contraintes relie les besoins, le logiciel, les données et l’exploitation. Commence par les contraintes observables, trace les responsabilités, puis choisis la solution la plus simple qui respecte les invariants."
+      "content": "Problème : trois options (monolithe modulaire, microservices, fonctions serverless) pour une équipe de 4 personnes, un budget de 3 000 € par mois et une livraison en 12 semaines.\n\nRaisonnement, étape par étape :\n1. Contraintes dures : coût mensuel estimé <= 3 000 €, délai estimé <= 12 semaines, compétences de l'équipe >= 3/5. Les microservices (délai estimé 20 semaines, coût 4 500 €) sont éliminés avant tout score.\n2. Critères et poids pour les options restantes : livraison 3, fiabilité 2, coût 2.\n3. Scores : monolithe modulaire (livraison 5, fiabilité 4, coût 5) : 5×3 + 4×2 + 5×2 = 33. Serverless (livraison 4, fiabilité 3, coût 3) : 4×3 + 3×2 + 3×2 = 24.\n4. Décision : monolithe modulaire, score 33.\n5. Conditions de réévaluation (mesurables) : si un module dépasse 30 % des déploiements bloqués par d'autres équipes, si la charge dépasse 2 000 req/s au pic, si l'équipe dépasse 12 personnes, si un module exige une disponibilité à 99,99 %. « Limites mesurées » signifie qu'on s'engage à les surveiller.\n6. ADR (Architecture Decision Record) : titre, statut, contexte, options considérées, décision, conséquences (positives et négatives), conditions de réévaluation, date et auteurs.\n```python\neligible = {n: o for n, o in options.items() if all(o[c] <= limit for c, limit in max_constraints.items())}\ndecision = max(sorted(eligible), key=lambda n: score(eligible[n]))\n```"
     },
     {
-      "title": "Défi de synthèse",
-      "content": "La preuve ARCHITECTURE-24 modélise une décision réelle sous forme déterministe. Elle ne remplace pas un déploiement complet : elle rend l’hypothèse testable avant l’intégration Spring Boot, Angular, PostgreSQL et Docker."
+      "title": "Défendre un compromis à l'oral",
+      "content": "Trame de défense (trois minutes) :\n1. Le problème et les contraintes : « une équipe de 4, 12 semaines, 3 000 € par mois ».\n2. Les options écartées et pourquoi : « les microservices demanderaient 20 semaines et 4 500 € ».\n3. La décision et son score, avec les poids et leur justification.\n4. Les compromis assumés : « on accepte un déploiement unique, donc une panne de module peut affecter l'ensemble ; on compense par des frontières internes et des tests ».\n5. Le risque résiduel et sa surveillance : métriques et seuils qui déclencheront une extraction de module.\n6. Ce qu'on ferait avec plus de temps ou d'information.\n\nQuestions de relecteur à anticiper : « Pourquoi pas X ? », « Que se passe-t-il si la charge double ? », « Comment sait-on que la décision était mauvaise ? », « Qui est responsable de la revue ? ». Les réponses sont des chiffres et des conditions, pas des généralités.\n\nSignaux de maturité : reconnaître l'incertitude, proposer une décision réversible plutôt qu'un pari, décrire comment on mesurera le succès, nommer ce qu'on n'a pas étudié. Un ADR est un document vivant : il passe de « proposé » à « accepté », puis « remplacé » quand une nouvelle décision l'annule, sans jamais être supprimé."
     },
     {
-      "title": "Revue professionnelle",
-      "content": "Documente le contexte, la décision, une option rejetée, les conséquences, le signal à surveiller et la condition qui imposerait de revoir le choix."
+      "title": "Erreurs fréquentes à reconnaître",
+      "content": "1. Choisir par habitude et chercher ensuite des arguments.\n2. Mélanger contraintes dures et préférences dans un seul score.\n3. Aucune condition de réévaluation : la décision devient un dogme.\n4. Un ADR sans options écartées ni conséquences négatives.\n5. Défendre le choix en disant qu'il est « le meilleur » sans chiffres.\n6. Ignorer le coût d'exploitation et de recrutement.\n\nRetrouve ces erreurs de mémoire avant l'exercice, puis vérifie-toi avec le quiz : c'est la récupération, pas la relecture, qui fixe la notion."
     }
   ],
   "keyConcepts": [
@@ -43,49 +48,97 @@
       "professionalExample": "Avec un délai de trois mois et une équipe de quatre développeurs, un CTO doit arbitrer entre un monolithe modulaire, livrable rapidement et moins coûteux à exploiter, et une architecture microservices plus résiliente à l’échelle mais plus coûteuse en complexité opérationnelle pour une petite équipe. Il documente la décision dans un ADR avec l’option rejetée, le compromis assumé et une condition explicite de réévaluation : si le trafic dépasse 5000 req/s ou si l’équipe double, revoir le découpage. Ce type d’arbitrage explicite, plutôt qu’un choix dogmatique, est ce qui distingue une architecture défendable d’une préférence technique.",
       "codeExample": "# ADR-024: choix d'architecture initiale\nDécision: monolithe modulaire\nAlternative rejetée: microservices (complexité ops trop élevée pour 4 devs)\nCompromis assumé: scalabilité indépendante par service reportée\nCondition de réévaluation: trafic > 5000 req/s OU équipe > 8 personnes",
       "commonMistake": "Choisir un outil avant d’identifier le besoin, la charge, le risque et le propriétaire de la donnée.",
-      "masteryQuestion": "Quel compromis, quel signal et quelle condition de réévaluation associes-tu à « Défi final : architecture complète sous contraintes » ?",
-      "masteryProof": "Exécuter la preuve, modifier une contrainte, expliquer le résultat et dessiner la place du composant dans la stack complète."
+      "masteryQuestion": "Comment passe-t-on de contraintes et critères à une décision d'architecture écrite et révisable ?",
+      "masteryProof": "Filtrer des options par contraintes dures, scorer le reste, désigner un gagnant et rédiger un ADR avec conditions de réévaluation."
     }
   ],
   "exercises": [
     {
       "code": "ARCHITECTURE-24-E1",
-      "title": "Arbitrer coût, fiabilité, sécurité et délai puis défendre une architecture déployable",
-      "statement": "Complète la preuve pour produire exactement la sortie attendue, puis explique la décision, une alternative et le signal de production qui validerait ton choix.",
-      "starterCode": "options = {\n    \"monolithe_modulaire\": {\"delivery\": 5, \"reliability\": 4, \"cost\": 5},\n    \"microservices\": {\"delivery\": 2, \"reliability\": 3, \"cost\": 2},\n}\nweights = {\"delivery\": 3, \"reliability\": 2, \"cost\": 2}\n# TODO 1 : calcule le score pondéré de chaque option\n# TODO 2 : retiens l'option au meilleur score\n# TODO 3 : affiche \"Décision: <option>\" puis \"Score: <score>\"\n# TODO 4 : affiche \"Condition de réévaluation: limites mesurées\"\n",
-      "expectedOutput": "Décision: monolithe_modulaire\nScore: 33\nCondition de réévaluation: limites mesurées"
+      "title": "De la matrice à la décision écrite",
+      "statement": "Complète : le filtre des contraintes dures, le score pondéré des options restantes, la décision, puis les lignes d'une décision d'architecture écrite avec options écartées et conditions de réévaluation. Affiche exactement :\nmonolithe_modulaire: score 33\nmicroservices: écartée (délai, budget)\nserverless: score 24\nDécision: monolithe_modulaire (score 33)\nADR:\n  Contexte: équipe de 4, 12 semaines, 3000 euros par mois\n  Options écartées: microservices\n  Conséquence: déploiement unique, frontières internes à contrôler en CI\n  Réévaluer si: charge au pic > 2000 req/s ; équipe > 12 personnes ; un module exige 99,99 % de disponibilité",
+      "starterCode": "OPTIONS = {\n    \"monolithe_modulaire\": {\"delivery\": 5, \"reliability\": 4, \"cost\": 5, \"weeks\": 10, \"euros\": 1800},\n    \"microservices\": {\"delivery\": 2, \"reliability\": 3, \"cost\": 2, \"weeks\": 20, \"euros\": 4500},\n    \"serverless\": {\"delivery\": 4, \"reliability\": 3, \"cost\": 3, \"weeks\": 11, \"euros\": 2900},\n}\nMAX_WEEKS, MAX_EUROS = 12, 3000\nWEIGHTS = {\"delivery\": 3, \"reliability\": 2, \"cost\": 2}\nREEVALUATION = [\"charge au pic > 2000 req/s\", \"équipe > 12 personnes\", \"un module exige 99,99 % de disponibilité\"]\n\n\ndef violations(option: dict) -> list[str]:\n    # TODO 1 : \"délai\" si weeks > MAX_WEEKS ; \"budget\" si euros > MAX_EUROS (dans cet ordre)\n    return []\n\n\ndef score(option: dict) -> int:\n    # TODO 2 : somme note x poids pour chaque critère de WEIGHTS\n    return 0\n\n\n# TODO 3 : pour chaque option (ordre du dictionnaire) affiche \"<option>: écartée (<violations séparées par ', '>)\" ou \"<option>: score <score>\"\n# TODO 4 : décision = option éligible au meilleur score (départage par nom) ; affiche \"Décision: <option> (score <score>)\"\n# TODO 5 : affiche \"ADR:\" puis des lignes préfixées de deux espaces :\n#          \"Contexte: équipe de 4, <MAX_WEEKS> semaines, <MAX_EUROS> euros par mois\"\n#          \"Options écartées: <noms séparés par ', '>\"\n#          \"Conséquence: <phrase>\" avec exactement la phrase : \"déploiement unique, frontières internes à contrôler en CI\"\n#          \"Réévaluer si: \" suivi des conditions de REEVALUATION séparées par \" ; \"\n",
+      "expectedOutput": "monolithe_modulaire: score 33\nmicroservices: écartée (délai, budget)\nserverless: score 24\nDécision: monolithe_modulaire (score 33)\nADR:\n  Contexte: équipe de 4, 12 semaines, 3000 euros par mois\n  Options écartées: microservices\n  Conséquence: déploiement unique, frontières internes à contrôler en CI\n  Réévaluer si: charge au pic > 2000 req/s ; équipe > 12 personnes ; un module exige 99,99 % de disponibilité"
     }
   ],
   "quiz": [
     {
       "code": "ARCHITECTURE-24-Q1",
       "type": "SINGLE_CHOICE",
-      "prompt": "Quelle démarche produit la décision la plus robuste ?",
+      "prompt": "Pourquoi éliminer une option sur une contrainte dure avant de calculer les scores ?",
       "choices": [
-        "Relier contraintes, responsabilités, preuve et observabilité",
-        "Choisir la technologie la plus populaire",
-        "Ajouter des services avant de mesurer"
+        "Pour simplifier le code",
+        "Une option qui viole le budget ou le délai est inacceptable quel que soit son score : on ne la compense pas avec d'autres critères",
+        "Parce que les scores sont faux",
+        "Pour accélérer"
       ],
-      "correctChoice": 0,
-      "expectedKeywords": []
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Un score pondéré permettrait à une option excellente sur la fiabilité de « racheter » un dépassement de budget. Les contraintes dures ne se négocient pas."
     },
     {
       "code": "ARCHITECTURE-24-Q2",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Prédis le score du monolithe modulaire (delivery 5, reliability 4, cost 5) avec les poids 3, 2, 2 :",
+      "choices": [
+        "14",
+        "33 : 15 + 8 + 10",
+        "23",
+        "28"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "5×3 = 15, 4×2 = 8, 5×2 = 10 : total 33. Le serverless (4, 3, 3) obtient 12 + 6 + 6 = 24."
+    },
+    {
+      "code": "ARCHITECTURE-24-Q3",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Trouve le défaut d'un ADR :\n« Décision : microservices. Raison : c'est moderne. »",
+      "choices": [
+        "Aucun",
+        "Aucune contrainte, aucune option écartée, aucun compromis ni condition de réévaluation : la décision n'est pas défendable ni révisable",
+        "Il manque une date",
+        "Il est trop court en mots"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Un ADR consigne le contexte, les options étudiées, la raison du choix, les conséquences (aussi négatives) et quand revoir la décision."
+    },
+    {
+      "code": "ARCHITECTURE-24-Q4",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Quel est l'intérêt de conditions de réévaluation mesurables (charge, taille d'équipe, disponibilité) ?",
+      "choices": [
+        "Elles prouvent que la décision était mauvaise",
+        "Elles indiquent à l'avance les signaux qui justifieraient de changer d'architecture, sans attendre un incident",
+        "Elles remplacent les tests",
+        "Elles sont obligatoires par la loi"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Une décision est valable sous des hypothèses. Les écrire en seuils mesurables permet de la revoir au bon moment, ni trop tôt ni trop tard."
+    },
+    {
+      "code": "ARCHITECTURE-24-Q5",
       "type": "FREE_TEXT",
-      "prompt": "Nomme un compromis et le signal qui permettrait de le réévaluer.",
+      "prompt": "Sans relire le cours, défends à l'oral ton choix d'architecture sous contraintes : structure ta réponse et nomme les compromis.",
       "choices": [],
       "correctChoice": null,
       "expectedKeywords": [
+        "contrainte",
+        "ecart",
         "compromis",
-        "mesure",
-        "risque"
-      ]
+        "risque",
+        "reevalu"
+      ],
+      "modelAnswer": "Je rappelle le contexte et les contraintes dures (équipe, budget, délai), j'explique quelles options sont écartées et pourquoi, je présente la décision avec le score et la justification des poids, j'assume les compromis (déploiement unique, donc une panne peut affecter l'ensemble, compensée par des frontières internes et des tests), je nomme le risque résiduel et les seuils mesurables qui déclencheraient une réévaluation, et ce que je ferais avec plus d'information.",
+      "explanation": "Une bonne réponse enchaîne contexte, options écartées, décision chiffrée, compromis assumés, risque résiduel et conditions de réévaluation."
     }
   ],
   "checklist": [
-    "Je peux dessiner la circulation de la donnée",
-    "Je sais nommer les responsabilités de chaque couche",
-    "Je justifie une alternative rejetée",
-    "Je définis une mesure et une condition de réévaluation"
+    "Mes contraintes dures filtrent les options avant tout score",
+    "Ma décision est consignée dans un ADR avec options écartées et conséquences",
+    "Mes conditions de réévaluation sont mesurables",
+    "Je sais défendre mes compromis à l'oral avec des chiffres"
   ]
 }

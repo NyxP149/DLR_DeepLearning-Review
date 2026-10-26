@@ -1,9 +1,144 @@
 {
-  "code":"JAVA-18","language":"JAVA","number":18,"slug":"concurrence-executeurs-synchronisation","title":"Concurrence, threads, exécuteurs et synchronisation","difficulty":"AVANCE","threshold":75,"activityType":"LAB","prerequisites":["JAVA-17"],
-  "objectives":["Distinguer concurrence et parallélisme","Utiliser un ExecutorService","Protéger un état partagé"],
-  "sections":[{"title":"Travail concurrent","content":"Un exécuteur sépare la soumission d'une tâche de la gestion des threads. Future représente un résultat disponible plus tard.","conceptCodes":["JAVA-CONCURRENCY"]},{"title":"État partagé minimal","content":"L'immutabilité et le confinement évitent de nombreuses courses. La synchronisation doit protéger un invariant clairement identifié."}],
-  "keyConcepts":[{"code":"JAVA-CONCURRENCY","name":"Concurrence sûre","definition":"Plusieurs tâches progressent sans compromettre la cohérence des données partagées.","whyExists":"Les applications traitent des entrées indépendantes et des opérations lentes.","whyImportant":"Une course produit des erreurs rares, difficiles à reproduire et coûteuses.","minimalExample":"Future<Integer> result = executor.submit(task);","professionalExample":"Un service de gestion de stock décrémentait les quantités disponibles dans une HashMap<String, Integer> partagée entre plusieurs threads traitant des commandes simultanées : sous forte charge du Black Friday, des ventes concurrentes sur le même article ont fait apparaître un stock négatif, un bug impossible à reproduire de façon fiable en local. Remplacer la map par une ConcurrentHashMap et les décréments par des opérations atomiques via compute() a supprimé la course de données sans introduire de verrou explicite bloquant.","codeExample":"ConcurrentHashMap<String, Integer> stock = new ConcurrentHashMap<>();\nstock.put(\"SKU-42\", 10);\n\nboolean reserved = stock.computeIfPresent(\"SKU-42\", (sku, quantity) ->\n    quantity > 0 ? quantity - 1 : quantity) != null;\n// décrément atomique, sûr même avec plusieurs threads simultanés","commonMistake":"Partager une collection mutable sans politique de synchronisation.","masteryQuestion":"Comment supprimer plutôt que verrouiller un état partagé ?","masteryProof":"Exécuter une tâche, attendre son résultat et fermer l'exécuteur."}],
-  "exercises":[{"code":"JAVA-18-E1","title":"Exécuter une tâche","statement":"Utilise un exécuteur et affiche exactement : Résultat: 42","starterCode":"import java.util.concurrent.*;\npublic class Main {\n    public static void main(String[] args) throws Exception {\n        ExecutorService executor = Executors.newSingleThreadExecutor();\n        try {\n            // TODO 1 : soumets à l'exécuteur une tâche qui calcule 40 + 2\n            // TODO 2 : récupère son résultat, puis affiche \"Résultat: \" suivi de la valeur\n        } finally { executor.shutdown(); }\n    }\n}\n","expectedOutput":"Résultat: 42"}],
-  "quiz":[{"code":"JAVA-18-Q1","type":"SINGLE_CHOICE","prompt":"Que représente Future ?","choices":["Un résultat asynchrone","Une base SQL","Un verrou global obligatoire"],"correctChoice":0,"expectedKeywords":[]},{"code":"JAVA-18-Q2","type":"FREE_TEXT","prompt":"Comment réduire les courses de données ?","choices":[],"correctChoice":null,"expectedKeywords":["immuable","partagé","synchronisation","confinement"]}],
-  "checklist":["Je ferme l'exécuteur","Je limite l'état partagé","Je protège un invariant précis"]
+  "code": "JAVA-18",
+  "language": "JAVA",
+  "number": 18,
+  "slug": "concurrence-executeurs-synchronisation",
+  "title": "Concurrence, threads, exécuteurs et synchronisation",
+  "difficulty": "AVANCE",
+  "threshold": 75,
+  "activityType": "LAB",
+  "prerequisites": [
+    "JAVA-17"
+  ],
+  "objectives": [
+    "Distinguer concurrence, parallélisme et asynchronisme, et dire quand un pool de threads est utile.",
+    "Soumettre des tâches à un ExecutorService et récupérer leurs résultats avec Future.",
+    "Protéger un état partagé avec synchronized, AtomicInteger ou une collection concurrente.",
+    "Repérer une course de données, un deadlock ou un pool jamais arrêté."
+  ],
+  "sections": [
+    {
+      "title": "Plusieurs tâches, un état partagé : là est le danger",
+      "content": "Concurrence : plusieurs tâches progressent en même temps (ou en alternance). Parallélisme : elles s'exécutent réellement simultanément sur plusieurs cœurs. Le vrai problème n'est pas de lancer des threads, c'est de partager des données modifiables.\n\nDeux threads qui font compteur++ sans protection peuvent perdre des incréments : l'opération lire, ajouter, écrire n'est pas atomique, c'est une course de données (data race). Le résultat dépend du hasard de l'ordonnancement, donc le bug apparaît « de temps en temps ».\n\nOn crée rarement des Thread à la main : on utilise un ExecutorService, un pool réutilisable qui exécute des tâches (Runnable sans résultat, Callable avec résultat) et qu'on arrête avec shutdown()."
+    },
+    {
+      "title": "Exemple résolu : sommer des carrés en parallèle, compter sans perdre",
+      "conceptCodes": [
+        "JAVA-CONCURRENCY"
+      ],
+      "content": "Problème : calculer la somme des carrés de 1 à 10 avec un pool, puis incrémenter un compteur depuis 4 tâches sans perdre d'incrément.\n\nRaisonnement, étape par étape :\n1. Créer un pool fixe : Executors.newFixedThreadPool(4).\n2. Chaque calcul est un Callable<Integer> qui renvoie un résultat.\n3. invokeAll lance les tâches et renvoie des Future ; get() attend le résultat.\n4. Pour le compteur partagé, AtomicInteger.incrementAndGet() est atomique, sans verrou explicite.\n5. shutdown() dans un finally : sinon le programme peut ne jamais se terminer.\n6. Vérification : la somme attendue est 385 et le compteur doit valoir exactement 4 × 1000.\n```java\nExecutorService pool = Executors.newFixedThreadPool(4);\ntry {\n    List<Callable<Integer>> taches = new ArrayList<>();\n    for (int n = 1; n <= 10; n++) { int x = n; taches.add(() -> x * x); }\n    int somme = 0;\n    for (Future<Integer> f : pool.invokeAll(taches)) somme += f.get();   // 385\n\n    AtomicInteger compteur = new AtomicInteger();\n    List<Callable<Void>> incr = new ArrayList<>();\n    for (int t = 0; t < 4; t++) incr.add(() -> { for (int i = 0; i < 1000; i++) compteur.incrementAndGet(); return null; });\n    pool.invokeAll(incr);                                                  // compteur = 4000\n} finally { pool.shutdown(); }\n```"
+    },
+    {
+      "title": "Choisir le bon outil de protection",
+      "content": "- synchronized (ou un ReentrantLock) : une seule tâche à la fois dans la section critique. Simple, mais verrouille tout ; deux verrous pris dans des ordres différents peuvent provoquer un deadlock.\n- AtomicInteger, AtomicLong : compteur lock-free pour une valeur unique.\n- ConcurrentHashMap : map thread-safe ; utilise merge ou compute pour des mises à jour atomiques plutôt que get puis put.\n- Immutabilité : la meilleure protection. Un objet qui ne change pas n'a pas besoin de verrou.\n```java\nMap<String, Integer> mots = new ConcurrentHashMap<>();\nmots.merge(\"a\", 1, Integer::sum);          // atomique\n// à éviter : mots.put(\"a\", mots.get(\"a\") + 1);   // course entre get et put\n```\nRègles pratiques : garde les sections critiques courtes, ne fais pas d'appel externe sous verrou, note l'ordre de prise des verrous, et préfère passer des données immuables entre tâches. Futures et CompletableFuture composent des résultats asynchrones sans bloquer un thread à attendre."
+    },
+    {
+      "title": "Erreurs fréquentes à reconnaître",
+      "content": "1. compteur++ sur un int partagé sans protection : incréments perdus.\n2. Oublier shutdown() : le pool garde des threads vivants, le programme ne s'arrête pas.\n3. Appeler get() immédiatement après chaque submit : on a recréé un traitement séquentiel.\n4. Check-then-act non atomique sur une map (si absent, alors put) : utilise computeIfAbsent ou merge.\n5. Deux verrous pris dans des ordres opposés : deadlock.\n6. Lancer un thread par requête sans limite : le pool borné protège la machine.\n\nRetrouve ces six erreurs de mémoire avant l'exercice, puis passe au quiz."
+    }
+  ],
+  "keyConcepts": [
+    {
+      "code": "JAVA-CONCURRENCY",
+      "name": "Concurrence sûre",
+      "definition": "Plusieurs tâches progressent sans compromettre la cohérence des données partagées.",
+      "whyExists": "Les applications traitent des entrées indépendantes et des opérations lentes.",
+      "whyImportant": "Une course produit des erreurs rares, difficiles à reproduire et coûteuses.",
+      "minimalExample": "Future<Integer> result = executor.submit(task);",
+      "professionalExample": "Un service de gestion de stock décrémentait les quantités disponibles dans une HashMap<String, Integer> partagée entre plusieurs threads traitant des commandes simultanées : sous forte charge du Black Friday, des ventes concurrentes sur le même article ont fait apparaître un stock négatif, un bug impossible à reproduire de façon fiable en local. Remplacer la map par une ConcurrentHashMap et les décréments par des opérations atomiques via compute() a supprimé la course de données sans introduire de verrou explicite bloquant.",
+      "codeExample": "ConcurrentHashMap<String, Integer> stock = new ConcurrentHashMap<>();\nstock.put(\"SKU-42\", 10);\n\nboolean reserved = stock.computeIfPresent(\"SKU-42\", (sku, quantity) ->\n    quantity > 0 ? quantity - 1 : quantity) != null;\n// décrément atomique, sûr même avec plusieurs threads simultanés",
+      "commonMistake": "Partager une collection mutable sans politique de synchronisation.",
+      "masteryQuestion": "Pourquoi compteur++ n'est-il pas sûr entre plusieurs threads, et quels outils le rendent correct ?",
+      "masteryProof": "Sommer des résultats de tâches avec un pool et incrémenter un compteur partagé sans perte, avec arrêt propre du pool."
+    }
+  ],
+  "exercises": [
+    {
+      "code": "JAVA-18-E1",
+      "title": "Un pool, des futures et un état partagé protégé",
+      "statement": "Complète Main avec un pool de 4 threads : somme des carrés de 1 à 10 via invokeAll, un compteur AtomicInteger incrémenté par 4 tâches de 1000, un compteur int protégé par synchronized, et un comptage de mots avec ConcurrentHashMap.merge. Affiche exactement :\nSomme des carres : 385\nCompteur atomique : 4000\nCompteur synchronise : 4000\nMots : {a=3, b=2, c=1}",
+      "starterCode": "import java.util.*;\nimport java.util.concurrent.*;\nimport java.util.concurrent.atomic.AtomicInteger;\n\npublic class Main {\n    static int synced = 0;\n    static final Object LOCK = new Object();\n\n    public static void main(String[] args) throws Exception {\n        ExecutorService pool = Executors.newFixedThreadPool(4);\n        try {\n            // TODO 1 : crée 10 Callable<Integer> (carré de 1 à 10), exécute-les avec pool.invokeAll, additionne les get()\n            //          et affiche \"Somme des carres : \" + somme\n            // TODO 2 : 4 tâches qui font 1000 fois incrementAndGet sur un AtomicInteger ; attends-les puis affiche \"Compteur atomique : \" + valeur\n            // TODO 3 : 4 tâches qui font 1000 fois synced++ DANS un bloc synchronized (LOCK) ; affiche \"Compteur synchronise : \" + synced\n            // TODO 4 : 3 tâches comptent des mots (\"a b a\", \"b a\", \"c\") dans une ConcurrentHashMap avec merge(mot, 1, Integer::sum) ;\n            //          affiche \"Mots : \" + new TreeMap<>(map)\n        } finally {\n            pool.shutdown();\n        }\n    }\n}\n",
+      "expectedOutput": "Somme des carres : 385\nCompteur atomique : 4000\nCompteur synchronise : 4000\nMots : {a=3, b=2, c=1}"
+    }
+  ],
+  "quiz": [
+    {
+      "code": "JAVA-18-Q1",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Quatre threads exécutent chacun 1000 fois compteur++ sur un int partagé non protégé. Que peut-on dire du résultat ?",
+      "choices": [
+        "Il vaut toujours 4000",
+        "Il vaut au plus 4000 et souvent moins : des incréments sont perdus",
+        "Il vaut toujours 1000",
+        "Le programme ne compile pas"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "compteur++ est trois étapes (lire, ajouter, écrire). Deux threads peuvent lire la même valeur et écrire le même résultat : un incrément disparaît. Le total est au plus 4000 et varie d'une exécution à l'autre. AtomicInteger ou synchronized règle le problème."
+    },
+    {
+      "code": "JAVA-18-Q2",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Prédis le comportement :\n```java\nExecutorService pool = Executors.newFixedThreadPool(2);\npool.submit(() -> System.out.println(\"tache\"));\n// aucun shutdown()\n```\n",
+      "choices": [
+        "Le programme affiche « tache » puis se termine",
+        "Le programme affiche « tache » mais la JVM reste active car les threads du pool sont encore vivants",
+        "Rien n'est affiché",
+        "Une exception est levée"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Les threads du pool ne sont pas des démons : tant que shutdown() n'est pas appelé, ils attendent de nouvelles tâches et empêchent la JVM de s'arrêter. Place toujours shutdown() dans un finally."
+    },
+    {
+      "code": "JAVA-18-Q3",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Trouve le bug :\n```java\nif (!map.containsKey(mot)) {\n    map.put(mot, 1);\n} else {\n    map.put(mot, map.get(mot) + 1);\n}\n```\nLa map est un ConcurrentHashMap partagé entre threads.",
+      "choices": [
+        "Il utilise get à la place de getOrDefault",
+        "Le contrôle puis l'écriture ne sont pas atomiques : deux threads peuvent se croiser entre containsKey et put",
+        "ConcurrentHashMap n'accepte pas les clés String",
+        "Il manque un synchronized sur la classe"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Chaque méthode de ConcurrentHashMap est sûre, mais la séquence contrôle puis écriture ne l'est pas (check-then-act). Il faut une opération atomique : map.merge(mot, 1, Integer::sum)."
+    },
+    {
+      "code": "JAVA-18-Q4",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Deux threads prennent les verrous A et B, l'un dans l'ordre A puis B, l'autre B puis A. Que peut-il se passer ?",
+      "choices": [
+        "Rien de particulier",
+        "Un deadlock : chacun détient un verrou et attend l'autre indéfiniment",
+        "Une OutOfMemoryError",
+        "Les verrous sont ignorés"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Chaque thread garde un verrou et attend celui que l'autre détient : aucun ne progresse. On l'évite en prenant les verrous toujours dans le même ordre, en réduisant la taille des sections critiques ou en utilisant des structures sans verrou."
+    },
+    {
+      "code": "JAVA-18-Q5",
+      "type": "FREE_TEXT",
+      "prompt": "Sans relire le cours, explique avec tes mots ce qu'est une course de données et trois façons de s'en protéger.",
+      "choices": [],
+      "correctChoice": null,
+      "expectedKeywords": [
+        "partage",
+        "atomique",
+        "synchronized",
+        "immuable",
+        "atomic"
+      ],
+      "modelAnswer": "Une course de données se produit quand plusieurs threads lisent et modifient le même état sans coordination : le résultat dépend de l'ordonnancement (par exemple des incréments perdus). On s'en protège avec un verrou (synchronized), avec des variables atomiques ou des collections concurrentes (AtomicInteger, ConcurrentHashMap.merge), et surtout en partageant des données immuables.",
+      "explanation": "Une bonne réponse définit la course (état partagé modifiable sans coordination, résultat non déterministe) et cite au moins trois protections dont l'immutabilité."
+    }
+  ],
+  "checklist": [
+    "Je sais expliquer pourquoi compteur++ n'est pas atomique",
+    "J'arrête toujours mon ExecutorService dans un finally",
+    "Je choisis entre synchronized, Atomic* et ConcurrentHashMap.merge",
+    "Je repère un check-then-act et un risque de deadlock"
+  ]
 }

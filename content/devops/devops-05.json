@@ -11,21 +11,30 @@
     "DEVOPS-04"
   ],
   "objectives": [
-    "Expliquer quality gates, artefacts et traçabilité",
-    "Construire une preuve exécutable et déterministe",
-    "Relier le concept à une décision professionnelle"
+    "Définir des quality gates mesurables (couverture, vulnérabilités, duplication, tests en échec).",
+    "Appliquer un gate avant de publier un artefact et expliquer pourquoi il bloque la publication.",
+    "Rendre un artefact traçable (version, commit, date, provenance).",
+    "Repérer un seuil gaming, un gate contournable ou un artefact sans lien avec son code source."
   ],
   "sections": [
     {
-      "title": "Concept et usage professionnel",
-      "content": "Quality gates, artefacts et traçabilité répond à un besoin concret de maintenabilité, de sûreté ou de performance. Le laboratoire demande de rendre la décision observable et vérifiable.",
-      "conceptCodes": [
-        "DEVOPS-QUALITY"
-      ]
+      "title": "Un gate transforme un souhait en règle",
+      "content": "Un quality gate est une règle automatique qui bloque la progression d'un artefact tant qu'un seuil n'est pas respecté. Exemples : couverture de tests minimale, aucune vulnérabilité critique, duplication de code limitée, aucun test en échec, build sans avertissement bloquant.\n```\ncoverage       >= 80\ncritical_vulns <= 0\nduplication    <= 5\nfailed_tests   <= 0\n```\nL'intérêt d'un gate automatique est sa constance : il applique la même règle à tous, tous les jours, sans négociation ni oubli. Un gate qui ne bloque rien (simple avertissement) finit ignoré. Il doit être rapide, déterministe et expliquer clairement pourquoi il refuse."
     },
     {
-      "title": "Mise en pratique",
-      "content": "La preuve minimale est locale, déterministe et peut être enrichie sans changer le contrat attendu."
+      "title": "Exemple résolu : un gate avant publication",
+      "conceptCodes": [
+        "DEVOPS-QUALITY"
+      ],
+      "content": "Problème : publier un artefact seulement si quatre règles passent, et le nommer de façon traçable.\n\nRaisonnement, étape par étape :\n1. Chaque règle est une triplette (métrique, opérateur, seuil) : coverage >= 80, critical_vulns <= 0, duplication <= 5, failed_tests <= 0.\n2. Évaluation : pour chaque règle, comparer la valeur mesurée au seuil ; afficher « métrique: valeur op seuil -> OK ou ÉCHEC » (le message dit la valeur ET le seuil, pas seulement « échec »).\n3. Verdict : ACCEPTÉ si aucun échec, sinon REFUSÉ avec le nombre d'échecs ; le message précise si l'artefact est publié ou non.\n4. Traçabilité : le nom de l'artefact contient la version et les 7 premiers caractères du commit (dlr-api-1.4.0+a1b2c3d) : à partir d'un artefact en production, on retrouve exactement le code source qui l'a produit.\n5. Sans publication quand le gate échoue : aucune version défaillante n'atteint les consommateurs.\n6. Vérification : deux builds, l'un avec couverture 72 % et duplication 7 % (deux échecs, refusé), l'autre conforme (publié).\n```python\ndef evalue(mesures, regles):\n    echecs = 0\n    for metrique, op, seuil in regles:\n        valeur = mesures[metrique]\n        ok = valeur >= seuil if op == '>=' else valeur <= seuil\n        echecs += not ok\n        print(f\"{metrique}: {valeur} {op if ok else '<' if op == '>=' else '>'} {seuil} -> {'OK' if ok else 'ÉCHEC'}\")\n    return echecs\n\nartefact = f\"dlr-api-{version}+{commit[:7]}\"\n```"
+    },
+    {
+      "title": "Concevoir de bons gates, et ce qu'ils ne disent pas",
+      "content": "- Mesurables et automatisés : pas de « code propre » subjectif ; des métriques outillées (JaCoCo, Coverage.py, SonarQube, Trivy, OWASP Dependency-Check).\n- Appliqués aux changements : « le nouveau code doit être couvert à 80 % » est plus tenable que « tout le code » sur un héritage ancien.\n- Seuils réalistes : un seuil de 100 % pousse à des tests sans assertions pour gagner les points. La couverture est un indice, pas la qualité (les assertions comptent).\n- Graduer : bloquer sur le critique (vulnérabilité critique, test en échec), avertir sur le reste.\n- Exceptions contrôlées et tracées : une dérogation a un responsable, une date d'expiration, une justification.\n- Traçabilité : version sémantique + commit dans chaque artefact, étiquette Git, SBOM (liste des composants), signature de l'artefact et attestation de provenance (SLSA). Un incident se traite en retrouvant vite quel code tourne.\n- Publier un artefact immuable : une version publiée ne se réécrit jamais.\n- Un gate se règle comme un code : revue, versionné, testé.\n- Garde la rapidité : un gate de 40 minutes sera contourné.\n- Combine avec l'observabilité après déploiement : les gates ne remplacent pas la surveillance en production."
+    },
+    {
+      "title": "Erreurs fréquentes à reconnaître",
+      "content": "1. Un gate qui avertit sans bloquer.\n2. Un seuil de couverture atteint avec des tests sans assertion.\n3. Un artefact nommé « latest » ou « release » sans version ni commit.\n4. Écraser une version déjà publiée.\n5. Des dérogations permanentes sans responsable ni expiration.\n6. Un message d'échec qui ne donne ni la valeur mesurée ni le seuil.\n\nRetrouve ces erreurs de mémoire avant l'exercice, puis vérifie-toi avec le quiz : c'est la récupération, pas la relecture, qui fixe la notion."
     }
   ],
   "keyConcepts": [
@@ -39,8 +48,8 @@
       "professionalExample": "Une équipe fusionnait des pull requests dont la couverture de tests baissait progressivement, sans que personne ne s'en aperçoive avant un incident en production causé par du code non testé. Elle ajoute un quality gate qui échoue le pipeline si la couverture descend sous 80 % ou si l'analyse statique détecte une vulnérabilité critique, et publie le rapport de couverture ainsi que le binaire buildé comme artefacts du run. Chaque artefact est nommé avec le hash du commit source, ce qui permet de retrouver exactement quel code a produit quel binaire déployé en production, plusieurs semaines après coup.",
       "codeExample": "- name: Run tests with coverage\n  run: pytest --cov=app --cov-report=xml --cov-fail-under=80\n\n- name: Quality gate (coverage + SAST)\n  run: |\n    coverage report --fail-under=80\n    bandit -r app -ll\n\n- name: Build artifact\n  run: docker build -t myapp:${{ github.sha }} .\n\n- name: Upload coverage report\n  uses: actions/upload-artifact@v4\n  with:\n    name: coverage-${{ github.sha }}\n    path: coverage.xml\n    retention-days: 30",
       "commonMistake": "Appliquer la technique sans mesurer son effet ni documenter sa frontière.",
-      "masteryQuestion": "Quelle contrainte de quality gates, artefacts et traçabilité doit rester vraie lorsque le système évolue ?",
-      "masteryProof": "Exécuter la preuve, expliquer son invariant et proposer un cas d’échec."
+      "masteryQuestion": "Pourquoi inclure le commit dans le nom de l'artefact, et pourquoi un seuil de couverture à 100 % peut-il être contre-productif ?",
+      "masteryProof": "Évaluer quatre règles de qualité, afficher la valeur et le seuil de chacune, refuser la publication en cas d'échec et nommer l'artefact avec version et commit."
     }
   ],
   "exercises": [
@@ -56,32 +65,80 @@
     {
       "code": "DEVOPS-05-Q1",
       "type": "SINGLE_CHOICE",
-      "prompt": "Quelle preuve est la plus utile en revue ?",
+      "prompt": "Couverture mesurée 72 %, seuil 80 %. Quel est le verdict de cette règle ?",
       "choices": [
-        "Une exécution déterministe avec invariant explicite",
-        "Une sortie aléatoire",
-        "Une capture sans code"
+        "OK",
+        "ÉCHEC : 72 est inférieur à 80",
+        "Avertissement",
+        "Non évaluée"
       ],
-      "correctChoice": 0,
-      "expectedKeywords": []
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "La règle coverage >= 80 n'est pas satisfaite. Un bon message indique la valeur et le seuil : « coverage: 72 < 80 -> ÉCHEC »."
     },
     {
       "code": "DEVOPS-05-Q2",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Prédis le nom de l'artefact : version 1.4.0, commit a1b2c3d4e5f6.",
+      "choices": [
+        "dlr-api-1.4.0",
+        "dlr-api-1.4.0+a1b2c3d (7 premiers caractères du commit)",
+        "dlr-api-latest",
+        "dlr-api-a1b2c3d4e5f6-1.4.0"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Le nom lie la version lisible par l'humain au commit exact. À partir d'un artefact en production, on retrouve le code source qui l'a produit."
+    },
+    {
+      "code": "DEVOPS-05-Q3",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Trouve le défaut :\n```yaml\n- run: ./quality-gate.sh || true\n- run: ./publish.sh\n```\n",
+      "choices": [
+        "publish.sh est trop long",
+        "|| true ignore l'échec du gate : l'artefact est publié même si les règles de qualité échouent",
+        "Les scripts doivent être en Python",
+        "Il manque un cache"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Un gate qui ne peut pas bloquer ne sert à rien. La publication doit dépendre du succès du gate (échec du job, needs: gate)."
+    },
+    {
+      "code": "DEVOPS-05-Q4",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Pourquoi un seuil de couverture irréaliste (100 %) peut-il nuire ?",
+      "choices": [
+        "Il ralentit les tests",
+        "Il pousse à écrire des tests sans assertions pour gagner des points, ce qui donne une fausse confiance",
+        "Il bloque les builds uniquement la nuit",
+        "Il double la taille du code"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "La couverture mesure les lignes exécutées, pas les lignes vérifiées. Un seuil excessif encourage à satisfaire la métrique plutôt qu'à protéger le comportement."
+    },
+    {
+      "code": "DEVOPS-05-Q5",
       "type": "FREE_TEXT",
-      "prompt": "Explique une décision liée à quality gates, artefacts et traçabilité.",
+      "prompt": "Sans relire le cours, explique avec tes mots ce qu'apporte la traçabilité d'un artefact lors d'un incident.",
       "choices": [],
       "correctChoice": null,
       "expectedKeywords": [
-        "contrat",
-        "preuve",
-        "test"
-      ]
+        "version",
+        "commit",
+        "retrouve",
+        "code source",
+        "incident"
+      ],
+      "modelAnswer": "Si l'artefact en production porte sa version et le commit qui l'a produit, on retrouve immédiatement le code source exact qui tourne, ce qui permet de reproduire le problème, d'identifier la modification fautive, de décider d'un retour arrière vers une version précise et de savoir quelles vulnérabilités ou dépendances sont concernées. Sans cette trace, on diagnostique à l'aveugle.",
+      "explanation": "Une bonne réponse relie version et commit à la capacité de retrouver le code exact, reproduire, corriger ou revenir en arrière."
     }
   ],
   "checklist": [
-    "Je peux expliquer le concept sans réciter une définition",
-    "Je sais exécuter et modifier la preuve",
-    "Je peux nommer un risque et son contrôle",
-    "Je relie cette étape à la suivante"
+    "Mes quality gates sont automatiques, mesurables et bloquants",
+    "Mes messages d'échec donnent la valeur et le seuil",
+    "Mes artefacts portent version et commit et sont immuables",
+    "Je sais que la couverture n'est pas la qualité"
   ]
 }

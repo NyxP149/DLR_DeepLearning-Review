@@ -11,25 +11,30 @@
     "ARCHITECTURE-16"
   ],
   "objectives": [
-    "Modéliser publication, consommation, reprise et idempotence",
-    "Justifier les compromis et nommer un risque opérationnel",
-    "Produire une preuve reproductible avant d’élargir la solution"
+    "Expliquer la livraison « au moins une fois » et pourquoi un consommateur doit être idempotent.",
+    "Écrire un consommateur qui ignore les doublons, réessaie un nombre borné de fois et envoie les échecs définitifs dans une file d'échecs (DLQ).",
+    "Préserver l'ordre par clé et comprendre ce que la file ne garantit pas.",
+    "Choisir entre appel synchrone, file de messages et événements."
   ],
   "sections": [
     {
-      "title": "Concept clé et décision",
+      "title": "Découpler dans le temps",
+      "content": "Une file de messages (RabbitMQ, Kafka, SQS) permet à un producteur de déposer un message sans attendre le consommateur : les deux sont découplés dans le temps, absorbent les pics et peuvent tomber indépendamment. Contrepartie : la livraison est « au moins une fois » dans la plupart des systèmes. Un message peut arriver deux fois (le consommateur plante après traitement avant d'accuser réception), dans le désordre entre partitions, ou tard.\n\nConséquence : le consommateur doit être idempotent (traiter deux fois = traiter une fois), tolérer le désordre quand c'est possible et gérer les échecs sans bloquer la file."
+    },
+    {
+      "title": "Exemple résolu : dédoublonner, réessayer, isoler",
       "conceptCodes": [
         "ASYNC-MESSAGING"
       ],
-      "content": "Découpler avec événements et files de messages relie les besoins, le logiciel, les données et l’exploitation. Commence par les contraintes observables, trace les responsabilités, puis choisis la solution la plus simple qui respecte les invariants."
+      "content": "Problème : traiter une suite d'événements avec doublons et un message poison qui échoue toujours.\n\nRaisonnement, étape par étape :\n1. Identité : chaque événement porte un identifiant unique (order:42). Le consommateur garde l'ensemble des identifiants traités.\n2. Doublon : si l'identifiant est déjà traité, on accuse réception sans retraiter (« IGNORÉ »). Dans un vrai système, l'ensemble des identifiants et l'effet du traitement s'enregistrent dans la même transaction (sinon un plantage entre les deux recrée le problème).\n3. Échec transitoire : on réessaie un nombre borné de fois (2 réessais), idéalement avec un délai croissant.\n4. Message poison : après les réessais, on l'envoie dans une file d'échecs (DLQ) avec la raison, pour analyse, afin qu'il ne bloque pas les messages suivants.\n5. Ordre : l'ordre n'est garanti qu'au sein d'une partition ou d'une clé ; deux messages de clés différentes peuvent se croiser.\n6. Vérification : sur la séquence donnée, chaque événement est TRAITÉ, IGNORÉ (doublon) ou envoyé en DLQ.\n```python\ndef handle(event):\n    if event[\"id\"] in processed:\n        return \"IGNORÉ\"\n    for attempt in range(1, MAX_ATTEMPTS + 1):\n        try:\n            process(event)\n            processed.add(event[\"id\"])\n            return \"TRAITÉ\"\n        except TransientError:\n            continue\n    dlq.append(event)\n    return \"DLQ\"\n```"
     },
     {
-      "title": "Construction verticale",
-      "content": "La preuve ARCHITECTURE-17 modélise une décision réelle sous forme déterministe. Elle ne remplace pas un déploiement complet : elle rend l’hypothèse testable avant l’intégration Spring Boot, Angular, PostgreSQL et Docker."
+      "title": "Événements, commandes et choix d'architecture",
+      "content": "- Commande : une demande adressée à un destinataire (« envoie cet e-mail ») ; un seul consommateur. Événement : un fait passé publié sans connaître les abonnés (« commande confirmée ») ; plusieurs consommateurs.\n- Synchrone (HTTP) : simple, retour immédiat, mais couplage temporel (si l'appelé est en panne, l'appelant échoue) et cascade de latences. Asynchrone (file) : découplage, absorption des pics, au prix de la complexité (idempotence, ordre, suivi).\n- Pattern « outbox » : pour publier un événement de façon fiable avec une écriture en base, on écrit l'événement dans une table de la même transaction, puis un processus le publie ; évite de perdre l'événement ou de publier sans écrire.\n- Ordre : choisir une clé de partition (identifiant de commande) pour que les événements d'une même entité restent ordonnés.\n- Contrats d'événements : schéma versionné, compatible ascendant ; ne pas casser les consommateurs.\n- Observabilité : profondeur de file, âge du plus vieux message, taux d'échec, contenu de la DLQ ; alerte sur la croissance.\n- Retour à la normale : rejouer la DLQ après correction (en restant idempotent).\n- Pièges : traitement qui dépend de l'heure d'arrivée, effets de bord non idempotents (envoi d'e-mail, paiement), messages trop gros, absence de limite de réessais qui bloque la file."
     },
     {
-      "title": "Revue professionnelle",
-      "content": "Documente le contexte, la décision, une option rejetée, les conséquences, le signal à surveiller et la condition qui imposerait de revoir le choix."
+      "title": "Erreurs fréquentes à reconnaître",
+      "content": "1. Supposer une livraison exactement une fois.\n2. Un consommateur non idempotent (double e-mail, double débit).\n3. Des réessais infinis qui bloquent la file sur un message poison.\n4. Enregistrer l'identifiant traité et l'effet dans deux opérations non atomiques.\n5. Compter sur l'ordre global entre clés ou partitions différentes.\n6. Ne pas surveiller la file d'échecs.\n\nRetrouve ces erreurs de mémoire avant l'exercice, puis vérifie-toi avec le quiz : c'est la récupération, pas la relecture, qui fixe la notion."
     }
   ],
   "keyConcepts": [
@@ -43,49 +48,97 @@
       "professionalExample": "La file de messages livre un événement « commande payée » deux fois à cause d’une reprise après une coupure réseau côté broker, une garantie normale de livraison at-least-once. Le service de facturation, écrit sans vérification d’idempotence, traite chaque événement comme une nouvelle facture et débite le client une seconde fois. Ajouter une déduplication par identifiant d’événement déjà traité rend le consommateur idempotent et absorbe les livraisons dupliquées sans impact métier.",
       "codeExample": "processed_event_ids = set()\n\ndef on_message(event):\n    if event.id in processed_event_ids:\n        return  # doublon ignoré, livraison at-least-once absorbée\n    processed_event_ids.add(event.id)\n    billing_service.charge(event.order_id)",
       "commonMistake": "Choisir un outil avant d’identifier le besoin, la charge, le risque et le propriétaire de la donnée.",
-      "masteryQuestion": "Quel compromis, quel signal et quelle condition de réévaluation associes-tu à « Découpler avec événements et files de messages » ?",
-      "masteryProof": "Exécuter la preuve, modifier une contrainte, expliquer le résultat et dessiner la place du composant dans la stack complète."
+      "masteryQuestion": "Pourquoi un consommateur doit-il être idempotent, et à quoi sert une file d'échecs (DLQ) ?",
+      "masteryProof": "Traiter des événements avec doublons en ignorant les identifiants déjà vus, réessayer de façon bornée et isoler un message poison."
     }
   ],
   "exercises": [
     {
       "code": "ARCHITECTURE-17-E1",
-      "title": "Modéliser publication, consommation, reprise et idempotence",
-      "statement": "Complète la preuve pour produire exactement la sortie attendue, puis explique la décision, une alternative et le signal de production qui validerait ton choix.",
-      "starterCode": "events = [\"order:42\", \"order:42\", \"order:43\"]\nprocessed = set()\n# TODO : pour chaque événement, affiche \"<événement> IGNORÉ\" s'il a déjà été traité (idempotence) ;\n#        sinon mémorise-le et affiche \"<événement> TRAITÉ\"\n",
-      "expectedOutput": "order:42 TRAITÉ\norder:42 IGNORÉ\norder:43 TRAITÉ"
+      "title": "Un consommateur idempotent avec réessais et file d'échecs",
+      "statement": "Complète : le dédoublonnage par identifiant, le réessai borné (3 tentatives) pour les erreurs transitoires et l'envoi en file d'échecs d'un message qui échoue toujours. Affiche exactement :\norder:42: TRAITÉ après 1 tentative(s)\norder:42: IGNORÉ (doublon)\norder:43: TRAITÉ après 3 tentative(s)\norder:44: DLQ après 3 tentatives\norder:45: TRAITÉ après 1 tentative(s)\nTraités: 3\nFile d'échecs: order:44",
+      "starterCode": "MAX_ATTEMPTS = 3\nEVENTS = [\n    {\"id\": \"order:42\", \"kind\": \"ok\"},\n    {\"id\": \"order:42\", \"kind\": \"ok\"},\n    {\"id\": \"order:43\", \"kind\": \"flaky\"},   # échoue deux fois puis réussit\n    {\"id\": \"order:44\", \"kind\": \"poison\"},  # échoue toujours\n    {\"id\": \"order:45\", \"kind\": \"ok\"},\n]\nprocessed: set[str] = set()\ndlq: list[dict] = []\nfailures_seen: dict[str, int] = {}\n\n\ndef process(event: dict) -> None:\n    kind = event[\"kind\"]\n    failures_seen[event[\"id\"]] = failures_seen.get(event[\"id\"], 0) + 1\n    if kind == \"poison\" or (kind == \"flaky\" and failures_seen[event[\"id\"]] <= 2):\n        raise RuntimeError(\"erreur transitoire\")\n\n\ndef handle(event: dict) -> str:\n    # TODO 1 : si l'identifiant est déjà traité, retourne \"IGNORÉ (doublon)\"\n    # TODO 2 : essaie process jusqu'à MAX_ATTEMPTS fois ; au premier succès mémorise l'identifiant et retourne\n    #          \"TRAITÉ après <n> tentative(s)\"\n    # TODO 3 : si toutes les tentatives échouent, ajoute l'événement à dlq et retourne \"DLQ après <MAX_ATTEMPTS> tentatives\"\n    return \"\"\n\n\nfor event in EVENTS:\n    # TODO 4 : affiche \"<id>: <résultat>\"\n    pass\n# TODO 5 : affiche \"Traités: <nombre d'identifiants traités>\" puis \"File d'échecs: <identifiants séparés par ', '>\"\n",
+      "expectedOutput": "order:42: TRAITÉ après 1 tentative(s)\norder:42: IGNORÉ (doublon)\norder:43: TRAITÉ après 3 tentative(s)\norder:44: DLQ après 3 tentatives\norder:45: TRAITÉ après 1 tentative(s)\nTraités: 3\nFile d'échecs: order:44"
     }
   ],
   "quiz": [
     {
       "code": "ARCHITECTURE-17-Q1",
       "type": "SINGLE_CHOICE",
-      "prompt": "Quelle démarche produit la décision la plus robuste ?",
+      "prompt": "Pourquoi un consommateur de file doit-il être idempotent ?",
       "choices": [
-        "Relier contraintes, responsabilités, preuve et observabilité",
-        "Choisir la technologie la plus populaire",
-        "Ajouter des services avant de mesurer"
+        "Pour aller plus vite",
+        "Parce que la livraison est au moins une fois : un message peut arriver deux fois, et le traiter deux fois ne doit pas produire deux effets",
+        "Parce que la file l'impose",
+        "Pour économiser la mémoire"
       ],
-      "correctChoice": 0,
-      "expectedKeywords": []
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Si le consommateur plante après avoir traité mais avant d'accuser réception, le message est livré de nouveau. Sans idempotence, un paiement serait débité deux fois."
     },
     {
       "code": "ARCHITECTURE-17-Q2",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Prédis le résultat du second événement order:42 (déjà traité) :",
+      "choices": [
+        "TRAITÉ",
+        "IGNORÉ (doublon)",
+        "DLQ",
+        "Erreur"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "L'identifiant figure dans l'ensemble des événements traités : on accuse réception sans refaire le travail."
+    },
+    {
+      "code": "ARCHITECTURE-17-Q3",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Trouve le défaut :\n```python\nwhile True:\n    try:\n        process(event); break\n    except Exception:\n        continue\n```\n",
+      "choices": [
+        "break est interdit",
+        "Les réessais sont infinis : un message poison bloque la file pour toujours ; il faut un nombre borné et une file d'échecs",
+        "process est trop lent",
+        "Il faut utiliser un set"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Borner les essais et isoler le message défaillant protège les autres messages. La DLQ permet d'analyser et de rejouer après correction."
+    },
+    {
+      "code": "ARCHITECTURE-17-Q4",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Pourquoi utilise-t-on le pattern outbox ?",
+      "choices": [
+        "Pour accélérer l'écriture",
+        "Pour publier un événement de façon fiable avec la même transaction que l'écriture en base : pas d'événement perdu ni d'événement sans écriture",
+        "Pour chiffrer les messages",
+        "Pour trier les messages"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Écrire en base puis publier sur une file sont deux opérations non atomiques. L'outbox enregistre l'événement dans la même transaction, puis un processus le publie."
+    },
+    {
+      "code": "ARCHITECTURE-17-Q5",
       "type": "FREE_TEXT",
-      "prompt": "Nomme un compromis et le signal qui permettrait de le réévaluer.",
+      "prompt": "Sans relire le cours, explique avec tes mots ce qu'une file de messages garantit et ne garantit pas sur la livraison et l'ordre.",
       "choices": [],
       "correctChoice": null,
       "expectedKeywords": [
-        "compromis",
-        "mesure",
-        "risque"
-      ]
+        "au moins une fois",
+        "doublon",
+        "ordre",
+        "partition",
+        "idempot"
+      ],
+      "modelAnswer": "La plupart des files garantissent qu'un message est livré au moins une fois, donc des doublons sont possibles, mais pas exactement une fois. L'ordre n'est garanti qu'au sein d'une partition ou d'une clé, pas globalement. Le consommateur doit donc être idempotent, supporter le désordre entre entités et gérer les échecs avec réessais bornés et file d'échecs.",
+      "explanation": "Une bonne réponse cite livraison au moins une fois (doublons), ordre limité à une partition ou une clé, et les conséquences : idempotence, réessais bornés, DLQ."
     }
   ],
   "checklist": [
-    "Je peux dessiner la circulation de la donnée",
-    "Je sais nommer les responsabilités de chaque couche",
-    "Je justifie une alternative rejetée",
-    "Je définis une mesure et une condition de réévaluation"
+    "Mes consommateurs sont idempotents",
+    "Mes réessais sont bornés et suivis d'une file d'échecs",
+    "Je ne compte pas sur l'ordre entre clés ou partitions",
+    "Je surveille la profondeur de file et le contenu de la DLQ"
   ]
 }

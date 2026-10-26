@@ -11,21 +11,30 @@
     "SQL-06"
   ],
   "objectives": [
-    "Expliquer transactions, isolation et concurrence",
-    "Construire une preuve exécutable et déterministe",
-    "Relier le concept à une décision professionnelle"
+    "Écrire une transaction (BEGIN, COMMIT, ROLLBACK) qui protège un invariant.",
+    "Expliquer l'atomicité et l'isolation (ce que voit un lecteur concurrent).",
+    "Citer les anomalies de concurrence (lecture sale, non répétable, fantôme, mise à jour perdue) et les niveaux d'isolation.",
+    "Choisir verrouillage pessimiste, optimiste ou contrainte atomique pour éviter une mise à jour perdue."
   ],
   "sections": [
     {
-      "title": "Concept et usage professionnel",
-      "content": "Transactions, isolation et concurrence répond à un besoin concret de maintenabilité, de sûreté ou de performance. Le laboratoire demande de rendre la décision observable et vérifiable.",
-      "conceptCodes": [
-        "SQL-TRANSACTIONS"
-      ]
+      "title": "ACID : les garanties d'une transaction",
+      "content": "Une transaction regroupe des instructions qui réussissent ensemble ou pas du tout :\n- Atomicité : tout ou rien (ROLLBACK annule tout).\n- Cohérence : les contraintes restent vraies à la fin.\n- Isolation : les transactions concurrentes ne se voient pas à moitié faites.\n- Durabilité : un COMMIT survit à une panne.\n```sql\nBEGIN;\nUPDATE account SET balance = balance + 30 WHERE id = 'B';\nUPDATE account SET balance = balance - 30 WHERE id = 'A';   -- viole CHECK (balance >= 0) ? -> ROLLBACK\nCOMMIT;\n```\nSi une instruction viole une contrainte (solde négatif), la transaction doit être annulée dans son ensemble : on ne se retrouve pas avec B crédité et A non débité."
     },
     {
-      "title": "Mise en pratique",
-      "content": "La requête est exécutée sur SQLite en mémoire pour rester locale et reproductible ; les différences PostgreSQL et l'analyse EXPLAIN sont signalées dans le cours."
+      "title": "Exemple résolu : un virement et deux connexions",
+      "conceptCodes": [
+        "SQL-TRANSACTIONS"
+      ],
+      "content": "Problème : réaliser un virement tout ou rien, puis observer ce que voit un lecteur pendant qu'une transaction n'est pas validée.\n\nRaisonnement, étape par étape :\n1. Virement de 30 de A (100) vers B (0) : BEGIN, crédit de B, débit de A, COMMIT. Résultat A=70, B=30.\n2. Virement de 500 : le débit ferait descendre A sous zéro, la contrainte CHECK (balance >= 0) échoue. On annule (ROLLBACK) : A=70, B=30 inchangés.\n3. Isolation : une première connexion (écrivain) ouvre une transaction et débite A de 10 sans valider. Elle voit A=60.\n4. Une seconde connexion (lecteur) interroge A : elle voit encore 70, car la modification n'est pas validée (pas de lecture sale).\n5. L'écrivain annule : A redevient 70 pour tout le monde.\n6. Vérification : l'état final est identique à celui d'avant la transaction annulée.\n```python\necrivain.execute(\"BEGIN\")\necrivain.execute(\"UPDATE account SET balance = balance - 10 WHERE id = 'A'\")\n# ecrivain voit 60 ; lecteur.execute(\"SELECT balance ...\") voit 70\necrivain.rollback()\n```\nLa réalisation de l'isolation dépend du moteur : SQLite en mode WAL offre des lectures qui ne bloquent pas l'écrivain ; PostgreSQL utilise le multiversionnage (MVCC) : chaque transaction voit un instantané cohérent."
+    },
+    {
+      "title": "Anomalies de concurrence et remèdes",
+      "content": "Anomalies (par gravité croissante du niveau d'isolation nécessaire) :\n- Lecture sale : lire une donnée non validée par une autre transaction. Interdite par READ COMMITTED et au-dessus.\n- Lecture non répétable : relire la même ligne dans la même transaction et obtenir une valeur différente (une autre transaction l'a validée entre-temps). Évitée par REPEATABLE READ.\n- Lecture fantôme : relire une plage et voir apparaître de nouvelles lignes. Évitée par SERIALIZABLE (selon moteur).\n- Mise à jour perdue : deux transactions lisent 100, chacune écrit 100 - 10 : le résultat est 90 au lieu de 80.\n\nRemèdes à la mise à jour perdue :\n- Mise à jour atomique : UPDATE account SET balance = balance - 10 WHERE id = 'A' AND balance >= 10 (vérifier le nombre de lignes modifiées) : pas de lecture préalable.\n- Verrouillage pessimiste : SELECT ... FOR UPDATE verrouille la ligne jusqu'à la fin de la transaction (attention aux interblocages : accède aux lignes dans le même ordre).\n- Verrouillage optimiste : une colonne version ; UPDATE ... WHERE id = ? AND version = ?, et si 0 ligne est modifiée, on réessaie.\n- Transactions courtes : ne garde jamais une transaction ouverte pendant un appel réseau ou l'attente d'un utilisateur. Gère les erreurs de sérialisation en rejouant la transaction."
+    },
+    {
+      "title": "Erreurs fréquentes à reconnaître",
+      "content": "1. Plusieurs écritures dépendantes sans transaction.\n2. Oublier COMMIT ou ROLLBACK : la transaction reste ouverte et retient des verrous.\n3. Lire un solde, calculer en code, puis réécrire : mise à jour perdue.\n4. Une transaction qui englobe un appel HTTP.\n5. Deux transactions qui verrouillent les mêmes lignes dans des ordres différents (interblocage).\n6. Supposer un niveau d'isolation sans le vérifier dans la documentation du moteur.\n\nRetrouve ces erreurs de mémoire avant l'exercice, puis vérifie-toi avec le quiz : c'est la récupération, pas la relecture, qui fixe la notion."
     }
   ],
   "keyConcepts": [
@@ -39,8 +48,8 @@
       "professionalExample": "Sur un site de vente en ligne, deux clients achètent simultanément le dernier exemplaire d'un produit en stock. Si chaque requête lit stock=1 puis décrémente sans verrouillage, les deux transactions valident et le stock passe à -1 : c'est une survente, un incident classique de concurrence. La correction consiste à lire la ligne avec SELECT ... FOR UPDATE à l'intérieur d'une transaction, ce qui bloque la seconde transaction jusqu'à ce que la première ait validé ou annulé, garantissant qu'une seule des deux ventes aboutisse.",
       "codeExample": "-- Sans protection : condition de course possible\nSELECT stock FROM products WHERE id = 17; -- lit 1\nUPDATE products SET stock = stock - 1 WHERE id = 17;\n\n-- Avec transaction et verrou de ligne\nBEGIN;\nSELECT stock FROM products WHERE id = 17 FOR UPDATE;\n-- une deuxième transaction concurrente attend ici\nUPDATE products SET stock = stock - 1 WHERE id = 17 AND stock > 0;\nCOMMIT;\n-- si stock était déjà à 0, l'UPDATE ne touche aucune ligne :\n-- l'application vérifie le rowcount et refuse la vente",
       "commonMistake": "Appliquer la technique sans mesurer son effet ni documenter sa frontière.",
-      "masteryQuestion": "Quelle contrainte de transactions, isolation et concurrence doit rester vraie lorsque le système évolue ?",
-      "masteryProof": "Exécuter la preuve, expliquer son invariant et proposer un cas d’échec."
+      "masteryQuestion": "Pourquoi le virement doit-il être atomique, et comment une mise à jour conditionnelle évite-t-elle une mise à jour perdue ?",
+      "masteryProof": "Écrire un virement transactionnel avec rollback sur solde négatif et observer ce que voient écrivain et lecteur avant l'annulation."
     }
   ],
   "exercises": [
@@ -56,32 +65,80 @@
     {
       "code": "SQL-07-Q1",
       "type": "SINGLE_CHOICE",
-      "prompt": "Quelle preuve est la plus utile en revue ?",
+      "prompt": "Une transaction débite A puis échoue avant de créditer B. Que doit garantir la base ?",
       "choices": [
-        "Une exécution déterministe avec invariant explicite",
-        "Une sortie aléatoire",
-        "Une capture sans code"
+        "Le débit reste appliqué",
+        "L'atomicité : le débit est annulé, comme si la transaction n'avait jamais eu lieu",
+        "Le crédit est fait automatiquement",
+        "La base se ferme"
       ],
-      "correctChoice": 0,
-      "expectedKeywords": []
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Atomicité : tout ou rien. Après ROLLBACK, l'état est identique à celui d'avant le BEGIN."
     },
     {
       "code": "SQL-07-Q2",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Prédis ce que voit le lecteur : l'écrivain a débité A de 70 à 60 sans COMMIT. Isolation READ COMMITTED.",
+      "choices": [
+        "60",
+        "70 : la modification n'est pas validée",
+        "NULL",
+        "Une erreur"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "À ce niveau, un lecteur ne voit que les données validées. L'écrivain voit sa propre modification (60), le lecteur voit encore 70. Après annulation, tout le monde voit 70."
+    },
+    {
+      "code": "SQL-07-Q3",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Trouve le défaut :\n```python\nsolde = db.execute(\"SELECT balance FROM account WHERE id='A'\").fetchone()[0]\ndb.execute(\"UPDATE account SET balance=? WHERE id='A'\", (solde - 10,))\n```\nexécuté par deux processus en même temps.",
+      "choices": [
+        "fetchone est lent",
+        "Mise à jour perdue : les deux lisent 100 et écrivent 90 ; il faut UPDATE ... SET balance = balance - 10 avec condition, ou verrouiller la ligne",
+        "Il manque un index",
+        "execute ne supporte pas les paramètres"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "La lecture et l'écriture sont séparées : un autre processus peut s'intercaler. Une mise à jour atomique côté base (balance = balance - 10 WHERE balance >= 10) élimine le problème."
+    },
+    {
+      "code": "SQL-07-Q4",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Pourquoi éviter un appel HTTP à l'intérieur d'une transaction ?",
+      "choices": [
+        "HTTP est interdit en SQL",
+        "La transaction garde des verrous et une connexion pendant l'attente réseau, et si l'appel réussit puis que la transaction est annulée, l'effet externe n'est pas défait",
+        "Cela accélère la transaction",
+        "La base ne supporte pas le réseau"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Une transaction doit être courte. Un effet externe (paiement, e-mail) n'est pas annulé par un ROLLBACK : il faut le placer après le commit, avec une clé d'idempotence."
+    },
+    {
+      "code": "SQL-07-Q5",
       "type": "FREE_TEXT",
-      "prompt": "Explique une décision liée à transactions, isolation et concurrence.",
+      "prompt": "Sans relire le cours, explique avec tes mots ce qu'est une mise à jour perdue et deux façons de l'éviter.",
       "choices": [],
       "correctChoice": null,
       "expectedKeywords": [
-        "contrat",
-        "preuve",
-        "test"
-      ]
+        "lecture",
+        "ecriture",
+        "atomique",
+        "verrou",
+        "version"
+      ],
+      "modelAnswer": "Une mise à jour perdue survient quand deux transactions lisent la même valeur (100) puis écrivent chacune leur résultat calculé (90) : la seconde écrase la première et un retrait disparaît. On l'évite avec une mise à jour atomique côté base (balance = balance - 10 avec condition), avec un verrou pessimiste (SELECT ... FOR UPDATE) ou avec un verrouillage optimiste par colonne de version.",
+      "explanation": "Une bonne réponse décrit l'entrecroisement lecture/écriture et nomme au moins deux remèdes."
     }
   ],
   "checklist": [
-    "Je peux expliquer le concept sans réciter une définition",
-    "Je sais exécuter et modifier la preuve",
-    "Je peux nommer un risque et son contrôle",
-    "Je relie cette étape à la suivante"
+    "J'encadre les écritures dépendantes dans une transaction",
+    "Je fais des mises à jour atomiques côté base plutôt que lire-calculer-écrire",
+    "Je garde mes transactions courtes, sans appel externe",
+    "Je connais les anomalies d'isolation et leurs remèdes"
   ]
 }

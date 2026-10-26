@@ -1,9 +1,144 @@
 {
-  "code":"JAVA-20","language":"JAVA","number":20,"slug":"spring-boot-injection-architecture","title":"Spring Boot, injection de dépendances et architecture en couches","difficulty":"PROFESSIONNEL","threshold":75,"activityType":"LAB","prerequisites":["JAVA-19"],
-  "objectives":["Comprendre le conteneur Spring","Pratiquer l'injection par constructeur","Organiser les dépendances en couches"],
-  "sections":[{"title":"Composition applicative","content":"Spring Boot configure l'application et son conteneur. L'injection par constructeur rend les dépendances obligatoires, visibles et testables.","conceptCodes":["JAVA-DEPENDENCY-INJECTION"]},{"title":"Dépendances dirigées","content":"Le domaine ne dépend pas du framework. La couche application orchestre les cas d'usage et les adaptateurs réalisent HTTP, SQL ou messagerie."}],
-  "keyConcepts":[{"code":"JAVA-DEPENDENCY-INJECTION","name":"Injection de dépendances","definition":"Un composant reçoit ses collaborateurs au lieu de les construire lui-même.","whyExists":"Elle sépare la logique métier de la composition technique.","whyImportant":"Les tests peuvent fournir un double et la production un adaptateur réel.","minimalExample":"OrderService(OrderRepository repository) { ... }","professionalExample":"Un OrderService instanciait directement new JdbcOrderRepository() dans son constructeur : pour écrire un test unitaire de la logique de validation des commandes, il fallait démarrer une vraie base PostgreSQL, ce qui rendait la suite de tests lente et fragile en intégration continue. En injectant OrderRepository comme interface via le constructeur, Spring fournit l'implémentation JDBC réelle en production tandis que les tests passent un faux repository en mémoire, sans démarrer le conteneur Spring ni aucune base de données.","codeExample":"@Service\nclass OrderService {\n    private final OrderRepository repository;\n\n    OrderService(OrderRepository repository) { // dépendance explicite, injectée\n        this.repository = repository;\n    }\n\n    Order place(Order order) {\n        return repository.save(order);\n    }\n}\n\n// Test unitaire, sans Spring ni base de données :\nOrderService service = new OrderService(new InMemoryOrderRepository());","commonMistake":"Masquer les dépendances dans des champs statiques ou un service locator.","masteryQuestion":"Pourquoi l'injection par constructeur améliore-t-elle le test ?","masteryProof":"Instancier un service avec un faux port sans démarrer Spring."}],
-  "exercises":[{"code":"JAVA-20-E1","title":"Injecter un validateur","statement":"Injecte le contrat et affiche exactement : Service: commande validée","starterCode":"interface Validator { boolean valid(String value); }\n\nclass OrderService {\n    // TODO 1 : reçois un Validator par le constructeur (injection de dépendance)\n    // TODO 2 : écris create(String order) : retourne \"Service: commande validée\"\n    //          si le validateur accepte la commande, sinon \"refusée\"\n}\n\npublic class Main {\n    public static void main(String[] args) {\n        // TODO 3 : crée un OrderService avec un Validator qui refuse les textes vides\n        //          puis affiche le résultat de create(\"commande\")\n    }\n}\n","expectedOutput":"Service: commande validée"}],
-  "quiz":[{"code":"JAVA-20-Q1","type":"SINGLE_CHOICE","prompt":"Pourquoi préférer le constructeur ?","choices":["Les dépendances sont explicites et obligatoires","Il cache le couplage","Il supprime les interfaces"],"correctChoice":0,"expectedKeywords":[]},{"code":"JAVA-20-Q2","type":"FREE_TEXT","prompt":"Décris la direction des dépendances entre domaine et infrastructure.","choices":[],"correctChoice":null,"expectedKeywords":["domaine","infrastructure","port","dépend"]}],
-  "checklist":["J'injecte par constructeur","Je garde le domaine indépendant","Je distingue composition et logique métier"]
+  "code": "JAVA-20",
+  "language": "JAVA",
+  "number": 20,
+  "slug": "spring-boot-injection-architecture",
+  "title": "Spring Boot, injection de dépendances et architecture en couches",
+  "difficulty": "PROFESSIONNEL",
+  "threshold": 75,
+  "activityType": "LAB",
+  "prerequisites": [
+    "JAVA-19"
+  ],
+  "objectives": [
+    "Expliquer le rôle d'un conteneur d'injection et pourquoi on préfère l'injection par constructeur.",
+    "Organiser contrôleur, service et dépôt en couches dont les dépendances vont dans une seule direction.",
+    "Assembler les composants à un seul endroit (racine de composition) et substituer une dépendance par un faux.",
+    "Repérer une injection par champ, une dépendance circulaire ou un service qui connaît le HTTP."
+  ],
+  "sections": [
+    {
+      "title": "Recevoir ses collaborateurs au lieu de les construire",
+      "content": "Un composant qui fait new de ses collaborateurs les connaît pour toujours : impossible de les remplacer en test, de changer d'implémentation ou de voir ce dont il dépend. L'injection de dépendances inverse le contrôle : le composant déclare ce dont il a besoin, quelqu'un d'autre le lui fournit.\n\nSpring joue ce rôle de conteneur : il crée les objets annotés (@Component, @Service, @Repository, @RestController), résout leurs dépendances par type et les injecte, par défaut en singletons. Sans Spring, le principe reste le même : passer les collaborateurs au constructeur.\n```java\n@Service\nclass OrderService {\n    private final OrderRepository repository;           // dépend d'une abstraction\n    OrderService(OrderRepository repository) {          // injection par constructeur\n        this.repository = repository;\n    }\n}\n```\nL'injection par constructeur est préférée : les dépendances sont obligatoires, visibles, le champ peut être final et on instancie le service dans un test sans conteneur. L'injection par champ (@Autowired sur un attribut) cache les dépendances et empêche de construire l'objet à la main."
+    },
+    {
+      "title": "Exemple résolu : trois couches et une racine de composition",
+      "conceptCodes": [
+        "JAVA-DEPENDENCY-INJECTION"
+      ],
+      "content": "Problème : créer une commande depuis une requête, avec un contrôleur, un service et un dépôt, et pouvoir remplacer le dépôt dans un test.\n\nRaisonnement, étape par étape :\n1. Chaque couche a un rôle : le contrôleur traduit la requête en réponse (statut), le service porte la règle métier, le dépôt sauvegarde.\n2. Les dépendances vont dans un seul sens : contrôleur, service, dépôt. Le service ne connaît ni HTTP ni SQL.\n3. Le service dépend d'une interface OrderRepository, pas d'une classe concrète.\n4. À un seul endroit (le main, ou la configuration Spring), on assemble : new OrderController(new OrderService(new InMemoryRepository())).\n5. Un test assemble le même service avec un faux dépôt.\n```java\ninterface OrderRepository { String save(String customer); }\n\nclass OrderService {\n    private final OrderRepository repository;\n    OrderService(OrderRepository repository) { this.repository = repository; }\n    String create(String customer) {\n        if (customer.isBlank()) throw new IllegalArgumentException(\"client vide\");\n        return repository.save(customer);\n    }\n}\n\nOrderService prod = new OrderService(new InMemoryRepository());\nOrderService test = new OrderService(c -> \"faux-1\");      // faux jetable\n```\nLe sens des flèches est la clé : le domaine ne dépend pas de l'infrastructure, c'est l'infrastructure qui implémente les interfaces du domaine."
+    },
+    {
+      "title": "Ce que Spring ajoute, et ses limites",
+      "content": "Spring Boot ajoute l'autoconfiguration (starters, serveur web embarqué), la configuration externe (application.yml, profils, variables d'environnement) et des annotations transversales (@Transactional, @Valid). Quelques repères :\n- Portée : singleton par défaut, donc un bean ne doit pas contenir d'état modifiable partagé par requête.\n- Profils : @Profile(\"dev\") active un bean selon l'environnement ; les secrets viennent de l'environnement, jamais du dépôt Git.\n- Plusieurs implémentations d'une interface : Spring ne sait pas laquelle choisir, il faut un @Primary ou un @Qualifier.\n- Dépendance circulaire (A a besoin de B qui a besoin de A) : signe d'une mauvaise découpe ; on extrait une troisième classe.\n- Le contrôleur ne contient pas de règle métier : il délègue au service.\n\nLes tests de tranche (@WebMvcTest, @DataJpaTest) ne chargent qu'une partie du contexte, donc rapides ; @SpringBootTest charge tout, plus lent mais plus réaliste."
+    },
+    {
+      "title": "Erreurs fréquentes à reconnaître",
+      "content": "1. @Autowired sur un champ privé : dépendances cachées, objet impossible à construire à la main.\n2. new d'une classe concrète dans un service : la substitution devient impossible.\n3. Un service qui reçoit HttpServletRequest ou renvoie un ResponseEntity : le métier connaît le web.\n4. Un bean singleton avec un champ modifiable (« utilisateur courant ») partagé entre requêtes.\n5. Deux implémentations de la même interface sans qualificateur.\n6. Logique métier dans le contrôleur.\n\nRetrouve ces six erreurs de mémoire avant l'exercice, puis passe au quiz."
+    }
+  ],
+  "keyConcepts": [
+    {
+      "code": "JAVA-DEPENDENCY-INJECTION",
+      "name": "Injection de dépendances",
+      "definition": "Un composant reçoit ses collaborateurs au lieu de les construire lui-même.",
+      "whyExists": "Elle sépare la logique métier de la composition technique.",
+      "whyImportant": "Les tests peuvent fournir un double et la production un adaptateur réel.",
+      "minimalExample": "OrderService(OrderRepository repository) { ... }",
+      "professionalExample": "Un OrderService instanciait directement new JdbcOrderRepository() dans son constructeur : pour écrire un test unitaire de la logique de validation des commandes, il fallait démarrer une vraie base PostgreSQL, ce qui rendait la suite de tests lente et fragile en intégration continue. En injectant OrderRepository comme interface via le constructeur, Spring fournit l'implémentation JDBC réelle en production tandis que les tests passent un faux repository en mémoire, sans démarrer le conteneur Spring ni aucune base de données.",
+      "codeExample": "@Service\nclass OrderService {\n    private final OrderRepository repository;\n\n    OrderService(OrderRepository repository) { // dépendance explicite, injectée\n        this.repository = repository;\n    }\n\n    Order place(Order order) {\n        return repository.save(order);\n    }\n}\n\n// Test unitaire, sans Spring ni base de données :\nOrderService service = new OrderService(new InMemoryOrderRepository());",
+      "commonMistake": "Masquer les dépendances dans des champs statiques ou un service locator.",
+      "masteryQuestion": "Pourquoi l'injection par constructeur est-elle préférée, et dans quel sens vont les dépendances entre couches ?",
+      "masteryProof": "Assembler contrôleur, service et dépôt à la main, puis remplacer le dépôt par un faux sans modifier le service."
+    }
+  ],
+  "exercises": [
+    {
+      "code": "JAVA-20-E1",
+      "title": "Trois couches assemblées à la main",
+      "statement": "Sans Spring, écris les trois couches : OrderRepository (interface) avec une implémentation mémoire qui numérote commande-1, commande-2…, un OrderService qui refuse un client vide, et un OrderController qui renvoie un statut. Assemble-les dans main, puis substitue un faux dépôt. Affiche exactement :\n201 commande-1\n400 client vide\n201 commande-2\nDepot : 2 commandes\nFaux depot : 1 sauvegarde",
+      "starterCode": "import java.util.*;\n\npublic class Main {\n    interface OrderRepository {\n        String save(String customer);   // retourne l'identifiant créé\n        int count();\n    }\n\n    // TODO 1 : classe InMemoryRepository implements OrderRepository — numérote \"commande-1\", \"commande-2\", ... et compte les sauvegardes\n    // TODO 2 : classe OrderService(OrderRepository) — create(String customer) lève IllegalArgumentException(\"client vide\") si le texte est vide\n    //          (isBlank), sinon retourne repository.save(customer)\n    // TODO 3 : classe OrderController(OrderService) — String post(String customer) retourne \"201 \" + id,\n    //          ou \"400 \" + message de l'exception ; le contrôleur ne contient aucune règle métier\n\n    public static void main(String[] args) {\n        // TODO 4 : assemble repository, service et contrôleur (injection par constructeur) puis affiche\n        //          post(\"Nyx\"), post(\"\"), post(\"Ada\") ; ensuite \"Depot : \" + count + \" commandes\"\n        // TODO 5 : crée un faux dépôt (classe anonyme ou classe) qui compte ses appels à save et renvoie \"faux-1\" ;\n        //          injecte-le dans un nouveau service, appelle create(\"Nyx\") et affiche \"Faux depot : \" + appels + \" sauvegarde\"\n    }\n}\n",
+      "expectedOutput": "201 commande-1\n400 client vide\n201 commande-2\nDepot : 2 commandes\nFaux depot : 1 sauvegarde"
+    }
+  ],
+  "quiz": [
+    {
+      "code": "JAVA-20-Q1",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Pourquoi préférer l'injection par constructeur à @Autowired sur un champ ?",
+      "choices": [
+        "Elle est plus rapide à l'exécution",
+        "Les dépendances sont obligatoires et visibles, et on peut construire l'objet sans conteneur dans un test",
+        "Elle évite d'écrire des interfaces",
+        "Spring refuse l'injection par champ"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Avec le constructeur, un objet ne peut pas exister sans ses dépendances, elles peuvent être final et un test unitaire fait simplement new Service(faux). L'injection par champ cache ce dont dépend la classe et oblige à passer par la réflexion ou le conteneur."
+    },
+    {
+      "code": "JAVA-20-Q2",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Prédis ce qui se passe :\n```java\n@Component class A { A(B b) {} }\n@Component class B { B(A a) {} }\n```\n",
+      "choices": [
+        "Spring crée les deux sans problème",
+        "Le démarrage échoue : dépendance circulaire entre A et B",
+        "Seul A est créé",
+        "B est créé en premier puis A"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "A a besoin de B et B de A : aucun ne peut être créé en premier. Spring Boot refuse de démarrer. C'est le signe d'une mauvaise découpe : on extrait la logique commune dans un troisième composant."
+    },
+    {
+      "code": "JAVA-20-Q3",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Trouve le défaut de conception :\n```java\n@Service\nclass OrderService {\n    ResponseEntity<String> create(HttpServletRequest request) { ... }\n}\n```\n",
+      "choices": [
+        "Le service est un singleton",
+        "Le service connaît HTTP : la couche métier dépend de la couche web, ce qui inverse le sens des dépendances",
+        "ResponseEntity est déprécié",
+        "HttpServletRequest est trop lent"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Les dépendances vont du web vers le métier, pas l'inverse. Le service doit recevoir des données simples ou un objet du domaine, et laisser le contrôleur construire la réponse HTTP. Ainsi on teste le métier sans serveur."
+    },
+    {
+      "code": "JAVA-20-Q4",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Une interface Notifier a deux implémentations annotées @Component. Que se passe-t-il à l'injection ?",
+      "choices": [
+        "Spring choisit la première par ordre alphabétique",
+        "Spring échoue : plusieurs candidats, il faut @Primary ou @Qualifier",
+        "Spring injecte les deux dans le même champ",
+        "Rien, c'est impossible à écrire"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Spring résout par type : avec deux candidats, il lève NoUniqueBeanDefinitionException. On désigne le bean voulu avec @Primary, @Qualifier ou un profil."
+    },
+    {
+      "code": "JAVA-20-Q5",
+      "type": "FREE_TEXT",
+      "prompt": "Sans relire le cours, explique avec tes mots ce que veut dire « inverser la dépendance » entre le métier et l'infrastructure, et ce que cela permet en test.",
+      "choices": [],
+      "correctChoice": null,
+      "expectedKeywords": [
+        "interface",
+        "metier",
+        "implemente",
+        "faux",
+        "constructeur"
+      ],
+      "modelAnswer": "Le métier définit des interfaces (par exemple OrderRepository) dont l'infrastructure fournit les implémentations : la flèche de dépendance pointe vers le domaine, pas vers la base ou le web. Les composants reçoivent ces interfaces par le constructeur, ce qui permet d'injecter un faux dans un test unitaire et de remplacer l'infrastructure sans toucher au métier.",
+      "explanation": "Une bonne réponse nomme l'interface possédée par le métier, le sens des dépendances et l'intérêt de substituer un faux en test."
+    }
+  ],
+  "checklist": [
+    "J'injecte mes dépendances par le constructeur",
+    "Mes couches vont dans un seul sens : web, métier, dépôt",
+    "J'assemble les composants à un seul endroit",
+    "Je sais remplacer une dépendance par un faux dans un test"
+  ]
 }

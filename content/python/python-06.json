@@ -1,17 +1,144 @@
 {
-  "code": "PYTHON-06", "language": "PYTHON", "number": 6, "slug": "projet-pipeline-commandes",
-  "title": "Projet intermédiaire : pipeline de commandes", "difficulty": "PROJET", "threshold": 75,
-  "activityType": "PROJECT", "prerequisites": ["PYTHON-05"],
-  "objectives": ["Combiner JSON, fonctions, collections et objets", "Écarter les données non exploitables", "Produire un rapport déterministe testable"],
+  "code": "PYTHON-06",
+  "language": "PYTHON",
+  "number": 6,
+  "slug": "projet-pipeline-commandes",
+  "title": "Projet intermédiaire : pipeline de commandes",
+  "difficulty": "PROJET",
+  "threshold": 75,
+  "activityType": "PROJECT",
+  "prerequisites": [
+    "PYTHON-05"
+  ],
+  "objectives": [
+    "Découper un traitement de données en étapes explicites : décoder, valider, agréger, présenter.",
+    "Rejeter chaque ligne invalide avec sa raison au lieu de planter ou de la perdre en silence.",
+    "Utiliser Decimal pour les montants et produire un rapport déterministe.",
+    "Présenter le pipeline : règles, preuves reproductibles et limites."
+  ],
   "sections": [
-    {"title":"Du transport au domaine","content":"Un pipeline professionnel sépare le décodage, la validation, la transformation et la présentation. Chaque étape possède un contrat court et peut être vérifiée isolément.","conceptCodes":["PYTHON-DATA-PIPELINE"]},
-    {"title":"Projet portfolio intermédiaire","content":"Ce projet constitue une première preuve Python exportable. Le résultat reste volontairement déterministe : un recruteur ou un reviewer peut relancer le programme et obtenir la même synthèse."}
+    {
+      "title": "Un pipeline transforme des données brutes en résultat métier",
+      "content": "Un pipeline de données enchaîne des étapes simples, chacune testable seule :\n1. Décoder : transformer le texte brut (JSON, CSV) en structures Python.\n2. Valider : ne garder que les enregistrements exploitables, et noter ceux qui sont rejetés avec leur raison.\n3. Transformer / agréger : calculer les totaux, regrouper, classer.\n4. Présenter : produire le rapport dans un format stable.\n\nSéparer ces étapes évite la fonction de 80 lignes qui fait tout : on peut tester la validation sans JSON, l'agrégation sans fichier, et remplacer la source (JSON aujourd'hui, CSV demain) sans toucher au calcul."
+    },
+    {
+      "title": "Exemple résolu : de la commande brute au classement",
+      "conceptCodes": [
+        "PYTHON-DATA-PIPELINE"
+      ],
+      "content": "Problème : à partir d'une liste d'objets JSON de commandes, produire le nombre de commandes payées, le revenu, le classement des clients et la liste des lignes rejetées avec leur raison.\n\nRaisonnement, étape par étape :\n1. Décoder avec json.loads : on obtient une liste de dictionnaires.\n2. Valider chaque entrée dans une fonction à part qui renvoie soit une Order, soit une raison de rejet : montant convertible en Decimal, strictement positif ; statut dans {PAID, PENDING, CANCELLED}.\n3. Les rejets gardent leur position (#2) et leur raison : ni plantage, ni perte silencieuse.\n4. Agréger uniquement les commandes PAID : somme des montants avec Decimal.\n5. Classer : revenu décroissant puis nom croissant, pour qu'une égalité reste stable.\n6. Vérifier avec assert que les comptes sont cohérents (payées + rejetées + autres = total).\n```python\nfrom decimal import Decimal, InvalidOperation\n\ndef validate(index: int, raw: dict):\n    try:\n        amount = Decimal(str(raw[\"amount\"]))\n    except (InvalidOperation, KeyError):\n        return None, f\"#{index}: montant invalide\"\n    if amount <= 0:\n        return None, f\"#{index}: montant négatif\"\n    if raw.get(\"status\") not in {\"PAID\", \"PENDING\", \"CANCELLED\"}:\n        return None, f\"#{index}: statut inconnu\"\n    return Order(raw[\"customer\"], amount, raw[\"status\"]), None\n```\nDecimal(str(120.5)) évite l'imprécision du flottant ; 0.1 + 0.2 vaut 0.30000000000000004 en float mais exactement 0.3 en Decimal."
+    },
+    {
+      "title": "Rapport déterministe et preuve",
+      "content": "Un rapport reproductible a un ordre défini (tri total) et un format fixe (deux décimales : f\"{montant:.2f}\"). Sans cela, une exécution peut produire un ordre différent d'une version de Python à l'autre.\n\nGestion des erreurs : deux stratégies. « Échouer vite » arrête au premier problème (adapté à un fichier de configuration). « Accumuler » continue et signale tous les rejets (adapté à des données importées par lots, où une ligne invalide ne doit pas bloquer les autres). Ici, on accumule.\n\nPreuve : un jeu de données fixe qui contient au moins un cas par type de rejet, un résultat attendu exact, des assert sur les invariants (somme des parties égale le total). Dans le README du projet, dis ce qui est testé, comment lancer et ce qui ne l'est pas (gros volumes, fichiers corrompus). Écris les montants avec Decimal, jamais float, et ne mets pas de donnée réelle dans le dépôt."
+    },
+    {
+      "title": "Erreurs fréquentes à reconnaître",
+      "content": "1. Une seule fonction qui décode, valide, calcule et affiche.\n2. Jeter silencieusement les lignes invalides : on ne sait plus ce qui a été perdu.\n3. float pour des montants : écarts d'arrondi.\n4. Un classement qui dépend de l'ordre d'insertion d'un dict ou d'un set.\n5. Un statut ou un champ jamais validé : une faute de frappe devient « inconnu » sans bruit.\n6. Un projet sans cas invalide dans le jeu de test : le chemin heureux seul ne prouve rien.\n\nRetrouve ces erreurs de mémoire avant l'exercice, puis vérifie-toi avec le quiz : c'est la récupération, pas la relecture, qui fixe la notion."
+    }
   ],
-  "keyConcepts": [{"code":"PYTHON-DATA-PIPELINE","name":"Pipeline de données","definition":"Un pipeline transforme des données brutes en résultat métier à travers des étapes explicites.","whyExists":"Il réduit le couplage entre format d'entrée, règles métier et format de sortie.","whyImportant":"Des étapes séparées facilitent le diagnostic, les tests et le remplacement d'une source de données.","minimalExample":"raw -> decode -> validate -> aggregate -> report","professionalExample":"Un service de reporting financier recevait un flux JSON de commandes provenant d'un partenaire externe et calculait directement le chiffre d'affaires dans la même boucle qui décodait le JSON, si bien qu'un champ amount manquant faisait planter tout le rapport en production. En séparant décodage, validation et agrégation en fonctions distinctes, l'équipe a pu écrire un test qui injecte une ligne invalide et vérifie qu'elle est rejetée sans interrompre le calcul du reste.","codeExample":"import json\nfrom dataclasses import dataclass\n\n@dataclass(frozen=True, slots=True)\nclass Order:\n    customer: str\n    amount: float\n\ndef decode(payload: str) -> list[dict]:\n    return json.loads(payload)\n\ndef validate(rows: list[dict]) -> list[Order]:\n    orders = []\n    for row in rows:\n        if row.get(\"status\") == \"PAID\" and float(row.get(\"amount\", 0)) > 0:\n            orders.append(Order(row[\"customer\"], float(row[\"amount\"])))\n    return orders\n\ndef aggregate(orders: list[Order]) -> float:\n    return sum(order.amount for order in orders)\n\nrevenue = aggregate(validate(decode(raw_payload)))","commonMistake":"Mélanger lecture, validation et affichage dans une seule boucle impossible à tester séparément.","masteryQuestion":"Quelles frontières choisirais-tu pour tester ce pipeline ?","masteryProof":"Nommer les étapes, leurs entrées, leurs sorties et au moins un cas invalide."}],
-  "exercises": [{"code":"PYTHON-06-E1","title":"Synthétiser les commandes payées","statement":"Complète et conserve les assertions. La sortie doit être exactement les deux lignes demandées.","starterCode":"import json\nfrom dataclasses import dataclass\n\n@dataclass(frozen=True, slots=True)\nclass Order:\n    customer: str\n    amount: float\n\ndef paid_orders(payload: str) -> list[Order]:\n    # TODO 1 : décode le JSON et retourne des Order pour les commandes\n    #          au statut \"PAID\" dont le montant est strictement positif\n    return []\n\npayload = '[{\"customer\":\"Ada\",\"amount\":120,\"status\":\"PAID\"},{\"customer\":\"Linus\",\"amount\":80,\"status\":\"PENDING\"},{\"customer\":\"Grace\",\"amount\":30,\"status\":\"PAID\"}]'\norders = paid_orders(payload)\n\n# TODO 2 : calcule le revenu total des commandes payées\n# TODO 3 : vérifie avec assert qu'il y a 2 commandes payées et que le total vaut 150\n# TODO 4 : affiche deux lignes : \"Commandes payées: 2\" puis \"Revenu: 150.00 EUR\"\n","expectedOutput":"Commandes payées: 2\nRevenu: 150.00 EUR"}],
+  "keyConcepts": [
+    {
+      "code": "PYTHON-DATA-PIPELINE",
+      "name": "Pipeline de données",
+      "definition": "Un pipeline transforme des données brutes en résultat métier à travers des étapes explicites.",
+      "whyExists": "Il réduit le couplage entre format d'entrée, règles métier et format de sortie.",
+      "whyImportant": "Des étapes séparées facilitent le diagnostic, les tests et le remplacement d'une source de données.",
+      "minimalExample": "raw -> decode -> validate -> aggregate -> report",
+      "professionalExample": "Un service de reporting financier recevait un flux JSON de commandes provenant d'un partenaire externe et calculait directement le chiffre d'affaires dans la même boucle qui décodait le JSON, si bien qu'un champ amount manquant faisait planter tout le rapport en production. En séparant décodage, validation et agrégation en fonctions distinctes, l'équipe a pu écrire un test qui injecte une ligne invalide et vérifie qu'elle est rejetée sans interrompre le calcul du reste.",
+      "codeExample": "import json\nfrom dataclasses import dataclass\n\n@dataclass(frozen=True, slots=True)\nclass Order:\n    customer: str\n    amount: float\n\ndef decode(payload: str) -> list[dict]:\n    return json.loads(payload)\n\ndef validate(rows: list[dict]) -> list[Order]:\n    orders = []\n    for row in rows:\n        if row.get(\"status\") == \"PAID\" and float(row.get(\"amount\", 0)) > 0:\n            orders.append(Order(row[\"customer\"], float(row[\"amount\"])))\n    return orders\n\ndef aggregate(orders: list[Order]) -> float:\n    return sum(order.amount for order in orders)\n\nrevenue = aggregate(validate(decode(raw_payload)))",
+      "commonMistake": "Mélanger lecture, validation et affichage dans une seule boucle impossible à tester séparément.",
+      "masteryQuestion": "Pourquoi séparer décodage, validation et agrégation, et pourquoi Decimal plutôt que float pour des montants ?",
+      "masteryProof": "Produire le rapport des commandes payées avec rejets motivés, revenu exact et classement trié de façon stable."
+    }
+  ],
+  "exercises": [
+    {
+      "code": "PYTHON-06-E1",
+      "title": "Pipeline de commandes avec rejets motivés",
+      "statement": "Complète le pipeline : valide chaque commande (montant Decimal strictement positif, statut connu), conserve la raison des rejets, agrège les commandes PAID par client et classe par revenu décroissant puis nom. Conserve les assertions. Affiche exactement :\nCommandes payées: 3\nRevenu: 275.50 EUR\nRejetées: 3 (#2: montant invalide, #4: statut inconnu, #6: montant négatif)\n1. Ada : 200.50 EUR\n2. Grace : 75.00 EUR",
+      "starterCode": "import json\nfrom dataclasses import dataclass\nfrom decimal import Decimal, InvalidOperation\n\nVALID_STATUSES = {\"PAID\", \"PENDING\", \"CANCELLED\"}\n\n\n@dataclass(frozen=True, slots=True)\nclass Order:\n    customer: str\n    amount: Decimal\n    status: str\n\n\ndef validate(index: int, raw: dict):\n    \"\"\"Retourne (Order, None) si la ligne est valide, sinon (None, \"#<index>: <raison>\").\"\"\"\n    # TODO 1 : montant -> Decimal(str(raw[\"amount\"])) ; si impossible (InvalidOperation / KeyError) : \"#<index>: montant invalide\"\n    # TODO 2 : montant <= 0 -> \"#<index>: montant négatif\"\n    # TODO 3 : statut absent de VALID_STATUSES -> \"#<index>: statut inconnu\"\n    # TODO 4 : sinon retourne (Order(customer, montant, statut), None)\n    return None, None\n\n\npayload = json.dumps([\n    {\"customer\": \"Ada\", \"amount\": 120.5, \"status\": \"PAID\"},\n    {\"customer\": \"Linus\", \"amount\": 80, \"status\": \"PENDING\"},\n    {\"customer\": \"Grace\", \"amount\": \"abc\", \"status\": \"PAID\"},\n    {\"customer\": \"Ada\", \"amount\": 80, \"status\": \"PAID\"},\n    {\"customer\": \"Bob\", \"amount\": 10, \"status\": \"WHAT\"},\n    {\"customer\": \"Grace\", \"amount\": 75, \"status\": \"PAID\"},\n    {\"customer\": \"Mia\", \"amount\": -5, \"status\": \"PAID\"},\n])\n\norders, rejected = [], []\nfor index, raw in enumerate(json.loads(payload)):\n    order, reason = validate(index, raw)\n    if reason:\n        rejected.append(reason)\n    elif order:\n        orders.append(order)\n\n# TODO 5 : paid = commandes au statut PAID ; revenu total (Decimal) ; revenu par client dans un dict\n# TODO 6 : assert len(paid) == 3 et que le revenu total vaut Decimal(\"275.50\")\n# TODO 7 : affiche, dans cet ordre :\n#   \"Commandes payées: 3\", \"Revenu: 275.50 EUR\", \"Rejetées: 3 (#2: ..., #4: ..., #6: ...)\",\n#   puis le classement \"1. Ada : 200.50 EUR\", \"2. Grace : 75.00 EUR\" (revenu décroissant puis nom croissant, f\"{montant:.2f}\")\n",
+      "expectedOutput": "Commandes payées: 3\nRevenu: 275.50 EUR\nRejetées: 3 (#2: montant invalide, #4: statut inconnu, #6: montant négatif)\n1. Ada : 200.50 EUR\n2. Grace : 75.00 EUR"
+    }
+  ],
   "quiz": [
-    {"code":"PYTHON-06-Q1","type":"SINGLE_CHOICE","prompt":"Pourquoi séparer décodage, validation et agrégation ?","choices":["Pour tester et faire évoluer chaque responsabilité","Pour rendre le résultat aléatoire","Pour éviter toute fonction"],"correctChoice":0,"expectedKeywords":[]},
-    {"code":"PYTHON-06-Q2","type":"FREE_TEXT","prompt":"Décris un cas invalide et l'étape qui devrait le rejeter.","choices":[],"correctChoice":null,"expectedKeywords":["invalide","validation","rejeter","étape"]}
+    {
+      "code": "PYTHON-06-Q1",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Pourquoi séparer décodage, validation et agrégation en fonctions distinctes ?",
+      "choices": [
+        "Pour écrire plus de code",
+        "Pour tester chaque étape seule et changer la source sans toucher au calcul",
+        "Parce que Python l'impose",
+        "Pour ralentir le traitement"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Chaque étape a une raison de changer différente. Séparées, elles se testent indépendamment (validation sans JSON, calcul sans fichier) et la source peut être remplacée sans réécrire le métier."
+    },
+    {
+      "code": "PYTHON-06-Q2",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Prédis le résultat :\n```python\nprint(0.1 + 0.2 == 0.3)\nfrom decimal import Decimal\nprint(Decimal(\"0.1\") + Decimal(\"0.2\") == Decimal(\"0.3\"))\n```\n",
+      "choices": [
+        "True puis True",
+        "False puis True",
+        "False puis False",
+        "True puis False"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Les flottants binaires ne représentent pas exactement 0,1 et 0,2 ; la somme vaut 0.30000000000000004. Decimal calcule en base 10 et donne exactement 0,3. Construis les Decimal à partir de chaînes, pas de floats."
+    },
+    {
+      "code": "PYTHON-06-Q3",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Trouve le défaut :\n```python\nfor raw in rows:\n    try:\n        orders.append(parse(raw))\n    except Exception:\n        pass\n```\n",
+      "choices": [
+        "pass est interdit dans une boucle",
+        "Les lignes invalides disparaissent en silence : on ne sait ni combien ni pourquoi elles ont été rejetées",
+        "Il manque un else",
+        "Exception est un mauvais nom"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Un import par lots doit rapporter ses rejets avec leur position et leur raison. Les ignorer sans trace donne des totaux faux que personne ne peut expliquer."
+    },
+    {
+      "code": "PYTHON-06-Q4",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Deux clients ont le même revenu de 100,00. Comment garantir un classement reproductible ?",
+      "choices": [
+        "Faire confiance à l'ordre du dict",
+        "Trier avec une clé (-revenu, nom) pour départager par nom",
+        "Utiliser un set",
+        "Trier deux fois au hasard"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Sans critère de départage, l'ordre des ex æquo dépend de l'ordre d'insertion ou de l'implémentation. Une clé composite (-revenu, nom) donne un ordre total et déterministe."
+    },
+    {
+      "code": "PYTHON-06-Q5",
+      "type": "FREE_TEXT",
+      "prompt": "Sans relire le cours, explique avec tes mots la différence entre « échouer vite » et « accumuler les erreurs » pour un import de données, et choisis une stratégie pour ce pipeline.",
+      "choices": [],
+      "correctChoice": null,
+      "expectedKeywords": [
+        "rejet",
+        "ligne",
+        "bloque",
+        "accumul",
+        "raison"
+      ],
+      "modelAnswer": "Échouer vite arrête le traitement à la première erreur : adapté à une configuration où un seul défaut la rend inutilisable. Accumuler continue et collecte tous les rejets avec leur position et leur raison : adapté à un import par lots où une ligne invalide ne doit pas bloquer les autres. Pour ce pipeline on accumule et on rapporte les rejets, pour que l'utilisateur corrige ses données en une fois.",
+      "explanation": "Une bonne réponse oppose arrêt immédiat et collecte des rejets, associe chaque stratégie à un cas d'usage et justifie l'accumulation pour un import par lots."
+    }
   ],
-  "checklist": ["Je sépare les étapes du pipeline", "Je valide les données avant l'agrégation", "Je fournis des assertions et une sortie reproductible", "Je peux présenter ce projet dans mon portfolio"]
+  "checklist": [
+    "Mon pipeline sépare décodage, validation, agrégation et présentation",
+    "Chaque rejet garde sa position et sa raison",
+    "J'utilise Decimal pour les montants",
+    "Mon classement est déterministe, avec un critère de départage"
+  ]
 }

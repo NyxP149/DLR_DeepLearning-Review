@@ -11,21 +11,30 @@
     "SQL-08"
   ],
   "objectives": [
-    "Expliquer projet professionnel : schéma analytique",
-    "Construire une preuve exécutable et déterministe",
-    "Relier le concept à une décision professionnelle"
+    "Décrire un schéma en étoile : une table de faits et des dimensions.",
+    "Créer une vue analytique qui agrège les faits par dimensions.",
+    "Distinguer vue, vue matérialisée et table calculée, et choisir selon la fraîcheur et le coût.",
+    "Documenter le modèle : grain, mesures, dimensions, limites."
   ],
   "sections": [
     {
-      "title": "Concept et usage professionnel",
-      "content": "Projet professionnel : schéma analytique répond à un besoin concret de maintenabilité, de sûreté ou de performance. Le laboratoire demande de rendre la décision observable et vérifiable.",
-      "conceptCodes": [
-        "SQL-PROJECT"
-      ]
+      "title": "Faits et dimensions",
+      "content": "Un schéma en étoile organise des données pour l'analyse : au centre une table de faits (des événements mesurables : une ligne de vente avec montant, quantité) entourée de dimensions (le contexte : produit, catégorie, date, client). Les faits référencent les dimensions par des clés étrangères.\n```sql\nCREATE TABLE dim_product (id INTEGER PRIMARY KEY, name TEXT NOT NULL, category TEXT NOT NULL);\nCREATE TABLE dim_date    (id INTEGER PRIMARY KEY, day TEXT NOT NULL, month TEXT NOT NULL);\nCREATE TABLE fact_sale   (\n    product_id INTEGER NOT NULL REFERENCES dim_product(id),\n    date_id    INTEGER NOT NULL REFERENCES dim_date(id),\n    amount     INTEGER NOT NULL\n);\n```\nLe grain est la définition d'une ligne de faits (« une ligne par produit vendu par jour ») : il faut le fixer avant tout, car il détermine ce que les agrégations ont le droit de combiner. Une mesure (amount) s'additionne ; un attribut descriptif (nom du produit) vit dans une dimension."
     },
     {
-      "title": "Projet portfolio",
-      "content": "La requête est exécutée sur SQLite en mémoire pour rester locale et reproductible ; les différences PostgreSQL et l'analyse EXPLAIN sont signalées dans le cours."
+      "title": "Exemple résolu : une vue de chiffre d'affaires",
+      "conceptCodes": [
+        "SQL-PROJECT"
+      ],
+      "content": "Problème : exposer le chiffre d'affaires par mois et par catégorie, simplement, à des analystes qui ne connaissent pas le schéma.\n\nRaisonnement, étape par étape :\n1. Joindre la table de faits à ses dimensions : fact_sale avec dim_product (catégorie) et dim_date (mois).\n2. Regrouper par mois et catégorie, sommer le montant.\n3. Nommer la vue monthly_revenue avec des colonnes explicites (month, category, revenue).\n4. Les analystes interrogent la vue comme une table, triée par mois puis catégorie ; le total se calcule en interrogeant la vue.\n5. Vérification : la somme de la vue égale la somme brute des faits (aucune ligne perdue ni multipliée par une jointure).\n```sql\nCREATE VIEW monthly_revenue AS\nSELECT d.month, p.category, SUM(f.amount) AS revenue\nFROM fact_sale f\nJOIN dim_product p ON p.id = f.product_id\nJOIN dim_date d ON d.id = f.date_id\nGROUP BY d.month, p.category;\n\nSELECT month, category, revenue FROM monthly_revenue ORDER BY month, category;\nSELECT SUM(revenue) FROM monthly_revenue;\n```\nUne vue ne stocke aucune donnée : elle enregistre une requête, évaluée à chaque lecture. La logique de calcul est définie une seule fois : tous les rapports utilisent la même définition du chiffre d'affaires."
+    },
+    {
+      "title": "Vue, vue matérialisée et gouvernance",
+      "content": "- Vue : toujours à jour, mais recalculée à chaque lecture (coûteux si la requête est lourde).\n- Vue matérialisée (PostgreSQL, Oracle) : le résultat est stocké et rafraîchi (REFRESH MATERIALIZED VIEW) ; lecture rapide, données potentiellement périmées. SQLite n'en a pas : on construit une table de synthèse mise à jour par un traitement.\n- Table de synthèse (agrégat préparé) construite par un traitement planifié : le choix classique pour les grands volumes.\n- Fraîcheur contre coût : définis le retard acceptable (temps réel, horaire, quotidien) avec les utilisateurs.\n\nQualité du modèle analytique :\n- Une définition écrite par indicateur (« chiffre d'affaires = somme des ventes facturées, hors retours »).\n- Un grain explicite et jamais mélangé : ne joins pas un fait de grain « ligne de commande » avec un fait de grain « commande » sans précaution (multiplication des lignes).\n- Des clés de substitution et des dimensions dédiées pour les dates (jour, semaine, mois, trimestre), utiles pour regrouper.\n- Dimensions à évolution lente (adresse d'un client qui change) : conserver l'historique ou non, c'est une décision métier.\n- Droits : donne aux analystes l'accès aux vues, pas aux tables brutes qui contiennent des données personnelles ; applique le principe du moindre privilège.\n- Tests de données : totaux qui doivent coïncider, valeurs NULL inattendues, doublons dans les dimensions."
+    },
+    {
+      "title": "Erreurs fréquentes à reconnaître",
+      "content": "1. Un grain flou : on ne sait plus ce que représente une ligne de faits.\n2. Additionner une mesure après une jointure qui multiplie les lignes.\n3. Une dimension avec des doublons qui duplique les faits à la jointure.\n4. Une vue lourde interrogée en boucle par un tableau de bord.\n5. Plusieurs définitions concurrentes du « chiffre d'affaires » selon les rapports.\n6. Exposer des tables contenant des données personnelles à tous les analystes.\n\nRetrouve ces erreurs de mémoire avant l'exercice, puis vérifie-toi avec le quiz : c'est la récupération, pas la relecture, qui fixe la notion."
     }
   ],
   "keyConcepts": [
@@ -39,8 +48,8 @@
       "professionalExample": "Pour alimenter un outil de BI destiné aux équipes finance, l'équipe data construit un schéma en étoile distinct du schéma transactionnel : une table de faits fact_sales contenant une ligne par vente, reliée à des tables de dimension dim_date, dim_product et dim_customer. Ce choix est délibéré et contraire à la normalisation vue dans les labs précédents : les dimensions sont volontairement dénormalisées pour que les requêtes d'agrégation restent simples et rapides même avec des centaines de millions de lignes de faits. Le pipeline qui alimente ce schéma tourne chaque nuit et doit rester idempotent, sinon une réexécution après un échec dupliquerait les ventes du jour.",
       "codeExample": "CREATE TABLE dim_date (\n  date_id INTEGER PRIMARY KEY,\n  full_date TEXT NOT NULL,\n  month INTEGER NOT NULL,\n  year INTEGER NOT NULL\n);\n\nCREATE TABLE dim_product (\n  product_id INTEGER PRIMARY KEY,\n  name TEXT NOT NULL,\n  category TEXT NOT NULL\n);\n\nCREATE TABLE fact_sales (\n  id INTEGER PRIMARY KEY,\n  date_id INTEGER NOT NULL REFERENCES dim_date(date_id),\n  product_id INTEGER NOT NULL REFERENCES dim_product(product_id),\n  quantity INTEGER NOT NULL,\n  revenue_cents INTEGER NOT NULL\n);\n\n-- Agrégation rapide : chiffre d'affaires par catégorie et par mois\nSELECT d.year, d.month, p.category, SUM(f.revenue_cents) AS revenue_cents\nFROM fact_sales f\nJOIN dim_date d ON d.date_id = f.date_id\nJOIN dim_product p ON p.product_id = f.product_id\nGROUP BY d.year, d.month, p.category\nORDER BY d.year, d.month;",
       "commonMistake": "Appliquer la technique sans mesurer son effet ni documenter sa frontière.",
-      "masteryQuestion": "Quelle contrainte de projet professionnel : schéma analytique doit rester vraie lorsque le système évolue ?",
-      "masteryProof": "Exécuter la preuve, expliquer son invariant et proposer un cas d’échec."
+      "masteryQuestion": "Qu'est-ce que le grain d'une table de faits, et pourquoi centraliser un indicateur dans une vue ?",
+      "masteryProof": "Créer la vue monthly_revenue sur un schéma en étoile, l'interroger par mois et catégorie et en tirer le total."
     }
   ],
   "exercises": [
@@ -56,32 +65,80 @@
     {
       "code": "SQL-09-Q1",
       "type": "SINGLE_CHOICE",
-      "prompt": "Quelle preuve est la plus utile en revue ?",
+      "prompt": "Dans un schéma en étoile, que contient la table de faits ?",
       "choices": [
-        "Une exécution déterministe avec invariant explicite",
-        "Une sortie aléatoire",
-        "Une capture sans code"
+        "Les descriptions des produits et clients",
+        "Les événements mesurables (ventes, quantités, montants) avec les clés des dimensions",
+        "Uniquement des index",
+        "Les utilisateurs de la base"
       ],
-      "correctChoice": 0,
-      "expectedKeywords": []
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Les faits portent les mesures et référencent les dimensions, qui portent le contexte descriptif (produit, date, client)."
     },
     {
       "code": "SQL-09-Q2",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Prédis le total de la vue monthly_revenue si les faits valent 120 (Mobilier, janvier), 250 (Périphériques, janvier) et 80 (Périphériques, février) :",
+      "choices": [
+        "370",
+        "450",
+        "120",
+        "250"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "120 + 250 + 80 = 450. Le total obtenu depuis la vue doit toujours égaler la somme brute des faits, ce qui sert de test de cohérence."
+    },
+    {
+      "code": "SQL-09-Q3",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Trouve le défaut :\n```sql\nSELECT SUM(f.amount) FROM fact_sale f JOIN dim_product p ON p.id = f.product_id;\n```\ndans lequel dim_product contient deux lignes pour le même produit (doublon).",
+      "choices": [
+        "SUM est interdit",
+        "La jointure duplique les faits du produit en double : le total est surestimé ; la dimension doit avoir une clé unique",
+        "Il manque GROUP BY",
+        "JOIN est lent"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Une dimension doit avoir exactement une ligne par clé. Un doublon multiplie les lignes de faits à la jointure. Un test de données (COUNT(*) = COUNT(DISTINCT id)) le détecte."
+    },
+    {
+      "code": "SQL-09-Q4",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Quelle différence entre une vue et une vue matérialisée ?",
+      "choices": [
+        "Aucune",
+        "La vue réévalue sa requête à chaque lecture ; la vue matérialisée stocke le résultat et doit être rafraîchie",
+        "La vue est plus rapide",
+        "La vue matérialisée est toujours à jour"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "La vue est fraîche mais potentiellement coûteuse ; la matérialisée est rapide à lire mais peut être périmée jusqu'au prochain rafraîchissement."
+    },
+    {
+      "code": "SQL-09-Q5",
       "type": "FREE_TEXT",
-      "prompt": "Explique une décision liée à projet professionnel : schéma analytique.",
+      "prompt": "Sans relire le cours, explique avec tes mots pourquoi on définit un indicateur une seule fois dans une vue et ce qu'est le grain.",
       "choices": [],
       "correctChoice": null,
       "expectedKeywords": [
-        "contrat",
-        "preuve",
-        "test"
-      ]
+        "definition",
+        "grain",
+        "une ligne",
+        "rapports",
+        "coherent"
+      ],
+      "modelAnswer": "Définir « chiffre d'affaires » dans une vue donne la même définition à tous les rapports : plus de chiffres contradictoires selon l'outil. Le grain est ce que représente une ligne de la table de faits (par exemple une ligne par produit vendu par jour) ; il doit être fixé et respecté, car il détermine ce qu'on peut agréger sans multiplier ni perdre de lignes.",
+      "explanation": "Une bonne réponse relie la vue à la cohérence des chiffres et définit le grain comme ce qu'une ligne de faits représente."
     }
   ],
   "checklist": [
-    "Je peux expliquer le concept sans réciter une définition",
-    "Je sais exécuter et modifier la preuve",
-    "Je peux nommer un risque et son contrôle",
-    "Je peux présenter cette preuve dans mon portfolio"
+    "Mon modèle a un grain explicite et une définition écrite par indicateur",
+    "Mes dimensions ont une clé unique",
+    "Je sais choisir entre vue, vue matérialisée et table de synthèse",
+    "Je teste que le total de la vue égale la somme des faits"
   ]
 }

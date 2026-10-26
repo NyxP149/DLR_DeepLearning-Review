@@ -11,21 +11,30 @@
     "SPRING_BOOT-05"
   ],
   "objectives": [
-    "Expliquer jpa, entités, repositories et pagination",
-    "Construire une preuve exécutable et déterministe",
-    "Relier le concept à une décision professionnelle"
+    "Mapper une entité JPA, écrire un repository Spring Data et paginer avec Pageable.",
+    "Expliquer pourquoi un tri paginé doit être total (critère de départage) et prédire une page hors limites.",
+    "Reconnaître et corriger un problème N+1 ou un findAll() sans limite.",
+    "Distinguer entité, projection et DTO."
   ],
   "sections": [
     {
-      "title": "Concept et usage professionnel",
-      "content": "JPA, entités, repositories et pagination répond à un besoin concret de maintenabilité, de sûreté ou de performance. Le laboratoire demande de rendre la décision observable et vérifiable.",
-      "conceptCodes": [
-        "SPRING-JPA"
-      ]
+      "title": "Une entité, un repository, une page",
+      "content": "JPA fait correspondre une classe annotée @Entity à une table. Spring Data JPA génère l'implémentation d'une interface de repository : JpaRepository<Product, Long> fournit save, findById, findAll, delete, et des méthodes dérivées du nom (findByCategoryOrderByPriceAsc).\n\nNe charge jamais une table entière sans limite : avec un million de lignes, findAll() sature la mémoire. La pagination demande une tranche : un Pageable (numéro de page à partir de 0, taille, tri) et un Page<T> en retour qui porte le contenu, le numéro, le nombre total de pages et le nombre total d'éléments.\n```java\nPage<Product> page = repository.findAll(PageRequest.of(0, 2, Sort.by(\"price\").ascending()));\npage.getContent();         // 2 produits\npage.getTotalPages();      // 3 pour 5 produits\n```"
     },
     {
-      "title": "Mise en pratique",
-      "content": "La preuve unifichier valide ici la frontière d'architecture hors réseau ; le laboratoire explique ensuite son branchement aux annotations et dépendances Spring Boot réelles."
+      "title": "Exemple résolu : paginer et trier à la main",
+      "conceptCodes": [
+        "SPRING-JPA"
+      ],
+      "content": "Problème : reproduire findAll(Pageable) sur une liste de cinq produits, pages de deux éléments.\n\nRaisonnement, étape par étape :\n1. Trier d'abord (prix croissant) : la pagination n'a de sens que sur un ordre défini.\n2. totalPages = ceil(5 / 2) = 3.\n3. La page numéro n (à partir de 0) couvre les indices n × taille jusqu'à (n + 1) × taille, bornés par la taille de la liste.\n4. Une page au-delà de la dernière renvoie un contenu vide, pas une erreur.\n5. Vérification : en concaténant toutes les pages, on retrouve exactement tous les produits, sans doublon ni trou.\n```java\nint from = Math.min(page * size, sorted.size());\nint to = Math.min(from + size, sorted.size());\nList<Product> content = sorted.subList(from, to);\nint totalPages = (int) Math.ceil((double) sorted.size() / size);\n```\nPiège de tri : si deux produits ont le même prix, leur ordre relatif n'est pas garanti d'une requête à l'autre ; un produit peut alors apparaître sur deux pages ou disparaître. Ajoute toujours un critère de départage unique (le prix puis l'id)."
+    },
+    {
+      "title": "N+1, chargement paresseux et projections",
+      "content": "Problème N+1 : charger 50 commandes (1 requête) puis, en parcourant leurs lignes paresseuses, déclencher 50 requêtes de plus. Remèdes : JOIN FETCH ou @EntityGraph pour charger la relation en une requête, ou une projection qui ne ramène que les colonnes utiles.\n```java\n@Query(\"select o from Order o join fetch o.lines where o.status = :status\")\nList<Order> findWithLines(@Param(\"status\") Status status);\n\ninterface ProductSummary { String getName(); int getPrice(); }   // projection : 2 colonnes seulement\n```\nLe chargement paresseux (LAZY) est le bon défaut des relations ; l'appel à la relation hors transaction lève LazyInitializationException : charge ce qu'il faut dans le service, puis convertis en DTO avant de sortir de la transaction. Active les journaux SQL en développement pour voir le nombre de requêtes.\n\nequals/hashCode d'une entité : base-les sur un identifiant métier stable, pas sur tous les champs mutables, sinon l'entité se perd dans les Set après modification."
+    },
+    {
+      "title": "Erreurs fréquentes à reconnaître",
+      "content": "1. findAll() sans pagination sur une grosse table.\n2. Une pagination sans tri ou avec un tri non total : doublons ou manques entre les pages.\n3. Une boucle qui appelle un repository par élément (N+1).\n4. Renvoyer l'entité avec ses relations paresseuses au client.\n5. Oublier que le numéro de page commence à 0.\n6. Laisser Hibernate générer le schéma en production (ddl-auto=update) au lieu d'utiliser des migrations versionnées.\n\nRetrouve ces erreurs de mémoire avant l'exercice, puis vérifie-toi avec le quiz : c'est la récupération, pas la relecture, qui fixe la notion."
     }
   ],
   "keyConcepts": [
@@ -39,8 +48,8 @@
       "professionalExample": "Un endpoint de liste de commandes chargeait toutes les lignes via findAll() puis paginait en mémoire côté Java : correct avec 200 commandes en recette, catastrophique en production avec 2 millions de lignes, provoquant des timeouts et une consommation mémoire excessive sur le pod. La correction remplace l'appel par une méthode Pageable de Spring Data JPA qui traduit la pagination en LIMIT/OFFSET SQL, et ajoute un @EntityGraph pour charger la relation customer en une seule requête au lieu de déclencher un problème N+1 requête par requête à l'affichage de chaque ligne.",
       "codeExample": "@Entity\n@Table(name = \"orders\")\npublic class OrderEntity {\n    @Id @GeneratedValue\n    private Long id;\n\n    @ManyToOne(fetch = FetchType.LAZY)\n    @JoinColumn(name = \"customer_id\")\n    private CustomerEntity customer;\n\n    private BigDecimal totalAmount;\n}\n\npublic interface OrderRepository extends JpaRepository<OrderEntity, Long> {\n    @EntityGraph(attributePaths = \"customer\")\n    Page<OrderEntity> findByStatus(OrderStatus status, Pageable pageable);\n}\n\n@Service\npublic class OrderQueryService {\n    private final OrderRepository orderRepository;\n\n    public Page<OrderEntity> listPendingOrders(int page, int size) {\n        return orderRepository.findByStatus(OrderStatus.PENDING, PageRequest.of(page, size));\n    }\n}",
       "commonMistake": "Appliquer la technique sans mesurer son effet ni documenter sa frontière.",
-      "masteryQuestion": "Quelle contrainte de jpa, entités, repositories et pagination doit rester vraie lorsque le système évolue ?",
-      "masteryProof": "Exécuter la preuve, expliquer son invariant et proposer un cas d’échec."
+      "masteryQuestion": "Pourquoi un tri paginé doit-il avoir un critère de départage unique, et comment un N+1 apparaît-il ?",
+      "masteryProof": "Reproduire findAll(Pageable) : trier, découper, calculer le nombre de pages et renvoyer une page vide hors limites."
     }
   ],
   "exercises": [
@@ -56,32 +65,80 @@
     {
       "code": "SPRING_BOOT-06-Q1",
       "type": "SINGLE_CHOICE",
-      "prompt": "Quelle preuve est la plus utile en revue ?",
+      "prompt": "Une table contient 5 produits et la taille de page est 2. Combien de pages au total, et que renvoie la page numéro 3 (à partir de 0) ?",
       "choices": [
-        "Une exécution déterministe avec invariant explicite",
-        "Une sortie aléatoire",
-        "Une capture sans code"
+        "3 pages ; la page 3 est vide",
+        "2 pages ; erreur sur la page 3",
+        "3 pages ; la page 3 contient le dernier produit",
+        "5 pages ; la page 3 est vide"
       ],
       "correctChoice": 0,
-      "expectedKeywords": []
+      "expectedKeywords": [],
+      "explanation": "ceil(5 / 2) = 3 pages, numérotées 0, 1 et 2. La page 3 est au-delà de la dernière : elle renvoie un contenu vide, sans erreur. Spring Data renvoie un Page vide dans ce cas."
     },
     {
       "code": "SPRING_BOOT-06-Q2",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Prédis le problème : on trie 100 produits par prix, dont beaucoup ont le même prix, avec une pagination par pages de 10.",
+      "choices": [
+        "Aucun problème",
+        "L'ordre entre produits de même prix peut changer d'une requête à l'autre : un produit peut apparaître deux fois ou jamais",
+        "La base refuse la requête",
+        "Seule la première page fonctionne"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Sans critère de départage, la base peut ordonner les égalités différemment à chaque exécution. Il faut un tri total : Sort.by(\"price\").and(Sort.by(\"id\"))."
+    },
+    {
+      "code": "SPRING_BOOT-06-Q3",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Trouve le défaut :\n```java\nfor (Order o : orderRepository.findAll()) {\n    total += o.getLines().size();   // relation LAZY\n}\n```\n",
+      "choices": [
+        "Il manque @Transactional",
+        "Problème N+1 : une requête pour les commandes puis une par commande pour ses lignes",
+        "getLines est interdit",
+        "size() est lent par nature"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Chaque accès à la relation paresseuse déclenche une requête. On charge avec JOIN FETCH ou @EntityGraph, ou on calcule le total directement en SQL (count)."
+    },
+    {
+      "code": "SPRING_BOOT-06-Q4",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Quand utiliser une projection plutôt qu'une entité complète ?",
+      "choices": [
+        "Jamais, l'entité est toujours préférable",
+        "Pour une lecture qui n'a besoin que de quelques colonnes : moins de données, aucune relation à charger",
+        "Pour modifier plusieurs lignes",
+        "Pour contourner les transactions"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Une projection (interface ou record) ne ramène que les colonnes demandées : lecture plus rapide, pas de relation paresseuse à gérer. Pour modifier, on garde l'entité."
+    },
+    {
+      "code": "SPRING_BOOT-06-Q5",
       "type": "FREE_TEXT",
-      "prompt": "Explique une décision liée à jpa, entités, repositories et pagination.",
+      "prompt": "Sans relire le cours, explique avec tes mots ce qu'est un problème N+1, pourquoi il passe inaperçu en développement et comment le corriger.",
       "choices": [],
       "correctChoice": null,
       "expectedKeywords": [
-        "contrat",
-        "preuve",
-        "test"
-      ]
+        "requete",
+        "boucle",
+        "join",
+        "donnees",
+        "production"
+      ],
+      "modelAnswer": "Un N+1 apparaît quand on charge une liste avec une requête, puis qu'on déclenche une requête de plus pour chaque élément en accédant à une relation paresseuse. En développement, avec peu de données, c'est rapide et invisible ; en production, avec des milliers de lignes, le nombre de requêtes explose. On le corrige avec JOIN FETCH ou @EntityGraph, une projection ou une requête d'agrégation.",
+      "explanation": "Une bonne réponse décrit 1 + N requêtes, la raison de l'invisibilité (petit jeu de données) et au moins un remède."
     }
   ],
   "checklist": [
-    "Je peux expliquer le concept sans réciter une définition",
-    "Je sais exécuter et modifier la preuve",
-    "Je peux nommer un risque et son contrôle",
-    "Je relie cette étape à la suivante"
+    "Je pagine toujours les listes volumineuses",
+    "Mon tri paginé a un critère de départage unique",
+    "Je repère un N+1 et je sais le corriger",
+    "Je ne renvoie pas d'entité avec relations paresseuses"
   ]
 }

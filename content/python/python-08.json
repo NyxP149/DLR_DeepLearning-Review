@@ -11,21 +11,30 @@
     "PYTHON-07"
   ],
   "objectives": [
-    "Expliquer itérateurs, générateurs et évaluation paresseuse",
-    "Construire une preuve exécutable et déterministe",
-    "Relier le concept à une décision professionnelle"
+    "Expliquer le protocole d'itération (__iter__, __next__) et ce qu'est un générateur.",
+    "Écrire un générateur avec yield et prouver sa paresse (rien n'est produit avant la demande).",
+    "Traiter un flux de taille inconnue ou infinie avec islice sans tout charger en mémoire.",
+    "Repérer un générateur déjà consommé, un list() accidentel ou une expression qui évalue trop tôt."
   ],
   "sections": [
     {
-      "title": "Concept et usage professionnel",
-      "content": "Itérateurs, générateurs et évaluation paresseuse répond à un besoin concret de maintenabilité, de sûreté ou de performance. Le laboratoire demande de rendre la décision observable et vérifiable.",
-      "conceptCodes": [
-        "PYTHON-GENERATORS"
-      ]
+      "title": "Itérer sans tout stocker",
+      "content": "Un itérable est un objet qu'on peut parcourir avec for (liste, dict, fichier). Un itérateur est l'objet qui produit les valeurs une à une : next(it) renvoie la suivante et lève StopIteration à la fin. Une liste contient tous ses éléments en mémoire ; un itérateur n'en connaît que l'élément courant.\n\nUn générateur est la façon la plus simple d'écrire un itérateur : une fonction qui contient yield. L'appeler ne l'exécute pas : elle renvoie un générateur ; le corps ne s'exécute que quand on demande la valeur suivante, et se suspend à chaque yield en conservant ses variables locales.\n```python\ndef compte(limite):\n    n = 0\n    while n < limite:\n        yield n          # suspend ici et renvoie n\n        n += 1\n\ng = compte(3)            # rien n'est exécuté\nnext(g)                  # 0\nlist(g)                  # [1, 2] : il reste deux valeurs\n```"
     },
     {
-      "title": "Mise en pratique",
-      "content": "La preuve minimale est locale, déterministe et peut être enrichie sans changer le contrat attendu."
+      "title": "Exemple résolu : découper un flux infini en lots",
+      "conceptCodes": [
+        "PYTHON-GENERATORS"
+      ],
+      "content": "Problème : traiter par lots de 3 un flux de nombres sans fin, sans jamais tout charger en mémoire, et le prouver.\n\nRaisonnement, étape par étape :\n1. numbers() est un générateur infini : while True avec yield value.\n2. batches(iterable, size) prend un itérateur sur la source.\n3. À chaque tour, lit size éléments avec islice(it, size) et les range dans une liste.\n4. Si cette liste est vide, le flux est épuisé : on s'arrête ; sinon on fait yield de la liste.\n5. Preuve de paresse : un compteur global montre 0 valeur produite avant le premier next(), puis exactement 3 de plus par lot.\n```python\nfrom itertools import islice\n\ndef batches(iterable, size):\n    it = iter(iterable)\n    while batch := list(islice(it, size)):\n        yield batch\n```\nUn générateur est paresseux : il calcule à la demande. Cela permet de traiter un fichier de 50 Go ligne par ligne, de s'arrêter dès qu'on a trouvé (any, next(..., None)) et de composer des étapes (lire, filtrer, transformer) sans liste intermédiaire."
+    },
+    {
+      "title": "Expressions génératrices, itertools et pièges",
+      "content": "Une expression génératrice ressemble à une compréhension avec des parenthèses : (n * n for n in range(10**9)) ne calcule rien tant qu'on ne la parcourt pas, alors que la compréhension [n * n for ...] construit toute la liste d'un coup.\n\nitertools fournit des briques : islice (tranche d'un itérateur), chain (enchaîner), takewhile, zip_longest, groupby (attention : exige des données triées par clé), batched (Python 3.12).\n```python\ntotal = sum(n * n for n in range(1_000_000))     # pas de liste intermédiaire\npremier_pair = next((n for n in nombres if n % 2 == 0), None)\n```\nPièges :\n- Un générateur s'épuise : le parcourir une deuxième fois ne donne rien. Pour réutiliser, recrée-le ou stocke dans une liste.\n- list(generateur) charge tout en mémoire : à éviter sur un flux volumineux ou infini.\n- Les variables d'une expression génératrice sont évaluées tardivement : modifier la source avant de la parcourir change le résultat.\n- Une exception dans le générateur se propage au consommateur au moment du next, pas à la création."
+    },
+    {
+      "title": "Erreurs fréquentes à reconnaître",
+      "content": "1. Parcourir deux fois un générateur et croire qu'il est vide par erreur.\n2. list() sur un flux infini : mémoire saturée ou boucle sans fin.\n3. Utiliser une liste là où une expression génératrice suffit (sum, any, max).\n4. Oublier que le corps d'un générateur ne s'exécute qu'au premier next().\n5. itertools.groupby sur des données non triées : plusieurs groupes pour la même clé.\n6. Écrire un générateur avec return valeur en croyant que la boucle for la reçoit : seule StopIteration.value la porte.\n\nRetrouve ces erreurs de mémoire avant l'exercice, puis vérifie-toi avec le quiz : c'est la récupération, pas la relecture, qui fixe la notion."
     }
   ],
   "keyConcepts": [
@@ -39,8 +48,8 @@
       "professionalExample": "Un pipeline d'analyse de journaux serveur chargeait un fichier de plusieurs gigaoctets entièrement en mémoire avec readlines() avant de le filtrer, ce qui faisait planter le conteneur pour manque de mémoire sur les fichiers les plus volumineux. En remplaçant la lecture par un générateur qui produit une ligne à la fois, seule la ligne courante est en mémoire, et le traitement peut s'arrêter dès qu'un nombre suffisant d'anomalies est trouvé sans jamais lire tout le fichier.",
       "codeExample": "from pathlib import Path\nfrom collections.abc import Iterator\n\ndef read_errors(path: Path) -> Iterator[str]:\n    with path.open(encoding=\"utf-8\") as stream:\n        for line in stream:  # une ligne à la fois, jamais tout le fichier en mémoire\n            if \"ERROR\" in line:\n                yield line.rstrip(\"\\n\")\n\ndef first_n_errors(path: Path, n: int) -> list[str]:\n    errors = read_errors(path)\n    return [next(errors) for _ in range(n)]  # arrêt anticipé, évaluation paresseuse",
       "commonMistake": "Appliquer la technique sans mesurer son effet ni documenter sa frontière.",
-      "masteryQuestion": "Quelle contrainte de itérateurs, générateurs et évaluation paresseuse doit rester vraie lorsque le système évolue ?",
-      "masteryProof": "Exécuter la preuve, expliquer son invariant et proposer un cas d’échec."
+      "masteryQuestion": "Pourquoi un générateur est-il paresseux, et quel risque présente list(generateur) sur un flux volumineux ?",
+      "masteryProof": "Écrire batches(iterable, size) qui découpe un flux infini en listes et prouver par un compteur que rien n'est produit avant le premier next()."
     }
   ],
   "exercises": [
@@ -56,32 +65,80 @@
     {
       "code": "PYTHON-08-Q1",
       "type": "SINGLE_CHOICE",
-      "prompt": "Quelle preuve est la plus utile en revue ?",
+      "prompt": "Prédis la sortie :\n```python\ndef g():\n    print(\"début\")\n    yield 1\n\nit = g()\nprint(\"créé\")\nnext(it)\n```\n",
       "choices": [
-        "Une exécution déterministe avec invariant explicite",
-        "Une sortie aléatoire",
-        "Une capture sans code"
+        "début puis créé",
+        "créé puis début",
+        "créé seulement",
+        "début seulement"
       ],
-      "correctChoice": 0,
-      "expectedKeywords": []
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Appeler g() ne lance pas le corps : il renvoie juste un générateur. « créé » s'affiche d'abord. Le corps démarre à next(it), qui affiche « début » puis suspend au yield."
     },
     {
       "code": "PYTHON-08-Q2",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Prédis le résultat :\n```python\ng = (n for n in range(3))\nprint(list(g))\nprint(list(g))\n```\n",
+      "choices": [
+        "[0, 1, 2] puis [0, 1, 2]",
+        "[0, 1, 2] puis []",
+        "[] puis [0, 1, 2]",
+        "Une exception"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Un générateur ne se parcourt qu'une fois. Après le premier list, il est épuisé : le second renvoie une liste vide, sans erreur, ce qui rend le bug discret."
+    },
+    {
+      "code": "PYTHON-08-Q3",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Trouve le défaut :\n```python\ndef lignes_erreur(path):\n    with open(path, encoding=\"utf-8\") as f:\n        toutes = f.readlines()\n    return [l for l in toutes if \"ERROR\" in l]\n```\npour un journal de 20 Go.",
+      "choices": [
+        "Il manque un else",
+        "readlines() charge tout le fichier en mémoire ; un générateur ligne à ligne suffirait",
+        "with est mal utilisé",
+        "ERROR devrait être en minuscules"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Pour un gros fichier, on itère directement sur f et on yield les lignes qui conviennent : la mémoire reste constante. Charger 20 Go en liste fait planter le processus."
+    },
+    {
+      "code": "PYTHON-08-Q4",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Quel appel est dangereux sur un générateur infini ?",
+      "choices": [
+        "next(g)",
+        "islice(g, 10)",
+        "list(g)",
+        "next(g, None)"
+      ],
+      "correctChoice": 2,
+      "expectedKeywords": [],
+      "explanation": "list() parcourt jusqu'à l'épuisement, qui n'arrive jamais : boucle infinie et mémoire saturée. next et islice demandent un nombre fini de valeurs."
+    },
+    {
+      "code": "PYTHON-08-Q5",
       "type": "FREE_TEXT",
-      "prompt": "Explique une décision liée à itérateurs, générateurs et évaluation paresseuse.",
+      "prompt": "Sans relire le cours, explique avec tes mots ce que veut dire « évaluation paresseuse » et un avantage concret pour traiter des données.",
       "choices": [],
       "correctChoice": null,
       "expectedKeywords": [
-        "contrat",
-        "preuve",
-        "test"
-      ]
+        "paresseu",
+        "demande",
+        "memoire",
+        "yield",
+        "valeur"
+      ],
+      "modelAnswer": "L'évaluation paresseuse calcule une valeur seulement quand on la demande. Un générateur suspend son exécution à chaque yield et ne produit la suivante qu'au prochain next. Avantage : on traite un flux volumineux ou infini avec une mémoire constante, on peut s'arrêter dès qu'on a trouvé, et on enchaîne des étapes sans liste intermédiaire.",
+      "explanation": "Une bonne réponse décrit le calcul à la demande, le rôle de yield et l'avantage mémoire ou d'arrêt précoce."
     }
   ],
   "checklist": [
-    "Je peux expliquer le concept sans réciter une définition",
-    "Je sais exécuter et modifier la preuve",
-    "Je peux nommer un risque et son contrôle",
-    "Je relie cette étape à la suivante"
+    "Je sais qu'appeler un générateur n'exécute pas son corps",
+    "Je traite les gros flux avec des générateurs, pas des listes",
+    "Je n'appelle jamais list() sur un flux infini",
+    "Je sais qu'un générateur s'épuise après un parcours"
   ]
 }

@@ -11,21 +11,30 @@
     "TYPESCRIPT-20"
   ],
   "objectives": [
-    "Expliquer performance, profiling et budgets",
-    "Construire une preuve exécutable et déterministe",
-    "Relier le concept à une décision professionnelle"
+    "Mesurer avant d'optimiser et fixer un budget de performance.",
+    "Mémoïser une fonction pure avec une Map et mesurer le gain en nombre d'appels.",
+    "Estimer la complexité (récursion naïve contre mémoïsée) et choisir la bonne structure.",
+    "Repérer un cache invalidé, une fuite mémoire de cache ou une optimisation sans mesure."
   ],
   "sections": [
     {
-      "title": "Concept et usage professionnel",
-      "content": "Performance, profiling et budgets répond à un besoin concret de maintenabilité, de sûreté ou de performance. Le laboratoire demande de rendre la décision observable et vérifiable.",
-      "conceptCodes": [
-        "TYPESCRIPT-PERFORMANCE"
-      ]
+      "title": "Performance : mesurer, budgéter, corriger le goulot",
+      "content": "Optimiser sans mesurer, c'est deviner. La démarche : définir un budget (par exemple page interactive en moins de 2 s, réponse API p95 sous 300 ms, bundle JavaScript sous 200 Ko compressés), mesurer, trouver le goulot avec un profileur (onglet Performance du navigateur, node --inspect, console.time), corriger un seul point, remesurer.\n\nLes gains viennent surtout de : un meilleur algorithme, moins de travail (ne pas recalculer, ne pas charger ce qui n'est pas visible), des appels réseau moins nombreux, un code livré plus petit (chargement différé). Les micro-optimisations syntaxiques pèsent peu.\n\nUne mesure fiable est répétée, faite sur des données réalistes, et compte des opérations quand le temps varie trop : le nombre d'appels d'une fonction est reproductible, un chronomètre ne l'est pas."
     },
     {
-      "title": "Mise en pratique",
-      "content": "La preuve minimale est locale, déterministe et peut être enrichie sans changer le contrat attendu."
+      "title": "Exemple résolu : la suite de Fibonacci",
+      "conceptCodes": [
+        "TYPESCRIPT-PERFORMANCE"
+      ],
+      "content": "Problème : fib(20) en version récursive naïve recalcule les mêmes sous-problèmes un nombre exponentiel de fois. Mesurer, puis corriger par mémoïsation.\n\nRaisonnement, étape par étape :\n1. Version naïve : fib(n) = fib(n - 1) + fib(n - 2). Un compteur d'appels est incrémenté à chaque entrée dans la fonction : fib(20) fait 21 891 appels.\n2. Problème : fib(18) est calculé deux fois depuis fib(20) (via fib(19) et directement), fib(17) trois fois, etc. La complexité est exponentielle (~1,6ⁿ).\n3. Mémoïsation : on mémorise le résultat de chaque n dans une Map. Si n est déjà dans le cache, on retourne le résultat sans recalculer.\n4. Avec le cache, chaque valeur de 0 à 20 est calculée une seule fois : 39 appels au total (les appels qui trouvent la valeur en cache comptent aussi).\n5. Budget : 100 appels. La version naïve le dépasse, la version mémoïsée le respecte.\n6. Vérification : les deux versions donnent le même résultat (6765).\n```ts\nfunction fibMemo(n: number, cache = new Map<number, number>(), stats = { calls: 0 }): number {\n  stats.calls++;\n  if (n < 2) return n;\n  const known = cache.get(n);\n  if (known !== undefined) return known;\n  const value = fibMemo(n - 1, cache, stats) + fibMemo(n - 2, cache, stats);\n  cache.set(n, value);\n  return value;\n}\n```\nLa mémoïsation transforme une complexité exponentielle en linéaire, au prix de la mémoire du cache."
+    },
+    {
+      "title": "Caches : quand, comment, jusqu'où",
+      "content": "Un cache n'est correct que pour une fonction pure (même entrée, même sortie, pas d'effet de bord). Mettre en cache une fonction qui lit l'heure, une base ou un fichier renvoie des valeurs périmées.\n\nQuestions à se poser :\n- Clé : est-elle complète ? Un cache indexé sur un seul paramètre alors que le résultat dépend de deux renvoie de mauvais résultats.\n- Taille : un Map qui grossit sans limite est une fuite mémoire. Prévois une taille maximale (LRU) ou une durée de vie (TTL). WeakMap permet un cache lié à la durée de vie de l'objet clé.\n- Invalidation : « il y a deux difficultés en informatique : l'invalidation de cache et nommer les choses ». Quand la donnée source change, comment le cache le sait-il ?\n- Concurrence : deux appels simultanés pour la même clé calculent deux fois ; mémorise la promesse plutôt que la valeur pour les fonctions asynchrones.\n\nAutres leviers mesurés : charger à la demande (import() dynamique, lazy loading), virtualiser les longues listes, regrouper les appels réseau, éviter de recalculer dans une boucle ce qui ne change pas, utiliser la bonne structure (Map, Set contre tableau pour les recherches)."
+    },
+    {
+      "title": "Erreurs fréquentes à reconnaître",
+      "content": "1. Optimiser sans mesure ou sur des données jouets.\n2. Se fier à un seul chronométrage.\n3. Un cache sans limite de taille ni durée de vie.\n4. Mettre en cache une fonction impure.\n5. Une clé de cache incomplète.\n6. Micro-optimiser une boucle qui pèse 1 % du temps pendant qu'un appel réseau en pèse 90 %.\n\nRetrouve ces erreurs de mémoire avant l'exercice, puis vérifie-toi avec le quiz : c'est la récupération, pas la relecture, qui fixe la notion."
     }
   ],
   "keyConcepts": [
@@ -39,8 +48,8 @@
       "professionalExample": "Le bundle JavaScript d'une application de tableau de bord dépassait 900 Ko après l'ajout d'une bibliothèque de graphiques importée en entier pour un seul composant peu utilisé. L'équipe a fixé un budget de performance dans la CI (échec du build au-delà de 500 Ko pour le chunk principal) et remplacé l'import statique par un import dynamique chargé uniquement quand l'utilisateur ouvre l'onglet statistiques, ramenant le chunk initial sous le budget fixé.",
       "codeExample": "// Avant : import statique qui alourdit le bundle initial\n// import { ChartLibrary } from 'heavy-chart-lib';\n\nasync function renderStatsTab(container: HTMLElement): Promise<void> {\n  const { ChartLibrary } = await import('heavy-chart-lib'); // import dynamique\n  const chart = new ChartLibrary(container);\n  chart.render();\n}\n\n// budget vérifié en CI, ex. avec size-limit :\n// \"size-limit\": [{ \"path\": \"dist/main.js\", \"limit\": \"500 KB\" }]",
       "commonMistake": "Appliquer la technique sans mesurer son effet ni documenter sa frontière.",
-      "masteryQuestion": "Quelle contrainte de performance, profiling et budgets doit rester vraie lorsque le système évolue ?",
-      "masteryProof": "Exécuter la preuve, expliquer son invariant et proposer un cas d’échec."
+      "masteryQuestion": "Pourquoi compter les appels plutôt que chronométrer dans un test, et quand une mémoïsation est-elle incorrecte ?",
+      "masteryProof": "Compter les appels d'une suite de Fibonacci récursive naïve, écrire la version mémoïsée avec une Map et comparer les deux à un budget de 100 appels."
     }
   ],
   "exercises": [
@@ -56,32 +65,80 @@
     {
       "code": "TYPESCRIPT-21-Q1",
       "type": "SINGLE_CHOICE",
-      "prompt": "Quelle preuve est la plus utile en revue ?",
+      "prompt": "Pourquoi fib(20) naïf fait-il 21 891 appels alors qu'il n'y a que 21 valeurs différentes à calculer ?",
       "choices": [
-        "Une exécution déterministe avec invariant explicite",
-        "Une sortie aléatoire",
-        "Une capture sans code"
+        "Parce que JavaScript est lent",
+        "Les mêmes sous-problèmes sont recalculés de nombreuses fois : la complexité est exponentielle",
+        "Parce que Number est lent",
+        "Parce que la récursion est interdite"
       ],
-      "correctChoice": 0,
-      "expectedKeywords": []
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "fib(20) appelle fib(19) et fib(18), qui appellent chacun leurs propres sous-appels, sans partage de résultats. Le nombre d'appels croît comme fib lui-même. Avec un cache, chaque valeur est calculée une fois."
     },
     {
       "code": "TYPESCRIPT-21-Q2",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Quelle fonction peut être mémoïsée sans risque ?",
+      "choices": [
+        "() => Date.now()",
+        "(a: number, b: number) => a + b",
+        "(id: string) => db.query(id)",
+        "() => Math.random()"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Une fonction pure donne toujours le même résultat pour les mêmes arguments. Les trois autres dépendent de l'heure, d'une base ou du hasard : le cache renverrait des valeurs fausses."
+    },
+    {
+      "code": "TYPESCRIPT-21-Q3",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Trouve le défaut :\n```ts\nconst cache = new Map<string, Result>();\nfunction compute(key: string) {\n  if (!cache.has(key)) cache.set(key, heavy(key));\n  return cache.get(key)!;\n}\n```\nsur un serveur qui tourne des semaines avec des clés presque toutes différentes.",
+      "choices": [
+        "has est interdit",
+        "Le cache grossit sans limite : fuite mémoire ; il faut une taille maximale (LRU) ou une durée de vie",
+        "Map est lent",
+        "get ne peut pas être utilisé avec !"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Un cache sans politique d'éviction finit par occuper toute la mémoire. Ajoute une borne, une expiration, ou un WeakMap si les clés sont des objets."
+    },
+    {
+      "code": "TYPESCRIPT-21-Q4",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Quelle mesure est la plus fiable pour comparer deux versions d'un algorithme dans un test automatique ?",
+      "choices": [
+        "Un chronomètre unique",
+        "Un compteur d'opérations ou d'appels, reproductible d'une machine à l'autre",
+        "La sensation de rapidité",
+        "La taille du fichier source"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Le temps dépend de la machine, de sa charge et du cache du processeur. Un nombre d'appels est déterministe : le test ne devient ni lent ni intermittent."
+    },
+    {
+      "code": "TYPESCRIPT-21-Q5",
       "type": "FREE_TEXT",
-      "prompt": "Explique une décision liée à performance, profiling et budgets.",
+      "prompt": "Sans relire le cours, explique avec tes mots la démarche pour optimiser sérieusement un programme lent.",
       "choices": [],
       "correctChoice": null,
       "expectedKeywords": [
-        "contrat",
-        "preuve",
-        "test"
-      ]
+        "mesur",
+        "goulot",
+        "budget",
+        "un seul",
+        "remesur"
+      ],
+      "modelAnswer": "On fixe d'abord un objectif chiffré (budget), on mesure l'état actuel sur des données réalistes, on trouve le goulot avec un profileur plutôt qu'au jugé, on corrige un seul point à la fois, puis on remesure pour vérifier le gain et que les résultats restent identiques. Les gains viennent généralement d'un meilleur algorithme, de moins de travail ou de moins d'appels réseau.",
+      "explanation": "Une bonne réponse enchaîne budget, mesure, profilage du goulot, correction unique et nouvelle mesure."
     }
   ],
   "checklist": [
-    "Je peux expliquer le concept sans réciter une définition",
-    "Je sais exécuter et modifier la preuve",
-    "Je peux nommer un risque et son contrôle",
-    "Je relie cette étape à la suivante"
+    "Je fixe un budget et je mesure avant d'optimiser",
+    "Je ne mémoïse que des fonctions pures",
+    "Mes caches ont une taille ou une durée de vie bornée",
+    "Je mesure par nombre d'opérations quand le temps est trop variable"
   ]
 }

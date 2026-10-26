@@ -11,21 +11,30 @@
     "PYTHON-19"
   ],
   "objectives": [
-    "Expliquer architecture hexagonale et séparation des responsabilités",
-    "Construire une preuve exécutable et déterministe",
-    "Relier le concept à une décision professionnelle"
+    "Séparer le domaine (cas d'usage) des détails techniques (base, e-mail) par des ports.",
+    "Écrire un cas d'usage qui ne dépend que de ports et de leurs adaptateurs injectés.",
+    "Tester un cas d'usage avec des adaptateurs en mémoire, sans base ni réseau.",
+    "Repérer une dépendance dans le mauvais sens ou une règle métier cachée dans un adaptateur."
   ],
   "sections": [
     {
-      "title": "Concept et usage professionnel",
-      "content": "Architecture hexagonale et séparation des responsabilités répond à un besoin concret de maintenabilité, de sûreté ou de performance. Le laboratoire demande de rendre la décision observable et vérifiable.",
-      "conceptCodes": [
-        "PYTHON-ARCHITECTURE"
-      ]
+      "title": "Le cœur ne connaît pas l'extérieur",
+      "content": "L'architecture hexagonale (ports et adaptateurs) place le métier au centre. Le cœur définit des ports, des interfaces décrivant ce dont il a besoin (stocker un utilisateur, envoyer un e-mail). L'extérieur fournit des adaptateurs qui implémentent ces ports (PostgreSQL, SMTP, mémoire pour les tests). La dépendance pointe toujours vers le cœur, jamais l'inverse.\n\nEn Python, un Protocol décrit un port sans imposer d'héritage :\n```python\nfrom typing import Protocol\n\nclass UserRepository(Protocol):\n    def exists(self, email: str) -> bool: ...\n    def save(self, email: str, name: str) -> None: ...\n\nclass Mailer(Protocol):\n    def send(self, to: str, message: str) -> None: ...\n```"
     },
     {
-      "title": "Mise en pratique",
-      "content": "La preuve minimale est locale, déterministe et peut être enrichie sans changer le contrat attendu."
+      "title": "Exemple résolu : s'inscrire une seule fois, puis prévenir",
+      "conceptCodes": [
+        "PYTHON-ARCHITECTURE"
+      ],
+      "content": "Problème : inscrire un utilisateur, refuser un doublon et n'envoyer l'e-mail de bienvenue qu'après l'enregistrement.\n\nRaisonnement, étape par étape :\n1. Ports : un dépôt (exists, save) et un service d'e-mail (send).\n2. Cas d'usage RegisterUser : reçoit les deux ports dans son constructeur, ne connaît aucune implémentation.\n3. Règle métier : si l'e-mail existe déjà, refuser avant toute écriture.\n4. Ordre : enregistrer d'abord, envoyer ensuite. Si l'enregistrement échoue, aucun e-mail ne part ; l'inverse enverrait un message pour un compte qui n'existe pas.\n5. Adaptateurs de test : un dépôt en mémoire (liste) et un mailer qui note les envois.\n6. Vérification : après deux inscriptions identiques, un seul utilisateur et un seul e-mail.\n```python\nclass RegisterUser:\n    def __init__(self, users: UserRepository, mailer: Mailer):\n        self.users, self.mailer = users, mailer\n\n    def execute(self, email: str, name: str) -> str:\n        if self.users.exists(email):\n            return \"refusée (déjà inscrite)\"\n        self.users.save(email, name)          # d'abord la persistance\n        self.mailer.send(email, f\"Bienvenue {name}\")\n        return f\"ok (email envoyé à {email})\"\n```"
+    },
+    {
+      "title": "Ce que cela apporte et ce que cela coûte",
+      "content": "Bénéfices : le cœur se teste sans infrastructure (rapide, déterministe) ; on change de base ou de fournisseur d'e-mail en écrivant un adaptateur ; les règles métier sont lisibles à un seul endroit.\n\nCoûts : plus de fichiers et d'indirections ; pour un script de 50 lignes ou un CRUD sans règle métier, c'est du surplus. Applique-le là où le métier est riche et durable.\n\nPratiques : les adaptateurs « entrants » (HTTP, ligne de commande) appellent les cas d'usage ; les adaptateurs « sortants » (base, e-mail) implémentent les ports ; l'assemblage se fait à un seul endroit (racine de composition, main) ; aucune règle métier dans un adaptateur ; les erreurs du domaine sont des exceptions du domaine, que l'adaptateur HTTP traduit en statuts. Teste chaque adaptateur réel séparément par un test d'intégration."
+    },
+    {
+      "title": "Erreurs fréquentes à reconnaître",
+      "content": "1. Le cas d'usage importe directement sqlite3 ou smtplib.\n2. Une règle métier (« pas de doublon ») cachée dans l'adaptateur de base.\n3. Envoyer l'e-mail avant d'avoir enregistré.\n4. Créer une couche de ports pour un code sans règle métier.\n5. Des ports trop larges (une interface de 20 méthodes) : ségrégation des interfaces.\n6. Ne tester que via l'infrastructure réelle : lent et fragile.\n\nRetrouve ces erreurs de mémoire avant l'exercice, puis vérifie-toi avec le quiz : c'est la récupération, pas la relecture, qui fixe la notion."
     }
   ],
   "keyConcepts": [
@@ -39,8 +48,8 @@
       "professionalExample": "Un service de facturation mélangeait directement les appels SQLAlchemy et la logique de calcul de TVA dans la même fonction, si bien qu'écrire un test unitaire sur le calcul obligeait à monter une vraie base de données. En isolant la logique métier derrière un port (une interface abstraite InvoiceRepository) et en injectant une implémentation SQL en production et une implémentation en mémoire dans les tests, l'équipe a pu tester les règles de TVA en quelques millisecondes sans base de données.",
       "codeExample": "from typing import Protocol\nfrom dataclasses import dataclass\n\n@dataclass(frozen=True)\nclass Invoice:\n    id: str\n    amount_ht: float\n\nclass InvoiceRepository(Protocol):  # port : le domaine ne connaît pas SQL\n    def save(self, invoice: Invoice) -> None: ...\n\nclass InMemoryInvoiceRepository:  # adaptateur de test\n    def __init__(self) -> None:\n        self.saved: list[Invoice] = []\n\n    def save(self, invoice: Invoice) -> None:\n        self.saved.append(invoice)\n\ndef create_invoice(repo: InvoiceRepository, amount_ht: float) -> Invoice:\n    invoice = Invoice(id=\"INV-1\", amount_ht=amount_ht)\n    repo.save(invoice)\n    return invoice",
       "commonMistake": "Appliquer la technique sans mesurer son effet ni documenter sa frontière.",
-      "masteryQuestion": "Quelle contrainte de architecture hexagonale et séparation des responsabilités doit rester vraie lorsque le système évolue ?",
-      "masteryProof": "Exécuter la preuve, expliquer son invariant et proposer un cas d’échec."
+      "masteryQuestion": "Pourquoi les dépendances pointent-elles vers le cœur, et pourquoi enregistrer avant d'envoyer l'e-mail ?",
+      "masteryProof": "Écrire un dépôt en mémoire et le cas d'usage RegisterUser qui refuse un doublon et n'envoie l'e-mail qu'après l'enregistrement."
     }
   ],
   "exercises": [
@@ -56,32 +65,80 @@
     {
       "code": "PYTHON-20-Q1",
       "type": "SINGLE_CHOICE",
-      "prompt": "Quelle preuve est la plus utile en revue ?",
+      "prompt": "Dans une architecture hexagonale, qui définit l'interface UserRepository ?",
       "choices": [
-        "Une exécution déterministe avec invariant explicite",
-        "Une sortie aléatoire",
-        "Une capture sans code"
+        "L'adaptateur PostgreSQL",
+        "Le cœur métier : il exprime ce dont il a besoin ; l'adaptateur l'implémente",
+        "Le framework web",
+        "La base de données"
       ],
-      "correctChoice": 0,
-      "expectedKeywords": []
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Le cœur possède le port et l'adaptateur s'y conforme. C'est ce qui fait pointer la dépendance vers le métier et permet de remplacer la technologie sans toucher aux règles."
     },
     {
       "code": "PYTHON-20-Q2",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Prédis le résultat :\n```python\nusers = InMemoryUsers(); mailer = FakeMailer()\nuc = RegisterUser(users, mailer)\nuc.execute(\"ada@dlr.dev\", \"Ada\")\nuc.execute(\"ada@dlr.dev\", \"Ada\")\nprint(len(users.items), len(mailer.sent))\n```\n",
+      "choices": [
+        "2 2",
+        "1 1",
+        "1 2",
+        "2 1"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "La seconde inscription est refusée avant toute écriture et avant tout envoi : un seul utilisateur et un seul e-mail."
+    },
+    {
+      "code": "PYTHON-20-Q3",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Trouve le défaut :\n```python\ndef execute(self, email, name):\n    self.mailer.send(email, \"Bienvenue\")\n    self.users.save(email, name)\n```\n",
+      "choices": [
+        "Il manque un return",
+        "L'e-mail part avant l'enregistrement : si save échoue, l'utilisateur est prévenu d'un compte inexistant",
+        "send est interdit",
+        "save doit être appelée deux fois"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Un effet externe non annulable (e-mail) doit venir après l'opération qui peut échouer. Ici l'ordre inverse crée un message trompeur en cas d'échec."
+    },
+    {
+      "code": "PYTHON-20-Q4",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Une règle « un e-mail ne peut pas être inscrit deux fois » est codée uniquement dans l'adaptateur PostgreSQL. Quel est le problème ?",
+      "choices": [
+        "Aucun",
+        "La règle métier est cachée dans l'infrastructure : l'adaptateur en mémoire utilisé en test ne la respecte pas, et le métier n'est plus lisible à un seul endroit",
+        "PostgreSQL ne gère pas l'unicité",
+        "Elle est trop stricte"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Le cas d'usage doit porter la règle (refuser avant d'écrire). La base peut ajouter une contrainte UNIQUE comme filet de sécurité, mais le métier ne doit pas en dépendre pour exister."
+    },
+    {
+      "code": "PYTHON-20-Q5",
       "type": "FREE_TEXT",
-      "prompt": "Explique une décision liée à architecture hexagonale et séparation des responsabilités.",
+      "prompt": "Sans relire le cours, explique avec tes mots ce que sont un port et un adaptateur, et ce que cela change pour tester un cas d'usage.",
       "choices": [],
       "correctChoice": null,
       "expectedKeywords": [
-        "contrat",
-        "preuve",
-        "test"
-      ]
+        "port",
+        "adaptateur",
+        "interface",
+        "test",
+        "memoire"
+      ],
+      "modelAnswer": "Un port est une interface définie par le cœur métier pour exprimer ce dont il a besoin ; un adaptateur est une implémentation de ce port pour une technologie donnée (base, e-mail, mémoire). Comme le cas d'usage ne dépend que des ports, on peut le tester avec des adaptateurs en mémoire, rapides et déterministes, sans base ni réseau.",
+      "explanation": "Une bonne réponse définit port (interface du cœur) et adaptateur (implémentation technique) et relie cela aux tests sans infrastructure."
     }
   ],
   "checklist": [
-    "Je peux expliquer le concept sans réciter une définition",
-    "Je sais exécuter et modifier la preuve",
-    "Je peux nommer un risque et son contrôle",
-    "Je relie cette étape à la suivante"
+    "Mes cas d'usage ne dépendent que de ports",
+    "Mes règles métier ne sont pas cachées dans un adaptateur",
+    "Je fais l'effet externe après l'opération qui peut échouer",
+    "Je teste le cœur avec des adaptateurs en mémoire"
   ]
 }

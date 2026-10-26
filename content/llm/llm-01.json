@@ -1,16 +1,140 @@
 {
-  "code": "LLM-01", "language": "PYTHON", "number": 1, "slug": "premier-prompt-mesurable",
-  "title": "Learn LLMs : prompt, tokens et sortie contrôlée", "difficulty": "BASE", "threshold": 70,
-  "objectives": ["Décomposer une interaction avec un LLM", "Distinguer token et mot", "Construire une expérience locale reproductible en Python"],
+  "code": "LLM-01",
+  "language": "PYTHON",
+  "number": 1,
+  "slug": "premier-prompt-mesurable",
+  "title": "Learn LLMs : prompt, tokens et sortie contrôlée",
+  "difficulty": "BASE",
+  "threshold": 70,
+  "objectives": [
+    "Décomposer une interaction avec un LLM : prompt, contexte, tokens d'entrée, tokens de sortie, coût.",
+    "Distinguer token et mot et estimer un nombre de tokens pour budgétiser fenêtre de contexte et coût.",
+    "Structurer un prompt (objectif, contexte, contraintes, format) pour obtenir une sortie vérifiable.",
+    "Expliquer pourquoi une expérience locale et déterministe prépare l'usage d'un modèle réel."
+  ],
   "sections": [
-    {"title":"Entrée, modèle, sortie","content":"Un LLM reçoit une séquence de tokens et prédit la suite. Un prompt utile fournit un objectif, un contexte, des contraintes et un format de sortie vérifiable.","conceptCodes":["LLM-PROMPT-TOKENS"]},
-    {"title":"Mesurer avant d'automatiser","content":"Le nombre de mots n'est pas le nombre exact de tokens. Dans ce premier laboratoire hors réseau, une approximation rend le coût visible sans prétendre reproduire le tokenizer d'un modèle réel."}
+    {
+      "title": "Un LLM lit et écrit des tokens",
+      "content": "Un grand modèle de langage (LLM) ne lit pas des mots mais des tokens : des fragments de texte (un mot courant, une partie de mot, un signe de ponctuation) produits par un tokenizer, souvent de type BPE (byte-pair encoding). Il prédit, token après token, la suite la plus probable d'une séquence. Le français et le code consomment en général plus de tokens par mot que l'anglais courant.\n\nTrois conséquences pratiques :\n- Fenêtre de contexte : le modèle ne traite qu'un nombre maximal de tokens (entrée + sortie). Au-delà, le texte est refusé ou tronqué.\n- Coût et latence : les fournisseurs facturent par token (en général un tarif pour l'entrée, un autre plus élevé pour la sortie), et la durée croît avec le nombre de tokens produits.\n- Variabilité : la même phrase peut se découper différemment d'un modèle à l'autre ; un compteur de tokens doit être celui du modèle réellement utilisé.\nUne règle d'estimation courante : environ 4 caractères par token en anglais, 3 à 4 en français ; elle sert à budgétiser, pas à facturer."
+    },
+    {
+      "title": "Exemple résolu : budgétiser un prompt",
+      "conceptCodes": [
+        "LLM-PROMPT-TOKENS"
+      ],
+      "content": "Problème : décider si un texte tient dans la fenêtre disponible et estimer le coût d'un appel.\n\nRaisonnement, étape par étape :\n1. Estimation : tokens ≈ ceil(nombre de caractères / 4), soit (len(texte) + 3) // 4 en entiers. « Explique la JVM simplement » fait 26 caractères, donc 7 tokens.\n2. Budget : fenêtre de 50 tokens dont 20 réservés à la réponse : il reste 30 tokens pour l'entrée. Il faut toujours réserver la sortie, sinon le modèle n'a plus de place pour répondre.\n3. Test : 7 <= 30, le prompt tient ; un texte de 160 caractères (40 tokens) ne tient pas.\n4. Coût : (tokens_entrée × prix_entrée + tokens_sortie × prix_sortie) / 1 000 000 avec des prix par million de tokens (par exemple 3 $ et 15 $).\n5. Vérification : 7 tokens en entrée et 100 en sortie coûtent (7 × 3 + 100 × 15) / 1 000 000 = 0,001521 $.\n```python\ndef approximate_tokens(text: str) -> int:\n    return (len(text) + 3) // 4\n\ndef cost(tokens_in: int, tokens_out: int, price_in=3.0, price_out=15.0) -> float:\n    return (tokens_in * price_in + tokens_out * price_out) / 1_000_000\n```\nLes prix et tailles de fenêtre évoluent vite : lis-les dans la documentation du fournisseur et configure-les, ne les écris pas en dur dans la logique métier."
+    },
+    {
+      "title": "Anatomie d'un prompt utile",
+      "content": "Un prompt efficace est un petit cahier des charges :\n- Rôle / objectif : ce que le modèle doit produire (« résumer en 3 puces pour un chef de projet »).\n- Contexte : les données utiles, délimitées clairement (balises, séparateurs), et rien de superflu.\n- Contraintes : longueur, ton, langue, ce qu'il ne doit pas faire, comment réagir à l'incertitude (« réponds \"inconnu\" si l'information n'est pas dans le contexte »).\n- Format de sortie vérifiable : JSON avec des clés précises, liste numérotée, tableau.\n- Exemples (few-shot) : un ou deux exemples d'entrée/sortie réduisent l'ambiguïté.\n\nCe qu'un LLM n'est pas : une base de faits fiable (il peut produire des affirmations plausibles mais fausses, les « hallucinations »), un calculateur (il approxime), un système déterministe (deux appels peuvent différer). On compense par du contexte fourni, des sorties validées par du code, des citations de sources et des évaluations mesurées.\n\nPourquoi des expériences locales : ce parcours s'exécute sans réseau ni clé d'API. Chaque expérience isole un mécanisme (tokens, échantillonnage, templates, évaluation, recherche, RAG, sécurité) avec un code déterministe. Dans un vrai projet, une partie est remplacée par un appel à un modèle ; le reste (validation, mesures, sécurité, budget) reste du code classique, c'est pourquoi on l'apprend d'abord."
+    },
+    {
+      "title": "Erreurs fréquentes à reconnaître",
+      "content": "1. Confondre mots et tokens : le budget réel est dépassé.\n2. Ne pas réserver de place à la réponse dans la fenêtre de contexte.\n3. Écrire en dur des prix ou des tailles de fenêtre qui changent.\n4. Un prompt qui mélange consignes et données sans séparateur.\n5. Réclamer un format libre puis tenter de le parser avec des expressions régulières fragiles.\n6. Considérer la sortie d'un modèle comme une vérité.\n\nRetrouve ces erreurs de mémoire avant l'exercice, puis vérifie-toi avec le quiz : c'est la récupération, pas la relecture, qui fixe la notion."
+    }
   ],
-  "keyConcepts": [{"code":"LLM-PROMPT-TOKENS","name":"Prompt et tokens","definition":"Le prompt est l'entrée structurée du modèle ; les tokens sont les unités traitées par son tokenizer.","whyExists":"Le modèle ne lit pas directement des intentions : il conditionne ses prédictions sur une séquence encodée.","whyImportant":"La structure et la taille de l'entrée influencent qualité, latence et coût.","minimalExample":"prompt = 'Résume ce texte en trois points vérifiables.'","professionalExample":"Une startup facture ses appels API au token : l'équipe produit rédige des prompts flous sans contraintes de format, ce qui gonfle la longueur moyenne des réponses de 40% et double la facture mensuelle du fournisseur. Après avoir imposé à chaque prompt un objectif, un contexte, des contraintes et un format de sortie explicite, la taille des réponses redevient prévisible et les tickets de support liés à des réponses hors sujet diminuent nettement.","codeExample":"import tiktoken\n\ntext = \"Résume ce texte en trois points vérifiables.\"\nnaive = len(text.split())\nenc = tiktoken.encoding_for_model(\"gpt-4o\")\nreel = len(enc.encode(text))\nprint(f\"Mots: {naive}\")\nprint(f\"Tokens réels: {reel}\")\n# Mots: 7\n# Tokens réels: 11 (l'estimation par mots sous-évalue le coût réel)","commonMistake":"Confondre une estimation par mots avec le comptage exact du tokenizer.","masteryQuestion":"Quels éléments rendent une consigne LLM plus vérifiable ?","masteryProof":"Construire une consigne avec objectif, contexte, contraintes et format attendu."}],
-  "exercises": [{"code":"LLM-01-E1","title":"Rendre un prompt mesurable","statement":"Complète le code pour afficher le prompt fourni et produire exactement les deux lignes attendues.","starterCode":"def approximate_tokens(text: str) -> int:\n    # TODO : retourne une approximation du nombre de tokens (le nombre de mots)\n    return 0\n\nprompt = \"Explique la JVM simplement\"\n# TODO : affiche \"Prompt: \" suivi du prompt, puis \"Tokens approx: \" suivi de l'approximation\n","expectedOutput":"Prompt: Explique la JVM simplement\nTokens approx: 4"}],
+  "keyConcepts": [
+    {
+      "code": "LLM-PROMPT-TOKENS",
+      "name": "Prompt et tokens",
+      "definition": "Le prompt est l'entrée structurée du modèle ; les tokens sont les unités traitées par son tokenizer.",
+      "whyExists": "Le modèle ne lit pas directement des intentions : il conditionne ses prédictions sur une séquence encodée.",
+      "whyImportant": "La structure et la taille de l'entrée influencent qualité, latence et coût.",
+      "minimalExample": "prompt = 'Résume ce texte en trois points vérifiables.'",
+      "professionalExample": "Une startup facture ses appels API au token : l'équipe produit rédige des prompts flous sans contraintes de format, ce qui gonfle la longueur moyenne des réponses de 40% et double la facture mensuelle du fournisseur. Après avoir imposé à chaque prompt un objectif, un contexte, des contraintes et un format de sortie explicite, la taille des réponses redevient prévisible et les tickets de support liés à des réponses hors sujet diminuent nettement.",
+      "codeExample": "import tiktoken\n\ntext = \"Résume ce texte en trois points vérifiables.\"\nnaive = len(text.split())\nenc = tiktoken.encoding_for_model(\"gpt-4o\")\nreel = len(enc.encode(text))\nprint(f\"Mots: {naive}\")\nprint(f\"Tokens réels: {reel}\")\n# Mots: 7\n# Tokens réels: 11 (l'estimation par mots sous-évalue le coût réel)",
+      "commonMistake": "Confondre une estimation par mots avec le comptage exact du tokenizer.",
+      "masteryQuestion": "Pourquoi un token n'est-il pas un mot, et pourquoi réserver une part de la fenêtre de contexte à la réponse ?",
+      "masteryProof": "Estimer des tokens, tester l'entrée contre un budget et calculer un coût à partir de prix configurés."
+    }
+  ],
+  "exercises": [
+    {
+      "code": "LLM-01-E1",
+      "title": "Budgétiser un prompt : tokens, fenêtre et coût",
+      "statement": "Complète l'expérience : une estimation de tokens (environ 4 caractères par token, arrondi au supérieur), un test d'entrée contre la fenêtre (50 tokens dont 20 réservés à la sortie) et le calcul du coût (3 $ par million de tokens en entrée, 15 $ en sortie). Affiche exactement :\nPrompt: Explique la JVM simplement\nTokens approx: 7\nEntrée max: 30 tokens\nTient: True\nTexte long (40 tokens) tient: False\nCoût estimé: 0.001521 USD\nDans un projet réel, l'estimation serait remplacée par le tokenizer du modèle utilisé.",
+      "starterCode": "CONTEXT_WINDOW = 50\nRESERVED_OUTPUT = 20\nPRICE_IN = 3.0     # dollars par million de tokens en entrée\nPRICE_OUT = 15.0   # dollars par million de tokens en sortie\n\n\ndef approximate_tokens(text: str) -> int:\n    # TODO 1 : environ 4 caractères par token, arrondi au supérieur : (len(text) + 3) // 4\n    return 0\n\n\ndef fits(text: str) -> bool:\n    # TODO 2 : True si les tokens du texte tiennent dans CONTEXT_WINDOW - RESERVED_OUTPUT\n    return False\n\n\ndef cost(tokens_in: int, tokens_out: int) -> float:\n    # TODO 3 : (tokens_in * PRICE_IN + tokens_out * PRICE_OUT) / 1_000_000\n    return 0.0\n\n\nprompt = \"Explique la JVM simplement\"\nlong_text = \"mot \" * 40\n# TODO 4 : affiche, dans cet ordre :\n#   \"Prompt: <prompt>\"\n#   \"Tokens approx: <n>\"\n#   \"Entrée max: <CONTEXT_WINDOW - RESERVED_OUTPUT> tokens\"\n#   \"Tient: <True/False>\"\n#   \"Texte long (<n> tokens) tient: <True/False>\"\n#   \"Coût estimé: <coût avec 6 décimales> USD\"   pour 7 tokens en entrée et 100 en sortie (utilise le nombre calculé du prompt)\n",
+      "expectedOutput": "Prompt: Explique la JVM simplement\nTokens approx: 7\nEntrée max: 30 tokens\nTient: True\nTexte long (40 tokens) tient: False\nCoût estimé: 0.001521 USD"
+    }
+  ],
   "quiz": [
-    {"code":"LLM-01-Q1","type":"SINGLE_CHOICE","prompt":"Une séparation par espaces donne-t-elle le nombre exact de tokens d'un LLM ?","choices":["Non, le tokenizer du modèle décide","Oui, toujours","Seulement pour Java"],"correctChoice":0,"expectedKeywords":[]},
-    {"code":"LLM-01-Q2","type":"FREE_TEXT","prompt":"Donne quatre éléments d'un prompt vérifiable.","choices":[],"correctChoice":null,"expectedKeywords":["objectif","contexte","contraintes","format"]}
+    {
+      "code": "LLM-01-Q1",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Pourquoi le nombre de tokens d'un texte n'est-il pas égal à son nombre de mots ?",
+      "choices": [
+        "Parce que le tokenizer découpe en fragments (parties de mots, ponctuation) selon son vocabulaire",
+        "Parce que les LLM comptent les lettres",
+        "Parce que les espaces coûtent un token chacun",
+        "Parce que le nombre de tokens est choisi au hasard"
+      ],
+      "correctChoice": 0,
+      "expectedKeywords": [],
+      "explanation": "Un tokenizer (BPE par exemple) découpe le texte en unités de son vocabulaire : un mot courant peut être un token, un mot rare plusieurs. D'où l'estimation en caractères et l'utilisation du tokenizer du modèle réel pour un décompte exact."
+    },
+    {
+      "code": "LLM-01-Q2",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Prédis le résultat : fenêtre de 50 tokens dont 20 réservés à la sortie ; un texte de 40 tokens.",
+      "choices": [
+        "Il tient : 40 est inférieur à 50",
+        "Il ne tient pas : l'entrée est limitée à 30 tokens une fois la sortie réservée",
+        "Il tient mais coûte plus cher",
+        "Impossible à dire"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "La fenêtre est partagée entre l'entrée et la sortie. Sans réserve pour la réponse, le modèle n'aurait plus de place pour répondre : la limite utile de l'entrée est 50 - 20 = 30."
+    },
+    {
+      "code": "LLM-01-Q3",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Trouve le défaut :\n```python\nPRICE_IN = 3.0   # écrit en dur au milieu de la logique métier, copié dans 5 fichiers\n```\n",
+      "choices": [
+        "Les prix ne peuvent pas être des flottants",
+        "Les tarifs et tailles de fenêtre changent souvent : ils doivent être configurés à un seul endroit, pas dupliqués",
+        "Il manque un commentaire",
+        "Python n'accepte pas les majuscules"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Les fournisseurs modifient tarifs, modèles et limites régulièrement. Une valeur dupliquée devient fausse à des endroits différents. Centralise-la dans la configuration."
+    },
+    {
+      "code": "LLM-01-Q4",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Quelle consigne rend la sortie d'un LLM la plus facile à valider par du code ?",
+      "choices": [
+        "« Réponds comme tu veux. »",
+        "« Réponds en JSON avec exactement les clés answer (texte) et confidence (nombre entre 0 et 1). »",
+        "« Sois créatif. »",
+        "« Réponds longuement. »"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Un format précis et vérifiable permet de valider la réponse mécaniquement (clés, types, bornes) avant de la transmettre au métier. Une sortie libre doit être parsée avec des heuristiques fragiles."
+    },
+    {
+      "code": "LLM-01-Q5",
+      "type": "FREE_TEXT",
+      "prompt": "Sans relire le cours, explique avec tes mots pourquoi un LLM ne doit pas être traité comme une source de vérité et comment on compense.",
+      "choices": [],
+      "correctChoice": null,
+      "expectedKeywords": [
+        "hallucin",
+        "contexte",
+        "valid",
+        "source",
+        "mesur"
+      ],
+      "modelAnswer": "Un LLM prédit la suite la plus probable d'un texte : il peut produire des affirmations plausibles mais fausses (hallucinations), et ses réponses peuvent varier d'un appel à l'autre. On compense en lui fournissant le contexte pertinent, en validant ses sorties par du code (format, bornes), en demandant des citations de sources vérifiables et en mesurant ses performances sur un jeu d'évaluation plutôt qu'à l'impression.",
+      "explanation": "Une bonne réponse cite le risque d'hallucination et au moins deux compensations : contexte, validation par code, citations, évaluation mesurée."
+    }
   ],
-  "checklist": ["Je distingue mot et token", "Je structure une consigne vérifiable", "Je sais que cette approximation n'est pas un tokenizer réel"]
+  "checklist": [
+    "Je sais qu'un token n'est pas un mot et j'estime mon budget",
+    "Je réserve de la place à la réponse dans la fenêtre de contexte",
+    "Mes prix et limites sont configurés, pas écrits en dur",
+    "Je demande un format de sortie vérifiable"
+  ]
 }

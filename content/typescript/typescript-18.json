@@ -11,21 +11,30 @@
     "TYPESCRIPT-17"
   ],
   "objectives": [
-    "Expliquer solid, injection et architecture modulaire",
-    "Construire une preuve exécutable et déterministe",
-    "Relier le concept à une décision professionnelle"
+    "Appliquer l'inversion de dépendances : recevoir Clock et Logger par le constructeur.",
+    "Remplacer une dépendance par un faux (horloge fixe, journal en mémoire) pour un test déterministe.",
+    "Identifier les cinq principes SOLID dans un exemple concret.",
+    "Repérer un new en dur, un singleton global ou une classe qui fait trop de choses."
   ],
   "sections": [
     {
-      "title": "Concept et usage professionnel",
-      "content": "SOLID, injection et architecture modulaire répond à un besoin concret de maintenabilité, de sûreté ou de performance. Le laboratoire demande de rendre la décision observable et vérifiable.",
-      "conceptCodes": [
-        "TYPESCRIPT-ARCHITECTURE"
-      ]
+      "title": "Dépendre d'abstractions plutôt que de détails",
+      "content": "Un service qui fait lui-même new Date() et console.log est lié à l'heure réelle et à la console : impossible de le tester de façon déterministe, impossible de changer la destination des logs. L'inversion de dépendances consiste à déclarer ce dont le service a besoin sous forme d'interfaces et à les recevoir de l'extérieur :\n```ts\ninterface Clock  { now(): Date }\ninterface Logger { info(message: string): void }\n\nclass InvoiceService {\n  private issued = 0;\n  constructor(private readonly clock: Clock, private readonly logger: Logger) {}\n\n  issue(id: number, total: number): void {\n    this.issued++;\n    this.logger.info(`[${this.clock.now().toISOString()}] facture ${id} émise (total ${total})`);\n  }\n}\n```\nLe service ne sait pas d'où vient l'heure ni où va le journal ; l'assemblage se fait à un seul endroit (la racine de composition, le point d'entrée)."
     },
     {
-      "title": "Mise en pratique",
-      "content": "La preuve minimale est locale, déterministe et peut être enrichie sans changer le contrat attendu."
+      "title": "Exemple résolu : une facture reproductible",
+      "conceptCodes": [
+        "TYPESCRIPT-ARCHITECTURE"
+      ],
+      "content": "Problème : tester qu'une facture journalise le bon message avec la date, sans dépendre de l'heure réelle.\n\nRaisonnement, étape par étape :\n1. Le service reçoit un Clock et un Logger dans son constructeur.\n2. En production : SystemClock (new Date()) et ConsoleLogger (console.log).\n3. En test : un FixedClock qui renvoie toujours 2024-01-01T00:00:00Z, et un MemoryLogger qui range les messages dans un tableau.\n4. On appelle issue(42, 120) et on vérifie le message exact, le nombre de messages et le compteur de factures émises.\n5. La date ISO d'un instant fixe est connue d'avance : le test est déterministe.\n6. Vérification : le test passe à midi comme à minuit, en France comme au Japon.\n```ts\nclass FixedClock implements Clock {\n  constructor(private readonly instant: Date) {}\n  now(): Date { return this.instant; }\n}\nclass MemoryLogger implements Logger {\n  readonly messages: string[] = [];\n  info(message: string): void { this.messages.push(message); }\n}\n\nconst logger = new MemoryLogger();\nconst service = new InvoiceService(new FixedClock(new Date('2024-01-01T00:00:00Z')), logger);\nservice.issue(42, 120);\n// logger.messages[0] === '[2024-01-01T00:00:00.000Z] facture 42 émise (total 120)'\n```\ntoISOString() inclut les millisecondes : 2024-01-01T00:00:00.000Z. Si ton format attendu n'en contient pas, retire-les explicitement."
+    },
+    {
+      "title": "SOLID en TypeScript",
+      "content": "- S : une classe, une raison de changer. InvoiceService émet des factures ; il ne formate pas du HTML ni n'écrit en base.\n- O : ouvert à l'extension, fermé à la modification. Ajouter un nouveau Logger n'exige pas de modifier InvoiceService.\n- L : substitution. Tout Logger doit pouvoir remplacer un autre sans surprise (ne lève pas une exception que le contrat ne prévoit pas).\n- I : ségrégation des interfaces. Préfère Clock et Logger séparés à une interface Infrastructure de vingt méthodes.\n- D : dépendre d'abstractions (interfaces), pas d'implémentations.\n\nMise en œuvre : injection par constructeur (dépendances obligatoires, visibles), racine de composition unique, pas de singleton global importé partout (un module qui exporte une instance est un singleton caché), pas de new d'une dépendance dans un service. Un conteneur d'injection (NestJS, Angular) automatise l'assemblage, mais le principe vaut sans lui.\n\nÉquilibre : une interface par classe « au cas où » alourdit le code. Crée l'interface quand il existe (ou existera sûrement) deux implémentations, ou pour isoler une frontière (heure, réseau, base, fichier)."
+    },
+    {
+      "title": "Erreurs fréquentes à reconnaître",
+      "content": "1. new Date() ou Date.now() au cœur de la logique : tests instables.\n2. Un module qui exporte une instance partagée (singleton caché) importée partout.\n3. Une classe qui crée ses propres dépendances.\n4. Une interface obèse qui force à implémenter des méthodes inutiles.\n5. Une interface créée pour chaque classe sans seconde implémentation prévisible.\n6. Du métier dans la racine de composition.\n\nRetrouve ces erreurs de mémoire avant l'exercice, puis vérifie-toi avec le quiz : c'est la récupération, pas la relecture, qui fixe la notion."
     }
   ],
   "keyConcepts": [
@@ -39,8 +48,8 @@
       "professionalExample": "Le NotificationService envoyait initialement des emails en appelant directement le SDK SendGrid à l'intérieur de sa logique métier, ce qui rendait tout test unitaire impossible sans envoyer un vrai email. En appliquant le principe d'inversion des dépendances, le service dépend désormais d'une interface EmailSender injectée au constructeur ; en production on injecte SendGridSender, et en test un FakeEmailSender, sans jamais modifier la classe NotificationService elle-même.",
       "codeExample": "interface EmailSender {\n  send(to: string, subject: string, body: string): Promise<void>;\n}\n\nclass NotificationService {\n  constructor(private readonly emailSender: EmailSender) {}\n\n  async notifyOrderShipped(email: string, orderId: string): Promise<void> {\n    await this.emailSender.send(email, 'Commande expédiée', `Votre commande ${orderId} est en route.`);\n  }\n}\n\nclass SendGridSender implements EmailSender {\n  async send(to: string, subject: string, body: string): Promise<void> {\n    // appel réel au SDK SendGrid\n  }\n}",
       "commonMistake": "Appliquer la technique sans mesurer son effet ni documenter sa frontière.",
-      "masteryQuestion": "Quelle contrainte de solid, injection et architecture modulaire doit rester vraie lorsque le système évolue ?",
-      "masteryProof": "Exécuter la preuve, expliquer son invariant et proposer un cas d’échec."
+      "masteryQuestion": "Pourquoi injecter une horloge plutôt qu'appeler new Date() dans le service, et où assemble-t-on les dépendances ?",
+      "masteryProof": "Écrire InvoiceService qui reçoit Clock et Logger, avec une horloge fixe et un journal en mémoire pour un test déterministe."
     }
   ],
   "exercises": [
@@ -56,32 +65,80 @@
     {
       "code": "TYPESCRIPT-18-Q1",
       "type": "SINGLE_CHOICE",
-      "prompt": "Quelle preuve est la plus utile en revue ?",
+      "prompt": "Pourquoi InvoiceService reçoit-il un Clock au lieu d'appeler new Date() ?",
       "choices": [
-        "Une exécution déterministe avec invariant explicite",
-        "Une sortie aléatoire",
-        "Une capture sans code"
+        "Pour gagner en performance",
+        "Pour qu'un test puisse fixer l'heure et obtenir un résultat reproductible",
+        "Parce que new Date() est interdit",
+        "Pour changer de fuseau horaire"
       ],
-      "correctChoice": 0,
-      "expectedKeywords": []
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Dépendre de l'heure réelle rend le test instable (le message change à chaque exécution). Une horloge injectée permet d'utiliser une horloge fixe en test."
     },
     {
       "code": "TYPESCRIPT-18-Q2",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Prédis le résultat :\n```ts\nconst logger = new MemoryLogger();\nconst s = new InvoiceService(new FixedClock(new Date('2024-01-01T00:00:00Z')), logger);\ns.issue(42, 120);\nconsole.log(logger.messages[0]);\n```\n",
+      "choices": [
+        "Dépend de l'heure d'exécution",
+        "[2024-01-01T00:00:00.000Z] facture 42 émise (total 120)",
+        "facture 42",
+        "undefined"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "L'horloge fixe renvoie toujours le même instant : la date ISO est déterministe (toISOString inclut .000 pour les millisecondes)."
+    },
+    {
+      "code": "TYPESCRIPT-18-Q3",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Trouve le défaut :\n```ts\nimport { logger } from './logger';   // instance exportée par le module\nclass InvoiceService {\n  issue() { logger.info('...'); }\n}\n```\n",
+      "choices": [
+        "logger est mal nommé",
+        "Le service dépend d'un singleton global caché : impossible à remplacer en test sans manipuler les modules, et la dépendance n'apparaît pas dans le constructeur",
+        "info n'existe pas",
+        "Il manque async"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Une instance importée directement est une dépendance cachée. La recevoir par le constructeur la rend visible et substituable."
+    },
+    {
+      "code": "TYPESCRIPT-18-Q4",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Quel principe SOLID dit qu'on devrait préférer deux petites interfaces Clock et Logger à une grosse interface Infrastructure ?",
+      "choices": [
+        "S, responsabilité unique",
+        "I, ségrégation des interfaces",
+        "L, substitution de Liskov",
+        "O, ouvert/fermé"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Un client ne devrait pas dépendre de méthodes qu'il n'utilise pas. Des interfaces petites et ciblées sont plus faciles à implémenter, à substituer et à tester."
+    },
+    {
+      "code": "TYPESCRIPT-18-Q5",
       "type": "FREE_TEXT",
-      "prompt": "Explique une décision liée à solid, injection et architecture modulaire.",
+      "prompt": "Sans relire le cours, explique avec tes mots ce qu'est la racine de composition et pourquoi elle est un seul endroit.",
       "choices": [],
       "correctChoice": null,
       "expectedKeywords": [
-        "contrat",
-        "preuve",
-        "test"
-      ]
+        "assemble",
+        "dependance",
+        "point d'entree",
+        "constructeur",
+        "un seul"
+      ],
+      "modelAnswer": "La racine de composition est l'endroit (souvent le point d'entrée de l'application) où l'on crée les implémentations concrètes et où on les passe aux objets qui en ont besoin par leur constructeur. En la limitant à un seul endroit, le reste du code ne connaît que des interfaces, les dépendances sont visibles et remplaçables, et changer d'implémentation (autre logger, autre horloge) revient à modifier une seule ligne.",
+      "explanation": "Une bonne réponse décrit l'assemblage des implémentations au point d'entrée, l'injection par constructeur et l'avantage de centraliser."
     }
   ],
   "checklist": [
-    "Je peux expliquer le concept sans réciter une définition",
-    "Je sais exécuter et modifier la preuve",
-    "Je peux nommer un risque et son contrôle",
-    "Je relie cette étape à la suivante"
+    "Mes services reçoivent leurs dépendances par le constructeur",
+    "Je teste avec une horloge fixe et un journal en mémoire",
+    "Je n'ai pas de singleton global caché",
+    "Je crée une interface quand une frontière ou deux implémentations le justifient"
   ]
 }

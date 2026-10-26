@@ -11,21 +11,30 @@
     "TYPESCRIPT-21"
   ],
   "objectives": [
-    "Expliquer préparation angular, décorateurs et rxjs",
-    "Construire une preuve exécutable et déterministe",
-    "Relier le concept à une décision professionnelle"
+    "Expliquer ce qu'est un Observable (flux paresseux) et la différence avec une Promise.",
+    "Écrire des opérateurs map et filter qui retournent un nouvel Observable.",
+    "Utiliser un décorateur de fonction (enrobage) pour journaliser des appels.",
+    "Repérer un abonnement jamais fermé, un Subject mal choisi ou un opérateur imbriqué à la place de switchMap."
   ],
   "sections": [
     {
-      "title": "Concept et usage professionnel",
-      "content": "Préparation Angular, décorateurs et RxJS répond à un besoin concret de maintenabilité, de sûreté ou de performance. Le laboratoire demande de rendre la décision observable et vérifiable.",
-      "conceptCodes": [
-        "TYPESCRIPT-ANGULAR"
-      ]
+      "title": "Observable : un flux paresseux qu'on peut annuler",
+      "content": "Une Promise représente une seule valeur future et démarre tout de suite. Un Observable représente zéro, une ou plusieurs valeurs au fil du temps (clics, réponses, messages), ne démarre que lorsqu'on s'y abonne (paresseux) et peut être annulé (désabonnement). RxJS fournit Observable et ses opérateurs ; Angular l'emploie pour HTTP, formulaires, routeur.\n```ts\ninterface Observer<T> { next(value: T): void; complete(): void }\n\nclass Observable<T> {\n  constructor(private producer: (observer: Observer<T>) => void) {}\n  subscribe(observer: Observer<T>): void { this.producer(observer); }\n}\n\nconst source = new Observable<number>(o => { o.next(1); o.next(2); o.complete(); });\nsource.subscribe({ next: v => console.log(v), complete: () => console.log('terminé') });\n```\nChaque abonnement relance la production (cold observable) : s'abonner deux fois à une requête HTTP envoie deux requêtes."
     },
     {
-      "title": "Mise en pratique",
-      "content": "La preuve minimale est locale, déterministe et peut être enrichie sans changer le contrat attendu."
+      "title": "Exemple résolu : des opérateurs map et filter, et un décorateur",
+      "conceptCodes": [
+        "TYPESCRIPT-ANGULAR"
+      ],
+      "content": "Problème : transformer et filtrer un flux, et journaliser les appels d'une fonction.\n\nRaisonnement, étape par étape :\n1. Un opérateur ne modifie pas la source : il retourne un nouvel Observable qui, à l'abonnement, s'abonne à la source et transmet ce qui lui convient.\n2. filter(predicate) : transmet next(v) seulement si predicate(v) est vrai.\n3. map(transform) : transmet next(transform(v)).\n4. Chaînage : source.filter(pair).map(carré).subscribe(...) ; pour [1, 2, 3, 4] : les pairs 2 et 4, leurs carrés 4 et 16.\n5. complete() est transmis tel quel : le flux se termine.\n6. Un décorateur de fonction (enrobage) est une fonction qui reçoit une fonction et en retourne une nouvelle : logCalls(add) retourne une version qui journalise « appel add(1, 2) -> 3 » avant de rendre le résultat.\n```ts\nfilter(predicate: (v: T) => boolean): Observable<T> {\n  return new Observable<T>(observer =>\n    this.subscribe({\n      next: v => { if (predicate(v)) observer.next(v); },\n      complete: () => observer.complete(),\n    }));\n}\n\nfunction logCalls<A extends unknown[], R>(name: string, fn: (...args: A) => R) {\n  return (...args: A): R => {\n    const result = fn(...args);\n    console.log(`appel ${name}(${args.join(', ')}) -> ${result}`);\n    return result;\n  };\n}\n```\nLes décorateurs de classe et de méthode d'Angular (@Component, @Injectable) sont des enrobages de ce genre appliqués à des classes."
+    },
+    {
+      "title": "RxJS et Angular : les réflexes utiles",
+      "content": "- Se désabonner : un abonnement qui reste actif après la destruction d'un composant fuit. Moyens : le pipe async du modèle (il s'abonne et se désabonne seul), takeUntilDestroyed(), take(1) pour une valeur unique, ou unsubscribe() dans ngOnDestroy.\n- Subject : à la fois Observable et Observer, on peut y pousser des valeurs ; BehaviorSubject garde la dernière valeur (état courant), ReplaySubject en rejoue plusieurs.\n- Opérateurs à connaître : map, filter, tap (effet de bord de débogage), debounceTime (attendre une pause de saisie), distinctUntilChanged, combineLatest, forkJoin (attendre plusieurs requêtes), catchError (récupération), retry.\n- switchMap : pour chaque valeur, abonne-toi à un nouvel Observable et abandonne le précédent. Idéal pour une recherche au fil de la frappe (annule la requête obsolète). mergeMap lance en parallèle, concatMap enchaîne dans l'ordre, exhaustMap ignore pendant qu'un traitement est en cours.\n- Éviter l'abonnement dans un abonnement : utilise switchMap.\n- Signals (Angular récent) : état réactif synchrone plus simple pour l'état local de composant ; RxJS reste le bon outil pour les flux asynchrones et les événements."
+    },
+    {
+      "title": "Erreurs fréquentes à reconnaître",
+      "content": "1. Ne jamais se désabonner d'un flux qui ne se termine pas : fuite mémoire et effets fantômes.\n2. Abonnements imbriqués au lieu de switchMap.\n3. S'abonner deux fois à un Observable HTTP froid (deux requêtes).\n4. Confondre Promise (une valeur, immédiate, non annulable) et Observable (zéro à n valeurs, paresseux, annulable).\n5. Utiliser Subject public avec next() accessible de partout.\n6. Ignorer catchError : une erreur dans un flux le termine.\n\nRetrouve ces erreurs de mémoire avant l'exercice, puis vérifie-toi avec le quiz : c'est la récupération, pas la relecture, qui fixe la notion."
     }
   ],
   "keyConcepts": [
@@ -39,8 +48,8 @@
       "professionalExample": "Un champ de recherche de clients appelait l'API à chaque frappe clavier, saturant le backend de requêtes redondantes pendant la frappe. En modélisant les saisies comme un flux RxJS et en composant les opérateurs debounceTime(300) et switchMap, qui annule automatiquement la requête précédente si une nouvelle frappe arrive, le nombre d'appels réseau a chuté drastiquement sans jamais afficher une réponse obsolète arrivée en retard — un pattern central des services Angular basés sur RxJS.",
       "codeExample": "import { fromEvent } from 'rxjs';\nimport { debounceTime, switchMap, map, distinctUntilChanged } from 'rxjs/operators';\n\nfunction wireSearchInput(input: HTMLInputElement, searchApi: (q: string) => Promise<string[]>) {\n  fromEvent(input, 'input')\n    .pipe(\n      map(() => input.value),\n      debounceTime(300),\n      distinctUntilChanged(),\n      switchMap(query => searchApi(query)) // annule la requête précédente\n    )\n    .subscribe(results => console.log('résultats :', results));\n}",
       "commonMistake": "Appliquer la technique sans mesurer son effet ni documenter sa frontière.",
-      "masteryQuestion": "Quelle contrainte de préparation angular, décorateurs et rxjs doit rester vraie lorsque le système évolue ?",
-      "masteryProof": "Exécuter la preuve, expliquer son invariant et proposer un cas d’échec."
+      "masteryQuestion": "Quelle différence entre Promise et Observable, et pourquoi switchMap convient-il à une recherche au fil de la frappe ?",
+      "masteryProof": "Écrire les méthodes filter et map d'un petit Observable puis une fonction logCalls qui enrobe une fonction pour journaliser ses appels."
     }
   ],
   "exercises": [
@@ -56,32 +65,80 @@
     {
       "code": "TYPESCRIPT-22-Q1",
       "type": "SINGLE_CHOICE",
-      "prompt": "Quelle preuve est la plus utile en revue ?",
+      "prompt": "Quelle est la principale différence entre une Promise et un Observable ?",
       "choices": [
-        "Une exécution déterministe avec invariant explicite",
-        "Une sortie aléatoire",
-        "Une capture sans code"
+        "Aucune",
+        "Une Promise produit une valeur et démarre immédiatement ; un Observable peut produire plusieurs valeurs, ne démarre qu'à l'abonnement et peut être annulé",
+        "Un Observable est toujours synchrone",
+        "Une Promise peut être annulée"
       ],
-      "correctChoice": 0,
-      "expectedKeywords": []
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "La Promise est eager et à usage unique. L'Observable est lazy, multi-valeurs et annulable (désabonnement), ce qui convient aux flux d'événements."
     },
     {
       "code": "TYPESCRIPT-22-Q2",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Prédis la sortie pour source = [1, 2, 3, 4] avec .filter(v => v % 2 === 0).map(v => v * v) :",
+      "choices": [
+        "1, 4, 9, 16",
+        "4, 16",
+        "2, 4",
+        "16"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "filter garde 2 et 4 ; map les élève au carré : 4 et 16. Les opérateurs s'appliquent dans l'ordre à chaque valeur qui traverse la chaîne."
+    },
+    {
+      "code": "TYPESCRIPT-22-Q3",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Trouve le défaut :\n```ts\nthis.search$.subscribe(term => {\n  this.http.get(`/api?q=${term}`).subscribe(results => this.results = results);\n});\n```\n",
+      "choices": [
+        "subscribe est interdit",
+        "Abonnement imbriqué : les anciennes requêtes ne sont pas annulées et leurs réponses peuvent arriver dans le désordre ; utilise switchMap",
+        "http.get est synchrone",
+        "term doit être un nombre"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "switchMap annule la requête précédente quand une nouvelle valeur arrive, et évite d'afficher le résultat obsolète d'une ancienne frappe. Il supprime aussi l'abonnement imbriqué."
+    },
+    {
+      "code": "TYPESCRIPT-22-Q4",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Pourquoi le pipe async d'Angular est-il recommandé dans un modèle ?",
+      "choices": [
+        "Il est plus rapide que subscribe",
+        "Il s'abonne et se désabonne automatiquement avec le cycle de vie du composant, ce qui évite les fuites",
+        "Il transforme un Observable en Promise",
+        "Il met en cache la réponse HTTP"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Un abonnement manuel oublié dans ngOnDestroy fuit. Le pipe async gère abonnement et désabonnement avec la vue."
+    },
+    {
+      "code": "TYPESCRIPT-22-Q5",
       "type": "FREE_TEXT",
-      "prompt": "Explique une décision liée à préparation angular, décorateurs et rxjs.",
+      "prompt": "Sans relire le cours, explique avec tes mots ce que signifie « Observable froid » et le risque d'un double abonnement à une requête HTTP.",
       "choices": [],
       "correctChoice": null,
       "expectedKeywords": [
-        "contrat",
-        "preuve",
-        "test"
-      ]
+        "froid",
+        "abonn",
+        "requete",
+        "deux",
+        "paresseu"
+      ],
+      "modelAnswer": "Un Observable froid ne produit rien tant qu'on ne s'y abonne pas, et chaque abonnement relance la production depuis le début. S'abonner deux fois à un Observable HTTP envoie donc deux requêtes. On évite cela en s'abonnant une seule fois, en utilisant le pipe async une fois ou en partageant le flux (shareReplay).",
+      "explanation": "Une bonne réponse dit que la production démarre à l'abonnement et recommence à chaque abonné, avec la conséquence de deux requêtes et un remède."
     }
   ],
   "checklist": [
-    "Je peux expliquer le concept sans réciter une définition",
-    "Je sais exécuter et modifier la preuve",
-    "Je peux nommer un risque et son contrôle",
-    "Je relie cette étape à la suivante"
+    "Je distingue Promise et Observable",
+    "Je me désabonne ou j'utilise le pipe async",
+    "J'utilise switchMap plutôt que des abonnements imbriqués",
+    "Je sais écrire un opérateur simple et un enrobage de fonction"
   ]
 }

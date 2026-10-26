@@ -11,21 +11,30 @@
     "PYTHON-09"
   ],
   "objectives": [
-    "Expliquer typage progressif, protocol et outils statiques",
-    "Construire une preuve exécutable et déterministe",
-    "Relier le concept à une décision professionnelle"
+    "Annoter progressivement du code et lire un type (X | None, list[int], dict[str, int]).",
+    "Définir un Protocol (typage structurel) et le distinguer d'une classe abstraite (typage nominal).",
+    "Expliquer ce que vérifie vraiment isinstance avec un Protocol runtime_checkable.",
+    "Utiliser mypy ou pyright pour détecter une erreur sans exécuter le code."
   ],
   "sections": [
     {
-      "title": "Concept et usage professionnel",
-      "content": "Typage progressif, Protocol et outils statiques répond à un besoin concret de maintenabilité, de sûreté ou de performance. Le laboratoire demande de rendre la décision observable et vérifiable.",
-      "conceptCodes": [
-        "PYTHON-TYPING"
-      ]
+      "title": "Typer sans tout réécrire",
+      "content": "Le typage progressif permet d'annoter une partie du code et de laisser le reste dynamique. Les annotations n'ont aucun effet à l'exécution, mais des outils (mypy, pyright, l'éditeur) les analysent avant l'exécution et signalent les incohérences.\n```python\ndef age_moyen(personnes: list[dict[str, int]]) -> float | None:\n    if not personnes:\n        return None            # le type annonce que None est possible\n    return sum(p[\"age\"] for p in personnes) / len(personnes)\n\ntotal: float = age_moyen([])   # mypy : l'incompatibilité \"float | None\" est détectée\n```\nTypes utiles : list[int], dict[str, float], tuple[int, str], X | None (anciennement Optional[X]), Callable[[int], str], TypedDict pour un dict de forme connue, Literal[\"ok\", \"ko\"], Any (échappatoire : à limiter). Plus le code est typé, plus les outils trouvent d'erreurs tôt, mais un type mal choisi ou un Any partout donne une fausse sécurité."
     },
     {
-      "title": "Mise en pratique",
-      "content": "La preuve minimale est locale, déterministe et peut être enrichie sans changer le contrat attendu."
+      "title": "Exemple résolu : un Protocol pour un notificateur",
+      "conceptCodes": [
+        "PYTHON-TYPING"
+      ],
+      "content": "Problème : une fonction doit envoyer un message à n'importe quel objet capable d'envoyer, qu'il soit e-mail ou SMS, sans imposer d'héritage.\n\nRaisonnement, étape par étape :\n1. Décrire le contrat par un Protocol : une méthode send(message: str) -> str.\n2. Les classes EmailNotifier et SmsNotifier implémentent send ; elles n'héritent de rien (typage structurel : « si ça a la bonne forme, ça convient »).\n3. La fonction notifier(n: Notifier) accepte tout ce qui respecte la forme.\n4. @runtime_checkable permet isinstance(obj, Notifier) à l'exécution.\n5. Attention : cette vérification contrôle seulement la présence des attributs, pas la signature ni les types. Un objet dont send prend d'autres arguments passera isinstance.\n6. Vérification : une classe Broken sans méthode send est rejetée.\n```python\nfrom typing import Protocol, runtime_checkable\n\n@runtime_checkable\nclass Notifier(Protocol):\n    def send(self, message: str) -> str: ...\n\nclass EmailNotifier:\n    def send(self, message: str) -> str:\n        return f\"email: {message}\"\n\nisinstance(EmailNotifier(), Notifier)   # True\nisinstance(object(), Notifier)          # False\n```"
+    },
+    {
+      "title": "Protocol, classe abstraite et outils",
+      "content": "Typage nominal (ABC, abc.ABC avec @abstractmethod) : la classe doit hériter explicitement de la base ; Python refuse d'instancier tant que les méthodes abstraites ne sont pas implémentées. Typage structurel (Protocol) : aucune parenté déclarée, seule la forme compte. Protocol convient pour décrire ce dont une fonction a besoin (principe de ségrégation des interfaces), ABC quand on veut partager du code ou imposer une hiérarchie.\n\nOutils : mypy et pyright s'exécutent en intégration continue (mypy src/). Commence par un mode permissif, puis resserre (--strict) module par module. Un commentaire # type: ignore doit rester rare et expliqué. TypedDict décrit la forme d'un dictionnaire venu d'un JSON, mais ne valide rien à l'exécution : pour valider, utilise pydantic ou une validation manuelle.\n\nLes génériques (TypeVar, list[T]) permettent d'écrire une fonction qui conserve le type : def premier(items: list[T]) -> T."
+    },
+    {
+      "title": "Erreurs fréquentes à reconnaître",
+      "content": "1. Croire qu'une annotation est vérifiée à l'exécution.\n2. Utiliser Any partout : plus aucune erreur détectée.\n3. Croire que isinstance avec un Protocol contrôle les signatures.\n4. Un # type: ignore posé pour faire taire l'outil sans comprendre l'erreur.\n5. Imposer une classe de base pour une simple forme de méthode (un Protocol suffit).\n6. Ne pas lancer l'outil de typage en intégration continue : les annotations dérivent.\n\nRetrouve ces erreurs de mémoire avant l'exercice, puis vérifie-toi avec le quiz : c'est la récupération, pas la relecture, qui fixe la notion."
     }
   ],
   "keyConcepts": [
@@ -39,8 +48,8 @@
       "professionalExample": "Un service de notification acceptait n'importe quel objet possédant une méthode send(), mais un nouveau développeur a créé une classe EmailSender sans cette méthode et l'erreur n'a été découverte qu'en production lors du premier envoi. En définissant un Protocol Notifier avec la signature attendue et en exécutant mypy en CI, cette incompatibilité est désormais détectée avant la fusion de la pull request.",
       "codeExample": "from typing import Protocol\n\nclass Notifier(Protocol):\n    def send(self, message: str) -> bool: ...\n\nclass SlackSender:\n    def send(self, message: str) -> bool:\n        return slack_client.post(message)\n\ndef notify_team(sender: Notifier, message: str) -> None:\n    if not sender.send(message):\n        raise RuntimeError(\"Échec de l'envoi de la notification\")\n\n# $ mypy notifications.py\n# Success: no issues found — SlackSender respecte le Protocol sans en hériter",
       "commonMistake": "Appliquer la technique sans mesurer son effet ni documenter sa frontière.",
-      "masteryQuestion": "Quelle contrainte de typage progressif, protocol et outils statiques doit rester vraie lorsque le système évolue ?",
-      "masteryProof": "Exécuter la preuve, expliquer son invariant et proposer un cas d’échec."
+      "masteryQuestion": "Quelle différence entre Protocol (structurel) et classe abstraite (nominal), et que vérifie isinstance sur un Protocol runtime_checkable ?",
+      "masteryProof": "Définir un Protocol Notifier, vérifier deux implémentations conformes et rejeter une classe sans la bonne méthode."
     }
   ],
   "exercises": [
@@ -56,32 +65,80 @@
     {
       "code": "PYTHON-10-Q1",
       "type": "SINGLE_CHOICE",
-      "prompt": "Quelle preuve est la plus utile en revue ?",
+      "prompt": "Quelle écriture exprime « un entier ou rien » pour un paramètre ?",
       "choices": [
-        "Une exécution déterministe avec invariant explicite",
-        "Une sortie aléatoire",
-        "Une capture sans code"
+        "age: int or None",
+        "age: int | None",
+        "age: Optional",
+        "age: [int, None]"
       ],
-      "correctChoice": 0,
-      "expectedKeywords": []
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "X | None (Python 3.10+) est la forme moderne de Optional[X]. Elle documente que la valeur peut être absente, et oblige l'appelant à gérer le cas None quand l'outil de typage le vérifie."
     },
     {
       "code": "PYTHON-10-Q2",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Prédis le résultat :\n```python\n@runtime_checkable\nclass Notifier(Protocol):\n    def send(self, message: str) -> str: ...\n\nclass Fax:\n    def send(self, a, b, c): return \"fax\"\n\nprint(isinstance(Fax(), Notifier))\n```\n",
+      "choices": [
+        "False : la signature est différente",
+        "True : seule la présence de l'attribut send est contrôlée",
+        "Une exception",
+        "None"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "isinstance avec un Protocol runtime_checkable vérifie seulement que les attributs existent, pas leurs signatures ni leurs types. La vérification des signatures est le travail de mypy ou pyright."
+    },
+    {
+      "code": "PYTHON-10-Q3",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Trouve le défaut : « def total(items: Any) -> Any: ... » dans tout un module.",
+      "choices": [
+        "Any est interdit",
+        "Any désactive la vérification : l'outil de typage ne détectera plus aucune erreur sur ces valeurs",
+        "total devrait être une classe",
+        "Il manque -> None"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Any est une échappatoire qui accepte tout. Utilisé partout, il donne un faux sentiment de sécurité. Préfère un type précis, un TypeVar ou un Protocol décrivant ce dont la fonction a besoin."
+    },
+    {
+      "code": "PYTHON-10-Q4",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Quand préférer un Protocol à une classe abstraite ?",
+      "choices": [
+        "Quand on veut partager du code entre sous-classes",
+        "Quand on veut décrire la forme attendue sans imposer d'héritage, y compris à des classes qu'on ne contrôle pas",
+        "Quand on veut refuser l'instanciation",
+        "Jamais"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Un Protocol décrit ce dont une fonction a besoin : n'importe quelle classe conforme convient, même sans parenté. Une classe abstraite impose l'héritage mais peut fournir du code partagé."
+    },
+    {
+      "code": "PYTHON-10-Q5",
       "type": "FREE_TEXT",
-      "prompt": "Explique une décision liée à typage progressif, protocol et outils statiques.",
+      "prompt": "Sans relire le cours, explique avec tes mots la différence entre typage nominal et structurel, avec un exemple d'usage de Protocol.",
       "choices": [],
       "correctChoice": null,
       "expectedKeywords": [
-        "contrat",
-        "preuve",
-        "test"
-      ]
+        "nominal",
+        "structurel",
+        "heritage",
+        "forme",
+        "protocol"
+      ],
+      "modelAnswer": "Le typage nominal exige qu'une classe déclare explicitement hériter d'une base pour être acceptée. Le typage structurel accepte tout objet dont la forme correspond (les bonnes méthodes), sans parenté déclarée. Un Protocol Notifier avec une méthode send permet à une fonction d'accepter EmailNotifier et SmsNotifier sans héritage commun.",
+      "explanation": "Une bonne réponse oppose héritage déclaré et forme, et donne un exemple concret avec un Protocol."
     }
   ],
   "checklist": [
-    "Je peux expliquer le concept sans réciter une définition",
-    "Je sais exécuter et modifier la preuve",
-    "Je peux nommer un risque et son contrôle",
-    "Je relie cette étape à la suivante"
+    "Je lis un type comme list[dict[str, int]] | None",
+    "Je choisis Protocol ou classe abstraite selon le besoin",
+    "Je sais que isinstance sur un Protocol ne vérifie pas les signatures",
+    "Je lance mypy ou pyright pour détecter les erreurs avant l'exécution"
   ]
 }

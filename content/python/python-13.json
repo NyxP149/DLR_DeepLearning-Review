@@ -11,21 +11,30 @@
     "PYTHON-12"
   ],
   "objectives": [
-    "Expliquer clients http, contrats et validation de réponses",
-    "Construire une preuve exécutable et déterministe",
-    "Relier le concept à une décision professionnelle"
+    "Construire un client HTTP robuste : délai d'attente, gestion des statuts, réessai limité.",
+    "Valider la réponse reçue contre un contrat (présence et type des champs) avant usage.",
+    "Distinguer erreur réseau, erreur HTTP et violation de contrat et les traiter différemment.",
+    "Garder les secrets hors des logs et des URL."
   ],
   "sections": [
     {
-      "title": "Concept et usage professionnel",
-      "content": "Clients HTTP, contrats et validation de réponses répond à un besoin concret de maintenabilité, de sûreté ou de performance. Le laboratoire demande de rendre la décision observable et vérifiable.",
-      "conceptCodes": [
-        "PYTHON-HTTP"
-      ]
+      "title": "Une réponse distante n'est jamais fiable",
+      "content": "Tout ce qui vient du réseau est une donnée non fiable : le serveur peut être lent, tomber, changer son format ou renvoyer un champ manquant. Un client robuste suit des règles simples :\n- Toujours un délai d'attente (timeout). requests n'en a pas par défaut : sans lui, un appel peut bloquer indéfiniment.\n- Vérifier le statut : response.raise_for_status() transforme 4xx et 5xx en exception.\n- Ne réessayer que les erreurs transitoires (timeout, 502, 503) et les opérations idempotentes, avec un délai croissant.\n- Valider le contenu avant usage : un JSON qui parse n'est pas un JSON conforme.\n```python\nimport requests\n\nreponse = requests.get(url, timeout=5)      # 5 secondes maximum\nreponse.raise_for_status()\ndata = reponse.json()                        # un dict... dont il faut vérifier la forme\n```"
     },
     {
-      "title": "Mise en pratique",
-      "content": "La preuve minimale est locale, déterministe et peut être enrichie sans changer le contrat attendu."
+      "title": "Exemple résolu : transformer une réponse en objet validé",
+      "conceptCodes": [
+        "PYTHON-HTTP"
+      ],
+      "content": "Problème : le contrat promet {\"id\": int, \"name\": str}. Il faut obtenir un User sûr, et distinguer une erreur HTTP d'une violation de contrat.\n\nRaisonnement, étape par étape :\n1. Statut : tout code différent de 200 devient une HttpError(code) pour l'appelant.\n2. Contrat : parse_user vérifie que chaque champ est présent puis qu'il a le bon type.\n3. Les messages d'erreur nomment le champ : « champ 'id' manquant », « champ 'id' doit être int ».\n4. Attention : en Python, bool est une sous-classe de int ; True passerait un contrôle isinstance(valeur, int), il faut l'exclure explicitement.\n5. Vérification : quatre réponses simulées couvrent le cas valide, un mauvais type, un champ manquant et un 404.\n```python\ndef parse_user(data: dict) -> User:\n    for champ, type_attendu in ((\"id\", int), (\"name\", str)):\n        if champ not in data:\n            raise ContractError(f\"champ {champ!r} manquant\")\n        valeur = data[champ]\n        if not isinstance(valeur, type_attendu) or isinstance(valeur, bool):\n            raise ContractError(f\"champ {champ!r} doit être {type_attendu.__name__}\")\n    return User(data[\"id\"], data[\"name\"])\n```\nPour des contrats plus riches, pydantic valide et convertit en une déclaration (BaseModel). Les données invalides doivent produire une erreur claire à la frontière, pas un AttributeError cinq fonctions plus loin."
+    },
+    {
+      "title": "Réessayer, sécuriser et tester un client",
+      "content": "Réessai : au plus trois essais, avec attente croissante (1 s, 2 s, 4 s) et un peu de hasard pour éviter que tous les clients réessaient en même temps. Un 400 ou un 404 ne se réessaie pas : le résultat sera le même. Un POST ne se réessaie qu'avec une clé d'idempotence.\n\nSécurité : les jetons passent par l'en-tête Authorization, jamais dans l'URL (les URL sont journalisées partout) ; ne journalise pas les en-têtes sensibles ni les corps contenant des données personnelles ; vérifie les certificats (verify=True par défaut, ne le désactive pas) ; limite la taille des réponses acceptées.\n\nTests : n'appelle pas le vrai service. Injecte un faux transport ou utilise une bibliothèque de simulation (responses, respx). Teste les cas d'échec : timeout, 500, JSON invalide, champ manquant. Un client testé seulement sur le cas heureux casse au premier incident réel."
+    },
+    {
+      "title": "Erreurs fréquentes à reconnaître",
+      "content": "1. Appeler le réseau sans timeout.\n2. Ne pas vérifier le statut et parser le corps d'une erreur comme si c'était un succès.\n3. Faire confiance au JSON reçu sans le valider.\n4. Réessayer immédiatement et à l'infini, ou réessayer un 400.\n5. Mettre un jeton dans l'URL ou dans les logs.\n6. Désactiver la vérification TLS « pour que ça marche ».\n\nRetrouve ces erreurs de mémoire avant l'exercice, puis vérifie-toi avec le quiz : c'est la récupération, pas la relecture, qui fixe la notion."
     }
   ],
   "keyConcepts": [
@@ -39,8 +48,8 @@
       "professionalExample": "Un client météo interne faisait confiance au JSON renvoyé par une API tierce et lisait directement response.json()['temperature'], ce qui a provoqué un crash en production le jour où le fournisseur a renommé le champ. En validant chaque réponse avec un modèle Pydantic avant de l'utiliser, l'erreur de contrat est désormais détectée immédiatement avec un message explicite, au lieu de se propager sous forme de KeyError obscur plus loin dans le code.",
       "codeExample": "import httpx\nfrom pydantic import BaseModel, ValidationError\n\nclass WeatherResponse(BaseModel):\n    temperature_celsius: float\n    humidity_percent: float\n\ndef fetch_weather(city: str) -> WeatherResponse:\n    response = httpx.get(f\"https://api.example.com/weather/{city}\", timeout=3.0)\n    response.raise_for_status()\n    try:\n        return WeatherResponse.model_validate(response.json())\n    except ValidationError as error:\n        raise RuntimeError(f\"Contrat API rompu pour {city}: {error}\") from error",
       "commonMistake": "Appliquer la technique sans mesurer son effet ni documenter sa frontière.",
-      "masteryQuestion": "Quelle contrainte de clients http, contrats et validation de réponses doit rester vraie lorsque le système évolue ?",
-      "masteryProof": "Exécuter la preuve, expliquer son invariant et proposer un cas d’échec."
+      "masteryQuestion": "Pourquoi valider une réponse JSON même si elle parse sans erreur, et pourquoi un timeout est-il obligatoire ?",
+      "masteryProof": "Écrire parse_user qui vérifie présence et type des champs, get_user qui transforme les statuts non 200 en HttpError, et afficher le résultat de quatre réponses simulées."
     }
   ],
   "exercises": [
@@ -56,32 +65,80 @@
     {
       "code": "PYTHON-13-Q1",
       "type": "SINGLE_CHOICE",
-      "prompt": "Quelle preuve est la plus utile en revue ?",
+      "prompt": "Un appel requests.get(url) sans timeout : que peut-il se passer ?",
       "choices": [
-        "Une exécution déterministe avec invariant explicite",
-        "Une sortie aléatoire",
-        "Une capture sans code"
+        "Il échoue après 1 seconde",
+        "Il peut attendre indéfiniment si le serveur ne répond pas, et bloquer le programme",
+        "Il utilise un timeout de 30 secondes",
+        "Il renvoie None"
       ],
-      "correctChoice": 0,
-      "expectedKeywords": []
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "requests n'applique aucun délai par défaut. Un serveur qui accepte la connexion mais ne répond jamais bloque l'appelant indéfiniment. Précise toujours timeout=(connexion, lecture) ou une valeur unique."
     },
     {
       "code": "PYTHON-13-Q2",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Prédis le résultat :\n```python\nprint(isinstance(True, int))\n```\net conclus pour un contrôle de type d'un champ « id: int » sur un JSON.",
+      "choices": [
+        "False ; un booléen est rejeté naturellement",
+        "True ; un booléen passerait pour un entier, il faut l'exclure explicitement",
+        "Une exception",
+        "None"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "bool hérite de int en Python : True vaut 1. Un JSON {\"id\": true} passerait donc un simple isinstance(valeur, int). Ajoute « and not isinstance(valeur, bool) »."
+    },
+    {
+      "code": "PYTHON-13-Q3",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Trouve le défaut :\n```python\nreponse = requests.get(url, timeout=5)\nutilisateur = reponse.json()[\"user\"][\"name\"]\n```\n",
+      "choices": [
+        "Le timeout est trop court",
+        "Aucun contrôle du statut ni du contrat : un 500 ou un JSON sans « user » produit une erreur obscure (KeyError) loin de la cause",
+        "json() est interdit",
+        "Il manque un return"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Il faut raise_for_status() puis une validation explicite des champs, avec une erreur qui nomme le champ attendu. Sinon le message d'erreur ne dit rien de la vraie cause (service indisponible, format changé)."
+    },
+    {
+      "code": "PYTHON-13-Q4",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Quelle réponse HTTP justifie de réessayer automatiquement (avec délai croissant) ?",
+      "choices": [
+        "400 Bad Request",
+        "404 Not Found",
+        "503 Service Unavailable",
+        "403 Forbidden"
+      ],
+      "correctChoice": 2,
+      "expectedKeywords": [],
+      "explanation": "503 signale une indisponibilité temporaire. Un 400, 403 ou 404 donnera le même résultat au prochain essai : réessayer ne fait que charger le serveur."
+    },
+    {
+      "code": "PYTHON-13-Q5",
       "type": "FREE_TEXT",
-      "prompt": "Explique une décision liée à clients http, contrats et validation de réponses.",
+      "prompt": "Sans relire le cours, explique avec tes mots pourquoi on distingue erreur réseau, erreur HTTP et violation de contrat dans un client.",
       "choices": [],
       "correctChoice": null,
       "expectedKeywords": [
+        "reseau",
+        "http",
         "contrat",
-        "preuve",
-        "test"
-      ]
+        "reessay",
+        "traite"
+      ],
+      "modelAnswer": "Ce sont trois causes différentes qui appellent trois traitements : une erreur réseau (timeout, connexion refusée) est souvent transitoire et peut être réessayée ; une erreur HTTP (4xx ou 5xx) dit quelque chose du serveur et se réessaie seulement pour 5xx transitoires ; une violation de contrat (JSON incomplet ou mal typé) ne se corrige pas par un réessai et doit être signalée comme anomalie du fournisseur. Les confondre mène à des réessais inutiles ou à des erreurs incompréhensibles.",
+      "explanation": "Une bonne réponse associe à chaque cause un traitement (réessayer, interpréter le statut, signaler) et dit pourquoi les confondre est nuisible."
     }
   ],
   "checklist": [
-    "Je peux expliquer le concept sans réciter une définition",
-    "Je sais exécuter et modifier la preuve",
-    "Je peux nommer un risque et son contrôle",
-    "Je relie cette étape à la suivante"
+    "Mes appels réseau ont toujours un timeout",
+    "Je valide présence et type de chaque champ reçu",
+    "Je ne réessaie que des erreurs transitoires et des opérations idempotentes",
+    "Aucun secret n'apparaît dans une URL ou dans les logs"
   ]
 }

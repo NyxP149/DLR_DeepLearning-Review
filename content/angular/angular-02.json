@@ -11,21 +11,30 @@
     "ANGULAR-01"
   ],
   "objectives": [
-    "Expliquer signals, computed et effets maîtrisés",
-    "Construire une preuve exécutable et déterministe",
-    "Relier le concept à une décision professionnelle"
+    "Expliquer signal, computed et effect et le graphe de dépendances qu'ils forment.",
+    "Écrire un computed mémorisé et prédire quand il recalcule.",
+    "Savoir quand utiliser (et ne pas utiliser) un effect.",
+    "Choisir entre signals et RxJS selon le besoin."
   ],
   "sections": [
     {
-      "title": "Concept et usage professionnel",
-      "content": "Signals, computed et effets maîtrisés répond à un besoin concret de maintenabilité, de sûreté ou de performance. Le laboratoire demande de rendre la décision observable et vérifiable.",
-      "conceptCodes": [
-        "ANGULAR-SIGNALS"
-      ]
+      "title": "Un signal est une valeur réactive qui suit ses lecteurs",
+      "content": "Un signal enveloppe une valeur et notifie ceux qui la lisent quand elle change. On lit en l'appelant comme une fonction, on écrit avec set ou update.\n```ts\nconst price = signal(10);\nconst quantity = signal(2);\nconst total = computed(() => price() * quantity());    // dépend de price et quantity\n\ntotal();            // 20\nquantity.set(3);\ntotal();            // 30 : recalculé paresseusement, seulement parce qu'une source a changé\n```\ncomputed est mémorisé : il garde sa dernière valeur et ne recalcule que si une de ses sources a changé, et seulement quand on le lit. Les dépendances sont découvertes automatiquement par les signaux lus pendant le calcul. Écrire la même valeur dans un signal (au sens de Object.is) ne déclenche rien. Angular s'en sert pour savoir précisément quels morceaux de template mettre à jour."
     },
     {
-      "title": "Mise en pratique",
-      "content": "La preuve TypeScript isole le contrat réactif ; son intégration dans un composant Angular est décrite sans rendre le runner dépendant d'un navigateur."
+      "title": "Exemple résolu : un computed qui compte ses recalculs",
+      "conceptCodes": [
+        "ANGULAR-SIGNALS"
+      ],
+      "content": "Problème : implémenter un computed minimal qui recalcule seulement quand une source change, et le prouver par un compteur.\n\nRaisonnement, étape par étape :\n1. Chaque signal porte un numéro de version, incrémenté à chaque écriture qui change vraiment la valeur.\n2. computed mémorise la dernière valeur et la « signature » des versions de ses sources au moment du calcul.\n3. À la lecture : si la signature courante est identique à la mémorisée, on renvoie la valeur mémorisée ; sinon on recalcule, on incrémente le compteur et on met à jour la signature.\n4. Écrire 10 dans un signal qui contient déjà 10 ne change ni sa valeur ni sa version : aucun recalcul.\n5. Vérification : lire deux fois sans changement donne 1 calcul ; changer une source puis lire donne 2 calculs ; relire ne change rien.\n```ts\nfunction computedFrom(sources: Array<{ version: number }>, calc: () => number) {\n  let cachedSignature = '';\n  let value = 0;\n  let calculs = 0;\n  return {\n    read() {\n      const signature = sources.map(s => s.version).join(',');\n      if (signature !== cachedSignature) { value = calc(); cachedSignature = signature; calculs++; }\n      return value;\n    },\n    get calculs() { return calculs; },\n  };\n}\n```\nC'est la mémoïsation par version : même idée que dans Angular, avec un graphe plus fin."
+    },
+    {
+      "title": "Effects : à utiliser avec parcimonie",
+      "content": "effect(() => ...) exécute du code à chaque changement des signaux qu'il lit. C'est pour des effets de bord qui sortent de l'état Angular : journaliser, synchroniser avec localStorage, appeler une API tierce, dessiner sur un canvas.\n\nNe l'utilise pas pour dériver un état : si b = a * 2, écris computed, pas un effect qui fait b.set(a() * 2) (cascade d'écritures, états transitoires incohérents, risque de boucle). Par défaut Angular interdit d'écrire un signal dans un effect.\n```ts\n// mauvais : état dérivé écrit à la main\neffect(() => doubled.set(count() * 2));\n// bon\nconst doubled = computed(() => count() * 2);\n```\nAutres repères :\n- untracked(() => ...) lit un signal sans créer de dépendance.\n- toSignal(observable$) transforme un flux RxJS en signal (valeur initiale à prévoir) ; toObservable(signal) fait l'inverse.\n- Signals pour l'état synchrone local et le rendu ; RxJS pour les flux asynchrones dans le temps (requêtes, événements, debounce, annulation).\n- Dans les composants récents : input(), model() et output() sont des API fondées sur les signaux.\n- Les mutations en place (liste.push) ne notifient pas : utilise update(l => [...l, x]) pour produire une nouvelle référence."
+    },
+    {
+      "title": "Erreurs fréquentes à reconnaître",
+      "content": "1. Un effect pour calculer une valeur dérivée au lieu d'un computed.\n2. Muter un tableau ou un objet à l'intérieur d'un signal sans changer la référence.\n3. Lire un signal dans un computed sans l'appeler (signal au lieu de signal()).\n4. Un computed avec un effet de bord (appel réseau, écriture).\n5. Un effect qui lit et écrit les mêmes signaux : boucle.\n6. Remplacer tout RxJS par des signaux pour des flux avec annulation et debounce.\n\nRetrouve ces erreurs de mémoire avant l'exercice, puis vérifie-toi avec le quiz : c'est la récupération, pas la relecture, qui fixe la notion."
     }
   ],
   "keyConcepts": [
@@ -39,8 +48,8 @@
       "professionalExample": "Sur un tableau de bord de suivi de commandes, l'état du panier est stocké dans un signal `items`, et le total affiché est un `computed` dérivé automatiquement recalculé uniquement quand `items` change, sans abonnement manuel ni risque d'oubli de désinscription. Un `effect` synchronise ce panier vers le localStorage à chaque changement, ce qui évite d'appeler cette synchronisation manuellement après chaque mutation. L'erreur fréquente est d'écrire dans un signal à l'intérieur d'un `effect` qui dépend de ce même signal, ce qui provoque une boucle de recalcul infinie détectée tardivement en production.",
       "codeExample": "@Injectable({ providedIn: 'root' })\nexport class CartStore {\n  readonly items = signal<CartItem[]>([]);\n\n  readonly total = computed(() =>\n    this.items().reduce((sum, item) => sum + item.price * item.quantity, 0)\n  );\n\n  constructor() {\n    effect(() => {\n      localStorage.setItem('cart', JSON.stringify(this.items()));\n    });\n  }\n\n  addItem(item: CartItem): void {\n    this.items.update(current => [...current, item]);\n  }\n}",
       "commonMistake": "Appliquer la technique sans mesurer son effet ni documenter sa frontière.",
-      "masteryQuestion": "Quelle contrainte de signals, computed et effets maîtrisés doit rester vraie lorsque le système évolue ?",
-      "masteryProof": "Exécuter la preuve, expliquer son invariant et proposer un cas d’échec."
+      "masteryQuestion": "Pourquoi un computed ne recalcule-t-il pas à chaque lecture, et quand un effect est-il (ou n'est-il pas) la bonne solution ?",
+      "masteryProof": "Écrire un computed mémorisé qui compte ses recalculs et prouver qu'écrire la même valeur dans un signal ne déclenche rien."
     }
   ],
   "exercises": [
@@ -56,32 +65,80 @@
     {
       "code": "ANGULAR-02-Q1",
       "type": "SINGLE_CHOICE",
-      "prompt": "Quelle preuve est la plus utile en revue ?",
+      "prompt": "Prédis le nombre de calculs :\n```ts\nconst a = signal(1);\nconst double = computed(() => { calls++; return a() * 2; });\ndouble(); double();\na.set(1);\ndouble();\na.set(2);\ndouble();\n```\n(calls vaut 0 au départ)",
       "choices": [
-        "Une exécution déterministe avec invariant explicite",
-        "Une sortie aléatoire",
-        "Une capture sans code"
+        "4",
+        "2 : un calcul initial et un après le passage de a à 2 ; a.set(1) ne change pas la valeur",
+        "1",
+        "3"
       ],
-      "correctChoice": 0,
-      "expectedKeywords": []
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Les deux premières lectures partagent un calcul. a.set(1) écrit la même valeur : rien n'est invalidé. a.set(2) invalide le computed, la dernière lecture déclenche le second calcul."
     },
     {
       "code": "ANGULAR-02-Q2",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Quel code est le plus adapté pour dériver doubled à partir de count ?",
+      "choices": [
+        "effect(() => doubled.set(count() * 2))",
+        "const doubled = computed(() => count() * 2)",
+        "setInterval(() => doubled = count * 2, 100)",
+        "count.subscribe(c => doubled = c * 2)"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Un état dérivé se déclare avec computed : mémorisé, toujours cohérent, sans écriture manuelle. L'effect ajoute un état intermédiaire possible et un risque de boucle."
+    },
+    {
+      "code": "ANGULAR-02-Q3",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Trouve le bug :\n```ts\nitems = signal<string[]>([]);\nadd(x: string) { this.items().push(x); }\n```\n",
+      "choices": [
+        "push n'existe pas",
+        "Le tableau est modifié en place sans changer de référence : le signal ne notifie personne et l'écran ne se met pas à jour ; il faut update(l => [...l, x])",
+        "items doit être un computed",
+        "Il manque OnPush"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Un signal compare ses valeurs par référence. Muter l'objet contenu ne change pas la référence. On produit une nouvelle liste avec update et le spread."
+    },
+    {
+      "code": "ANGULAR-02-Q4",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Quand préférer RxJS aux signaux ?",
+      "choices": [
+        "Jamais",
+        "Pour les flux asynchrones dans le temps avec annulation, debounce ou combinaison (recherche à la frappe, requêtes)",
+        "Pour toute variable locale",
+        "Uniquement pour les formulaires"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Les signaux représentent un état synchrone. RxJS excelle pour composer des événements dans le temps. toSignal/toObservable permettent de passer de l'un à l'autre."
+    },
+    {
+      "code": "ANGULAR-02-Q5",
       "type": "FREE_TEXT",
-      "prompt": "Explique une décision liée à signals, computed et effets maîtrisés.",
+      "prompt": "Sans relire le cours, explique avec tes mots la différence entre computed et effect et pourquoi on évite d'écrire un signal dans un effect.",
       "choices": [],
       "correctChoice": null,
       "expectedKeywords": [
-        "contrat",
-        "preuve",
-        "test"
-      ]
+        "computed",
+        "effect",
+        "derive",
+        "boucle",
+        "memoris"
+      ],
+      "modelAnswer": "computed déclare une valeur dérivée, mémorisée, recalculée seulement quand une source change et qui reste toujours cohérente. effect exécute un effet de bord quand les signaux lus changent (journal, stockage, bibliothèque externe). Écrire un signal dans un effect pour dériver un état crée des états intermédiaires, des cascades et des risques de boucle ; un computed fait la même chose proprement.",
+      "explanation": "Une bonne réponse oppose valeur dérivée mémorisée (computed) et effet de bord (effect) et cite les risques de l'écriture dans un effect."
     }
   ],
   "checklist": [
-    "Je peux expliquer le concept sans réciter une définition",
-    "Je sais exécuter et modifier la preuve",
-    "Je peux nommer un risque et son contrôle",
-    "Je relie cette étape à la suivante"
+    "J'utilise computed pour l'état dérivé et effect seulement pour les effets de bord",
+    "Je remplace la référence plutôt que de muter un signal",
+    "Je sais quand RxJS reste préférable",
+    "J'ai prédit les recalculs avant de lire les corrections"
   ]
 }

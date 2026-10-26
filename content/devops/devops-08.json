@@ -11,21 +11,30 @@
     "DEVOPS-07"
   ],
   "objectives": [
-    "Expliquer incident final : diagnostiquer et restaurer",
-    "Construire une preuve exécutable et déterministe",
-    "Relier le concept à une décision professionnelle"
+    "Diagnostiquer un incident à partir de journaux : première erreur, répartition par service, cause probable.",
+    "Distinguer cause et symptôme en suivant les dépendances.",
+    "Dérouler un plan de restauration ordonné et le vérifier.",
+    "Conduire un retour d'expérience sans chercher de coupable."
   ],
   "sections": [
     {
-      "title": "Concept et usage professionnel",
-      "content": "Incident final : diagnostiquer et restaurer répond à un besoin concret de maintenabilité, de sûreté ou de performance. Le laboratoire demande de rendre la décision observable et vérifiable.",
-      "conceptCodes": [
-        "DEVOPS-CHALLENGE"
-      ]
+      "title": "Chercher la cause, pas le bruit",
+      "content": "Pendant un incident, les journaux se remplissent d'erreurs : la plupart sont des conséquences. La démarche :\n1. Stabiliser et communiquer : limiter l'impact (retour arrière, désactiver une fonction), informer.\n2. Chronologie : quelle est la première erreur ? Les erreurs précèdent leurs conséquences.\n3. Périmètre : quels services sont touchés, combien d'erreurs par service ?\n4. Dépendances : suivre le graphe d'appels. Si l'API échoue parce que sa base échoue, la base est la cause probable ; l'API est un symptôme.\n5. Hypothèse puis vérification (journaux, métriques, derniers changements).\n6. Restaurer dans l'ordre : d'abord la cause, puis vérifier les services qui en dépendent.\n7. Documenter.\nUn service en erreur dont toutes les dépendances vont bien est un bon candidat de cause ; un service en erreur dont une dépendance est aussi en erreur est probablement une victime."
     },
     {
-      "title": "Défi de synthèse",
-      "content": "La preuve minimale est locale, déterministe et peut être enrichie sans changer le contrat attendu."
+      "title": "Exemple résolu : de dix lignes de journal à un plan",
+      "conceptCodes": [
+        "DEVOPS-CHALLENGE"
+      ],
+      "content": "Problème : à partir d'un extrait de journal, repérer le premier incident, les erreurs par service, la cause probable et le plan de restauration.\n\nRaisonnement, étape par étape :\n1. Trier les lignes par horodatage (le journal peut arriver dans le désordre quand il vient de plusieurs sources).\n2. Premier incident : la première ligne de niveau ERROR : 10:02:12 db connexion refusée.\n3. Comptage : api=3, db=1, web=2 erreurs. Le service qui a le plus d'erreurs n'est pas la cause : api en a le plus mais c'est un symptôme.\n4. Dépendances : web dépend de api, api dépend de db. Un service est cause probable s'il est en erreur et qu'aucune de ses dépendances ne l'est : db (elle ne dépend de rien), donc db.\n5. Plan : redémarrer la cause (db), puis vérifier chaque service qui en dépend dans l'ordre de la chaîne (api puis web).\n6. Vérification : après redémarrage, les erreurs cessent dans l'ordre inverse de la chaîne.\n```python\ndef cause(erreurs, deps):\n    for service in erreurs:\n        if all(d not in erreurs for d in deps.get(service, [])):\n            return service\n\nplan = [f\"redémarrer {cause_}\"] + [f\"vérifier {s}\" for s in dependants_dans_l_ordre]\n```\nLe « premier incident » n'est pas toujours la cause racine (un disque qui se remplit lentement produit sa première erreur bien après la dérive) : ce sont des indices, à croiser avec les métriques et les changements récents."
+    },
+    {
+      "title": "Après l'incident",
+      "content": "Rétrospective sans blâme (blameless post-mortem) : on cherche les causes systémiques (pourquoi le système a permis cette erreur), pas un coupable. Contenu : résumé, impact (durée, utilisateurs touchés), chronologie, cause racine, ce qui a bien marché, ce qui a mal marché, actions correctives avec responsables et échéances.\n\nQuestions : pourquoi n'a-t-on pas détecté plus tôt (alerte manquante ou bruyante) ? pourquoi le déploiement n'a-t-il pas été bloqué (gate absent) ? pourquoi la restauration a-t-elle été longue (procédure floue) ? Les « 5 pourquoi » remontent de la panne visible à la cause organisationnelle.\n\nActions durables : ajouter l'alerte ou le test manquant, améliorer le runbook (procédure pas à pas), automatiser la restauration, ajouter une métrique, réduire le rayon d'impact (limites, disjoncteurs, délais d'attente, réessais bornés pour éviter l'effet d'avalanche), exercices réguliers (game days).\n\nIndicateurs : MTTD (temps de détection), MTTR (temps de restauration), nombre d'incidents répétés. Un incident qui se répète est une action corrective non faite. Gardez les journaux structurés avec identifiant de corrélation, sinon le diagnostic reste lent."
+    },
+    {
+      "title": "Erreurs fréquentes à reconnaître",
+      "content": "1. Redémarrer au hasard sans hypothèse, effaçant des indices.\n2. Accuser le service qui a le plus d'erreurs, alors qu'il est une victime.\n3. Corriger la cause mais oublier de vérifier les services en aval.\n4. Pas de chronologie : on ne sait plus l'ordre des événements.\n5. Un post-mortem qui cherche un coupable ou qui ne produit aucune action.\n6. Des journaux sans identifiant de corrélation ni horodatage fiable.\n\nRetrouve ces erreurs de mémoire avant l'exercice, puis vérifie-toi avec le quiz : c'est la récupération, pas la relecture, qui fixe la notion."
     }
   ],
   "keyConcepts": [
@@ -39,8 +48,8 @@
       "professionalExample": "Un samedi soir, le service de paiement renvoie des erreurs 502 en boucle après un déploiement automatique, et l'astreinte doit diagnostiquer la cause depuis son téléphone. Elle inspecte d'abord l'état du service et les logs du conteneur, identifie que la nouvelle image ne trouve plus une variable d'environnement renommée dans le déploiement précédent, puis restaure le service en revenant à la dernière image taguée stable connue. Cet incident illustre pourquoi la traçabilité des versions déployées et un chemin de rollback testé à l'avance ne sont pas des options : au moment de l'incident, c'est la seule chose qui permet de revenir à un état sain en minutes plutôt qu'en heures.",
       "codeExample": "# Diagnostic\n$ docker service ps myapp_web --no-trunc\nID       NAME          IMAGE            CURRENT STATE\nabc123   myapp_web.1   myapp:a1b2c3d    Failed 30s ago (exit 1)\n\n$ docker logs $(docker ps -lq --filter name=myapp_web) --tail 50\nError: Missing required env var PAYMENT_API_URL\n\n# Restauration vers la derniere version stable connue\n$ docker service update --image myapp:a9f3e21-stable myapp_web\n$ curl -sf https://api.internal/health && echo \"OK: service restaure\"",
       "commonMistake": "Appliquer la technique sans mesurer son effet ni documenter sa frontière.",
-      "masteryQuestion": "Quelle contrainte de incident final : diagnostiquer et restaurer doit rester vraie lorsque le système évolue ?",
-      "masteryProof": "Exécuter la preuve, expliquer son invariant et proposer un cas d’échec."
+      "masteryQuestion": "Pourquoi le service qui a le plus d'erreurs n'est-il pas forcément la cause, et comment ordonne-t-on la restauration ?",
+      "masteryProof": "Analyser des journaux : première erreur, erreurs par service, cause probable par les dépendances et plan de restauration ordonné."
     }
   ],
   "exercises": [
@@ -56,32 +65,80 @@
     {
       "code": "DEVOPS-08-Q1",
       "type": "SINGLE_CHOICE",
-      "prompt": "Quelle preuve est la plus utile en revue ?",
+      "prompt": "Les journaux montrent api=3 erreurs, db=1 et web=2. api dépend de db, web dépend de api. Quelle est la cause probable ?",
       "choices": [
-        "Une exécution déterministe avec invariant explicite",
-        "Une sortie aléatoire",
-        "Une capture sans code"
+        "api, qui a le plus d'erreurs",
+        "db : en erreur et sans dépendance en erreur ; api et web sont des conséquences",
+        "web, car il est exposé aux utilisateurs",
+        "Impossible à dire"
       ],
-      "correctChoice": 0,
-      "expectedKeywords": []
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Le critère est : en erreur ET aucune de ses dépendances n'est en erreur. db remplit ce critère ; api et web échouent parce que leurs dépendances échouent."
     },
     {
       "code": "DEVOPS-08-Q2",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Prédis le plan de restauration : cause db, dépendants api puis web.",
+      "choices": [
+        "redémarrer web -> api -> db",
+        "redémarrer db -> vérifier api -> vérifier web",
+        "redémarrer tous les services en même temps",
+        "vérifier web -> api -> db"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "On corrige la cause d'abord, puis on contrôle les services qui en dépendent dans l'ordre de la chaîne. Redémarrer l'aval avant l'amont ne ferait que reproduire les erreurs."
+    },
+    {
+      "code": "DEVOPS-08-Q3",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Trouve le défaut de méthode : « L'API avait le plus d'erreurs, nous l'avons redémarrée trois fois, sans résultat. »",
+      "choices": [
+        "Il fallait la redémarrer quatre fois",
+        "Elle n'était qu'un symptôme ; sans identifier la cause (sa base de données), redémarrer l'API ne résout rien et masque des indices",
+        "Les redémarrages sont toujours inutiles",
+        "Il fallait redémarrer le web"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "On suit le graphe de dépendances pour distinguer cause et symptôme avant d'agir, et on évite les actions au hasard qui détruisent des preuves (journaux, états en mémoire)."
+    },
+    {
+      "code": "DEVOPS-08-Q4",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Quel est l'objectif d'un post-mortem « sans blâme » ?",
+      "choices": [
+        "Identifier et sanctionner le responsable",
+        "Comprendre les causes systémiques et produire des actions correctives pour que le même incident ne se reproduise pas",
+        "Ne rien changer",
+        "Rédiger un rapport pour la direction seulement"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Si on punit, les gens cachent les erreurs. En cherchant pourquoi le système a permis l'erreur (alerte manquante, gate absent, procédure floue), on corrige ce qui peut réellement être amélioré."
+    },
+    {
+      "code": "DEVOPS-08-Q5",
       "type": "FREE_TEXT",
-      "prompt": "Explique une décision liée à incident final : diagnostiquer et restaurer.",
+      "prompt": "Sans relire le cours, explique avec tes mots la différence entre cause racine et symptôme, avec la méthode pour les distinguer dans des journaux.",
       "choices": [],
       "correctChoice": null,
       "expectedKeywords": [
-        "contrat",
-        "preuve",
-        "test"
-      ]
+        "cause",
+        "symptome",
+        "dependance",
+        "premiere",
+        "chronologie"
+      ],
+      "modelAnswer": "Un symptôme est une erreur causée par la défaillance d'un autre composant (une API qui échoue parce que sa base est inaccessible) ; la cause racine est l'origine de la chaîne. On les distingue en établissant la chronologie (première erreur), en comptant les erreurs par service, puis en suivant le graphe de dépendances : un service en erreur dont aucune dépendance n'est en erreur est la cause probable, à confirmer avec les métriques et les changements récents.",
+      "explanation": "Une bonne réponse définit symptôme et cause, et cite chronologie, comptage par service et suivi des dépendances."
     }
   ],
   "checklist": [
-    "Je peux expliquer le concept sans réciter une définition",
-    "Je sais exécuter et modifier la preuve",
-    "Je peux nommer un risque et son contrôle",
-    "Je peux présenter cette preuve dans mon portfolio"
+    "Je commence par la chronologie et la première erreur",
+    "Je distingue cause et symptômes grâce au graphe de dépendances",
+    "Je restaure la cause puis je vérifie l'aval dans l'ordre",
+    "Je conduis un post-mortem sans blâme avec des actions suivies"
   ]
 }

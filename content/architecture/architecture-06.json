@@ -11,25 +11,30 @@
     "ARCHITECTURE-05"
   ],
   "objectives": [
-    "Rendre les commandes répétables et les erreurs compréhensibles par tous les clients",
-    "Justifier les compromis et nommer un risque opérationnel",
-    "Produire une preuve reproductible avant d’élargir la solution"
+    "Concevoir une opération rejouable avec une clé d'idempotence et une réponse mémorisée.",
+    "Distinguer un rejeu identique (même résultat) d'un rejeu avec un contenu différent (conflit).",
+    "Choisir statuts et format d'erreur uniformes pour une API.",
+    "Expliquer pourquoi les réessais exigent l'idempotence."
   ],
   "sections": [
     {
-      "title": "Concept clé et décision",
+      "title": "Les réseaux perdent des réponses",
+      "content": "Un client envoie POST /payments, le serveur traite, mais la réponse se perd (délai dépassé). Le client ne sait pas si l'opération a eu lieu ; s'il réessaie sans protection, il paie deux fois. Les systèmes distribués garantissent au mieux « au moins une fois » : les doublons arrivent. Il faut donc des opérations idempotentes : les répéter produit le même effet qu'une seule fois.\n\nGET, PUT et DELETE sont idempotents par conception ; POST ne l'est pas. Le remède : une clé d'idempotence choisie par le client (par exemple un UUID par intention), envoyée dans un en-tête (Idempotency-Key). Le serveur mémorise le résultat associé à la clé."
+    },
+    {
+      "title": "Exemple résolu : une création rejouable",
       "conceptCodes": [
         "API-CONTRACT"
       ],
-      "content": "Concevoir API, erreurs et idempotence relie les besoins, le logiciel, les données et l’exploitation. Commence par les contraintes observables, trace les responsabilités, puis choisis la solution la plus simple qui respecte les invariants."
+      "content": "Problème : créer une commande de façon rejouable.\n\nRaisonnement, étape par étape :\n1. Première requête avec la clé K : le serveur traite, crée la commande, enregistre (K → empreinte du contenu, réponse) et répond 201.\n2. Rejeu de K avec le même contenu : le serveur reconnaît la clé et renvoie la réponse mémorisée (200 « rejouée », ou 201 identique) sans créer de doublon.\n3. Rejeu de K avec un contenu différent : c'est une erreur du client (réutilisation d'une clé), pas un rejeu : réponse 409 ou 422 avec un message clair. Comparer l'empreinte (hachage) du contenu le détecte.\n4. Atomicité : l'enregistrement de la clé et la création doivent être atomiques (même transaction, ou contrainte UNIQUE sur la clé) ; sinon deux requêtes simultanées avec la même clé créent deux commandes.\n5. Durée de vie : les clés expirent (24 heures par exemple) pour ne pas grossir sans fin.\n6. Vérification : un scénario de trois appels (création, rejeu, rejeu modifié) donne 201, 200, 409 et une seule commande.\n```python\ndef create(key: str, payload: dict):\n    fingerprint = json.dumps(payload, sort_keys=True)\n    if key in store:\n        saved_print, saved_response = store[key]\n        return (200, saved_response) if saved_print == fingerprint else (409, \"clé réutilisée avec un autre contenu\")\n    ...\n```"
     },
     {
-      "title": "Construction verticale",
-      "content": "La preuve ARCHITECTURE-06 modélise une décision réelle sous forme déterministe. Elle ne remplace pas un déploiement complet : elle rend l’hypothèse testable avant l’intégration Spring Boot, Angular, PostgreSQL et Docker."
+      "title": "Contrat d'erreurs et réessais",
+      "content": "Statuts utiles : 200/201 succès, 202 accepté (traitement asynchrone), 400 requête invalide, 401 non authentifié, 403 interdit, 404 introuvable, 409 conflit (doublon, version), 422 contenu valide syntaxiquement mais refusé, 429 trop de requêtes (avec Retry-After), 5xx erreur serveur. Utilise-les de façon cohérente et conserve le même format d'erreur partout, par exemple { \"code\": \"STOCK_INSUFFISANT\", \"message\": \"...\", \"details\": [...] } ou Problem Details (RFC 9457).\n\nRéessais côté client : seulement pour les erreurs transitoires (timeout, 429, 502, 503, 504), avec un délai croissant et du hasard (jitter), un nombre limité d'essais, et la même clé d'idempotence à chaque tentative. Une erreur 4xx de validation ne se réessaie pas.\n\nCôté serveur : renvoyer 429 plutôt que s'écrouler, traiter les doublons, journaliser la clé pour retrouver une requête. Pour les opérations longues : 202 avec une URL de suivi plutôt que de garder la connexion ouverte. Les opérations sur des ressources identifiées (PUT /orders/42) sont naturellement idempotentes : préfère-les quand le client peut choisir l'identifiant."
     },
     {
-      "title": "Revue professionnelle",
-      "content": "Documente le contexte, la décision, une option rejetée, les conséquences, le signal à surveiller et la condition qui imposerait de revoir le choix."
+      "title": "Erreurs fréquentes à reconnaître",
+      "content": "1. Un POST de paiement sans clé d'idempotence.\n2. Traiter un rejeu avec contenu différent comme un simple rejeu.\n3. Vérifier la clé puis écrire sans atomicité : deux requêtes simultanées passent.\n4. Réessayer sans limite, sans délai croissant, ou une erreur 400.\n5. Des formats d'erreur différents d'une route à l'autre.\n6. Garder les clés indéfiniment.\n\nRetrouve ces erreurs de mémoire avant l'exercice, puis vérifie-toi avec le quiz : c'est la récupération, pas la relecture, qui fixe la notion."
     }
   ],
   "keyConcepts": [
@@ -43,49 +48,97 @@
       "professionalExample": "Un client mobile envoie une requête de paiement, le réseau coupe avant que la réponse n’arrive, et l’application retente automatiquement le même appel. Sans clé d’idempotence, le serveur traite les deux requêtes comme deux paiements distincts et débite le client deux fois. En exigeant une clé Idempotency-Key et en renvoyant la même réponse pour une clé déjà vue, l’API rend la commande rejouable sans risque de double facturation.",
       "codeExample": "POST /payments\nIdempotency-Key: pay-8f2c-42\n{ \"amount\": 49.90 }\n\n-> 201 Created { \"status\": \"charged\" }\n\n# Même requête rejouée après un timeout réseau\nPOST /payments\nIdempotency-Key: pay-8f2c-42\n{ \"amount\": 49.90 }\n\n-> 200 OK { \"status\": \"charged\" }  # rejouée, pas de double débit",
       "commonMistake": "Choisir un outil avant d’identifier le besoin, la charge, le risque et le propriétaire de la donnée.",
-      "masteryQuestion": "Quel compromis, quel signal et quelle condition de réévaluation associes-tu à « Concevoir API, erreurs et idempotence » ?",
-      "masteryProof": "Exécuter la preuve, modifier une contrainte, expliquer le résultat et dessiner la place du composant dans la stack complète."
+      "masteryQuestion": "Pourquoi une clé d'idempotence, et que faire d'un rejeu avec un contenu différent ?",
+      "masteryProof": "Écrire une création rejouable qui renvoie 201 puis 200 pour un rejeu identique et 409 pour une clé réutilisée avec un autre contenu."
     }
   ],
   "exercises": [
     {
       "code": "ARCHITECTURE-06-E1",
-      "title": "Rendre les commandes répétables et les erreurs compréhensibles par tous les clients",
-      "statement": "Complète la preuve pour produire exactement la sortie attendue, puis explique la décision, une alternative et le signal de production qui validerait ton choix.",
-      "starterCode": "seen = set()\n\ndef create(key: str) -> tuple[int, str]:\n    # TODO : si la clé a déjà été vue, retourne (200, \"rejouée\") ;\n    #        sinon mémorise-la et retourne (201, \"créée\")\n    return 0, \"\"\n\nprint(*create(\"cmd-42\"))\nprint(*create(\"cmd-42\"))\n",
-      "expectedOutput": "201 créée\n200 rejouée"
+      "title": "Une création idempotente avec détection de conflit",
+      "statement": "Complète create : première création (201), rejeu identique (200 avec la même commande, sans doublon), clé réutilisée avec un autre contenu (409). Le contenu est comparé par une empreinte. Affiche exactement :\ncmd-42 -> 201 {'id': 1, 'customer': 7, 'total': 4000}\ncmd-42 -> 200 {'id': 1, 'customer': 7, 'total': 4000}\ncmd-42 -> 409 {'error': 'clé réutilisée avec un autre contenu'}\ncmd-43 -> 201 {'id': 2, 'customer': 8, 'total': 1500}\nCommandes créées: 2",
+      "starterCode": "import hashlib\nimport json\n\nstore: dict[str, tuple[str, dict]] = {}   # clé -> (empreinte du contenu, réponse)\norders: list[dict] = []\n\n\ndef fingerprint(payload: dict) -> str:\n    # TODO 1 : sha256 (hexdigest) du JSON du contenu avec clés triées (json.dumps(..., sort_keys=True))\n    return \"\"\n\n\ndef create(key: str, payload: dict) -> tuple[int, dict]:\n    # TODO 2 : si la clé est connue : (200, réponse mémorisée) si l'empreinte est identique,\n    #          sinon (409, {\"error\": \"clé réutilisée avec un autre contenu\"})\n    # TODO 3 : sinon crée la commande {\"id\": len(orders) + 1, **payload}, l'ajoute à orders,\n    #          mémorise (empreinte, réponse) pour la clé et retourne (201, réponse)\n    return 0, {}\n\n\ncalls = [\n    (\"cmd-42\", {\"customer\": 7, \"total\": 4000}),\n    (\"cmd-42\", {\"customer\": 7, \"total\": 4000}),\n    (\"cmd-42\", {\"customer\": 7, \"total\": 9999}),\n    (\"cmd-43\", {\"customer\": 8, \"total\": 1500}),\n]\nfor key, payload in calls:\n    # TODO 4 : affiche \"<clé> -> <statut> <réponse>\"  (print(key, \"->\", statut, réponse))\n    pass\n# TODO 5 : affiche \"Commandes créées: <nombre>\"\n",
+      "expectedOutput": "cmd-42 -> 201 {'id': 1, 'customer': 7, 'total': 4000}\ncmd-42 -> 200 {'id': 1, 'customer': 7, 'total': 4000}\ncmd-42 -> 409 {'error': 'clé réutilisée avec un autre contenu'}\ncmd-43 -> 201 {'id': 2, 'customer': 8, 'total': 1500}\nCommandes créées: 2"
     }
   ],
   "quiz": [
     {
       "code": "ARCHITECTURE-06-Q1",
       "type": "SINGLE_CHOICE",
-      "prompt": "Quelle démarche produit la décision la plus robuste ?",
+      "prompt": "Pourquoi un client doit-il pouvoir rejouer une requête de création ?",
       "choices": [
-        "Relier contraintes, responsabilités, preuve et observabilité",
-        "Choisir la technologie la plus populaire",
-        "Ajouter des services avant de mesurer"
+        "Pour tester le serveur",
+        "Parce qu'une réponse peut se perdre : le client ne sait pas si l'opération a eu lieu et doit pouvoir réessayer sans risque de doublon",
+        "Parce que HTTP l'impose",
+        "Pour accélérer"
       ],
-      "correctChoice": 0,
-      "expectedKeywords": []
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Les réseaux ne garantissent pas la livraison des réponses. L'idempotence rend le réessai sûr."
     },
     {
       "code": "ARCHITECTURE-06-Q2",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Prédis le statut du troisième appel (même clé cmd-42, total 9999 au lieu de 4000) :",
+      "choices": [
+        "200",
+        "201",
+        "409 : la clé est réutilisée avec un contenu différent, ce n'est pas un rejeu",
+        "500"
+      ],
+      "correctChoice": 2,
+      "expectedKeywords": [],
+      "explanation": "Une clé identifie une intention. La réutiliser avec un autre contenu est une erreur du client, pas un rejeu : on la signale plutôt que de renvoyer la réponse précédente."
+    },
+    {
+      "code": "ARCHITECTURE-06-Q3",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Trouve le défaut :\n```python\nif key not in store:\n    order = create_order(payload)   # (A)\n    store[key] = order               # (B) deux requêtes simultanées\n```\n",
+      "choices": [
+        "Il manque un else",
+        "Entre le test et l'écriture, une requête concurrente avec la même clé passe aussi le test : deux commandes ; il faut une contrainte UNIQUE ou une transaction atomique",
+        "store doit être une liste",
+        "create_order est lente"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Le contrôle et l'écriture doivent être atomiques. En base, une contrainte UNIQUE sur la clé fait échouer le second insert proprement."
+    },
+    {
+      "code": "ARCHITECTURE-06-Q4",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Quelles requêtes sont idempotentes par conception ?",
+      "choices": [
+        "POST de création",
+        "GET, PUT et DELETE sur une ressource identifiée",
+        "Aucune",
+        "Toutes"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Répéter un PUT du même contenu ou un DELETE aboutit au même état. POST crée à chaque fois, sauf mécanisme de clé d'idempotence."
+    },
+    {
+      "code": "ARCHITECTURE-06-Q5",
       "type": "FREE_TEXT",
-      "prompt": "Nomme un compromis et le signal qui permettrait de le réévaluer.",
+      "prompt": "Sans relire le cours, explique avec tes mots comment le serveur distingue un rejeu légitime d'une réutilisation fautive d'une clé.",
       "choices": [],
       "correctChoice": null,
       "expectedKeywords": [
-        "compromis",
-        "mesure",
-        "risque"
-      ]
+        "cle",
+        "empreinte",
+        "contenu",
+        "identique",
+        "conflit"
+      ],
+      "modelAnswer": "Le serveur mémorise, pour chaque clé, une empreinte (hachage) du contenu et la réponse. Si la clé revient avec la même empreinte, c'est un rejeu : il renvoie la réponse mémorisée sans retraiter. Si la clé revient avec une empreinte différente, le client réutilise la clé pour une autre intention : le serveur répond par un conflit (409 ou 422) plutôt que de renvoyer une réponse qui ne correspond pas à la demande.",
+      "explanation": "Une bonne réponse décrit l'empreinte du contenu mémorisée avec la clé, la réponse mémorisée pour un rejeu identique et le conflit pour un contenu différent."
     }
   ],
   "checklist": [
-    "Je peux dessiner la circulation de la donnée",
-    "Je sais nommer les responsabilités de chaque couche",
-    "Je justifie une alternative rejetée",
-    "Je définis une mesure et une condition de réévaluation"
+    "Mes opérations de création acceptent une clé d'idempotence",
+    "Je distingue rejeu identique et clé réutilisée avec un autre contenu",
+    "L'enregistrement de la clé est atomique avec l'opération",
+    "Mes réessais sont bornés, avec délai croissant, et seulement sur erreurs transitoires"
   ]
 }

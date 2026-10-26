@@ -11,21 +11,30 @@
     "PYTHON-16"
   ],
   "objectives": [
-    "Expliquer algorithmique, complexité et structures adaptées",
-    "Construire une preuve exécutable et déterministe",
-    "Relier le concept à une décision professionnelle"
+    "Estimer la complexité d'un algorithme (O(1), O(log n), O(n), O(n log n), O(n²)) à partir de son code.",
+    "Choisir la structure adaptée (list, set, dict, deque) selon l'opération dominante.",
+    "Remplacer une double boucle par un dictionnaire et mesurer le gain en opérations, pas en secondes.",
+    "Repérer une complexité cachée (in sur liste, pop(0), concaténation en boucle)."
   ],
   "sections": [
     {
-      "title": "Concept et usage professionnel",
-      "content": "Algorithmique, complexité et structures adaptées répond à un besoin concret de maintenabilité, de sûreté ou de performance. Le laboratoire demande de rendre la décision observable et vérifiable.",
-      "conceptCodes": [
-        "PYTHON-ALGORITHMS"
-      ]
+      "title": "La complexité décrit comment le coût grandit avec la taille",
+      "content": "La notation O(...) dit comment le nombre d'opérations croît quand la taille n des données augmente, en ignorant les constantes. Retenir :\n- O(1) : constant (accès par indice, dict[clé], set.add).\n- O(log n) : on divise par deux à chaque pas (recherche dichotomique, module bisect sur une liste triée).\n- O(n) : on parcourt une fois (boucle simple, x in liste, sum).\n- O(n log n) : un tri efficace (sorted).\n- O(n²) : deux boucles imbriquées sur les mêmes données.\n\nPour 1 000 éléments, O(n²) fait un million d'opérations ; pour 1 000 000, mille milliards. Un algorithme quadratique « marche » en test avec 100 lignes et s'effondre en production avec 100 000."
     },
     {
-      "title": "Mise en pratique",
-      "content": "La preuve minimale est locale, déterministe et peut être enrichie sans changer le contrat attendu."
+      "title": "Exemple résolu : deux nombres dont la somme vaut la cible",
+      "conceptCodes": [
+        "PYTHON-ALGORITHMS"
+      ],
+      "content": "Problème : dans une liste, trouver deux indices dont les valeurs ont pour somme la cible.\n\nRaisonnement, étape par étape :\n1. Version naïve : pour chaque i, pour chaque j > i, tester nombres[i] + nombres[j] == cible. Environ n²/2 comparaisons : O(n²).\n2. Idée : pour chaque valeur v, on cherche son complément cible - v. Si on a déjà vu ce complément, c'est gagné.\n3. Version par dictionnaire : on parcourt une fois en gardant vus = {valeur: indice}. Chaque consultation de dict est O(1) : O(n) au total.\n4. On compte les opérations (comparaisons ou consultations) plutôt que le temps, car le temps varie d'une machine à l'autre et d'un essai à l'autre.\n5. Vérification : les deux versions trouvent les mêmes indices ; la seconde en fait beaucoup moins.\n```python\ndef deux_sommes(nombres, cible):\n    vus = {}                              # valeur -> indice\n    for i, v in enumerate(nombres):\n        if cible - v in vus:              # consultation O(1)\n            return vus[cible - v], i\n        vus[v] = i\n    return None\n```\nCe gain a un prix : de la mémoire supplémentaire (le dictionnaire). Échanger de la mémoire contre du temps est un compromis classique."
+    },
+    {
+      "title": "Complexités cachées dans les structures Python",
+      "content": "- x in liste est O(n) ; x in set ou x in dict est O(1) en moyenne. Transformer une liste en set avant des tests répétés change l'échelle.\n- liste.pop(0) et liste.insert(0, x) sont O(n) : tous les éléments se décalent. Utilise collections.deque (popleft, appendleft en O(1)) pour une file.\n- Concaténer des chaînes dans une boucle (s += morceau) peut devenir O(n²) : accumule dans une liste puis \"\".join(morceaux).\n- sorted(liste) est O(n log n) ; trier pour ne garder que le minimum est du gaspillage : utilise min.\n- bisect permet de chercher dans une liste déjà triée en O(log n).\n- Copier une liste (liste[:]) est O(n) : à éviter dans une boucle.\n```python\nfrom collections import deque\nfile = deque([1, 2, 3])\nfile.popleft()        # O(1), contre liste.pop(0) en O(n)\n```\nLa lisibilité passe avant tant que n reste petit. Optimise là où les données grossissent, après avoir mesuré."
+    },
+    {
+      "title": "Erreurs fréquentes à reconnaître",
+      "content": "1. Tester x in liste dans une boucle sur de gros volumes.\n2. Utiliser liste.pop(0) pour une file.\n3. Concaténer des chaînes avec += dans une boucle énorme.\n4. Mesurer un algorithme sur 10 éléments et conclure qu'il est rapide.\n5. Optimiser une partie qui représente 1 % du temps au lieu de réduire la complexité du goulot.\n6. Confondre complexité (comment ça grandit) et temps réel (constantes, machine).\n\nRetrouve ces erreurs de mémoire avant l'exercice, puis vérifie-toi avec le quiz : c'est la récupération, pas la relecture, qui fixe la notion."
     }
   ],
   "keyConcepts": [
@@ -39,8 +48,8 @@
       "professionalExample": "Un service de détection de doublons comparait chaque nouvelle commande à toutes les commandes déjà traitées avec une boucle imbriquée en O(n²), ce qui rendait le traitement quotidien impraticable dès que le volume a dépassé quelques dizaines de milliers de commandes. En remplaçant la recherche linéaire répétée par un dictionnaire indexé sur la clé de déduplication, la complexité est passée à O(n) et le traitement qui prenait plusieurs heures s'est terminé en quelques secondes.",
       "codeExample": "def find_duplicates_slow(orders: list[dict]) -> list[dict]:\n    duplicates = []\n    for i, order in enumerate(orders):\n        for other in orders[:i]:  # O(n^2) : compare chaque paire\n            if order[\"key\"] == other[\"key\"]:\n                duplicates.append(order)\n                break\n    return duplicates\n\ndef find_duplicates_fast(orders: list[dict]) -> list[dict]:\n    seen: dict[str, dict] = {}\n    duplicates = []\n    for order in orders:  # O(n) : une seule passe, recherche en O(1)\n        if order[\"key\"] in seen:\n            duplicates.append(order)\n        else:\n            seen[order[\"key\"]] = order\n    return duplicates",
       "commonMistake": "Appliquer la technique sans mesurer son effet ni documenter sa frontière.",
-      "masteryQuestion": "Quelle contrainte de algorithmique, complexité et structures adaptées doit rester vraie lorsque le système évolue ?",
-      "masteryProof": "Exécuter la preuve, expliquer son invariant et proposer un cas d’échec."
+      "masteryQuestion": "Pourquoi compter les opérations plutôt que chronométrer, et quel compromis fait la version par dictionnaire ?",
+      "masteryProof": "Écrire la recherche de somme en version naïve et en version par dictionnaire avec compteur d'opérations, et afficher le gain."
     }
   ],
   "exercises": [
@@ -56,32 +65,80 @@
     {
       "code": "PYTHON-17-Q1",
       "type": "SINGLE_CHOICE",
-      "prompt": "Quelle preuve est la plus utile en revue ?",
+      "prompt": "Quelle est la complexité de « x in ma_liste » pour une liste de n éléments ?",
       "choices": [
-        "Une exécution déterministe avec invariant explicite",
-        "Une sortie aléatoire",
-        "Une capture sans code"
+        "O(1)",
+        "O(n) : la liste est parcourue élément par élément",
+        "O(log n)",
+        "O(n²)"
       ],
-      "correctChoice": 0,
-      "expectedKeywords": []
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Sur une liste non triée, Python compare chaque élément jusqu'à trouver x ou arriver à la fin. Un set ou un dict fait le même test en O(1) en moyenne grâce au hachage."
     },
     {
       "code": "PYTHON-17-Q2",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Prédis l'ordre de grandeur : une double boucle sur 10 000 éléments (toutes les paires) fait environ combien de comparaisons ?",
+      "choices": [
+        "10 000",
+        "100 000",
+        "50 millions",
+        "10 milliards"
+      ],
+      "correctChoice": 2,
+      "expectedKeywords": [],
+      "explanation": "n²/2 pour n = 10 000 donne environ 50 millions de paires. Avec un dictionnaire, on passe à environ 10 000 consultations : 5 000 fois moins."
+    },
+    {
+      "code": "PYTHON-17-Q3",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Trouve le défaut :\n```python\nfile = [..]            # 1 000 000 tâches\nwhile file:\n    tache = file.pop(0)\n    traiter(tache)\n```\n",
+      "choices": [
+        "pop est interdit sur une liste",
+        "pop(0) décale tous les éléments à chaque appel : O(n) par retrait, O(n²) au total ; un deque règle le problème",
+        "while file est faux",
+        "Il faut trier la liste"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Retirer au début d'une liste force à déplacer tous les éléments restants. collections.deque.popleft() fait la même chose en O(1)."
+    },
+    {
+      "code": "PYTHON-17-Q4",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Pourquoi le test de la version par dictionnaire affiche-t-il un nombre d'opérations plutôt qu'un temps ?",
+      "choices": [
+        "Parce que le temps ne se mesure pas en Python",
+        "Parce que le temps dépend de la machine et varie d'un essai à l'autre ; le nombre d'opérations est reproductible",
+        "Parce que les dictionnaires n'ont pas de temps",
+        "Parce que time est interdit"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Un test doit être déterministe. Compter comparaisons et consultations donne le même résultat partout, alors qu'un chronomètre produit des valeurs différentes à chaque exécution."
+    },
+    {
+      "code": "PYTHON-17-Q5",
       "type": "FREE_TEXT",
-      "prompt": "Explique une décision liée à algorithmique, complexité et structures adaptées.",
+      "prompt": "Sans relire le cours, explique avec tes mots le compromis temps/mémoire de la solution par dictionnaire pour la recherche de somme.",
       "choices": [],
       "correctChoice": null,
       "expectedKeywords": [
-        "contrat",
-        "preuve",
-        "test"
-      ]
+        "memoire",
+        "temps",
+        "dictionnaire",
+        "une seule",
+        "complement"
+      ],
+      "modelAnswer": "La solution par dictionnaire retient en mémoire les valeurs déjà vues pour retrouver le complément en O(1) : un seul parcours au lieu de deux boucles imbriquées, donc O(n) au lieu de O(n²) en temps, mais au prix de O(n) mémoire supplémentaire pour stocker le dictionnaire. Elle échange de la mémoire contre du temps.",
+      "explanation": "Une bonne réponse nomme le gain de temps (une passe, consultation O(1)) et le coût mémoire du dictionnaire."
     }
   ],
   "checklist": [
-    "Je peux expliquer le concept sans réciter une définition",
-    "Je sais exécuter et modifier la preuve",
-    "Je peux nommer un risque et son contrôle",
-    "Je relie cette étape à la suivante"
+    "Je sais estimer la complexité d'un code simple",
+    "Je remplace x in liste répété par un set ou un dict",
+    "J'utilise deque pour une file et join pour assembler des chaînes",
+    "Je mesure par nombre d'opérations ou avec un vrai profileur, pas au jugé"
   ]
 }

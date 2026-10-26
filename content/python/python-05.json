@@ -1,17 +1,144 @@
 {
-  "code": "PYTHON-05", "language": "PYTHON", "number": 5, "slug": "objets-dataclasses-tests",
-  "title": "Objets, dataclasses et invariants testables", "difficulty": "INTERMEDIAIRE", "threshold": 75,
-  "activityType": "LAB", "prerequisites": ["PYTHON-04"],
-  "objectives": ["Modéliser une valeur avec dataclass", "Protéger un invariant métier", "Vérifier un comportement avec assert"],
+  "code": "PYTHON-05",
+  "language": "PYTHON",
+  "number": 5,
+  "slug": "objets-dataclasses-tests",
+  "title": "Objets, dataclasses et invariants testables",
+  "difficulty": "INTERMEDIAIRE",
+  "threshold": 75,
+  "activityType": "LAB",
+  "prerequisites": [
+    "PYTHON-04"
+  ],
+  "objectives": [
+    "Modéliser une valeur avec une dataclass immuable (frozen) et générer égalité, représentation et hachage.",
+    "Protéger un invariant dans __post_init__ et signaler la violation par une exception.",
+    "Produire une copie modifiée avec dataclasses.replace plutôt que muter l'original.",
+    "Distinguer assert (vérification interne) et validation (entrée extérieure)."
+  ],
   "sections": [
-    {"title":"Un objet porte des règles","content":"Une dataclass réduit le code répétitif mais ne remplace pas la conception. Une valeur immuable est utile lorsque chaque transformation doit produire un nouvel état valide.","conceptCodes":["PYTHON-DATACLASS-INVARIANT"]},
-    {"title":"Tester le comportement","content":"Un test utile observe une règle publique et couvre aussi ses limites. Un simple assert suffit pour découvrir la mécanique avant l'introduction d'un framework de tests."}
+    {
+      "title": "Une valeur, pas un sac de champs",
+      "content": "Une dataclass génère le constructeur, __repr__ et __eq__ à partir des champs annotés. Avec frozen=True, l'objet est immuable : affecter un attribut lève FrozenInstanceError, et __hash__ est généré, donc l'objet peut servir de clé de dict ou entrer dans un set. slots=True économise la mémoire et interdit d'ajouter des attributs par erreur.\n```python\nfrom dataclasses import dataclass\n\n@dataclass(frozen=True, slots=True)\nclass Skill:\n    name: str\n    level: int\n```\nDeux Skill avec les mêmes champs sont égales (égalité par valeur), contrairement à une classe ordinaire où == compare l'identité. C'est exactement ce que fait un record Java."
+    },
+    {
+      "title": "Exemple résolu : un invariant protégé",
+      "conceptCodes": [
+        "PYTHON-DATACLASS-INVARIANT"
+      ],
+      "content": "Problème : un niveau de compétence doit rester entre 1 et 5, et monter de niveau ne doit pas modifier l'objet d'origine.\n\nRaisonnement, étape par étape :\n1. L'invariant est « 1 <= level <= 5 » : il doit être vrai pendant toute la vie de l'objet.\n2. On le vérifie dans __post_init__, appelé juste après la construction ; en cas de violation, ValueError.\n3. L'objet est frozen : personne ne peut ensuite casser l'invariant en modifiant le champ.\n4. level_up renvoie une nouvelle Skill via dataclasses.replace ; la construction de la nouvelle valeur revérifie l'invariant.\n5. Vérification : l'original est resté au niveau 1, la nouvelle valeur est au niveau 2, deux Skill égales n'occupent qu'une place dans un set.\n```python\nfrom dataclasses import dataclass, replace\n\n@dataclass(frozen=True, slots=True)\nclass Skill:\n    name: str\n    level: int\n\n    def __post_init__(self):\n        if not 1 <= self.level <= 5:\n            raise ValueError(\"niveau doit etre entre 1 et 5\")\n\n    def level_up(self) -> \"Skill\":\n        return replace(self, level=self.level + 1)\n```\nUn champ mutable (liste) dans une dataclass doit utiliser field(default_factory=list) : une valeur par défaut [] est refusée, car elle serait partagée entre instances."
+    },
+    {
+      "title": "assert ou validation ?",
+      "content": "assert exprime une hypothèse interne que le programme suppose vraie ; il est supprimé quand Python est lancé avec -O. Il convient aux tests et aux vérifications de cohérence, pas à la validation d'entrées extérieures, qui doit lever une vraie exception (ValueError, TypeError) toujours active.\n```python\nassert skill.level == 1          # test ou hypothèse interne : OK\nif level < 1:                    # entrée utilisateur : exception obligatoire\n    raise ValueError(\"niveau invalide\")\n```\nAutres outils : les enums pour des valeurs fermées (statuts), typing.NamedTuple pour un tuple nommé immuable, et pydantic quand il faut valider et convertir des données externes. Une dataclass ne convertit pas les types : Skill(\"Python\", \"3\") passe si on ne le vérifie pas. L'ordre (order=True) permet de comparer ou trier des instances par champs."
+    },
+    {
+      "title": "Erreurs fréquentes à reconnaître",
+      "content": "1. Valider les entrées avec assert : disparaît avec -O.\n2. Une dataclass mutable dont l'invariant est vérifié une fois puis cassé par une affectation.\n3. Une liste ou un dict comme valeur par défaut d'un champ (utilise default_factory).\n4. Modifier l'objet d'origine au lieu de construire une nouvelle valeur.\n5. Croire que les annotations de la dataclass convertissent ou vérifient les types.\n6. Surcharger __eq__ sans __hash__ : l'objet devient inutilisable dans un set.\n\nRetrouve ces erreurs de mémoire avant l'exercice, puis vérifie-toi avec le quiz : c'est la récupération, pas la relecture, qui fixe la notion."
+    }
   ],
-  "keyConcepts": [{"code":"PYTHON-DATACLASS-INVARIANT","name":"Invariant d'objet","definition":"Un invariant est une condition qui doit rester vraie pendant toute la vie d'un objet valide.","whyExists":"Il empêche la circulation d'états impossibles dans le reste du programme.","whyImportant":"Une règle centralisée est plus facile à tester et à faire évoluer qu'une validation dispersée.","minimalExample":"@dataclass(frozen=True) class Level: value: int","professionalExample":"Dans un moteur de calcul de compétences, une classe Skill mutable permettait à un thread de lire level pendant qu'un autre l'incrémentait, produisant des scores incohérents dans le tableau de bord. En rendant Skill immuable avec frozen=True, toute mise à jour crée une nouvelle instance, ce qui élimine ce type de course et rend chaque état vérifiable indépendamment dans les tests.","codeExample":"from dataclasses import dataclass\n\n@dataclass(frozen=True, slots=True)\nclass Skill:\n    name: str\n    level: int\n\n    def __post_init__(self) -> None:\n        if self.level < 0:\n            raise ValueError(\"Le niveau ne peut pas être négatif\")\n\n    def level_up(self) -> \"Skill\":\n        return Skill(self.name, self.level + 1)\n\npython_skill = Skill(\"Python\", 4)\nupdated = python_skill.level_up()  # nouvelle instance, l'ancienne reste valide\nassert python_skill.level == 4 and updated.level == 5","commonMistake":"Créer une dataclass qui accepte n'importe quel état puis valider tardivement dans l'interface.","masteryQuestion":"Pourquoi une instance immuable peut-elle simplifier le raisonnement ?","masteryProof":"Créer une transformation qui renvoie une nouvelle instance et tester l'ancienne et la nouvelle."}],
-  "exercises": [{"code":"PYTHON-05-E1","title":"Faire progresser une compétence","statement":"Conserve l'immutabilité, vérifie le résultat et affiche exactement : Python: niveau 2","starterCode":"from dataclasses import dataclass\n\n# TODO 1 : définis une dataclass immuable Skill (frozen=True, slots=True)\n#          avec name: str et level: int, et une méthode level_up()\n#          qui retourne une NOUVELLE Skill avec un niveau de plus\n\n# TODO 2 : crée Skill(\"Python\", 1) puis appelle level_up()\n# TODO 3 : vérifie avec assert que l'original est resté au niveau 1\n#          et que la nouvelle compétence est au niveau 2\n# TODO 4 : affiche \"Python: niveau 2\" à partir de la nouvelle compétence\n","expectedOutput":"Python: niveau 2"}],
+  "keyConcepts": [
+    {
+      "code": "PYTHON-DATACLASS-INVARIANT",
+      "name": "Invariant d'objet",
+      "definition": "Un invariant est une condition qui doit rester vraie pendant toute la vie d'un objet valide.",
+      "whyExists": "Il empêche la circulation d'états impossibles dans le reste du programme.",
+      "whyImportant": "Une règle centralisée est plus facile à tester et à faire évoluer qu'une validation dispersée.",
+      "minimalExample": "@dataclass(frozen=True) class Level: value: int",
+      "professionalExample": "Dans un moteur de calcul de compétences, une classe Skill mutable permettait à un thread de lire level pendant qu'un autre l'incrémentait, produisant des scores incohérents dans le tableau de bord. En rendant Skill immuable avec frozen=True, toute mise à jour crée une nouvelle instance, ce qui élimine ce type de course et rend chaque état vérifiable indépendamment dans les tests.",
+      "codeExample": "from dataclasses import dataclass\n\n@dataclass(frozen=True, slots=True)\nclass Skill:\n    name: str\n    level: int\n\n    def __post_init__(self) -> None:\n        if self.level < 0:\n            raise ValueError(\"Le niveau ne peut pas être négatif\")\n\n    def level_up(self) -> \"Skill\":\n        return Skill(self.name, self.level + 1)\n\npython_skill = Skill(\"Python\", 4)\nupdated = python_skill.level_up()  # nouvelle instance, l'ancienne reste valide\nassert python_skill.level == 4 and updated.level == 5",
+      "commonMistake": "Créer une dataclass qui accepte n'importe quel état puis valider tardivement dans l'interface.",
+      "masteryQuestion": "Qu'est-ce qu'un invariant, où le vérifier dans une dataclass, et pourquoi assert ne suffit-il pas pour des entrées extérieures ?",
+      "masteryProof": "Écrire une Skill frozen avec invariant dans __post_init__, level_up par replace et vérifier l'égalité par valeur."
+    }
+  ],
+  "exercises": [
+    {
+      "code": "PYTHON-05-E1",
+      "title": "Une valeur immuable avec invariant",
+      "statement": "Définis une dataclass Skill (frozen, slots) dont le niveau reste entre 1 et 5, avec level_up qui renvoie une nouvelle valeur. Vérifie l'immutabilité, l'égalité par valeur et le refus d'un niveau invalide. Affiche exactement :\nPython: niveau 2\nOriginal inchange: niveau 1\nRefuse: niveau doit etre entre 1 et 5\nEgalite par valeur: True\nDans un set: 1\nModification refusee: True",
+      "starterCode": "from dataclasses import dataclass, replace, FrozenInstanceError\n\n# TODO 1 : dataclass immuable Skill (frozen=True, slots=True) avec name: str et level: int\n#          - __post_init__ : lève ValueError(\"niveau doit etre entre 1 et 5\") si level n'est pas dans [1, 5]\n#          - level_up() : retourne une NOUVELLE Skill avec un niveau de plus (dataclasses.replace)\n\n# TODO 2 : crée Skill(\"Python\", 1) puis appelle level_up() et vérifie avec assert que l'original est resté à 1\n# TODO 3 : affiche \"Python: niveau 2\" (nouvelle valeur) puis \"Original inchange: niveau 1\"\n# TODO 4 : tente Skill(\"Bug\", 9) dans un try/except ValueError et affiche \"Refuse: \" + message\n# TODO 5 : affiche \"Egalite par valeur: \" + (Skill(\"A\", 1) == Skill(\"A\", 1))\n# TODO 6 : affiche \"Dans un set: \" + taille de {Skill(\"A\", 1), Skill(\"A\", 1)}\n# TODO 7 : tente skill.level = 3 (FrozenInstanceError) et affiche \"Modification refusee: True\" si l'exception est levée\n",
+      "expectedOutput": "Python: niveau 2\nOriginal inchange: niveau 1\nRefuse: niveau doit etre entre 1 et 5\nEgalite par valeur: True\nDans un set: 1\nModification refusee: True"
+    }
+  ],
   "quiz": [
-    {"code":"PYTHON-05-Q1","type":"SINGLE_CHOICE","prompt":"Que fait frozen=True dans cette dataclass ?","choices":["Il empêche la réaffectation normale des champs","Il chiffre l'objet","Il remplace tous les tests"],"correctChoice":0,"expectedKeywords":[]},
-    {"code":"PYTHON-05-Q2","type":"FREE_TEXT","prompt":"Explique ce qu'est un invariant et comment le tester.","choices":[],"correctChoice":null,"expectedKeywords":["condition","valide","test","état"]}
+    {
+      "code": "PYTHON-05-Q1",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Que fait frozen=True dans une dataclass ?",
+      "choices": [
+        "Il accélère la création des objets",
+        "Il rend l'objet immuable : toute affectation d'attribut lève FrozenInstanceError, et __hash__ est généré",
+        "Il interdit l'héritage",
+        "Il chiffre les champs"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Un objet frozen ne peut plus être modifié après sa construction, ce qui protège un invariant vérifié une fois, et il devient hashable (utilisable comme clé de dict ou dans un set)."
+    },
+    {
+      "code": "PYTHON-05-Q2",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Prédis la sortie :\n```python\n@dataclass(frozen=True)\nclass P:\n    x: int\n\nprint(P(1) == P(1), P(1) is P(1))\n```\n",
+      "choices": [
+        "True True",
+        "True False",
+        "False False",
+        "False True"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "La dataclass génère __eq__ qui compare les champs (égalité par valeur), mais deux constructions créent deux objets distincts, donc is vaut False."
+    },
+    {
+      "code": "PYTHON-05-Q3",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Trouve le défaut :\n```python\n@dataclass\nclass Cart:\n    items: list = []\n```\n",
+      "choices": [
+        "Il manque frozen=True",
+        "Python refuse la valeur par défaut mutable ; il faut field(default_factory=list)",
+        "list n'est pas un type valide",
+        "Aucun défaut"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Une liste par défaut serait partagée entre toutes les instances. Les dataclasses la refusent (ValueError) et demandent field(default_factory=list), qui crée une nouvelle liste par instance."
+    },
+    {
+      "code": "PYTHON-05-Q4",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Pourquoi ne pas valider une entrée utilisateur avec assert ?",
+      "choices": [
+        "assert est trop lent",
+        "assert est supprimé quand Python est lancé avec -O : la validation disparaîtrait en production",
+        "assert ne compile pas dans une fonction",
+        "assert lève toujours TypeError"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "assert sert aux hypothèses internes et aux tests. Une validation d'entrée doit lever une exception réelle (ValueError, TypeError) qui reste active quelles que soient les options de l'interpréteur."
+    },
+    {
+      "code": "PYTHON-05-Q5",
+      "type": "FREE_TEXT",
+      "prompt": "Sans relire le cours, explique avec tes mots ce qu'est un invariant et comment une dataclass frozen aide à le protéger.",
+      "choices": [],
+      "correctChoice": null,
+      "expectedKeywords": [
+        "invariant",
+        "toujours",
+        "construction",
+        "immuable",
+        "post_init"
+      ],
+      "modelAnswer": "Un invariant est une condition qui doit rester vraie pendant toute la vie d'un objet valide (par exemple un niveau entre 1 et 5). On le vérifie à la construction dans __post_init__ ; comme l'objet est frozen, personne ne peut ensuite le briser en modifiant un champ, et un changement passe par la création d'une nouvelle valeur qui revérifie l'invariant.",
+      "explanation": "Une bonne réponse définit l'invariant, cite la vérification à la construction et explique que l'immuabilité empêche de le casser ensuite."
+    }
   ],
-  "checklist": ["Je distingue objet de données et règle métier", "Je sais produire une nouvelle valeur immuable", "Je teste le comportement et ses limites"]
+  "checklist": [
+    "Mes dataclasses de valeur sont frozen et vérifient leurs invariants dans __post_init__",
+    "Je produis une nouvelle valeur avec replace plutôt que de muter",
+    "Je n'utilise pas assert pour valider des entrées extérieures",
+    "J'utilise default_factory pour les champs mutables"
+  ]
 }

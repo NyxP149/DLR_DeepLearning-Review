@@ -11,21 +11,30 @@
     "TYPESCRIPT-01"
   ],
   "objectives": [
-    "Expliquer types primitifs, inférence et mode strict",
-    "Construire une preuve exécutable et déterministe",
-    "Relier le concept à une décision professionnelle"
+    "Expliquer ce que change strictNullChecks et typer une fonction qui peut ne rien retourner.",
+    "Utiliser ?? et ?. correctement et les distinguer de || pour 0, \"\" et false.",
+    "Exploiter l'inférence de type et savoir quand annoter explicitement.",
+    "Repérer un NaN, une conversion implicite ou un ! (assertion non nulle) injustifié."
   ],
   "sections": [
     {
-      "title": "Concept et usage professionnel",
-      "content": "Types primitifs, inférence et mode strict répond à un besoin concret de maintenabilité, de sûreté ou de performance. Le laboratoire demande de rendre la décision observable et vérifiable.",
-      "conceptCodes": [
-        "TYPESCRIPT-STRICT"
-      ]
+      "title": "Le mode strict rend l'absence explicite",
+      "content": "Avec strictNullChecks, null et undefined ne sont plus des valeurs valides pour tous les types : string n'accepte plus null. Une fonction qui peut ne rien retourner doit l'écrire dans son type, et l'appelant est obligé de traiter l'absence :\n```ts\nfunction average(values: number[]): number | null {\n  if (values.length === 0) return null;          // l'absence est dans le type\n  return values.reduce((a, b) => a + b, 0) / values.length;\n}\n\nconst moyenne = average([]);\n// moyenne.toFixed(1);                // erreur : moyenne est peut-être null\nconsole.log(moyenne ?? 'aucune donnée');\n```\nC'est l'équivalent de ce qu'Optional apporte en Java, mais vérifié par le compilateur et sans objet enveloppe. Le « milliard de dollars » de Tony Hoare (la référence nulle) devient une erreur de compilation."
     },
     {
-      "title": "Mise en pratique",
-      "content": "La preuve minimale est locale, déterministe et peut être enrichie sans changer le contrat attendu."
+      "title": "Exemple résolu : parser un âge sans exception",
+      "conceptCodes": [
+        "TYPESCRIPT-STRICT"
+      ],
+      "content": "Problème : convertir un texte en âge valide (entier de 0 à 150) ; retourner null si ce n'est pas le cas, et laisser l'appelant décider.\n\nRaisonnement, étape par étape :\n1. Number('') vaut 0 et Number('abc') vaut NaN : ne te fie pas à Number seul. On valide d'abord la forme avec une expression régulière, /^\\d+$/ (uniquement des chiffres).\n2. Seulement après, on convertit : Number(texte).\n3. On vérifie la borne : <= 150.\n4. Tout cas invalide retourne null ; le type de retour est number | null.\n5. L'appelant compare explicitement à null (age === null) : 0 est un âge valide et ne doit pas être confondu avec l'absence.\n6. Vérification : '42' donne 42, 'abc' et '-3' et '200' donnent null.\n```ts\nfunction parseAge(input: string): number | null {\n  if (!/^\\d+$/.test(input)) return null;\n  const age = Number(input);\n  return age <= 150 ? age : null;\n}\n\nconsole.log(parseAge('0') ?? 'invalide');       // 0 : ?? ne remplace que null et undefined\nconsole.log(parseAge('0') || 'invalide');       // 'invalide' : || remplace aussi 0 !\n```"
+    },
+    {
+      "title": "?? contre ||, inférence et assertions",
+      "content": "- a ?? b prend b seulement si a est null ou undefined. a || b prend b si a est « faux » (0, \"\", false, NaN, null, undefined). Pour une valeur par défaut qui accepte 0 ou une chaîne vide, utilise ??.\n- Chaînage optionnel : user?.address?.city renvoie undefined au lieu de lever une erreur si un maillon manque.\n- Inférence : TypeScript déduit le type d'une variable initialisée (const n = 3 est de type littéral 3 ; let n = 3 est number). Annote les paramètres et les retours des fonctions exportées ; laisse inférer les variables locales évidentes.\n- const prime sur let ; let sur var (portée de bloc).\n- L'assertion non nulle (valeur!) fait taire le compilateur sans rien vérifier : elle ment si la valeur est null. Préfère un test explicite.\n- Les nombres : un seul type number (flottant 64 bits). 0.1 + 0.2 vaut 0.30000000000000004 ; pour l'argent, travaille en centimes entiers. NaN !== NaN : teste avec Number.isNaN."
+    },
+    {
+      "title": "Erreurs fréquentes à reconnaître",
+      "content": "1. Utiliser || pour une valeur par défaut qui peut légitimement valoir 0 ou \"\".\n2. Number(texte) sans valider : '' donne 0, 'abc' donne NaN.\n3. Écrire valeur! pour faire taire une erreur de nullité.\n4. Comparer avec NaN directement (NaN === NaN est faux).\n5. Déclarer une variable avec var ou sans const quand elle ne change pas.\n6. Désactiver strictNullChecks « temporairement ».\n\nRetrouve ces erreurs de mémoire avant l'exercice, puis vérifie-toi avec le quiz : c'est la récupération, pas la relecture, qui fixe la notion."
     }
   ],
   "keyConcepts": [
@@ -39,8 +48,8 @@
       "professionalExample": "Une équipe active strictNullChecks après un incident où une fonction getUser(id) pouvait renvoyer undefined si l'identifiant n'existait pas en base, mais le code appelant supposait toujours un utilisateur valide et plantait en production avec un TypeError sur une propriété de undefined. Le mode strict oblige à traiter explicitement le cas manquant (if (!user) return), et l'inférence de type sur const user = users.find(...) révèle immédiatement que le type est User | undefined plutôt que User.",
       "codeExample": "interface User {\n  id: string;\n  email: string;\n}\n\nfunction getUser(id: string, users: User[]): User | undefined {\n  return users.find(u => u.id === id);\n}\n\n// strictNullChecks force la vérification avant usage\nconst user = getUser('u_42', []);\nif (!user) {\n  throw new Error('Utilisateur introuvable');\n}\nconsole.log(user.email); // sûr : user est narrowed en User ici",
       "commonMistake": "Appliquer la technique sans mesurer son effet ni documenter sa frontière.",
-      "masteryQuestion": "Quelle contrainte de types primitifs, inférence et mode strict doit rester vraie lorsque le système évolue ?",
-      "masteryProof": "Exécuter la preuve, expliquer son invariant et proposer un cas d’échec."
+      "masteryQuestion": "Pourquoi ?? est-il plus sûr que || pour une valeur par défaut, et que change strictNullChecks ?",
+      "masteryProof": "Écrire average et parseAge qui retournent number | null, et laisser l'appelant traiter l'absence avec ?? et une comparaison explicite."
     }
   ],
   "exercises": [
@@ -56,32 +65,80 @@
     {
       "code": "TYPESCRIPT-02-Q1",
       "type": "SINGLE_CHOICE",
-      "prompt": "Quelle preuve est la plus utile en revue ?",
+      "prompt": "Que vaut count || 10 quand count vaut 0 ?",
       "choices": [
-        "Une exécution déterministe avec invariant explicite",
-        "Une sortie aléatoire",
-        "Une capture sans code"
+        "0",
+        "10 : 0 est « faux », donc || prend la valeur de droite",
+        "undefined",
+        "NaN"
       ],
-      "correctChoice": 0,
-      "expectedKeywords": []
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "|| remplace toute valeur fausse (0, \"\", false, NaN, null, undefined). Si 0 est légitime, il faut count ?? 10, qui ne remplace que null et undefined."
     },
     {
       "code": "TYPESCRIPT-02-Q2",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Prédis la sortie :\n```ts\nconsole.log(Number(''), Number('abc'), Number('12px'));\n```\n",
+      "choices": [
+        "0 NaN NaN",
+        "NaN NaN 12",
+        "0 NaN 12",
+        "0 0 0"
+      ],
+      "correctChoice": 0,
+      "expectedKeywords": [],
+      "explanation": "Number('') vaut 0 (chaîne vide convertie en 0), Number('abc') et Number('12px') valent NaN (la conversion est stricte, contrairement à parseInt). On valide la forme avant de convertir."
+    },
+    {
+      "code": "TYPESCRIPT-02-Q3",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Trouve le défaut :\n```ts\nfunction first(items: string[]): string {\n  return items.find(i => i.length > 3)!;\n}\n```\n",
+      "choices": [
+        "find n'existe pas",
+        "Le ! affirme que find retourne toujours une valeur ; si rien ne correspond, undefined sort avec un type qui prétend le contraire",
+        "string est un mauvais type",
+        "Il manque async"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "find peut retourner undefined. Le ! fait taire le compilateur sans vérifier. Il faut typer le retour string | undefined (ou lever une erreur explicite) et laisser l'appelant traiter l'absence."
+    },
+    {
+      "code": "TYPESCRIPT-02-Q4",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Que se passe-t-il à la compilation avec strictNullChecks ?\n```ts\nconst nom: string = null;\n```\n",
+      "choices": [
+        "Rien",
+        "Erreur : null n'est pas assignable à string ; il faudrait string | null",
+        "Avertissement seulement",
+        "null devient une chaîne vide"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Avec strictNullChecks, null n'est pas dans le type string. Le type string | null exprime explicitement que l'absence est possible."
+    },
+    {
+      "code": "TYPESCRIPT-02-Q5",
       "type": "FREE_TEXT",
-      "prompt": "Explique une décision liée à types primitifs, inférence et mode strict.",
+      "prompt": "Sans relire le cours, explique avec tes mots pourquoi on évite l'assertion non nulle (!) et comment traiter proprement un résultat qui peut être null.",
       "choices": [],
       "correctChoice": null,
       "expectedKeywords": [
-        "contrat",
-        "preuve",
-        "test"
-      ]
+        "null",
+        "verif",
+        "type",
+        "explicite",
+        "compilateur"
+      ],
+      "modelAnswer": "L'assertion non nulle affirme au compilateur que la valeur n'est pas null sans rien vérifier : si elle l'est, l'erreur survient plus tard à l'exécution, ce que strictNullChecks voulait justement éviter. On traite l'absence explicitement : test (if), valeur par défaut avec ??, chaînage optionnel, ou erreur claire, et le type de retour exprime number | null.",
+      "explanation": "Une bonne réponse dit que ! contourne la vérification et rouvre le risque d'erreur d'exécution, et propose un test explicite ou ??."
     }
   ],
   "checklist": [
-    "Je peux expliquer le concept sans réciter une définition",
-    "Je sais exécuter et modifier la preuve",
-    "Je peux nommer un risque et son contrôle",
-    "Je relie cette étape à la suivante"
+    "J'écris l'absence dans le type (T | null) quand elle est possible",
+    "J'utilise ?? pour les valeurs par défaut qui acceptent 0 ou \"\"",
+    "Je valide la forme d'un texte avant de le convertir en nombre",
+    "Je n'utilise pas ! pour faire taire le compilateur"
   ]
 }

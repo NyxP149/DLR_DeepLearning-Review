@@ -11,21 +11,30 @@
     "TYPESCRIPT-11"
   ],
   "objectives": [
-    "Expliquer modules es, npm et frontières de paquet",
-    "Construire une preuve exécutable et déterministe",
-    "Relier le concept à une décision professionnelle"
+    "Distinguer export nommé, export par défaut et import de type, et organiser un projet en modules.",
+    "Définir la frontière publique d'un paquet et refuser les imports profonds.",
+    "Détecter un cycle de dépendances entre modules.",
+    "Comprendre package.json, versions sémantiques et fichier de verrou."
   ],
   "sections": [
     {
-      "title": "Concept et usage professionnel",
-      "content": "Modules ES, npm et frontières de paquet répond à un besoin concret de maintenabilité, de sûreté ou de performance. Le laboratoire demande de rendre la décision observable et vérifiable.",
-      "conceptCodes": [
-        "TYPESCRIPT-MODULES"
-      ]
+      "title": "Modules ES : une dépendance explicite",
+      "content": "Chaque fichier TypeScript qui contient un import ou un export est un module : son contenu est privé tant qu'il n'est pas exporté.\n```ts\n// math.ts\nexport function add(a: number, b: number): number { return a + b; }   // export nommé\nexport default class Calculator {}                                      // un seul export par défaut possible\n\n// app.ts\nimport Calculator, { add } from './math.js';\nimport type { User } from './types.js';       // import de type seulement : effacé à la compilation\n```\nPréfère les exports nommés : le nom est le même partout, la recherche et le renommage automatique fonctionnent, et l'auto-complétion propose l'import. Un fichier index.ts qui ré-exporte (barrel) définit l'API publique d'un dossier, au prix d'un risque de cycles et d'un démarrage plus lourd si on en abuse."
     },
     {
-      "title": "Mise en pratique",
-      "content": "La preuve minimale est locale, déterministe et peut être enrichie sans changer le contrat attendu."
+      "title": "Exemple résolu : frontières de paquet et cycles",
+      "conceptCodes": [
+        "TYPESCRIPT-MODULES"
+      ],
+      "content": "Problème : dans un monorepo, un paquet @dlr/core expose une API publique. Les autres paquets ne doivent importer que sa racine, jamais ses fichiers internes. Il faut aussi détecter un cycle de dépendances.\n\nRaisonnement, étape par étape :\n1. Règle d'import public : un chemin relatif (./local) est autorisé ; un paquet simple (zod) est autorisé ; un paquet avec scope (@dlr/core) est autorisé s'il n'a pas de sous-chemin ; @dlr/core/src/internal/cache est un import profond interdit.\n2. Découpage : pour un chemin commençant par @, on garde deux segments (scope + nom) ; pour les autres, un seul. S'il y a davantage de segments, c'est un import profond.\n3. Cycle : on représente les dépendances par un graphe (module → modules importés) et on cherche un cycle par parcours en profondeur en mémorisant le chemin courant.\n4. Si on retrouve un module déjà présent dans le chemin courant, on a un cycle (a → b → a).\n5. Vérification : un graphe sans retour renvoie « aucun », un graphe a → b → a renvoie le cycle.\n```ts\nfunction isPublicImport(path: string): boolean {\n  if (path.startsWith('.')) return true;\n  const segments = path.split('/');\n  const rootLength = path.startsWith('@') ? 2 : 1;\n  return segments.length <= rootLength;\n}\n```"
+    },
+    {
+      "title": "npm, versions et dépendances",
+      "content": "package.json décrit le paquet : nom, version, dependencies (nécessaires à l'exécution), devDependencies (outils de développement et de test), scripts, et \"exports\" qui définit précisément les points d'entrée publics, ce qui interdit les imports profonds au niveau du paquet. \"type\": \"module\" fait traiter les .js comme des modules ES.\n\nVersions sémantiques (majeure.mineure.correctif) : ^1.4.2 accepte les versions 1.x.y plus récentes, ~1.4.2 seulement 1.4.x, 1.4.2 exactement. Le fichier de verrou (package-lock.json) fixe l'arbre exact installé : on le versionne, et on installe avec npm ci en intégration continue pour reproduire exactement.\n\nHygiène : npm audit pour les vulnérabilités ; peu de dépendances, surtout pour des petites fonctions (risque de chaîne d'approvisionnement) ; vérifie l'orthographe d'un paquet avant de l'installer (typosquatting) ; ne publie jamais de secret (.npmignore, champ files). Évite les cycles d'import : ils donnent des modules à moitié initialisés ; extrais l'élément commun dans un troisième module."
+    },
+    {
+      "title": "Erreurs fréquentes à reconnaître",
+      "content": "1. Importer un fichier interne d'un autre paquet (import profond) : tout changement interne casse l'appelant.\n2. Un export par défaut renommé différemment dans chaque fichier.\n3. Un barrel (index.ts) qui ré-exporte tout et crée des cycles.\n4. Ne pas versionner package-lock.json ou installer avec npm install en production.\n5. Mettre des outils de test dans dependencies.\n6. Ignorer les avertissements npm audit sans les lire.\n\nRetrouve ces erreurs de mémoire avant l'exercice, puis vérifie-toi avec le quiz : c'est la récupération, pas la relecture, qui fixe la notion."
     }
   ],
   "keyConcepts": [
@@ -39,8 +48,8 @@
       "professionalExample": "Le package interne @dlr/billing expose volontairement une seule porte d'entrée via un index.ts qui réexporte uniquement InvoiceService et ses types publics, tout en gardant les taux de TVA internes au dossier src/internal. Un autre module de l'équipe avait commencé à importer directement le chemin interne du fichier de constantes, créant une dépendance cachée qui a cassé au premier refactoring ; la frontière de paquet stricte (via le champ exports de package.json) a ensuite rendu ce type d'import impossible dès la compilation.",
       "codeExample": "// src/internal/vat-rates.ts (non exporté publiquement)\nexport const VAT_RATES = { FR: 0.2, DE: 0.19 };\n\n// src/invoice-service.ts\nimport { VAT_RATES } from './internal/vat-rates';\n\nexport class InvoiceService {\n  vatFor(country: keyof typeof VAT_RATES): number {\n    return VAT_RATES[country];\n  }\n}\n\n// index.ts : seule porte d'entrée publique du paquet\nexport { InvoiceService } from './invoice-service';",
       "commonMistake": "Appliquer la technique sans mesurer son effet ni documenter sa frontière.",
-      "masteryQuestion": "Quelle contrainte de modules es, npm et frontières de paquet doit rester vraie lorsque le système évolue ?",
-      "masteryProof": "Exécuter la preuve, expliquer son invariant et proposer un cas d’échec."
+      "masteryQuestion": "Pourquoi interdire les imports profonds d'un paquet, et comment détecter un cycle dans un graphe de dépendances ?",
+      "masteryProof": "Écrire isPublicImport (relatif, paquet simple, paquet à scope sans sous-chemin) et findCycle qui trouve un cycle dans un graphe de modules."
     }
   ],
   "exercises": [
@@ -56,32 +65,80 @@
     {
       "code": "TYPESCRIPT-12-Q1",
       "type": "SINGLE_CHOICE",
-      "prompt": "Quelle preuve est la plus utile en revue ?",
+      "prompt": "Quel import respecte la frontière publique du paquet @dlr/core ?",
       "choices": [
-        "Une exécution déterministe avec invariant explicite",
-        "Une sortie aléatoire",
-        "Une capture sans code"
+        "import { cache } from '@dlr/core/src/internal/cache'",
+        "import { createClient } from '@dlr/core'",
+        "import { x } from '../../core/src/x'",
+        "import * from '@dlr/core/dist/chunk-1.js'"
       ],
-      "correctChoice": 0,
-      "expectedKeywords": []
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "On importe la racine publique. Les chemins internes ne sont pas des API : ils peuvent changer sans prévenir. Le champ \"exports\" de package.json peut d'ailleurs les rendre impossibles à importer."
     },
     {
       "code": "TYPESCRIPT-12-Q2",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Prédis le résultat de findCycle sur ce graphe de dépendances : a importe b, b importe a.",
+      "choices": [
+        "Aucun cycle",
+        "Cycle : a → b → a",
+        "Cycle : a → a",
+        "Une exception"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "En suivant les imports, on revient sur a déjà présent dans le chemin courant : c'est un cycle. À l'exécution, l'un des modules serait vu à moitié initialisé."
+    },
+    {
+      "code": "TYPESCRIPT-12-Q3",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Que signifie ^1.4.2 dans package.json ?",
+      "choices": [
+        "Exactement 1.4.2",
+        "Toute version compatible 1.x.y supérieure ou égale à 1.4.2, sans changement de version majeure",
+        "Toute version supérieure, y compris 2.0.0",
+        "Seulement les correctifs 1.4.x"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Le caret autorise les mises à jour mineures et correctifs, car la version majeure signale les changements incompatibles. Le tilde ~1.4.2 limiterait aux correctifs 1.4.x."
+    },
+    {
+      "code": "TYPESCRIPT-12-Q4",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Pourquoi utiliser npm ci plutôt que npm install en intégration continue ?",
+      "choices": [
+        "C'est plus joli",
+        "npm ci installe exactement ce que décrit package-lock.json, sans le modifier, pour un résultat reproductible",
+        "npm install est déprécié",
+        "npm ci installe moins de paquets"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "npm ci échoue si package.json et le verrou divergent et supprime node_modules avant d'installer. Les builds sont reproductibles : la CI teste ce qui sera déployé."
+    },
+    {
+      "code": "TYPESCRIPT-12-Q5",
       "type": "FREE_TEXT",
-      "prompt": "Explique une décision liée à modules es, npm et frontières de paquet.",
+      "prompt": "Sans relire le cours, explique avec tes mots ce qu'est un import circulaire, pourquoi c'est un problème et comment le corriger.",
       "choices": [],
       "correctChoice": null,
       "expectedKeywords": [
-        "contrat",
-        "preuve",
-        "test"
-      ]
+        "cycle",
+        "initialis",
+        "troisieme",
+        "module",
+        "depend"
+      ],
+      "modelAnswer": "Un import circulaire apparaît quand deux modules (ou plus) s'importent mutuellement, directement ou par un enchaînement. À l'exécution, l'un des modules est utilisé avant d'avoir fini de s'initialiser, ce qui donne des valeurs undefined ou des erreurs selon l'ordre de chargement. On le corrige en extrayant ce qui est commun dans un troisième module, ou en inversant la dépendance pour qu'elle n'aille que dans un sens.",
+      "explanation": "Une bonne réponse décrit la dépendance mutuelle, le module à moitié initialisé et la solution du troisième module ou de l'inversion."
     }
   ],
   "checklist": [
-    "Je peux expliquer le concept sans réciter une définition",
-    "Je sais exécuter et modifier la preuve",
-    "Je peux nommer un risque et son contrôle",
-    "Je relie cette étape à la suivante"
+    "J'importe seulement la racine publique d'un paquet",
+    "Je préfère les exports nommés",
+    "Je versionne le fichier de verrou et j'installe avec npm ci en CI",
+    "Je sais détecter et casser un cycle de dépendances"
   ]
 }

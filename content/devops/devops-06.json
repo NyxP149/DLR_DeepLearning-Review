@@ -11,21 +11,30 @@
     "DEVOPS-05"
   ],
   "objectives": [
-    "Expliquer observabilité, déploiement et rollback",
-    "Construire une preuve exécutable et déterministe",
-    "Relier le concept à une décision professionnelle"
+    "Comparer les stratégies de déploiement (rolling, blue-green, canary) et choisir selon le risque.",
+    "Piloter un canary par paliers avec un seuil de taux d'erreurs et un rollback automatique.",
+    "Choisir les signaux qui déclenchent un retour arrière (erreurs, latence, saturation).",
+    "Repérer un rollback impossible (migration irréversible), un seuil mal calibré ou une métrique non comparable."
   ],
   "sections": [
     {
-      "title": "Concept et usage professionnel",
-      "content": "Observabilité, déploiement et rollback répond à un besoin concret de maintenabilité, de sûreté ou de performance. Le laboratoire demande de rendre la décision observable et vérifiable.",
-      "conceptCodes": [
-        "DEVOPS-OPERATIONS"
-      ]
+      "title": "Déployer sans parier",
+      "content": "Un déploiement change la version en production. Les stratégies réduisent le risque :\n- Rolling : on remplace les instances une à une ; simple, mais deux versions coexistent un moment.\n- Blue-green : deux environnements identiques ; on prépare la nouvelle version à côté (green) puis on bascule le trafic d'un coup ; retour arrière instantané en rebasculant.\n- Canary : la nouvelle version reçoit d'abord une petite part du trafic (5 %, 10 %), on observe, puis on augmente par paliers (50 %, 100 %) ; si les indicateurs se dégradent, on revient en arrière.\nLe canary limite le nombre d'utilisateurs touchés par un défaut ; il exige une bonne observabilité et une compatibilité entre versions."
     },
     {
-      "title": "Mise en pratique",
-      "content": "La preuve minimale est locale, déterministe et peut être enrichie sans changer le contrat attendu."
+      "title": "Exemple résolu : un canary à seuil d'erreurs",
+      "conceptCodes": [
+        "DEVOPS-OPERATIONS"
+      ],
+      "content": "Problème : déployer la version 1.4.0 par paliers de 10 %, 50 % puis 100 %, en revenant à la version précédente dès que le taux d'erreurs dépasse 5 %.\n\nRaisonnement, étape par étape :\n1. La version active reste l'ancienne (1.3.9) pendant tout le déploiement.\n2. À chaque palier, on envoie la part de trafic prévue à la nouvelle version et on mesure son taux d'erreurs.\n3. Comparaison au seuil : si erreurs <= 5 % on continue au palier suivant ; si erreurs > 5 %, ROLLBACK immédiat, on arrête le déploiement (les paliers suivants ne sont pas exécutés).\n4. La version active n'est remplacée par la nouvelle qu'à la fin d'un déploiement complet réussi (tous les paliers passés).\n5. Chaque décision est journalisée avec la mesure et le seuil, pour comprendre a posteriori.\n6. Vérification : 1.4.0 échoue au palier 50 % (6,0 % > 5,0 %) : version active 1.3.9 ; 1.5.0 réussit tous les paliers : version active 1.5.0.\n```python\ndef deploy(version, active, paliers, seuil=5.0):\n    for part, taux in paliers:\n        if taux <= seuil:\n            print(f\"Étape {part}%: erreurs {taux:.1f}% <= {seuil:.1f}% -> continuer\")\n        else:\n            print(f\"Étape {part}%: erreurs {taux:.1f}% > {seuil:.1f}% -> ROLLBACK\")\n            return active\n    return version\n```"
+    },
+    {
+      "title": "Décider d'un rollback, avec des signaux fiables",
+      "content": "Quels signaux surveiller : taux d'erreurs (5xx), latence (p95, p99), saturation (CPU, mémoire, file d'attente), indicateurs métier (taux de paiement réussi, inscriptions). Compare la nouvelle version à l'ancienne sur la même période et le même type de trafic (analyse canary) plutôt qu'à un seuil absolu, pour ne pas confondre un pic de trafic avec un défaut.\n\nCalibrage : un seuil trop strict déclenche des retours inutiles ; trop large laisse passer des défauts. Il faut aussi assez de trafic pour que la mesure soit significative : 0 erreur sur 20 requêtes ne prouve rien. Attendre une durée minimale par palier.\n\nRetour arrière : prévois-le avant de déployer. Il suppose que l'ancienne version fonctionne encore avec l'état actuel de la base. Les migrations de schéma doivent être compatibles (expansion puis contraction, parallel change) : d'abord ajouter la nouvelle colonne, déployer, migrer, puis supprimer l'ancienne dans une release ultérieure. Une migration destructrice rend le rollback impossible.\n\nAutres pratiques : feature flags (déployer le code éteint, activer progressivement, couper sans redéployer), déploiements fréquents et petits (moins risqués), arrêt de la chaîne en cas d'alerte, journal des déploiements corrélé aux métriques, procédure d'urgence écrite et répétée."
+    },
+    {
+      "title": "Erreurs fréquentes à reconnaître",
+      "content": "1. Déployer à 100 % d'un coup sans palier ni observation.\n2. Un rollback jamais répété : il échoue le jour où il est nécessaire.\n3. Une migration de base destructrice qui empêche de revenir en arrière.\n4. Un seuil absolu sans comparaison avec l'ancienne version.\n5. Décider sur trop peu de trafic.\n6. Remplacer la version active avant la fin du déploiement.\n\nRetrouve ces erreurs de mémoire avant l'exercice, puis vérifie-toi avec le quiz : c'est la récupération, pas la relecture, qui fixe la notion."
     }
   ],
   "keyConcepts": [
@@ -39,8 +48,8 @@
       "professionalExample": "Après un déploiement, le taux d'erreurs HTTP 500 d'un service passe de 0,1 % à 12 % en quelques minutes, mais sans dashboard de métriques ni logs structurés, l'équipe met vingt minutes à s'en rendre compte via les tickets clients. En exposant un endpoint /health vérifié juste après la bascule, le pipeline détecte automatiquement la régression et déclenche un rollback vers la version précédente avant que la majorité des utilisateurs ne soit impactée. La contrainte qui doit rester vraie est que le rollback ramène le système dans un état identique à l'avant-déploiement, y compris pour les migrations de base de données appliquées entre-temps.",
       "codeExample": "- name: Deploy new version\n  run: |\n    docker service update --image myapp:${{ github.sha }} myapp_web\n\n- name: Wait for healthcheck\n  run: |\n    for i in $(seq 1 10); do\n      STATUS=$(curl -s -o /dev/null -w \"%{http_code}\" https://api.internal/health)\n      [ \"$STATUS\" = \"200\" ] && exit 0\n      sleep 5\n    done\n    echo \"Healthcheck failed, rolling back\"\n    docker service rollback myapp_web\n    exit 1",
       "commonMistake": "Appliquer la technique sans mesurer son effet ni documenter sa frontière.",
-      "masteryQuestion": "Quelle contrainte de observabilité, déploiement et rollback doit rester vraie lorsque le système évolue ?",
-      "masteryProof": "Exécuter la preuve, expliquer son invariant et proposer un cas d’échec."
+      "masteryQuestion": "Pourquoi la version active n'est-elle remplacée qu'à la fin d'un canary complet, et pourquoi une migration destructrice empêche-t-elle le rollback ?",
+      "masteryProof": "Piloter un déploiement canary par paliers avec seuil d'erreurs de 5 %, rollback immédiat au dépassement et remplacement de la version active seulement en cas de succès complet."
     }
   ],
   "exercises": [
@@ -56,32 +65,80 @@
     {
       "code": "DEVOPS-06-Q1",
       "type": "SINGLE_CHOICE",
-      "prompt": "Quelle preuve est la plus utile en revue ?",
+      "prompt": "Quelle stratégie expose d'abord une petite partie des utilisateurs à la nouvelle version ?",
       "choices": [
-        "Une exécution déterministe avec invariant explicite",
-        "Une sortie aléatoire",
-        "Une capture sans code"
+        "Blue-green",
+        "Canary",
+        "Big bang",
+        "Recréation complète"
       ],
-      "correctChoice": 0,
-      "expectedKeywords": []
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Le canary augmente progressivement la part de trafic pour limiter l'impact d'un défaut. Blue-green bascule tout d'un coup entre deux environnements prêts."
     },
     {
       "code": "DEVOPS-06-Q2",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Prédis la version active : paliers 10 % (0,8 % d'erreurs), 50 % (6,0 %), seuil 5 %, ancienne version 1.3.9, nouvelle 1.4.0.",
+      "choices": [
+        "1.4.0",
+        "1.3.9 : le palier 50 % dépasse le seuil, rollback",
+        "Aucune",
+        "1.4.0 puis 1.3.9"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "À 50 %, 6,0 % > 5,0 % : rollback immédiat. La version active n'a jamais été remplacée, elle reste 1.3.9."
+    },
+    {
+      "code": "DEVOPS-06-Q3",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Trouve le défaut :\n```\nVersion 1.5.0 supprime la colonne legacy_code ; la 1.4.9 en production l'utilise encore.\n```\navant un déploiement progressif.",
+      "choices": [
+        "Aucun",
+        "La migration destructrice empêche le retour à 1.4.9, et casse les instances anciennes pendant la coexistence ; il faut une migration en deux temps (expansion, puis contraction dans une release suivante)",
+        "legacy_code est un mauvais nom",
+        "Il manque un feature flag"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Pendant un canary, deux versions coexistent sur la même base. Le schéma doit rester compatible avec les deux, et le rollback exige que l'ancienne version fonctionne encore."
+    },
+    {
+      "code": "DEVOPS-06-Q4",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Pourquoi comparer le canary à la version précédente plutôt qu'à un seuil absolu unique ?",
+      "choices": [
+        "C'est plus compliqué",
+        "Un pic de trafic ou un incident externe peut augmenter les erreurs des deux versions ; comparer isole l'effet du changement",
+        "Les seuils absolus sont interdits",
+        "Pour avoir moins de métriques"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Si les deux versions ont 3 % d'erreurs au même moment, ce n'est pas la nouvelle version la cause. L'analyse comparative évite des retours inutiles et repère de vraies régressions."
+    },
+    {
+      "code": "DEVOPS-06-Q5",
       "type": "FREE_TEXT",
-      "prompt": "Explique une décision liée à observabilité, déploiement et rollback.",
+      "prompt": "Sans relire le cours, explique avec tes mots comment tu prépares un déploiement pour qu'un retour arrière soit possible et rapide.",
       "choices": [],
       "correctChoice": null,
       "expectedKeywords": [
-        "contrat",
-        "preuve",
-        "test"
-      ]
+        "retour arriere",
+        "compatible",
+        "migration",
+        "flag",
+        "repete"
+      ],
+      "modelAnswer": "Je garde l'ancienne version prête à fonctionner avec l'état actuel de la base en rendant les migrations compatibles (ajouter avant de supprimer, en plusieurs releases), je déploie par paliers avec des seuils d'observation définis, j'utilise des feature flags pour couper une fonction sans redéployer, et je répète la procédure de retour arrière pour qu'elle soit éprouvée avant d'en avoir besoin.",
+      "explanation": "Une bonne réponse cite migrations compatibles, paliers avec seuils, feature flags et répétition de la procédure."
     }
   ],
   "checklist": [
-    "Je peux expliquer le concept sans réciter une définition",
-    "Je sais exécuter et modifier la preuve",
-    "Je peux nommer un risque et son contrôle",
-    "Je relie cette étape à la suivante"
+    "Je déploie par paliers avec des seuils définis",
+    "Mon retour arrière est préparé et répété",
+    "Mes migrations de base sont compatibles avec deux versions",
+    "Je compare le canary à la version précédente sur un trafic suffisant"
   ]
 }

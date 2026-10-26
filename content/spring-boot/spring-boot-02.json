@@ -11,21 +11,30 @@
     "SPRING_BOOT-01"
   ],
   "objectives": [
-    "Expliquer injection de dépendances et cycle de vie des beans",
-    "Construire une preuve exécutable et déterministe",
-    "Relier le concept à une décision professionnelle"
+    "Expliquer ce que fait un conteneur d'injection : créer, câbler, conserver et détruire des beans.",
+    "Distinguer les portées singleton et prototype et prédire leur comportement.",
+    "Situer les rappels @PostConstruct et @PreDestroy dans le cycle de vie et l'ordre de destruction.",
+    "Repérer une dépendance circulaire, un état partagé dans un singleton ou une injection par champ."
   ],
   "sections": [
     {
-      "title": "Concept et usage professionnel",
-      "content": "Injection de dépendances et cycle de vie des beans répond à un besoin concret de maintenabilité, de sûreté ou de performance. Le laboratoire demande de rendre la décision observable et vérifiable.",
-      "conceptCodes": [
-        "SPRING-DI"
-      ]
+      "title": "Le conteneur crée, câble et détruit",
+      "content": "Un conteneur IoC (inversion de contrôle) connaît des définitions de beans : quelle classe, quelles dépendances. Il crée les objets dans le bon ordre, injecte les collaborateurs, les conserve, puis les détruit à l'arrêt. Le code métier ne fait plus new de ses dépendances.\n\nCycle de vie d'un bean singleton : instanciation (constructeur), injection, rappels d'initialisation (@PostConstruct), utilisation, rappels de destruction (@PreDestroy) à la fermeture du contexte. Les beans sont détruits dans l'ordre inverse de leur création : le service qui utilise le dépôt est détruit avant le dépôt, pour ne jamais utiliser une ressource déjà fermée.\n\nLa portée par défaut est singleton : une seule instance partagée par tout le contexte. Un singleton ne doit donc pas contenir d'état modifiable lié à une requête ou à un utilisateur."
     },
     {
-      "title": "Mise en pratique",
-      "content": "La preuve unifichier valide ici la frontière d'architecture hors réseau ; le laboratoire explique ensuite son branchement aux annotations et dépendances Spring Boot réelles."
+      "title": "Exemple résolu : un mini conteneur",
+      "conceptCodes": [
+        "SPRING-DI"
+      ],
+      "content": "Problème : comprendre comment un conteneur résout OrderService, qui dépend d'OrderRepository.\n\nRaisonnement, étape par étape :\n1. On enregistre une fabrique par type : « pour créer un OrderService, appelle ce code ».\n2. get(OrderService) : si une instance existe déjà, on la renvoie (singleton).\n3. Sinon on appelle la fabrique, qui demande à son tour get(OrderRepository) : la dépendance est créée d'abord.\n4. Chaque bean créé est mémorisé dans l'ordre de création : Repository puis Service.\n5. À l'arrêt, on parcourt cette liste à l'envers : Service puis Repository.\n6. Vérification : deux get consécutifs rendent la même instance.\n```java\n<T> T get(Class<T> type) {\n    Object existing = singletons.get(type);\n    if (existing != null) return type.cast(existing);\n    T created = (T) factories.get(type).apply(this);   // résout les dépendances au passage\n    singletons.put(type, created);\n    return created;\n}\n```\nC'est, en miniature, ce que fait ApplicationContext. Les proxies (@Transactional, @Async) s'ajoutent en enveloppant le bean créé."
+    },
+    {
+      "title": "Portées, rappels et pièges",
+      "content": "Portées : singleton (défaut), prototype (une nouvelle instance à chaque demande), request et session (web). Piège classique : injecter un bean prototype dans un singleton ne donne qu'une seule instance, car l'injection n'a lieu qu'à la création du singleton ; il faut demander l'instance à la demande (ObjectProvider<T>).\n\nDéclaration des beans : annotations de stéréotype (@Component, @Service, @Repository, @RestController) pour tes classes, @Bean dans une classe @Configuration pour du code que tu ne contrôles pas (une bibliothèque).\n```java\n@Configuration\nclass AppConfig {\n    @Bean Clock clock() { return Clock.systemUTC(); }   // bibliothèque : on ne peut pas annoter la classe\n}\n```\n@PostConstruct sert à valider ou précharger après injection ; garde-le court, car un démarrage lent est un défaut de conception. Une dépendance circulaire (A a besoin de B, B de A) échoue au démarrage dans Spring Boot ; elle indique une mauvaise découpe. Plusieurs candidats pour un même type : @Primary ou @Qualifier tranche."
+    },
+    {
+      "title": "Erreurs fréquentes à reconnaître",
+      "content": "1. Un singleton avec un champ modifiable (« utilisateur courant ») partagé entre requêtes.\n2. Un prototype injecté dans un singleton, en croyant obtenir une nouvelle instance à chaque fois.\n3. new d'un bean dans une méthode : il échappe au conteneur (pas de proxy, pas de configuration).\n4. @Autowired sur un champ privé : dépendances cachées, test impossible sans conteneur.\n5. Une logique lourde dans @PostConstruct qui ralentit ou fait échouer le démarrage.\n6. Une dépendance circulaire contournée par @Lazy au lieu d'être supprimée.\n\nRetrouve ces erreurs de mémoire avant l'exercice, puis vérifie-toi avec le quiz : c'est la récupération, pas la relecture, qui fixe la notion."
     }
   ],
   "keyConcepts": [
@@ -39,8 +48,8 @@
       "professionalExample": "Dans un service de facturation, un développeur ajoute un cache en mémoire directement comme champ mutable d'un @Service annoté par défaut en scope singleton, en supposant à tort qu'une nouvelle instance serait créée par requête. En production sous charge concurrente, deux requêtes HTTP simultanées corrompent le même cache partagé et deux clients reçoivent des factures mélangées. La correction utilise l'injection par constructeur d'un ConcurrentHashMap thread-safe et un @PostConstruct pour initialiser la connexion au fournisseur de taux de change, avec un @PreDestroy pour la fermer proprement à l'arrêt du conteneur.",
       "codeExample": "@Service\npublic class InvoicePricingService {\n\n    private final ExchangeRateClient exchangeRateClient;\n    private final ConcurrentHashMap<String, BigDecimal> rateCache = new ConcurrentHashMap<>();\n\n    public InvoicePricingService(ExchangeRateClient exchangeRateClient) {\n        this.exchangeRateClient = exchangeRateClient;\n    }\n\n    @PostConstruct\n    void warmUpCache() {\n        rateCache.putAll(exchangeRateClient.fetchInitialRates());\n    }\n\n    @PreDestroy\n    void shutdown() {\n        exchangeRateClient.close();\n    }\n\n    public BigDecimal convert(String currency, BigDecimal amount) {\n        return amount.multiply(rateCache.getOrDefault(currency, BigDecimal.ONE));\n    }\n}",
       "commonMistake": "Appliquer la technique sans mesurer son effet ni documenter sa frontière.",
-      "masteryQuestion": "Quelle contrainte de injection de dépendances et cycle de vie des beans doit rester vraie lorsque le système évolue ?",
-      "masteryProof": "Exécuter la preuve, expliquer son invariant et proposer un cas d’échec."
+      "masteryQuestion": "Pourquoi un singleton ne doit-il pas contenir d'état par requête, et dans quel ordre le conteneur détruit-il les beans ?",
+      "masteryProof": "Écrire un mini conteneur qui crée les dépendances d'abord, renvoie des singletons et donne l'ordre de destruction inverse."
     }
   ],
   "exercises": [
@@ -56,32 +65,80 @@
     {
       "code": "SPRING_BOOT-02-Q1",
       "type": "SINGLE_CHOICE",
-      "prompt": "Quelle preuve est la plus utile en revue ?",
+      "prompt": "Dans quel ordre un conteneur détruit-il OrderRepository et OrderService (le service dépend du dépôt) ?",
       "choices": [
-        "Une exécution déterministe avec invariant explicite",
-        "Une sortie aléatoire",
-        "Une capture sans code"
+        "Le dépôt d'abord, puis le service",
+        "Le service d'abord, puis le dépôt : ordre inverse de création",
+        "Dans un ordre aléatoire",
+        "Ils ne sont jamais détruits"
       ],
-      "correctChoice": 0,
-      "expectedKeywords": []
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "On détruit dans l'ordre inverse de la création pour qu'un bean ne perde pas une dépendance dont il a encore besoin (le service peut avoir à flusher quelque chose dans le dépôt avant sa fermeture)."
     },
     {
       "code": "SPRING_BOOT-02-Q2",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Prédis la sortie :\n```java\n@Scope(\"prototype\") @Component class Ticket {}\n@Component class Counter { @Autowired Ticket ticket; }\n// Counter est un singleton\nSystem.out.println(counter.ticket == counter.ticket);\n```\n",
+      "choices": [
+        "false : une nouvelle instance à chaque lecture",
+        "true : le prototype est injecté une seule fois à la création du singleton",
+        "Une exception au démarrage",
+        "null"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "L'injection n'a lieu qu'à la création de Counter : le champ garde la même instance. Pour obtenir un nouveau Ticket à chaque usage, il faut injecter un ObjectProvider<Ticket> et appeler getObject()."
+    },
+    {
+      "code": "SPRING_BOOT-02-Q3",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Trouve le défaut :\n```java\n@Service\nclass ReportService {\n    private User currentUser;          // renseigné à chaque requête\n    void generate(User u) { this.currentUser = u; ... }\n}\n```\n",
+      "choices": [
+        "Le champ devrait être final",
+        "Le service est un singleton partagé : deux requêtes concurrentes écrasent currentUser (état partagé mutable)",
+        "User est un mauvais type",
+        "generate devrait être static"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Un singleton est partagé par tous les threads. Un état par requête doit être passé en paramètre ou porté par un objet de portée request. Sinon, des données d'un utilisateur peuvent fuiter vers un autre."
+    },
+    {
+      "code": "SPRING_BOOT-02-Q4",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Quand utiliser @Bean dans une @Configuration plutôt qu'une annotation sur la classe ?",
+      "choices": [
+        "Jamais, c'est déprécié",
+        "Pour déclarer un bean dont tu ne contrôles pas le code source (classe d'une bibliothèque) ou qui demande une construction particulière",
+        "Pour accélérer le démarrage",
+        "Uniquement pour les tests"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "On ne peut pas annoter une classe de bibliothèque avec @Component. Une méthode @Bean la construit et l'expose au conteneur, avec la configuration voulue."
+    },
+    {
+      "code": "SPRING_BOOT-02-Q5",
       "type": "FREE_TEXT",
-      "prompt": "Explique une décision liée à injection de dépendances et cycle de vie des beans.",
+      "prompt": "Sans relire le cours, explique avec tes mots ce que fait un conteneur d'injection et pourquoi il détruit les beans à l'envers.",
       "choices": [],
       "correctChoice": null,
       "expectedKeywords": [
-        "contrat",
-        "preuve",
-        "test"
-      ]
+        "cree",
+        "depend",
+        "singleton",
+        "inverse",
+        "ordre"
+      ],
+      "modelAnswer": "Le conteneur lit des définitions de beans, crée chaque objet en résolvant d'abord ses dépendances, injecte les collaborateurs, conserve les singletons et les ferme à l'arrêt. Il détruit à l'envers de la création pour qu'un bean qui dépend d'un autre soit fermé avant lui et ne se retrouve pas avec une ressource déjà libérée.",
+      "explanation": "Une bonne réponse décrit création des dépendances d'abord, conservation des singletons et destruction dans l'ordre inverse, avec la raison."
     }
   ],
   "checklist": [
-    "Je peux expliquer le concept sans réciter une définition",
-    "Je sais exécuter et modifier la preuve",
-    "Je peux nommer un risque et son contrôle",
-    "Je relie cette étape à la suivante"
+    "Je sais décrire le cycle de vie d'un bean",
+    "Je prédis le comportement d'un prototype injecté dans un singleton",
+    "Je n'ai pas d'état par requête dans mes singletons",
+    "J'injecte par constructeur et je repère une dépendance circulaire"
   ]
 }

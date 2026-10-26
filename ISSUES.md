@@ -429,3 +429,16 @@ Une révision se validait en cliquant « Réussi » avec le cours sous les yeux,
 
 **Solution**
 Chaque révision pose désormais une question de rappel du laboratoire, sans le cours, corrigée par un `QuizGrader` partagé avec le quiz ; le résultat et la confiance déclarée règlent l'intervalle suivant (migration V22, `review_answer`). Le quiz corrige chaque question tout de suite avec explication et journalise les réponses (seule la première compte). Le score V2 (tests 30, quiz 25, pratique sans aide 20, explication 20, checklist 5) retire les indices de la note de pratique ; les tentatives déjà enregistrées restent en V1. Couvert par `RetrievalPracticeControllerTest` et `ScoreCalculatorTest`. Reste à étendre au-delà de JAVA-10.
+
+---
+
+## Les exemples « trouve le bug » des nouveaux labos donnaient parfois le bon résultat
+- severity: medium
+- date: 2026-10
+- tags: Contenu, Pédagogie
+
+**Problème**
+Lors du déploiement du modèle v2, certains extraits censés contenir un bug (par exemple le filtrage d'une liste Python en Python-03) produisaient en réalité la sortie correcte pour l'entrée choisie, et plusieurs chaînes attendues des exercices Java (JAVA-17) ne correspondaient pas à ce que la solution affichait. Le quiz aurait alors corrigé une question dont la réponse était fausse.
+
+**Solution**
+Chaque solution et chaque squelette de nouvel exercice est exécuté dans le vrai conteneur Docker (la solution doit produire exactement la sortie attendue, le squelette doit compiler sans la produire), et les sorties sont relues contre des valeurs calculées à la main ; l'exemple Python-03 utilise désormais `[2, 4, 6]` qui donne `[4]` avec le bug, et JAVA-17 attend « Erreur : … ».

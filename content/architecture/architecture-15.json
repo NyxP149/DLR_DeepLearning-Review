@@ -11,25 +11,30 @@
     "ARCHITECTURE-14"
   ],
   "objectives": [
-    "Définir SLI, budgets de latence et mesures par couche",
-    "Justifier les compromis et nommer un risque opérationnel",
-    "Produire une preuve reproductible avant d’élargir la solution"
+    "Décomposer une latence de bout en bout par composant et la comparer à un budget.",
+    "Identifier le composant qui domine et estimer le gain d'une amélioration de chaque composant.",
+    "Expliquer la loi d'Amdahl : le gain est limité par la part du temps qu'on améliore.",
+    "Défendre une optimisation avec une mesure avant/après."
   ],
   "sections": [
     {
-      "title": "Concept clé et décision",
+      "title": "Mesurer avant d'optimiser",
+      "content": "Optimiser sans mesure revient à parier. La démarche : fixer un objectif (budget de latence : 150 ms pour 95 % des requêtes), mesurer où le temps passe, corriger le plus gros contributeur, mesurer de nouveau.\n\nLa latence de bout en bout se décompose : réseau, interface, API, base de données, appels externes. La mesure doit être distribuée (traces) pour voir chaque contribution, et se lire en percentiles (p50, p95, p99), car la moyenne cache la queue de distribution qui gâche l'expérience."
+    },
+    {
+      "title": "Exemple résolu : où gagner du temps ?",
       "conceptCodes": [
         "PERFORMANCE-BUDGET"
       ],
-      "content": "Mesurer avant d’optimiser relie les besoins, le logiciel, les données et l’exploitation. Commence par les contraintes observables, trace les responsabilités, puis choisis la solution la plus simple qui respecte les invariants."
+      "content": "Problème : une requête consomme db 35 ms, api 20 ms, network 45 ms, ui 30 ms (total 130 ms) pour un budget de 150 ms. Où investir ?\n\nRaisonnement, étape par étape :\n1. Total : 35 + 20 + 45 + 30 = 130 ms ; marge : 150 - 130 = 20 ms.\n2. Part de chaque composant : network 34,6 %, db 26,9 %, ui 23,1 %, api 15,4 %.\n3. Gain potentiel d'une amélioration de 50 % : api économise 10 ms, db 17,5 ms, network 22,5 ms. Le plus gros contributeur offre le plus gros gain absolu.\n4. Loi d'Amdahl : accélérer une partie qui pèse p du total, d'un facteur s, donne un gain global de 1 / ((1 - p) + p/s). Si l'api représente 15 % et qu'on la rend infiniment rapide, le gain maximal est 15 % du temps total : 1 / (1 - 0,15) = 1,18. Optimiser une petite part ne peut jamais donner beaucoup.\n5. Décision : agir sur le réseau (compression, CDN, regroupement d'appels) avant d'optimiser l'API.\n6. Vérification : refaire la mesure après le changement et comparer au budget.\n```python\ntotal = sum(latencies.values())\nshares = {name: 100 * ms / total for name, ms in latencies.items()}\ngain_if_halved = {name: ms / 2 for name, ms in latencies.items()}\nbest = max(gain_if_halved, key=gain_if_halved.get)\n```"
     },
     {
-      "title": "Construction verticale",
-      "content": "La preuve ARCHITECTURE-15 modélise une décision réelle sous forme déterministe. Elle ne remplace pas un déploiement complet : elle rend l’hypothèse testable avant l’intégration Spring Boot, Angular, PostgreSQL et Docker."
+      "title": "Ordre des optimisations, et pièges de mesure",
+      "content": "Ordre usuel des gains, du plus rentable au moins rentable :\n1. Supprimer du travail : ne pas appeler, ne pas charger, ne pas recalculer.\n2. Réduire le nombre d'allers-retours (N+1, appels en série qu'on peut paralléliser, regroupement).\n3. Rapprocher les données (cache, CDN, index).\n4. Réduire la taille des échanges (pagination, compression, projection de colonnes).\n5. Seulement ensuite : optimiser le code, les algorithmes, le matériel.\n\nPièges :\n- Mesurer en local avec un petit jeu de données : les résultats ne valent pas pour la production.\n- Se fier à la moyenne : regarde p95 et p99.\n- Un seul chronométrage : répète et compare des séries.\n- Optimiser le composant qu'on connaît le mieux au lieu de celui qui domine.\n- Introduire un cache sans mesurer le taux de succès ni prévoir l'invalidation.\n- Oublier le coût : une optimisation de 5 ms qui complique le code et ajoute des pannes possibles n'est pas rentable.\n- Mesurer sous charge réaliste : certaines lenteurs n'apparaissent qu'avec de la concurrence (verrous, pools de connexions saturés).\nUn budget de performance intégré à la CI (taille de bundle, temps de réponse d'un parcours) empêche les régressions."
     },
     {
-      "title": "Revue professionnelle",
-      "content": "Documente le contexte, la décision, une option rejetée, les conséquences, le signal à surveiller et la condition qui imposerait de revoir le choix."
+      "title": "Erreurs fréquentes à reconnaître",
+      "content": "1. Optimiser avant de mesurer.\n2. Améliorer un composant qui pèse 15 % du temps en attendant un gain de 50 %.\n3. Raisonner sur la moyenne au lieu des percentiles.\n4. Mesurer sur des données jouets.\n5. Un cache sans stratégie d'invalidation.\n6. Une optimisation sans mesure après.\n\nRetrouve ces erreurs de mémoire avant l'exercice, puis vérifie-toi avec le quiz : c'est la récupération, pas la relecture, qui fixe la notion."
     }
   ],
   "keyConcepts": [
@@ -43,49 +48,97 @@
       "professionalExample": "Une équipe passe deux semaines à optimiser des requêtes SQL déjà rapides (5 ms) parce que « la base est toujours suspecte », alors que le vrai goulot d’étranglement est un appel à une API de géocodage tierce qui prend 400 ms sans budget de latence défini. Après avoir instrumenté chaque couche avec un budget explicite, l’équipe découvre en dix minutes le vrai coupable et le corrige en ajoutant un cache. Mesurer avant d’optimiser évite de gaspiller des semaines d’ingénierie sur la mauvaise couche.",
       "codeExample": "budget_ms = {\"ui\": 30, \"api\": 20, \"db\": 35, \"geocoding_api\": 400}\ntotal = sum(budget_ms.values())\nprint(\"Budget total:\", total, \"ms\")\n# geocoding_api consomme 85% du budget -> cible d'optimisation réelle",
       "commonMistake": "Choisir un outil avant d’identifier le besoin, la charge, le risque et le propriétaire de la donnée.",
-      "masteryQuestion": "Quel compromis, quel signal et quelle condition de réévaluation associes-tu à « Mesurer avant d’optimiser » ?",
-      "masteryProof": "Exécuter la preuve, modifier une contrainte, expliquer le résultat et dessiner la place du composant dans la stack complète."
+      "masteryQuestion": "Pourquoi optimiser d'abord le composant qui domine, et que dit la loi d'Amdahl sur le gain maximal d'une petite part ?",
+      "masteryProof": "Décomposer une latence, comparer au budget, estimer le gain d'une amélioration de chaque composant et choisir."
     }
   ],
   "exercises": [
     {
       "code": "ARCHITECTURE-15-E1",
-      "title": "Définir SLI, budgets de latence et mesures par couche",
-      "statement": "Complète la preuve pour produire exactement la sortie attendue, puis explique la décision, une alternative et le signal de production qui validerait ton choix.",
-      "starterCode": "latencies = {\"db\": 35, \"api\": 20, \"network\": 45, \"ui\": 30}\nbudget = 150\n# TODO 1 : calcule la latence totale\n# TODO 2 : affiche \"Latence totale: <total> ms\"\n# TODO 3 : affiche \"Budget restant: <budget - total> ms\"\n",
-      "expectedOutput": "Latence totale: 130 ms\nBudget restant: 20 ms"
+      "title": "Décomposer une latence et choisir où investir",
+      "statement": "Complète : la latence totale et la marge sur le budget de 150 ms, la part de chaque composant, le gain d'une amélioration de 50 % de chacun et le gain maximal de la loi d'Amdahl pour le composant le plus petit. Affiche exactement :\nLatence totale: 130 ms\nBudget restant: 20 ms\nnetwork: 45 ms (34.6%), gain si -50%: 22.5 ms\ndb: 35 ms (26.9%), gain si -50%: 17.5 ms\nui: 30 ms (23.1%), gain si -50%: 15.0 ms\napi: 20 ms (15.4%), gain si -50%: 10.0 ms\nÀ optimiser en premier: network\nAmdahl api infiniment rapide: x1.18",
+      "starterCode": "LATENCIES = {\"db\": 35, \"api\": 20, \"network\": 45, \"ui\": 30}\nBUDGET = 150\n\n\ndef amdahl(share: float, speedup: float) -> float:\n    # TODO 1 : gain global = 1 / ((1 - share) + share / speedup)   (share entre 0 et 1)\n    return 1.0\n\n\ntotal = 0\n# TODO 2 : total = somme des latences ; affiche \"Latence totale: <total> ms\" puis \"Budget restant: <BUDGET - total> ms\"\n# TODO 3 : pour chaque composant trié par latence décroissante (puis nom), affiche\n#          \"<nom>: <ms> ms (<part en % 1 décimale>%), gain si -50%: <ms/2 avec 1 décimale> ms\"\n# TODO 4 : affiche \"À optimiser en premier: <composant au plus grand gain>\"\n# TODO 5 : pour le composant le plus petit, affiche\n#          \"Amdahl <nom> infiniment rapide: x<gain 2 décimales>\"  (speedup très grand, par exemple 1e9)\n",
+      "expectedOutput": "Latence totale: 130 ms\nBudget restant: 20 ms\nnetwork: 45 ms (34.6%), gain si -50%: 22.5 ms\ndb: 35 ms (26.9%), gain si -50%: 17.5 ms\nui: 30 ms (23.1%), gain si -50%: 15.0 ms\napi: 20 ms (15.4%), gain si -50%: 10.0 ms\nÀ optimiser en premier: network\nAmdahl api infiniment rapide: x1.18"
     }
   ],
   "quiz": [
     {
       "code": "ARCHITECTURE-15-Q1",
       "type": "SINGLE_CHOICE",
-      "prompt": "Quelle démarche produit la décision la plus robuste ?",
+      "prompt": "Une requête dure 130 ms : réseau 45, base 35, interface 30, API 20. Quelle amélioration offre le plus grand gain absolu pour un même effort relatif (-50 %) ?",
       "choices": [
-        "Relier contraintes, responsabilités, preuve et observabilité",
-        "Choisir la technologie la plus populaire",
-        "Ajouter des services avant de mesurer"
+        "L'API",
+        "Le réseau : le plus gros contributeur donne le plus grand gain absolu",
+        "L'interface",
+        "Aucune"
       ],
-      "correctChoice": 0,
-      "expectedKeywords": []
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Réduire de moitié un composant de 45 ms gagne 22,5 ms ; réduire de moitié l'API (20 ms) n'en gagne que 10."
     },
     {
       "code": "ARCHITECTURE-15-Q2",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Prédis le gain maximal (facteur) si l'on rend infiniment rapide un composant qui pèse 15,4 % du temps total :",
+      "choices": [
+        "x2",
+        "environ x1,18 : le temps restant (84,6 %) borne le gain",
+        "x6,5",
+        "x1,0"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Amdahl : 1 / (1 - 0,154) = 1,18. Un composant qui pèse peu ne peut jamais produire un gain important, même s'il est parfait."
+    },
+    {
+      "code": "ARCHITECTURE-15-Q3",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Trouve le défaut de méthode : « Nous avons réécrit la sérialisation JSON, qui représente 3 % du temps, pour gagner de la performance. »",
+      "choices": [
+        "Aucun",
+        "Même parfaite, l'amélioration ne peut pas apporter plus de 3 % ; l'effort devait viser le composant dominant, identifié par la mesure",
+        "JSON est lent",
+        "Il faut utiliser XML"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Sans profil, on optimise ce qu'on connaît. La mesure désigne le goulot ; la loi d'Amdahl dit ce qu'on peut espérer."
+    },
+    {
+      "code": "ARCHITECTURE-15-Q4",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Quelle statistique décrit le mieux l'expérience des utilisateurs les plus lents ?",
+      "choices": [
+        "La moyenne",
+        "Les percentiles élevés (p95, p99)",
+        "Le minimum",
+        "La médiane seule"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "La moyenne est tirée par les valeurs extrêmes et masque la queue de distribution. Les percentiles montrent ce que vit un utilisateur sur vingt ou sur cent."
+    },
+    {
+      "code": "ARCHITECTURE-15-Q5",
       "type": "FREE_TEXT",
-      "prompt": "Nomme un compromis et le signal qui permettrait de le réévaluer.",
+      "prompt": "Sans relire le cours, explique avec tes mots l'ordre dans lequel chercher des gains de performance et pourquoi.",
       "choices": [],
       "correctChoice": null,
       "expectedKeywords": [
-        "compromis",
-        "mesure",
-        "risque"
-      ]
+        "supprimer",
+        "aller",
+        "retour",
+        "cache",
+        "code"
+      ],
+      "modelAnswer": "On cherche d'abord à supprimer du travail (ne pas appeler ni recalculer), puis à réduire le nombre d'allers-retours (N+1, appels en parallèle), à rapprocher les données (cache, index, CDN), à réduire la taille des échanges, et seulement en dernier à optimiser le code ou le matériel. L'ordre suit le rapport gain/effort : ce qui évite du travail ou des échanges réseau rapporte beaucoup plus que des micro-optimisations.",
+      "explanation": "Une bonne réponse enchaîne supprimer le travail, réduire les allers-retours, rapprocher les données, réduire les tailles, puis optimiser le code, avec la raison."
     }
   ],
   "checklist": [
-    "Je peux dessiner la circulation de la donnée",
-    "Je sais nommer les responsabilités de chaque couche",
-    "Je justifie une alternative rejetée",
-    "Je définis une mesure et une condition de réévaluation"
+    "Je décompose la latence par composant avant d'agir",
+    "Je lis les percentiles, pas la moyenne",
+    "J'optimise d'abord le composant qui domine",
+    "Je mesure avant et après pour valider le gain"
   ]
 }

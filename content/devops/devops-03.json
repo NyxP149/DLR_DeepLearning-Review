@@ -11,21 +11,30 @@
     "DEVOPS-02"
   ],
   "objectives": [
-    "Expliquer sécurité, secrets et moindre privilège",
-    "Construire une preuve exécutable et déterministe",
-    "Relier le concept à une décision professionnelle"
+    "Appliquer le moindre privilège à un conteneur (utilisateur non root, pas de mode privilégié, capacités retirées).",
+    "Gérer les secrets : jamais en clair dans le dépôt, l'image ou les logs.",
+    "Écrire un contrôle automatique qui détecte secrets en clair et privilèges excessifs.",
+    "Réagir à un secret qui a fuité."
   ],
   "sections": [
     {
-      "title": "Concept et usage professionnel",
-      "content": "Sécurité, secrets et moindre privilège répond à un besoin concret de maintenabilité, de sûreté ou de performance. Le laboratoire demande de rendre la décision observable et vérifiable.",
-      "conceptCodes": [
-        "DEVOPS-SECURITY"
-      ]
+      "title": "Moindre privilège : ne donner que ce qui est nécessaire",
+      "content": "Un conteneur compromis hérite de ce qu'on lui a accordé. Réduire les droits limite les dégâts.\n- Utilisateur non root dans l'image (USER 10001) ; un processus root dans un conteneur n'est pas root sur l'hôte, mais une évasion devient bien plus grave.\n- privileged: true donne au conteneur presque tous les droits de l'hôte (périphériques, noyau) : à bannir sauf besoin exceptionnel et isolé.\n- Capacités Linux : cap_drop: [ALL], puis n'ajouter que le nécessaire (NET_BIND_SERVICE pour un port < 1024).\n- Système de fichiers en lecture seule (read_only: true) avec un tmpfs pour les écritures nécessaires.\n- no-new-privileges, profils seccomp/AppArmor par défaut conservés.\n- Pas de socket Docker (/var/run/docker.sock) monté dans un conteneur : cela équivaut à donner l'accès root à l'hôte.\n- Réseau minimal : un service n'a accès qu'à ce dont il a besoin."
     },
     {
-      "title": "Mise en pratique",
-      "content": "La preuve minimale est locale, déterministe et peut être enrichie sans changer le contrat attendu."
+      "title": "Exemple résolu : un contrôle de configuration",
+      "conceptCodes": [
+        "DEVOPS-SECURITY"
+      ],
+      "content": "Problème : examiner la configuration d'un conteneur et signaler secrets en clair et privilèges excessifs, avec un conseil pour chacun.\n\nRaisonnement, étape par étape :\n1. Secret en clair : une variable dont le nom contient PASSWORD, TOKEN, SECRET ou KEY est suspecte. Si sa valeur est une référence (${DB_PASSWORD}, un secret Docker, un coffre), c'est correct ; si c'est une valeur littérale (« s3cr3t »), c'est une fuite potentielle (le fichier est versionné, visible dans docker inspect et dans les logs d'outils).\n2. privileged: true : risque, conseil « retire le mode privilégié ».\n3. user: root (ou absence d'utilisateur) : risque, conseil « utilise un utilisateur non-root ».\n4. Le contrôle produit un message par risque, dans un ordre stable (variables d'abord, puis privilèges), et un décompte.\n5. Vérification : DB_PASSWORD avec une valeur littérale, privileged vrai et user root donnent trois risques ; la même configuration corrigée donne zéro.\n```python\nSENSIBLES = ('PASSWORD', 'TOKEN', 'SECRET', 'KEY')\n\ndef audit(service):\n    risques = []\n    for nom, valeur in service.get('environment', {}).items():\n        if any(m in nom.upper() for m in SENSIBLES) and not str(valeur).startswith('${'):\n            risques.append(f\"{nom}: secret en clair -> utilise un secret Docker\")\n    if service.get('privileged'):\n        risques.append('privileged: true -> retire le mode privilégié')\n    if service.get('user', 'root') == 'root':\n        risques.append('user: root -> utilise un utilisateur non-root')\n    return risques\n```"
+    },
+    {
+      "title": "Gérer les secrets sur toute leur vie",
+      "content": "Où un secret ne doit jamais se trouver : dans le dépôt Git (même supprimé : l'historique le garde), dans une image (couches lisibles), dans un fichier Compose versionné, dans un log, dans un message d'erreur, dans une URL.\n\nOù le placer : variables d'environnement injectées à l'exécution depuis un gestionnaire (secrets Docker/Swarm/Kubernetes, Vault, gestionnaire de secrets du cloud, variables protégées de la CI), avec des droits d'accès limités et une rotation.\n\nDéfense en profondeur :\n- Analyse automatique des secrets dans le dépôt et la CI (gitleaks, trufflehog) et pre-commit.\n- Secrets distincts par environnement et par service ; durée de vie courte quand c'est possible ; jetons à portée limitée.\n- Un secret exposé est considéré compromis : le révoquer, le renouveler, chercher les usages, puis nettoyer l'historique si utile (le nettoyage seul ne suffit jamais).\n- Les variables d'environnement sont lisibles par les processus du conteneur et par docker inspect : pour les secrets les plus sensibles, préfère un fichier monté en lecture seule (secrets Docker) ou un appel au coffre.\n- Masquer les secrets dans les logs de la CI et des applications.\n- Principe d'accès : seuls les services qui en ont besoin reçoivent un secret."
+    },
+    {
+      "title": "Erreurs fréquentes à reconnaître",
+      "content": "1. Un mot de passe en clair dans docker-compose.yml ou dans une instruction ENV.\n2. privileged: true « pour que ça marche ».\n3. Monter /var/run/docker.sock dans un conteneur applicatif.\n4. Croire qu'un secret commité puis supprimé est protégé.\n5. Le même mot de passe d'administrateur pour dev, test et production.\n6. Journaliser les en-têtes d'authentification ou une chaîne de connexion complète.\n\nRetrouve ces erreurs de mémoire avant l'exercice, puis vérifie-toi avec le quiz : c'est la récupération, pas la relecture, qui fixe la notion."
     }
   ],
   "keyConcepts": [
@@ -39,8 +48,8 @@
       "professionalExample": "Un audit de sécurité révèle qu'une image Docker en production exécute son processus applicatif en tant que root et contient une clé d'API codée en dur dans le Dockerfile, visible par quiconque exécute docker history sur l'image. L'équipe corrige les deux problèmes en créant un utilisateur applicatif non privilégié avec USER, et en injectant le secret au runtime via un gestionnaire de secrets plutôt qu'en le copiant dans une couche de l'image. Le principe de moindre privilège limite ainsi ce qu'un attaquant qui compromettrait le conteneur pourrait faire sur l'hôte, et retirer le secret de l'image empêche sa fuite définitive dans l'historique du registre.",
       "codeExample": "FROM node:20.11-slim\nWORKDIR /app\nCOPY package*.json ./\nRUN npm ci --omit=dev\nCOPY . .\n\n# Ne jamais faire : ARG API_KEY puis ENV API_KEY=$API_KEY (fuite dans l'historique)\n# Le secret est injecté au runtime, pas au build :\n#   docker run --env-file .env.production myapp\n\nRUN addgroup --system app && adduser --system --ingroup app app\nUSER app\n\nEXPOSE 3000\nCMD [\"node\", \"server.js\"]",
       "commonMistake": "Appliquer la technique sans mesurer son effet ni documenter sa frontière.",
-      "masteryQuestion": "Quelle contrainte de sécurité, secrets et moindre privilège doit rester vraie lorsque le système évolue ?",
-      "masteryProof": "Exécuter la preuve, expliquer son invariant et proposer un cas d’échec."
+      "masteryQuestion": "Pourquoi un secret commité puis supprimé reste-t-il compromis, et pourquoi privileged: true est-il si dangereux ?",
+      "masteryProof": "Écrire un contrôle qui détecte les secrets en clair, le mode privilégié et l'utilisateur root, avec un conseil par risque et leur nombre."
     }
   ],
   "exercises": [
@@ -56,32 +65,80 @@
     {
       "code": "DEVOPS-03-Q1",
       "type": "SINGLE_CHOICE",
-      "prompt": "Quelle preuve est la plus utile en revue ?",
+      "prompt": "Quelle valeur pour DB_PASSWORD est acceptable dans un fichier Compose versionné ?",
       "choices": [
-        "Une exécution déterministe avec invariant explicite",
-        "Une sortie aléatoire",
-        "Une capture sans code"
+        "s3cr3t",
+        "${DB_PASSWORD} (référence résolue à l'exécution depuis l'environnement ou un secret)",
+        "admin",
+        "123456"
       ],
-      "correctChoice": 0,
-      "expectedKeywords": []
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Le fichier versionné ne contient qu'une référence ; la valeur réelle est fournie à l'exécution par un gestionnaire de secrets ou l'environnement."
     },
     {
       "code": "DEVOPS-03-Q2",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Prédis le nombre de risques : environment: { DB_PASSWORD: 'admin', LOG_LEVEL: 'info' }, privileged: true, user: root.",
+      "choices": [
+        "1",
+        "2",
+        "3",
+        "4"
+      ],
+      "correctChoice": 2,
+      "expectedKeywords": [],
+      "explanation": "DB_PASSWORD est sensible et en clair (1), privileged (2), user root (3). LOG_LEVEL n'est pas sensible."
+    },
+    {
+      "code": "DEVOPS-03-Q3",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Trouve le défaut :\n```yaml\nservices:\n  api:\n    volumes:\n      - /var/run/docker.sock:/var/run/docker.sock\n```\n",
+      "choices": [
+        "Les volumes sont interdits",
+        "Monter le socket Docker donne au conteneur le contrôle du démon de l'hôte, équivalent à un accès root",
+        "Il manque un réseau",
+        "Le chemin est trop long"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Un processus qui peut parler au démon Docker peut lancer des conteneurs privilégiés avec le système de fichiers de l'hôte. Un compromis de l'API devient un compromis de la machine."
+    },
+    {
+      "code": "DEVOPS-03-Q4",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Un jeton d'API a été commité par erreur puis supprimé. Que faire ?",
+      "choices": [
+        "Rien : il est supprimé",
+        "Le révoquer et en créer un nouveau, vérifier ses usages, puis seulement éventuellement nettoyer l'historique",
+        "Changer le nom du dépôt",
+        "Passer le dépôt en privé suffit"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Le jeton a pu être copié (clones, forks, caches, bots d'analyse). On le considère compromis : révocation d'abord, nettoyage ensuite."
+    },
+    {
+      "code": "DEVOPS-03-Q5",
       "type": "FREE_TEXT",
-      "prompt": "Explique une décision liée à sécurité, secrets et moindre privilège.",
+      "prompt": "Sans relire le cours, explique avec tes mots le principe du moindre privilège appliqué à un conteneur, avec trois mesures concrètes.",
       "choices": [],
       "correctChoice": null,
       "expectedKeywords": [
-        "contrat",
-        "preuve",
-        "test"
-      ]
+        "privilege",
+        "root",
+        "capacit",
+        "lecture seule",
+        "minimal"
+      ],
+      "modelAnswer": "Le moindre privilège consiste à ne donner à un conteneur que ce dont il a besoin pour que sa compromission cause un minimum de dégâts. Mesures : utilisateur non root, aucune capacité superflue (cap_drop ALL puis ajout du nécessaire), pas de mode privilégié, système de fichiers en lecture seule, pas de socket Docker monté, réseau limité aux services requis.",
+      "explanation": "Une bonne réponse définit le principe (droits minimaux, dégâts limités) et cite au moins trois mesures parmi non root, capacités, read-only, pas de privileged ni de socket."
     }
   ],
   "checklist": [
-    "Je peux expliquer le concept sans réciter une définition",
-    "Je sais exécuter et modifier la preuve",
-    "Je peux nommer un risque et son contrôle",
-    "Je relie cette étape à la suivante"
+    "Mes fichiers versionnés ne contiennent que des références de secrets",
+    "Mes conteneurs sont non root, non privilégiés et sans capacités inutiles",
+    "Un scanner de secrets tourne en CI",
+    "Je sais révoquer et renouveler un secret exposé"
   ]
 }

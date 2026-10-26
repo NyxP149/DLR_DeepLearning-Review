@@ -11,21 +11,30 @@
     "TYPESCRIPT-08"
   ],
   "objectives": [
-    "Expliquer types utilitaires et types mappés",
-    "Construire une preuve exécutable et déterministe",
-    "Relier le concept à une décision professionnelle"
+    "Dériver des types depuis une source unique avec Partial, Required, Pick, Omit, Readonly et Record.",
+    "Écrire un type mappé ({ [K in keyof T]: ... }) et l'appliquer à une interface.",
+    "Prédire le type obtenu à partir d'un type utilitaire.",
+    "Reconnaître le moment où un type calculé devient plus difficile à lire que le problème."
   ],
   "sections": [
     {
-      "title": "Concept et usage professionnel",
-      "content": "Types utilitaires et types mappés répond à un besoin concret de maintenabilité, de sûreté ou de performance. Le laboratoire demande de rendre la décision observable et vérifiable.",
-      "conceptCodes": [
-        "TYPESCRIPT-MAPPED-TYPES"
-      ]
+      "title": "Une source de vérité, des types dérivés",
+      "content": "Quand plusieurs types décrivent presque la même chose (l'utilisateur complet, sa mise à jour partielle, sa vue publique), les recopier crée des écarts à chaque évolution. TypeScript fournit des types utilitaires qui en dérivent d'un seul :\n- Partial<T> : toutes les propriétés deviennent optionnelles (mise à jour partielle).\n- Required<T> : toutes deviennent obligatoires.\n- Readonly<T> : toutes en lecture seule.\n- Pick<T, K> : garde seulement les propriétés K.\n- Omit<T, K> : retire les propriétés K.\n- Record<K, V> : objet dont les clés sont K et les valeurs V.\n```ts\ninterface User { id: number; name: string; email: string }\n\ntype UserUpdate = Partial<User>;                  // { id?: number; name?: string; email?: string }\ntype UserPublic = Pick<User, 'id' | 'name'>;      // { id: number; name: string }\ntype UserWithoutId = Omit<User, 'id'>;            // { name: string; email: string }\n```\nAjouter un champ à User le propage à tous les types dérivés."
     },
     {
-      "title": "Mise en pratique",
-      "content": "La preuve minimale est locale, déterministe et peut être enrichie sans changer le contrat attendu."
+      "title": "Exemple résolu : update, pick et indicateurs",
+      "conceptCodes": [
+        "TYPESCRIPT-MAPPED-TYPES"
+      ],
+      "content": "Problème : à partir d'une seule interface User, produire une mise à jour partielle, une extraction de clés et un objet d'indicateurs (un booléen par propriété).\n\nRaisonnement, étape par étape :\n1. update(user, changes: Partial<User>) : retourne une nouvelle copie { ...user, ...changes } sans muter l'original.\n2. pick<T, K extends keyof T>(obj: T, keys: K[]): Pick<T, K> : construit un objet avec seulement ces clés.\n3. Type mappé Flags<T> = { [K in keyof T]: boolean } : même clés que T, valeurs booléennes.\n4. toFlags(obj, ...) : indique pour chaque propriété si elle est renseignée (ici : non vide).\n5. Vérification : ajouter un champ phone à User fait apparaître phone dans Partial, Pick possible et Flags, sans modifier ces types.\n```ts\ntype Flags<T> = { [K in keyof T]: boolean };\n\nfunction update(user: User, changes: Partial<User>): User {\n  return { ...user, ...changes };\n}\n\nfunction pick<T, K extends keyof T>(obj: T, keys: K[]): Pick<T, K> {\n  const result = {} as Pick<T, K>;\n  for (const key of keys) result[key] = obj[key];\n  return result;\n}\n```\nUn type mappé parcourt les clés d'un type (K in keyof T) et produit un nouveau type ; on peut y ajouter ? (optionnel) ou readonly, ou en retirer avec -? et -readonly."
+    },
+    {
+      "title": "Combiner, garder lisible",
+      "content": "Les types utilitaires se composent : Partial<Pick<User, 'name' | 'email'>> (profil modifiable partiellement), Readonly<Record<Status, string>> (table de libellés figée), Omit<User, 'id'> & { id?: number } (identifiant optionnel à la création).\n\nkeyof typeof appelle les clés d'une valeur : const config = { port: 8080, debug: false }; type Cle = keyof typeof config; // 'port' | 'debug'. typeof config donne son type, ReturnType<typeof f> le type de retour d'une fonction, Parameters<typeof f> ses paramètres, Awaited<T> le type résolu d'une promesse.\n\nLimites : Partial ne vérifie pas qu'un changement est cohérent (name: undefined passe si exactOptionalPropertyTypes est désactivé). Les types sont effacés : un type dérivé ne valide rien à l'exécution. Et surtout, lisibilité : si un type calculé demande dix minutes pour être compris, écris explicitement deux interfaces. Un type est du code que d'autres vont lire."
+    },
+    {
+      "title": "Erreurs fréquentes à reconnaître",
+      "content": "1. Recopier une interface à la main (UserUpdate) au lieu de la dériver : les deux divergent.\n2. Utiliser Partial<T> pour une création : tous les champs deviennent optionnels, alors que certains sont requis.\n3. Écrire as à l'intérieur d'un utilitaire sans le tester.\n4. Empiler cinq types utilitaires dans un seul alias illisible.\n5. Croire qu'un type dérivé garantit la validité des données reçues.\n6. Muter l'objet d'origine dans update au lieu de retourner une copie.\n\nRetrouve ces erreurs de mémoire avant l'exercice, puis vérifie-toi avec le quiz : c'est la récupération, pas la relecture, qui fixe la notion."
     }
   ],
   "keyConcepts": [
@@ -39,8 +48,8 @@
       "professionalExample": "L'endpoint PATCH /users/:id doit accepter une mise à jour partielle d'un utilisateur. Plutôt que de dupliquer l'interface User en ajoutant '?' à chaque champ à la main, l'équipe utilise Partial<Omit<User, 'id'>> pour le corps de la requête, et un type mappé personnalisé ValidationErrors<T> pour renvoyer un message d'erreur par champ. Quand un nouveau champ est ajouté à User, les deux types utilitaires suivent automatiquement sans modification manuelle, ce qui évite l'oubli classique de validation sur un champ récemment ajouté.",
       "codeExample": "interface User {\n  id: string;\n  email: string;\n  age: number;\n}\n\ntype UserUpdate = Partial<Omit<User, 'id'>>;\n\ntype ValidationErrors<T> = {\n  [K in keyof T]?: string;\n};\n\nfunction validateUpdate(update: UserUpdate): ValidationErrors<UserUpdate> {\n  const errors: ValidationErrors<UserUpdate> = {};\n  if (update.email && !update.email.includes('@')) {\n    errors.email = 'Email invalide';\n  }\n  if (update.age !== undefined && update.age < 0) {\n    errors.age = 'Âge invalide';\n  }\n  return errors;\n}",
       "commonMistake": "Appliquer la technique sans mesurer son effet ni documenter sa frontière.",
-      "masteryQuestion": "Quelle contrainte de types utilitaires et types mappés doit rester vraie lorsque le système évolue ?",
-      "masteryProof": "Exécuter la preuve, expliquer son invariant et proposer un cas d’échec."
+      "masteryQuestion": "Pourquoi dériver les types depuis une seule interface, et que fait un type mappé comme { [K in keyof T]: boolean } ?",
+      "masteryProof": "Dériver Partial, Pick et un type mappé Flags depuis User et écrire update, pick et toFlags."
     }
   ],
   "exercises": [
@@ -56,32 +65,80 @@
     {
       "code": "TYPESCRIPT-09-Q1",
       "type": "SINGLE_CHOICE",
-      "prompt": "Quelle preuve est la plus utile en revue ?",
+      "prompt": "Quel est le type de UserPublic ?\n```ts\ninterface User { id: number; name: string; email: string }\ntype UserPublic = Pick<User, 'id' | 'name'>;\n```\n",
       "choices": [
-        "Une exécution déterministe avec invariant explicite",
-        "Une sortie aléatoire",
-        "Une capture sans code"
+        "{ id?: number; name?: string }",
+        "{ id: number; name: string }",
+        "{ email: string }",
+        "Record<string, unknown>"
       ],
-      "correctChoice": 0,
-      "expectedKeywords": []
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Pick garde exactement les propriétés demandées avec leur type et leur caractère obligatoire. Omit<User, 'id' | 'name'> aurait donné { email: string }."
     },
     {
       "code": "TYPESCRIPT-09-Q2",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Prédis le type de Flags<{ id: number; name: string }> avec type Flags<T> = { [K in keyof T]: boolean } :",
+      "choices": [
+        "{ id: number; name: string }",
+        "{ id: boolean; name: boolean }",
+        "boolean",
+        "Record<string, number>"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Le type mappé reprend chaque clé de T et remplace son type de valeur par boolean."
+    },
+    {
+      "code": "TYPESCRIPT-09-Q3",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Trouve le défaut :\n```ts\nfunction createUser(data: Partial<User>): User {\n  return data as User;\n}\n```\n",
+      "choices": [
+        "Partial est interdit en paramètre",
+        "Partial rend tout optionnel et le cast as User affirme sans vérifier : un utilisateur sans nom ni e-mail sera retourné comme valide",
+        "as n'existe pas",
+        "Il manque async"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Pour une création, on exige les champs requis (Omit<User, 'id'>) et on valide à l'exécution. Partial convient à une mise à jour. Le cast masque l'incohérence au lieu de la corriger."
+    },
+    {
+      "code": "TYPESCRIPT-09-Q4",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Que fait ReturnType<typeof f> ?",
+      "choices": [
+        "Exécute f",
+        "Donne le type de retour de la fonction f",
+        "Donne les paramètres de f",
+        "Renomme f"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "ReturnType extrait le type de retour d'une fonction à partir de typeof f. Parameters<typeof f> extrait de même le tuple des types de paramètres. Aucun code n'est exécuté : tout se passe à la compilation."
+    },
+    {
+      "code": "TYPESCRIPT-09-Q5",
       "type": "FREE_TEXT",
-      "prompt": "Explique une décision liée à types utilitaires et types mappés.",
+      "prompt": "Sans relire le cours, explique avec tes mots l'intérêt de dériver des types plutôt que de les copier, et une limite des types dérivés.",
       "choices": [],
       "correctChoice": null,
       "expectedKeywords": [
-        "contrat",
-        "preuve",
-        "test"
-      ]
+        "source",
+        "derive",
+        "evolution",
+        "efface",
+        "execution"
+      ],
+      "modelAnswer": "Dériver depuis une interface unique garantit que les types liés évoluent ensemble : ajouter un champ le propage partout, alors que des copies divergent. Une limite : les types sont effacés à la compilation, donc un type dérivé ne valide aucune donnée à l'exécution ; une validation reste nécessaire aux frontières. Et un type trop calculé peut devenir illisible.",
+      "explanation": "Une bonne réponse cite la source unique qui évite la divergence, et la limite : pas de validation à l'exécution (et la lisibilité)."
     }
   ],
   "checklist": [
-    "Je peux expliquer le concept sans réciter une définition",
-    "Je sais exécuter et modifier la preuve",
-    "Je peux nommer un risque et son contrôle",
-    "Je relie cette étape à la suivante"
+    "Je dérive mes types d'une interface unique au lieu de les recopier",
+    "Je sais lire un type mappé { [K in keyof T]: ... }",
+    "J'utilise Partial pour une mise à jour, pas pour une création",
+    "Je sais que ces types n'existent plus à l'exécution"
   ]
 }

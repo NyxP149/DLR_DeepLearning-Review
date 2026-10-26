@@ -11,21 +11,30 @@
     "ANGULAR-07"
   ],
   "objectives": [
-    "Expliquer tests, accessibilité et budgets de performance",
-    "Construire une preuve exécutable et déterministe",
-    "Relier le concept à une décision professionnelle"
+    "Écrire un audit automatisé d'accessibilité (alt, nom accessible, label) et le relier aux règles WCAG.",
+    "Définir et vérifier des budgets de performance (taille de bundle).",
+    "Choisir les niveaux de test pour un composant (unitaire, composant, bout en bout).",
+    "Mesurer les performances perçues (LCP, INP, CLS) et savoir quoi corriger."
   ],
   "sections": [
     {
-      "title": "Concept et usage professionnel",
-      "content": "Tests, accessibilité et budgets de performance répond à un besoin concret de maintenabilité, de sûreté ou de performance. Le laboratoire demande de rendre la décision observable et vérifiable.",
-      "conceptCodes": [
-        "ANGULAR-QUALITY"
-      ]
+      "title": "L'accessibilité se teste comme le reste",
+      "content": "Une application accessible est utilisable par tous : clavier seul, lecteur d'écran, zoom, faible vision. Règles fréquentes (WCAG) à automatiser :\n- Chaque image porte un texte alternatif (alt) ; une image décorative a alt=\"\".\n- Chaque bouton a un nom accessible : son texte, ou aria-label pour un bouton-icône.\n- Chaque champ de formulaire a un label associé.\n- Contraste suffisant (4,5:1 pour le texte courant), focus visible, ordre de tabulation logique, aucun piège clavier.\n- Les éléments interactifs sont de vrais <button> et <a>, pas des <div (click)>.\n- Les titres suivent une hiérarchie (h1, h2...), la page a un titre et une langue.\nLes outils automatiques (axe-core, Lighthouse, eslint-plugin-jsx-a11y / angular-eslint template accessibility) détectent environ un tiers des problèmes ; ils ne remplacent pas un test au clavier et au lecteur d'écran."
     },
     {
-      "title": "Mise en pratique",
-      "content": "La preuve TypeScript isole le contrat réactif ; son intégration dans un composant Angular est décrite sans rendre le runner dépendant d'un navigateur."
+      "title": "Exemple résolu : un audit et un budget",
+      "conceptCodes": [
+        "ANGULAR-QUALITY"
+      ],
+      "content": "Problème : auditer un DOM simplifié et comparer la taille des bundles à leur budget.\n\nRaisonnement, étape par étape :\n1. Règle img : alt absent (undefined) est une violation ; alt=\"\" est une image décorative valide.\n2. Règle button : nom accessible = texte non vide ou aria-label non vide ; sinon violation.\n3. Règle input : label associé (for/id) ou aria-label ; sinon violation.\n4. L'audit parcourt les éléments, produit une ligne par violation « sélecteur: message » puis un compte.\n5. Budget : pour chaque bundle, on compare la taille au budget ; au-delà, on indique le dépassement chiffré, sinon la marge.\n6. Vérification : trois violations (logo sans alt, bouton sans nom, champ sans label) ; main.js 520 kB dépasse son budget de 500 kB de 20 kB, styles.css 80 kB respecte 100 kB.\n```ts\nfor (const el of elements) {\n  if (el.tag === 'img' && el.alt === undefined) violations.push(`img#${el.id}: alt manquant`);\n  if (el.tag === 'button' && !(el.text?.trim() || el.ariaLabel)) violations.push(`button#${el.id}: nom accessible manquant`);\n  if (el.tag === 'input' && !(el.label || el.ariaLabel)) violations.push(`input#${el.id}: label manquant`);\n}\n```\nDans angular.json, les budgets font échouer la construction : \"budgets\": [{ \"type\": \"initial\", \"maximumWarning\": \"500kb\", \"maximumError\": \"1mb\" }]."
+    },
+    {
+      "title": "Tester et mesurer",
+      "content": "Tests d'un composant : TestBed crée le composant avec ses dépendances ; on interagit via le DOM (clic, saisie) et on vérifie le résultat visible. Les harnesses de composants (Angular Material) et Testing Library encouragent à tester comme un utilisateur (par rôle et libellé) plutôt que par classes CSS ou détails internes. Les services purs se testent sans TestBed. Les parcours critiques se couvrent par quelques tests de bout en bout (Playwright, Cypress), plus lents.\n\nPerformance perçue (Core Web Vitals) : LCP (rendu du plus grand élément visible, viser moins de 2,5 s), INP (réactivité aux interactions, moins de 200 ms), CLS (décalages de mise en page, moins de 0,1). Leviers : bundles plus petits (chargement différé, @defer pour les blocs sous la ligne de flottaison), NgOptimizedImage (dimensions, chargement paresseux, priorité), polices optimisées, OnPush et signals pour limiter la détection de changement, listes avec track, virtualisation (cdk-virtual-scroll) pour de très longues listes, éviter les appels de fonction coûteux dans les templates (utilise computed ou des pipes purs).\n\nBonne pratique : intégrer l'audit d'accessibilité, les budgets et les tests dans l'intégration continue pour que les régressions soient détectées à la pull request, pas par un utilisateur."
+    },
+    {
+      "title": "Erreurs fréquentes à reconnaître",
+      "content": "1. Un <div (click)> à la place d'un <button> : inaccessible au clavier.\n2. Un bouton-icône sans aria-label.\n3. Confondre alt manquant (violation) et alt vide (décoratif, valide).\n4. Se fier uniquement à un score Lighthouse automatique.\n5. Aucun budget : le bundle grossit à chaque pull request sans que personne ne le voie.\n6. Tester les détails d'implémentation (classes CSS, noms de méthodes) plutôt que ce que voit l'utilisateur.\n\nRetrouve ces erreurs de mémoire avant l'exercice, puis vérifie-toi avec le quiz : c'est la récupération, pas la relecture, qui fixe la notion."
     }
   ],
   "keyConcepts": [
@@ -39,8 +48,8 @@
       "professionalExample": "La CI exécute les tests unitaires du composant InvoiceListComponent avec TestBed, y compris un test qui vérifie que chaque ligne du tableau expose un aria-label explicite pour les lecteurs d'écran, pas seulement une icône. Un budget de performance dans angular.json fait échouer le build si le bundle initial dépasse 500 kB, ce qui a détecté une régression le jour où une librairie de graphiques a été importée globalement au lieu d'en différer le chargement. L'erreur classique est de mesurer l'accessibilité et la performance uniquement en local sur une machine puissante, sans les vérifier automatiquement en CI, où elles finissent par régresser silencieusement.",
       "codeExample": "describe('InvoiceListComponent', () => {\n  let fixture: ComponentFixture<InvoiceListComponent>;\n\n  beforeEach(() => {\n    TestBed.configureTestingModule({ imports: [InvoiceListComponent] });\n    fixture = TestBed.createComponent(InvoiceListComponent);\n    fixture.componentRef.setInput('invoices', [{ id: 'F-1', amount: 120 }]);\n    fixture.detectChanges();\n  });\n\n  it('expose un aria-label accessible par ligne', () => {\n    const row = fixture.nativeElement.querySelector('tr[role=\"row\"]');\n    expect(row.getAttribute('aria-label')).toContain('Facture F-1');\n  });\n});",
       "commonMistake": "Appliquer la technique sans mesurer son effet ni documenter sa frontière.",
-      "masteryQuestion": "Quelle contrainte de tests, accessibilité et budgets de performance doit rester vraie lorsque le système évolue ?",
-      "masteryProof": "Exécuter la preuve, expliquer son invariant et proposer un cas d’échec."
+      "masteryQuestion": "Pourquoi un audit automatique ne suffit-il pas pour l'accessibilité, et à quoi servent les budgets de performance dans l'intégration continue ?",
+      "masteryProof": "Auditer un DOM simplifié (alt, nom accessible, label) et comparer la taille de chaque bundle à son budget."
     }
   ],
   "exercises": [
@@ -56,32 +65,80 @@
     {
       "code": "ANGULAR-08-Q1",
       "type": "SINGLE_CHOICE",
-      "prompt": "Quelle preuve est la plus utile en revue ?",
+      "prompt": "Quelle est la différence entre alt manquant et alt=\"\" sur une image ?",
       "choices": [
-        "Une exécution déterministe avec invariant explicite",
-        "Une sortie aléatoire",
-        "Une capture sans code"
+        "Aucune",
+        "alt manquant est une violation ; alt vide déclare l'image décorative et le lecteur d'écran l'ignore",
+        "alt vide est une violation",
+        "alt manquant est une image décorative"
       ],
-      "correctChoice": 0,
-      "expectedKeywords": []
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Sans attribut alt, un lecteur d'écran lit souvent le nom du fichier. Un alt vide dit explicitement « ignore cette image ». Une image qui porte du sens exige un alt descriptif."
     },
     {
       "code": "ANGULAR-08-Q2",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Quel élément est le mieux adapté à une action de l'utilisateur ?",
+      "choices": [
+        "<div (click)=\"save()\">Enregistrer</div>",
+        "<button type=\"button\" (click)=\"save()\">Enregistrer</button>",
+        "<span (click)=\"save()\">Enregistrer</span>",
+        "<a (click)=\"save()\">Enregistrer</a> sans href"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Un vrai bouton est focalisable, activable au clavier (Entrée, Espace) et annoncé comme bouton par les lecteurs d'écran. Un div cliquable n'a rien de tout cela sans bricolage."
+    },
+    {
+      "code": "ANGULAR-08-Q3",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Prédis le résultat du budget : main.js fait 520 kB, budget 500 kB ; styles.css fait 80 kB, budget 100 kB.",
+      "choices": [
+        "Les deux dépassent",
+        "main.js dépasse de 20 kB, styles.css respecte son budget",
+        "Les deux respectent",
+        "styles.css dépasse de 20 kB"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "520 - 500 = 20 kB de dépassement pour main.js. styles.css est 20 kB sous son budget. Un budget en erreur fait échouer la construction."
+    },
+    {
+      "code": "ANGULAR-08-Q4",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Pourquoi tester un composant par rôle et libellé (getByRole('button', { name: 'Enregistrer' })) plutôt que par classe CSS ?",
+      "choices": [
+        "C'est plus court",
+        "Le test reflète ce que perçoit l'utilisateur et vérifie en passant l'accessibilité ; il résiste aux refactorings de style",
+        "Les classes CSS sont interdites",
+        "Les rôles sont plus rapides"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Si le rôle ou le nom accessible est absent, le test ne trouve pas l'élément : un problème d'accessibilité est détecté en même temps. Une classe CSS peut changer sans que le comportement change."
+    },
+    {
+      "code": "ANGULAR-08-Q5",
       "type": "FREE_TEXT",
-      "prompt": "Explique une décision liée à tests, accessibilité et budgets de performance.",
+      "prompt": "Sans relire le cours, explique avec tes mots pourquoi on intègre accessibilité, budgets et tests à l'intégration continue.",
       "choices": [],
       "correctChoice": null,
       "expectedKeywords": [
-        "contrat",
-        "preuve",
-        "test"
-      ]
+        "regression",
+        "pull request",
+        "automatique",
+        "budget",
+        "utilisateur"
+      ],
+      "modelAnswer": "Sans contrôle automatique, chaque modification peut introduire une régression (image sans alternative, bundle plus lourd, comportement cassé) que personne ne voit avant qu'un utilisateur la subisse. En les vérifiant à chaque pull request, l'équipe détecte et corrige immédiatement, et les qualités visées (accessibilité, performance, fiabilité) restent maintenues dans la durée.",
+      "explanation": "Une bonne réponse parle de détecter les régressions tôt, à chaque pull request, avant les utilisateurs."
     }
   ],
   "checklist": [
-    "Je peux expliquer le concept sans réciter une définition",
-    "Je sais exécuter et modifier la preuve",
-    "Je peux nommer un risque et son contrôle",
-    "Je relie cette étape à la suivante"
+    "J'utilise de vrais éléments sémantiques (button, a, label)",
+    "Mon CI vérifie accessibilité, budgets et tests",
+    "Je teste comme un utilisateur (rôle, libellé)",
+    "Je connais LCP, INP et CLS et leurs leviers"
   ]
 }

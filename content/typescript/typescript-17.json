@@ -11,21 +11,30 @@
     "TYPESCRIPT-16"
   ],
   "objectives": [
-    "Expliquer programmation fonctionnelle et immutabilité",
-    "Construire une preuve exécutable et déterministe",
-    "Relier le concept à une décision professionnelle"
+    "Écrire des fonctions pures et les composer avec pipe.",
+    "Mettre à jour un état sans le muter (spread, map, filter) et prouver que l'original est intact.",
+    "Distinguer readonly, Object.freeze (superficiel) et copie profonde.",
+    "Repérer une mutation cachée, une copie superficielle ou un effet de bord dans un map."
   ],
   "sections": [
     {
-      "title": "Concept et usage professionnel",
-      "content": "Programmation fonctionnelle et immutabilité répond à un besoin concret de maintenabilité, de sûreté ou de performance. Le laboratoire demande de rendre la décision observable et vérifiable.",
-      "conceptCodes": [
-        "TYPESCRIPT-FUNCTIONAL"
-      ]
+      "title": "Pur, immuable, composable",
+      "content": "Une fonction pure donne le même résultat pour les mêmes arguments et n'a aucun effet de bord (pas d'écriture globale, pas d'affichage, pas de modification de ses arguments). Elle se teste sans préparation, se met en cache et se compose.\n\nL'immutabilité complète la pureté : on ne modifie pas une valeur, on en crée une nouvelle avec les changements. Les outils : l'opérateur spread, map, filter, slice, concat.\n```ts\ntype State = { count: number; tags: string[] };\n\nfunction addTag(state: State, tag: string): State {\n  return { ...state, count: state.count + 1, tags: [...state.tags, tag] };   // nouvelle valeur, original intact\n}\n```\nAvantages : un état partagé ne change pas sous les pieds du code qui le lit (fini les bugs « qui a modifié ça ? »), les comparaisons de référence suffisent à détecter un changement (c'est ce qu'exploitent React, Angular avec OnPush ou les signaux), l'historique (annuler/rétablir) devient trivial."
     },
     {
-      "title": "Mise en pratique",
-      "content": "La preuve minimale est locale, déterministe et peut être enrichie sans changer le contrat attendu."
+      "title": "Exemple résolu : composer et copier sans muter",
+      "conceptCodes": [
+        "TYPESCRIPT-FUNCTIONAL"
+      ],
+      "content": "Problème : appliquer plusieurs transformations à une valeur dans l'ordre, et ajouter une étiquette à un état sans le toucher.\n\nRaisonnement, étape par étape :\n1. pipe(...fonctions) renvoie une fonction qui applique les fonctions de gauche à droite : le résultat de l'une alimente la suivante (reduce).\n2. Exemple : pipe(x => x + 1, x => x * 2)(5) donne (5 + 1) × 2 = 12 ; l'ordre compte, car pipe(x => x * 2, x => x + 1)(5) donne 11.\n3. addTag retourne une copie : nouveau compteur, nouveau tableau avec l'étiquette ajoutée.\n4. L'état d'origine est gelé avec Object.freeze : toute tentative de mutation échoue (en mode strict, une exception). Cela prouve que addTag ne l'a pas modifié.\n5. Vérification : l'original garde count 1 et tags [a] ; la copie a count 2 et tags [a, b] ; les deux références sont différentes.\n```ts\nconst pipe = <T>(...fns: Array<(x: T) => T>) => (value: T): T => fns.reduce((acc, fn) => fn(acc), value);\n\nconst original: State = Object.freeze({ count: 1, tags: ['a'] });\nconst copie = addTag(original, 'b');\nconsole.log(copie === original);       // false\n```\nAttention : Object.freeze est superficiel. Le tableau tags à l'intérieur n'est pas gelé : original.tags.push('x') fonctionnerait. Utilise readonly string[] pour que le compilateur l'interdise, ou gèle récursivement."
+    },
+    {
+      "title": "Pureté dans la vraie vie",
+      "content": "- map, filter, reduce, flatMap composent des transformations sans boucle ni variable mutable. Garde-les lisibles : une chaîne de cinq opérations avec des lambdas de trois lignes se lit mal ; nomme les étapes.\n- Un map avec effet de bord (console.log, push dans un tableau externe) est un forEach déguisé ; utilise forEach ou for...of.\n- reduce avec un accumulateur mutable (acc.push) est discutable ; avec un accumulateur copié à chaque tour (...acc) devient O(n²) : choisis la lisibilité sauf si les données sont volumineuses.\n- structuredClone(valeur) fait une copie profonde (pas les fonctions) ; la copie de gros objets à chaque modification coûte : les bibliothèques de structures persistantes (Immer) partagent les parties inchangées.\n- Séparer les calculs purs de l'effet (lecture de fichier, appel réseau) : un cœur pur testable entouré d'une fine couche impure.\n- Les paramètres par défaut mutables ne se posent pas ainsi en TypeScript, mais passer un tableau en paramètre et le trier modifie l'original : trie une copie."
+    },
+    {
+      "title": "Erreurs fréquentes à reconnaître",
+      "content": "1. Modifier l'objet reçu en paramètre (state.count++) puis le retourner.\n2. Croire qu'un spread copie en profondeur : les objets internes restent partagés.\n3. Croire qu'Object.freeze gèle les objets imbriqués.\n4. Un effet de bord dans map ou filter.\n5. Trier ou inverser (sort, reverse) un tableau reçu.\n6. Une composition de dix fonctions anonymes illisible.\n\nRetrouve ces erreurs de mémoire avant l'exercice, puis vérifie-toi avec le quiz : c'est la récupération, pas la relecture, qui fixe la notion."
     }
   ],
   "keyConcepts": [
@@ -39,8 +48,8 @@
       "professionalExample": "Le reducer d'un panier d'achat modifiait directement le tableau items reçu en paramètre avec push(), ce qui fonctionnait en apparence mais cassait la détection de changement d'un composant d'interface qui compare l'ancienne et la nouvelle référence du panier. En réécrivant addItem comme une fonction pure qui retourne un nouveau tableau via le spread plutôt que de muter l'existant, l'interface s'est remise à jour correctement à chaque ajout.",
       "codeExample": "interface CartItem { sku: string; quantity: number; }\ninterface Cart { items: readonly CartItem[]; }\n\n// Pure : ne modifie jamais 'cart', retourne toujours un nouvel objet.\nfunction addItem(cart: Cart, item: CartItem): Cart {\n  const existing = cart.items.find(i => i.sku === item.sku);\n  if (!existing) {\n    return { items: [...cart.items, item] };\n  }\n  return {\n    items: cart.items.map(i =>\n      i.sku === item.sku ? { ...i, quantity: i.quantity + item.quantity } : i\n    ),\n  };\n}",
       "commonMistake": "Appliquer la technique sans mesurer son effet ni documenter sa frontière.",
-      "masteryQuestion": "Quelle contrainte de programmation fonctionnelle et immutabilité doit rester vraie lorsque le système évolue ?",
-      "masteryProof": "Exécuter la preuve, expliquer son invariant et proposer un cas d’échec."
+      "masteryQuestion": "Pourquoi un spread ne suffit-il pas pour une copie profonde, et qu'apporte l'immutabilité à la détection de changement ?",
+      "masteryProof": "Écrire pipe (composition de gauche à droite) et addTag (copie sans mutation d'un état gelé), puis prouver que l'original est intact."
     }
   ],
   "exercises": [
@@ -56,32 +65,80 @@
     {
       "code": "TYPESCRIPT-17-Q1",
       "type": "SINGLE_CHOICE",
-      "prompt": "Quelle preuve est la plus utile en revue ?",
+      "prompt": "Prédis la sortie :\n```ts\nconst a = { tags: ['x'] };\nconst b = { ...a };\nb.tags.push('y');\nconsole.log(a.tags.length);\n```\n",
       "choices": [
-        "Une exécution déterministe avec invariant explicite",
-        "Une sortie aléatoire",
-        "Une capture sans code"
+        "1",
+        "2 : le spread copie la référence du tableau, pas son contenu",
+        "0",
+        "Une erreur"
       ],
-      "correctChoice": 0,
-      "expectedKeywords": []
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Le spread est une copie superficielle : b.tags et a.tags désignent le même tableau. Pour ne pas partager, il faut copier aussi le tableau ({ ...a, tags: [...a.tags] }) ou utiliser structuredClone."
     },
     {
       "code": "TYPESCRIPT-17-Q2",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Prédis le résultat :\n```ts\nconst o = Object.freeze({ list: [1] });\no.list.push(2);\nconsole.log(o.list.length);\n```\n",
+      "choices": [
+        "1",
+        "2 : freeze est superficiel, le tableau interne reste modifiable",
+        "Une exception",
+        "0"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Object.freeze empêche de modifier les propriétés de o, pas les objets qu'elles référencent. Le tableau interne n'est pas gelé."
+    },
+    {
+      "code": "TYPESCRIPT-17-Q3",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Trouve le défaut :\n```ts\nfunction withDiscount(order: Order): Order {\n  order.total = order.total * 0.9;\n  return order;\n}\n```\n",
+      "choices": [
+        "total devrait être un string",
+        "La fonction modifie son argument : l'appelant voit sa commande changer sans l'avoir demandé ; il faut retourner une copie",
+        "Il manque async",
+        "Order doit être une classe"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Écris return { ...order, total: order.total * 0.9 }. Une fonction qui mute ses paramètres a des effets cachés et casse la détection de changement par référence."
+    },
+    {
+      "code": "TYPESCRIPT-17-Q4",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Que renvoie pipe(f, g)(x) ?",
+      "choices": [
+        "f(g(x))",
+        "g(f(x)) : f s'applique d'abord, puis g sur son résultat",
+        "f(x) + g(x)",
+        "Un tableau [f(x), g(x)]"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "pipe compose de gauche à droite (compose, au contraire, de droite à gauche). reduce passe le résultat de chaque fonction à la suivante."
+    },
+    {
+      "code": "TYPESCRIPT-17-Q5",
       "type": "FREE_TEXT",
-      "prompt": "Explique une décision liée à programmation fonctionnelle et immutabilité.",
+      "prompt": "Sans relire le cours, explique avec tes mots ce qu'est une fonction pure et pourquoi l'immutabilité simplifie la détection de changements.",
       "choices": [],
       "correctChoice": null,
       "expectedKeywords": [
-        "contrat",
-        "preuve",
-        "test"
-      ]
+        "pure",
+        "effet",
+        "meme",
+        "reference",
+        "copie"
+      ],
+      "modelAnswer": "Une fonction pure renvoie toujours le même résultat pour les mêmes arguments et n'a aucun effet de bord (aucune modification de ses arguments ni d'état global). Avec l'immutabilité, on ne modifie jamais une valeur : tout changement crée une nouvelle valeur, donc comparer deux références suffit pour savoir si quelque chose a changé, sans comparer tout le contenu, et personne ne peut modifier un état partagé à l'insu des autres.",
+      "explanation": "Une bonne réponse définit pureté (même entrée, même sortie, pas d'effet) et relie l'immutabilité à la comparaison de références et à l'absence de modification cachée."
     }
   ],
   "checklist": [
-    "Je peux expliquer le concept sans réciter une définition",
-    "Je sais exécuter et modifier la preuve",
-    "Je peux nommer un risque et son contrôle",
-    "Je relie cette étape à la suivante"
+    "Mes fonctions ne modifient pas leurs arguments",
+    "Je sais que le spread et freeze sont superficiels",
+    "Je compose des transformations lisibles avec pipe, map et filter",
+    "Je sépare le calcul pur de l'effet"
   ]
 }

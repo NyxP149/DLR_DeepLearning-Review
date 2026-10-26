@@ -1,9 +1,144 @@
 {
-  "code":"JAVA-22","language":"JAVA","number":22,"slug":"performance-observabilite-docker-entretien","title":"Performance, observabilité, Docker et préparation entretien","difficulty":"PROFESSIONNEL","threshold":80,"activityType":"LAB","prerequisites":["JAVA-21"],
-  "objectives":["Mesurer avant d'optimiser","Produire logs et métriques exploitables","Expliquer une livraison conteneurisée"],
-  "sections":[{"title":"Système observable","content":"Logs structurés, métriques et traces répondent à des questions différentes. Ils doivent permettre de relier une requête à son résultat sans exposer de secret.","conceptCodes":["JAVA-OBSERVABILITY"]},{"title":"Performance et livraison","content":"Un profilage guide l'optimisation. Docker rend l'environnement reproductible, mais ne remplace ni les tests, ni les limites de ressources, ni l'observabilité."}],
-  "keyConcepts":[{"code":"JAVA-OBSERVABILITY","name":"Observabilité","definition":"La télémétrie permet de comprendre l'état interne depuis les sorties du système.","whyExists":"Une panne de production ne peut pas être diagnostiquée seulement avec le code source.","whyImportant":"Latence, erreurs et saturation doivent être détectées avant l'impact durable.","minimalExample":"log.info(\"order_processed id={} duration_ms={}\", id, duration);","professionalExample":"Lors d'un pic de latence sur le paiement en ligne, l'équipe d'astreinte ne disposait que de logs texte libres du type Erreur paiement, sans identifiant de requête ni durée, rendant impossible de relier une plainte client à une ligne précise dans des millions d'entrées. Après le passage à des logs structurés incluant order_id, duration_ms et status, la même panne a été localisée en quelques minutes lors de l'incident suivant, en filtrant simplement sur les durées anormalement longues.","codeExample":"long start = System.currentTimeMillis();\ntry {\n    paymentGateway.charge(order);\n    long duration = System.currentTimeMillis() - start;\n    log.info(\"payment_processed order_id={} duration_ms={} status=OK\", order.id(), duration);\n} catch (PaymentException e) {\n    log.error(\"payment_failed order_id={} reason={}\", order.id(), e.getMessage());\n}","commonMistake":"Journaliser des secrets ou des messages impossibles à corréler.","masteryQuestion":"Quelle différence entre métrique, log et trace ?","masteryProof":"Produire une ligne structurée avec état et durée."}],
-  "exercises":[{"code":"JAVA-22-E1","title":"Produire une mesure","statement":"Formate la mesure et affiche exactement : latence=12ms status=UP","starterCode":"// TODO 1 : définis un record Health(String status, long latencyMs)\n\npublic class Main {\n    public static void main(String[] args) {\n        // TODO 2 : crée Health(\"UP\", 12)\n        // TODO 3 : affiche \"latence=12ms status=UP\" en composant la chaîne depuis les champs du record\n    }\n}\n","expectedOutput":"latence=12ms status=UP"}],
-  "quiz":[{"code":"JAVA-22-Q1","type":"SINGLE_CHOICE","prompt":"Quelle première étape précède une optimisation ?","choices":["Mesurer","Réécrire au hasard","Augmenter tous les timeouts"],"correctChoice":0,"expectedKeywords":[]},{"code":"JAVA-22-Q2","type":"FREE_TEXT","prompt":"Relie logs, métriques et traces à un incident.","choices":[],"correctChoice":null,"expectedKeywords":["log","métrique","trace","incident"]}],
-  "checklist":["Je mesure avant d'optimiser","Je corrèle la télémétrie","Je peux expliquer le chemin code-vers-conteneur"]
+  "code": "JAVA-22",
+  "language": "JAVA",
+  "number": 22,
+  "slug": "performance-observabilite-docker-entretien",
+  "title": "Performance, observabilité, Docker et préparation entretien",
+  "difficulty": "PROFESSIONNEL",
+  "threshold": 80,
+  "activityType": "LAB",
+  "prerequisites": [
+    "JAVA-21"
+  ],
+  "objectives": [
+    "Mesurer avant d'optimiser et choisir la bonne statistique (médiane, percentile) plutôt que la moyenne.",
+    "Produire un journal structuré clé=valeur avec niveau et identifiant de corrélation.",
+    "Distinguer logs, métriques et traces et dire laquelle consulter en premier lors d'un incident.",
+    "Expliquer ce qu'apporte un conteneur Docker et ce qu'une image doit contenir (ou pas)."
+  ],
+  "sections": [
+    {
+      "title": "Mesurer avant d'optimiser",
+      "content": "Optimiser sans mesure, c'est deviner. La démarche : définir un objectif (par exemple p95 sous 300 ms), mesurer, trouver le goulot (profiler), corriger un seul point, mesurer de nouveau.\n\nLa moyenne ment. Avec huit requêtes de 20 à 60 ms et une à 900 ms, la moyenne tombe à plus de 140 ms alors que la plupart des utilisateurs attendent moins de 60 ms. On utilise les percentiles : p50 (médiane), p95, p99. Un percentile p95 de 900 ms signifie que 5 % des requêtes sont au moins aussi lentes. Pour un échantillon trié, le rang le plus proche est ceil(p × n) : pour p95 sur 8 valeurs, c'est le 8e élément.\n\nTrois goulots courants : requêtes SQL (N+1, index manquant), appels réseau en série, allocation excessive. Les micro-optimisations de boucle comptent rarement."
+    },
+    {
+      "title": "Exemple résolu : lire un échantillon de requêtes",
+      "conceptCodes": [
+        "JAVA-OBSERVABILITY"
+      ],
+      "content": "Problème : à partir de huit requêtes (latence en ms, succès ou erreur), produire le taux d'erreur, p50 et p95, et une ligne de journal exploitable.\n\nRaisonnement, étape par étape :\n1. Trier les latences : 20, 25, 30, 40, 45, 50, 60, 900.\n2. p50 : rang ceil(0,5 × 8) = 4, donc 40 ms.\n3. p95 : rang ceil(0,95 × 8) = 8, donc 900 ms.\n4. Taux d'erreur : erreurs / total, ici 2 sur 8, soit 25,0 %.\n5. Règle de santé : au-delà de 20 % d'erreurs, le service est DEGRADED.\n6. Journal structuré : une ligne clé=valeur, facile à filtrer et à agréger.\n```java\nint rang = (int) Math.ceil(0.95 * triees.size());    // 8\nlong p95 = triees.get(rang - 1);                      // 900\n\nString log = String.format(\"level=ERROR route=%s status=%d latence=%dms trace=%s\",\n                           \"/orders\", 500, 900, \"abc123\");\n```\nUn journal utile porte un niveau, un identifiant de corrélation (trace) pour suivre une requête entre services, et jamais de secret ni de donnée personnelle."
+    },
+    {
+      "title": "Logs, métriques, traces et conteneurs",
+      "content": "Les trois piliers de l'observabilité répondent à des questions différentes :\n- Métriques : des nombres agrégés dans le temps (requêtes par seconde, p95, erreurs). Elles disent que quelque chose ne va pas. Spring Boot Actuator et Micrometer les exposent (/actuator/health, /actuator/metrics).\n- Logs : des événements textuels. Ils disent ce qui s'est passé pour une requête.\n- Traces : le parcours d'une requête à travers plusieurs services. Elles disent où le temps est perdu.\n\nEn incident : métrique d'abord (impact et début), trace ensuite (où), log enfin (pourquoi).\n\nDocker : une image est un modèle immuable (système minimal, JRE, ton jar), un conteneur en est une instance isolée. Bonnes pratiques : construction en plusieurs étapes (JDK pour compiler, JRE pour exécuter), utilisateur non root, aucune clé dans l'image, configuration par variables d'environnement, un health check pour l'orchestrateur."
+    },
+    {
+      "title": "Erreurs fréquentes à reconnaître",
+      "content": "1. Optimiser sans mesure ou en regardant seulement la moyenne.\n2. Un log non structuré (« ça marche pas ») sans niveau ni identifiant de corrélation.\n3. Journaliser un mot de passe, un jeton ou une donnée personnelle.\n4. Logger en boucle chaque itération au niveau INFO : bruit et coût.\n5. Copier des secrets dans l'image Docker ou les laisser dans le dépôt.\n6. Lancer le conteneur en root avec le JDK complet.\n\nRetrouve ces six erreurs de mémoire avant l'exercice, puis passe au quiz."
+    }
+  ],
+  "keyConcepts": [
+    {
+      "code": "JAVA-OBSERVABILITY",
+      "name": "Observabilité",
+      "definition": "La télémétrie permet de comprendre l'état interne depuis les sorties du système.",
+      "whyExists": "Une panne de production ne peut pas être diagnostiquée seulement avec le code source.",
+      "whyImportant": "Latence, erreurs et saturation doivent être détectées avant l'impact durable.",
+      "minimalExample": "log.info(\"order_processed id={} duration_ms={}\", id, duration);",
+      "professionalExample": "Lors d'un pic de latence sur le paiement en ligne, l'équipe d'astreinte ne disposait que de logs texte libres du type Erreur paiement, sans identifiant de requête ni durée, rendant impossible de relier une plainte client à une ligne précise dans des millions d'entrées. Après le passage à des logs structurés incluant order_id, duration_ms et status, la même panne a été localisée en quelques minutes lors de l'incident suivant, en filtrant simplement sur les durées anormalement longues.",
+      "codeExample": "long start = System.currentTimeMillis();\ntry {\n    paymentGateway.charge(order);\n    long duration = System.currentTimeMillis() - start;\n    log.info(\"payment_processed order_id={} duration_ms={} status=OK\", order.id(), duration);\n} catch (PaymentException e) {\n    log.error(\"payment_failed order_id={} reason={}\", order.id(), e.getMessage());\n}",
+      "commonMistake": "Journaliser des secrets ou des messages impossibles à corréler.",
+      "masteryQuestion": "Pourquoi regarder p95 plutôt que la moyenne, et quelle donnée d'observabilité consulter en premier lors d'un incident ?",
+      "masteryProof": "Calculer taux d'erreur, p50, p95 et moyenne d'un échantillon, produire un log structuré et en déduire l'état de santé."
+    }
+  ],
+  "exercises": [
+    {
+      "code": "JAVA-22-E1",
+      "title": "Lire un échantillon de latences",
+      "statement": "À partir de huit requêtes, calcule le nombre de requêtes et d'erreurs, le taux d'erreur, la moyenne, p50 et p95 (rang le plus proche : ceil(p × n)), génère une ligne de journal structuré pour la requête la plus lente et déduis l'état de santé (DEGRADED au-delà de 20 % d'erreurs). Affiche exactement :\nrequetes=8 erreurs=2 taux_erreur=25.0%\nmoyenne=146.25ms p50=40ms p95=900ms\nlevel=ERROR route=/orders status=500 latence=900ms trace=abc123\nSante : DEGRADED",
+      "starterCode": "import java.util.*;\n\npublic class Main {\n    record Request(String route, int status, long latencyMs, String trace) {}\n\n    public static void main(String[] args) {\n        List<Request> requests = List.of(\n                new Request(\"/orders\", 200, 20, \"t1\"),\n                new Request(\"/orders\", 200, 25, \"t2\"),\n                new Request(\"/orders\", 200, 30, \"t3\"),\n                new Request(\"/orders\", 200, 40, \"t4\"),\n                new Request(\"/orders\", 200, 45, \"t5\"),\n                new Request(\"/orders\", 200, 50, \"t6\"),\n                new Request(\"/orders\", 503, 60, \"t7\"),\n                new Request(\"/orders\", 500, 900, \"abc123\"));\n        // TODO 1 : nombre de requêtes, nombre d'erreurs (status >= 500), taux d'erreur en % avec 1 décimale\n        //          -> \"requetes=8 erreurs=2 taux_erreur=25.0%\"   (String.format(Locale.ROOT, ...))\n        // TODO 2 : latences triées ; moyenne (2 décimales), p50 et p95 par rang le plus proche (ceil(p * n))\n        //          -> \"moyenne=146.25ms p50=40ms p95=900ms\"\n        // TODO 3 : journal structuré de la requête la plus lente : \"level=ERROR route=... status=... latence=...ms trace=...\"\n        //          (level=ERROR si status >= 500, sinon INFO)\n        // TODO 4 : \"Sante : DEGRADED\" si taux d'erreur > 20, sinon \"Sante : UP\"\n    }\n}\n",
+      "expectedOutput": "requetes=8 erreurs=2 taux_erreur=25.0%\nmoyenne=146.25ms p50=40ms p95=900ms\nlevel=ERROR route=/orders status=500 latence=900ms trace=abc123\nSante : DEGRADED"
+    }
+  ],
+  "quiz": [
+    {
+      "code": "JAVA-22-Q1",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Neuf requêtes durent 30 ms et une dure 3 000 ms. Quelle statistique décrit le mieux l'expérience de la plupart des utilisateurs ?",
+      "choices": [
+        "La moyenne (327 ms)",
+        "La médiane (30 ms), complétée par p95/p99 pour voir les lenteurs",
+        "Le maximum seul",
+        "La somme des durées"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "La moyenne est tirée par la valeur extrême et ne correspond à aucun utilisateur réel. La médiane montre le cas courant, et p95 ou p99 révèlent la queue de distribution qu'il faut surveiller."
+    },
+    {
+      "code": "JAVA-22-Q2",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Ton service devient lent depuis 14 h. Quelle est la meilleure première étape ?",
+      "choices": [
+        "Lire tous les logs du jour",
+        "Regarder les métriques (latence, erreurs) pour situer le début et l'ampleur, puis descendre vers traces et logs",
+        "Redémarrer le serveur",
+        "Ajouter des threads"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Les métriques donnent l'impact et le moment du changement en quelques secondes. Les traces localisent le composant lent, les logs expliquent la cause. Redémarrer ou ajouter des threads sans diagnostic masque le problème."
+    },
+    {
+      "code": "JAVA-22-Q3",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Trouve le défaut de ce journal :\n```java\nlog.info(\"Connexion de \" + email + \" avec le mot de passe \" + password);\n```\n",
+      "choices": [
+        "Le niveau INFO est trop bas",
+        "Un secret est écrit en clair dans les logs, lisibles par beaucoup de monde",
+        "Il manque un point final",
+        "La concaténation est interdite"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Les journaux sont copiés, indexés et lus par des personnes qui ne devraient pas connaître les mots de passe. On n'y met ni secret, ni jeton, ni donnée personnelle superflue. La concaténation est un problème de style, pas de sécurité."
+    },
+    {
+      "code": "JAVA-22-Q4",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Quelle pratique est recommandée pour une image Docker d'application Java ?",
+      "choices": [
+        "Y copier le fichier .env avec les clés",
+        "Construire en plusieurs étapes, exécuter avec un JRE et un utilisateur non root, configurer par variables d'environnement",
+        "Utiliser l'utilisateur root pour éviter les problèmes de droits",
+        "Embarquer le JDK et le code source complet"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Une image plus petite et moins privilégiée réduit la surface d'attaque. Les secrets ne doivent jamais se trouver dans l'image ; ils sont injectés à l'exécution."
+    },
+    {
+      "code": "JAVA-22-Q5",
+      "type": "FREE_TEXT",
+      "prompt": "Sans relire le cours, explique avec tes mots la différence entre métriques, logs et traces, et dans quel ordre les consulter en incident.",
+      "choices": [],
+      "correctChoice": null,
+      "expectedKeywords": [
+        "metrique",
+        "log",
+        "trace",
+        "agreg",
+        "requete"
+      ],
+      "modelAnswer": "Les métriques sont des mesures agrégées dans le temps : elles montrent qu'un problème existe, son ampleur et son début. Les traces suivent une requête à travers les services et montrent où le temps est perdu. Les logs sont des événements détaillés qui expliquent pourquoi. En incident, on commence par les métriques, puis les traces, puis les logs.",
+      "explanation": "Une bonne réponse associe chaque pilier à sa question (qu'est-ce qui ne va pas, où, pourquoi) et donne l'ordre métriques, traces, logs."
+    }
+  ],
+  "checklist": [
+    "Je mesure avant d'optimiser et je regarde p50 et p95, pas seulement la moyenne",
+    "Mes logs sont structurés, avec niveau et identifiant de corrélation",
+    "Je n'écris jamais de secret dans un log ni dans une image Docker",
+    "Je sais dans quel ordre consulter métriques, traces et logs"
+  ]
 }

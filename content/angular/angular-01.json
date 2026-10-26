@@ -11,21 +11,30 @@
     "TYPESCRIPT-24"
   ],
   "objectives": [
-    "Expliquer architecture standalone et découpage par fonctionnalité",
-    "Construire une preuve exécutable et déterministe",
-    "Relier le concept à une décision professionnelle"
+    "Organiser une application Angular standalone par fonctionnalité (features, shared, core).",
+    "Énoncer la règle de dépendance : une fonctionnalité utilise shared et core mais jamais une autre fonctionnalité.",
+    "Charger une fonctionnalité à la demande avec le routeur et expliquer ce que cela change pour le bundle.",
+    "Repérer un import interdit, un cycle ou un service global qui cache un couplage."
   ],
   "sections": [
     {
-      "title": "Concept et usage professionnel",
-      "content": "Architecture standalone et découpage par fonctionnalité répond à un besoin concret de maintenabilité, de sûreté ou de performance. Le laboratoire demande de rendre la décision observable et vérifiable.",
-      "conceptCodes": [
-        "ANGULAR-ARCHITECTURE"
-      ]
+      "title": "Standalone : le composant déclare ce dont il a besoin",
+      "content": "Depuis Angular 14-15, un composant peut être standalone : il importe lui-même ses dépendances de template au lieu de passer par un NgModule.\n```ts\n@Component({\n  selector: 'app-order-list',\n  imports: [DatePipe, RouterLink, OrderRowComponent],      // ce que le template utilise\n  templateUrl: './order-list.component.html',\n  changeDetection: ChangeDetectionStrategy.OnPush,\n})\nexport class OrderListComponent { }\n```\nLe point d'entrée utilise bootstrapApplication(AppComponent, { providers: [provideRouter(routes), provideHttpClient()] }). Les dépendances sont locales et visibles, l'arbre de modules disparaît, et le chargement différé se fait par composant ou par ensemble de routes (loadComponent, loadChildren). Les nouveaux projets sont standalone par défaut."
     },
     {
-      "title": "Mise en pratique",
-      "content": "La preuve TypeScript isole le contrat réactif ; son intégration dans un composant Angular est décrite sans rendre le runner dépendant d'un navigateur."
+      "title": "Exemple résolu : des frontières qui restent orientées",
+      "conceptCodes": [
+        "ANGULAR-ARCHITECTURE"
+      ],
+      "content": "Problème : une application grossit et chaque équipe importe librement le code des autres. Il faut une règle simple et un contrôle automatique.\n\nRaisonnement, étape par étape :\n1. Structure : src/app/core (services singletons : authentification, configuration, intercepteurs), src/app/shared (composants et pipes réutilisables, sans logique métier), src/app/features/orders, features/customers (une fonctionnalité = ses routes, composants, services, modèles).\n2. Règle : une fonctionnalité peut dépendre de shared et de core ; jamais d'une autre fonctionnalité (sinon deux fonctionnalités ne peuvent plus évoluer ni être chargées indépendamment).\n3. shared ne dépend d'aucune fonctionnalité (sinon le « commun » devient un fourre-tout couplé au métier).\n4. core ne dépend de rien d'autre (c'est la base).\n5. Contrôle : on parcourt les imports (source → cible) et on signale chaque dépendance interdite avec la raison.\n6. Vérification : orders → shared autorisé ; orders → customers interdit ; shared → orders interdit ; customers → core autorisé : 2 violations.\n```ts\nfunction check(from: string, to: string): string | null {\n  if (from === 'core') return to === 'core' ? null : 'core ne dépend de rien d\\'autre';\n  if (from === 'shared' && isFeature(to)) return 'shared ne dépend d\\'aucune fonctionnalité';\n  if (isFeature(from) && isFeature(to) && from !== to) return 'une fonctionnalité ne dépend pas d\\'une autre';\n  return null;\n}\n```\nDans un vrai projet, ce contrôle est confié à un outil (règles ESLint de frontières, Nx enforce-module-boundaries) exécuté en intégration continue."
+    },
+    {
+      "title": "Découpage, chargement différé et couplage caché",
+      "content": "Chargement différé : les routes d'une fonctionnalité deviennent un bundle séparé, téléchargé à la première visite.\n```ts\nexport const routes: Routes = [\n  { path: 'orders', loadChildren: () => import('./features/orders/orders.routes').then(m => m.ORDERS_ROUTES) },\n  { path: 'customers', loadChildren: () => import('./features/customers/customers.routes') },\n];\n```\nLe bundle initial reste petit ; le coût est reporté à la navigation (préchargement possible avec une stratégie de preloading).\n\nCommunication entre fonctionnalités : plutôt qu'un import direct, passe par un service du core, par les paramètres de route ou par un contrat (interface) défini dans shared. Un service global qui garde l'état de tout (« AppState ») cache du couplage : chaque fonctionnalité en dépend sans que ce soit visible.\n\nComposants « intelligents » (smart) qui connaissent les services et l'état, et composants de présentation (dumb) qui reçoivent des inputs et émettent des outputs : les seconds vont en shared ou dans la fonctionnalité, selon leur généralité. providedIn: 'root' crée un singleton pour toute l'application ; limite la portée (providers de route ou de composant) quand l'état ne doit pas être global. Évite les cycles d'import : ils signalent presque toujours une frontière mal tracée."
+    },
+    {
+      "title": "Erreurs fréquentes à reconnaître",
+      "content": "1. Une fonctionnalité qui importe un composant d'une autre fonctionnalité « juste cette fois ».\n2. Un dossier shared qui contient de la logique métier.\n3. Un service providedIn: 'root' qui garde l'état de plusieurs fonctionnalités.\n4. Toutes les routes chargées dans le bundle initial.\n5. Aucune règle automatisée : la convention s'érode à chaque pull request.\n6. Un module « utils » qui importe tout.\n\nRetrouve ces erreurs de mémoire avant l'exercice, puis vérifie-toi avec le quiz : c'est la récupération, pas la relecture, qui fixe la notion."
     }
   ],
   "keyConcepts": [
@@ -39,8 +48,8 @@
       "professionalExample": "Une équipe qui fait grossir son application catalogue-panier-paiement en un seul AppModule voit ses temps de build et de test exploser et les fonctionnalités se coupler entre elles sans qu'aucun compilateur ne le signale. En découpant en dossiers features/catalog, features/cart et features/checkout, chacun exposant des composants standalone avec leurs propres imports, une équipe peut faire évoluer le panier sans recompiler ni retester le catalogue. L'erreur classique est de laisser un composant de features/checkout importer directement un composant interne de features/catalog au lieu de passer par une interface partagée dans shared/, ce qui recrée le couplage que le découpage devait éviter.",
       "codeExample": "// features/cart/cart.routes.ts\nexport const CART_ROUTES: Routes = [\n  {\n    path: '',\n    loadComponent: () =>\n      import('./cart-page/cart-page.component').then(m => m.CartPageComponent),\n  },\n];\n\n// app.routes.ts\nexport const routes: Routes = [\n  {\n    path: 'cart',\n    loadChildren: () => import('./features/cart/cart.routes').then(m => m.CART_ROUTES),\n  },\n  {\n    path: 'catalog',\n    loadChildren: () => import('./features/catalog/catalog.routes').then(m => m.CATALOG_ROUTES),\n  },\n];",
       "commonMistake": "Appliquer la technique sans mesurer son effet ni documenter sa frontière.",
-      "masteryQuestion": "Quelle contrainte de architecture standalone et découpage par fonctionnalité doit rester vraie lorsque le système évolue ?",
-      "masteryProof": "Exécuter la preuve, expliquer son invariant et proposer un cas d’échec."
+      "masteryQuestion": "Pourquoi une fonctionnalité ne doit-elle pas dépendre d'une autre, et comment faire respecter la règle sans compter sur la discipline ?",
+      "masteryProof": "Écrire le contrôle qui détecte les imports interdits entre core, shared et fonctionnalités et compter les violations."
     }
   ],
   "exercises": [
@@ -56,32 +65,80 @@
     {
       "code": "ANGULAR-01-Q1",
       "type": "SINGLE_CHOICE",
-      "prompt": "Quelle preuve est la plus utile en revue ?",
+      "prompt": "Quel import viole la règle d'architecture par fonctionnalité ?",
       "choices": [
-        "Une exécution déterministe avec invariant explicite",
-        "Une sortie aléatoire",
-        "Une capture sans code"
+        "features/orders importe shared/ui/button",
+        "features/orders importe features/customers/customer.service",
+        "features/customers importe core/auth",
+        "shared/ui importe core/config"
       ],
-      "correctChoice": 0,
-      "expectedKeywords": []
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Une fonctionnalité ne dépend pas d'une autre : elles évoluent et se chargent indépendamment. Si orders a besoin d'un client, il passe par un contrat dans shared ou core, ou par les paramètres de route."
     },
     {
       "code": "ANGULAR-01-Q2",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Que change loadChildren avec import() dans la configuration des routes ?",
+      "choices": [
+        "Rien",
+        "Les routes de la fonctionnalité sont dans un bundle séparé, téléchargé à la première navigation concernée",
+        "Les routes sont supprimées en production",
+        "La fonctionnalité est chargée deux fois"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Le bundle initial est plus petit et l'application démarre plus vite. Le coût du téléchargement est reporté à la première visite de la fonctionnalité."
+    },
+    {
+      "code": "ANGULAR-01-Q3",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Trouve le défaut :\n```ts\n@Injectable({ providedIn: 'root' })\nexport class AppState {\n  orders = signal<Order[]>([]);\n  customers = signal<Customer[]>([]);\n  cart = signal<Cart | null>(null);\n}\n```\n",
+      "choices": [
+        "signal est interdit dans un service",
+        "Un état global unique couple toutes les fonctionnalités entre elles de façon invisible",
+        "providedIn: 'root' n'existe pas",
+        "Il manque OnPush"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Chaque fonctionnalité doit posséder son état (service local à la route ou à la fonctionnalité). Un état global partagé devient un point de couplage : tout peut le modifier et tout en dépend."
+    },
+    {
+      "code": "ANGULAR-01-Q4",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Comment s'assurer que la règle de dépendance ne se dégrade pas avec le temps ?",
+      "choices": [
+        "En espérant que l'équipe la respecte",
+        "Avec un contrôle automatique en intégration continue (règles ESLint de frontières, Nx)",
+        "En supprimant le dossier shared",
+        "En interdisant les imports relatifs"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Une convention non vérifiée s'érode. Un outil qui échoue la construction à la première violation la rend durable."
+    },
+    {
+      "code": "ANGULAR-01-Q5",
       "type": "FREE_TEXT",
-      "prompt": "Explique une décision liée à architecture standalone et découpage par fonctionnalité.",
+      "prompt": "Sans relire le cours, explique avec tes mots le rôle des dossiers core, shared et features et le sens des dépendances entre eux.",
       "choices": [],
       "correctChoice": null,
       "expectedKeywords": [
-        "contrat",
-        "preuve",
-        "test"
-      ]
+        "core",
+        "shared",
+        "fonctionnalite",
+        "depend",
+        "sens"
+      ],
+      "modelAnswer": "core contient les services de base de l'application (authentification, configuration, intercepteurs) et ne dépend de rien d'autre. shared contient des composants et pipes réutilisables sans logique métier et ne dépend d'aucune fonctionnalité. Chaque fonctionnalité regroupe ses routes, composants et services et peut utiliser shared et core mais pas une autre fonctionnalité. Les dépendances vont donc des fonctionnalités vers shared puis core, jamais dans l'autre sens.",
+      "explanation": "Une bonne réponse nomme le rôle de chaque dossier et le sens des dépendances : fonctionnalités vers shared et core, jamais latéralement ni en sens inverse."
     }
   ],
   "checklist": [
-    "Je peux expliquer le concept sans réciter une définition",
-    "Je sais exécuter et modifier la preuve",
-    "Je peux nommer un risque et son contrôle",
-    "Je relie cette étape à la suivante"
+    "Mes composants sont standalone et déclarent leurs imports",
+    "Mes fonctionnalités ne s'importent pas entre elles",
+    "Mes routes de fonctionnalité sont chargées à la demande",
+    "Une règle automatisée protège mes frontières"
   ]
 }

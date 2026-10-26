@@ -1,16 +1,142 @@
 {
-  "code": "PYTHON-01", "language": "PYTHON", "number": 1, "slug": "python-depuis-java",
-  "title": "Python depuis Java : syntaxe, types et collections", "difficulty": "BASE", "threshold": 70, "activityType": "LAB", "prerequisites": [],
-  "objectives": ["Exécuter un programme Python isolé", "Comparer le typage dynamique au typage statique Java", "Écrire une fonction annotée et manipuler une liste"],
+  "code": "PYTHON-01",
+  "language": "PYTHON",
+  "number": 1,
+  "slug": "python-depuis-java",
+  "title": "Python depuis Java : syntaxe, types et collections",
+  "difficulty": "BASE",
+  "threshold": 70,
+  "activityType": "LAB",
+  "prerequisites": [],
+  "objectives": [
+    "Comparer typage dynamique (Python) et typage statique (Java) et dire ce qu'une annotation garantit réellement.",
+    "Manipuler listes, tuples, ensembles et dictionnaires et prédire l'effet d'une copie ou d'un alias.",
+    "Écrire une fonction annotée et une compréhension lisible.",
+    "Repérer les pièges d'un développeur Java : indentation, ==/is, valeur par défaut mutable."
+  ],
   "sections": [
-    {"title": "Du script au résultat", "content": "Python exécute directement le module source. Les annotations de type documentent les intentions mais ne transforment pas Python en langage statiquement vérifié à l'exécution.", "conceptCodes": ["PYTHON-DYNAMIC-TYPING"]},
-    {"title": "Comparer avec Java", "content": "Une liste Python peut évoluer dynamiquement. Dans un code professionnel, des annotations, des tests et des outils comme mypy rendent les contrats plus explicites."}
+    {
+      "title": "Python vu depuis Java : ce qui change vraiment",
+      "content": "En Java, le compilateur vérifie les types avant l'exécution et le bloc est délimité par des accolades. En Python, le type appartient à la valeur au moment de l'exécution (typage dynamique), les blocs sont délimités par l'indentation et il n'y a pas de compilation séparée.\n```python\nx = 3          # x désigne un int\nx = \"trois\"    # le même nom peut désigner une str : aucune erreur\ntype(x)        # <class 'str'>\n```\nPython pratique le duck typing : si un objet a la méthode attendue, on l'utilise, sans déclarer d'interface. Les entiers n'ont pas de limite de taille, les chaînes sont immuables, les listes et dictionnaires sont mutables. Une valeur est « fausse » si elle est vide ou nulle (0, \"\", [], {}, None) : on écrit if items: plutôt que if len(items) > 0."
+    },
+    {
+      "title": "Exemple résolu : annotations, compréhensions et alias",
+      "conceptCodes": [
+        "PYTHON-DYNAMIC-TYPING"
+      ],
+      "content": "Problème : écrire une fonction qui additionne les carrés des nombres pairs, puis montrer l'effet d'un alias.\n\nRaisonnement, étape par étape :\n1. Signature annotée : def sum_even_squares(numbers: list[int]) -> int. L'annotation documente le contrat pour les humains et pour des outils comme mypy ; l'interpréteur ne la vérifie pas.\n2. Sélection et transformation en une compréhension : n * n for n in numbers if n % 2 == 0.\n3. Agrégation avec sum().\n4. Alias : b = a ne copie pas la liste, les deux noms désignent le même objet ; a.copy() (ou list(a)) crée une copie superficielle.\n5. Vérification : modifier b modifie a, modifier la copie ne change pas a.\n```python\ndef sum_even_squares(numbers: list[int]) -> int:\n    return sum(n * n for n in numbers if n % 2 == 0)\n\nsum_even_squares([1, 2, 3, 4, 5])   # 4 + 16 = 20\n\na = [1, 2]\nb = a            # alias\nc = a.copy()     # copie\nb.append(3)      # a vaut aussi [1, 2, 3] ; c reste [1, 2]\n```\nUne annotation n'est pas une garantie : double(\"a\") avec def double(value: int) -> int: return value * 2 s'exécute et renvoie \"aa\"."
+    },
+    {
+      "title": "Égalité, identité et valeurs par défaut",
+      "content": "== compare les valeurs, is compare l'identité (le même objet en mémoire). Utilise == pour comparer des valeurs, is seulement pour None (x is None).\n\nValeur par défaut mutable, piège classique : elle est évaluée une seule fois, à la définition de la fonction.\n```python\ndef ajoute(valeur, liste=[]):     # DANGER : la même liste est réutilisée à chaque appel\n    liste.append(valeur)\n    return liste\n\najoute(\"a\")   # ['a']\najoute(\"b\")   # ['a', 'b']  <- surprise\n\ndef ajoute_sur(valeur, liste=None):\n    if liste is None:\n        liste = []\n    liste.append(valeur)\n    return liste\n```\nCollections : list (ordonnée, mutable), tuple (ordonné, immuable), set (sans doublon, non ordonné), dict (clé → valeur, ordre d'insertion conservé). Une clé de dict ou un élément de set doit être hashable, donc immuable (un tuple oui, une liste non)."
+    },
+    {
+      "title": "Erreurs fréquentes à reconnaître",
+      "content": "1. Croire qu'une annotation de type est vérifiée à l'exécution.\n2. b = a pour « copier » une liste.\n3. Une liste ou un dict comme valeur par défaut d'un paramètre.\n4. Comparer avec is des nombres ou des chaînes au lieu de ==.\n5. Mélanger tabulations et espaces dans l'indentation.\n6. Écrire for i in range(len(items)) quand for item in items suffit.\n\nRetrouve ces erreurs de mémoire avant l'exercice, puis vérifie-toi avec le quiz : c'est la récupération, pas la relecture, qui fixe la notion."
+    }
   ],
-  "keyConcepts": [{"code":"PYTHON-DYNAMIC-TYPING","name":"Typage dynamique documenté","definition":"Le type appartient à la valeur au moment de l'exécution ; une annotation exprime un contrat destiné aux humains et aux outils.","whyExists":"Il permet une écriture concise tout en laissant la possibilité d'ajouter des contrats progressifs.","whyImportant":"Comprendre cette différence avec Java évite de croire qu'une annotation Python bloque toutes les erreurs de type à l'exécution.","minimalExample":"def total(values: list[int]) -> int: return sum(values)","professionalExample":"Une équipe migrant un service Java vers Python découvre en production qu'une fonction annotée total(values: list[int]) -> int a été appelée avec une chaîne de caractères venant d'un formulaire mal validé : l'annotation ne bloque rien à l'exécution, seule une conversion explicite ou un outil comme mypy exécuté en CI aurait détecté l'erreur avant le déploiement. Depuis, l'équipe ajoute mypy au pipeline d'intégration continue pour retrouver une partie des garanties statiques auxquelles elle était habituée en Java.","codeExample":"def total(values: list[int]) -> int:\n    return sum(values)\n\npayload = \"12,7,3\"  # donnée mal validée venant d'un formulaire externe\nprint(total(payload))  # TypeError seulement à l'exécution : Python ne vérifie jamais list[int]\n\n# $ mypy service.py\n# error: Argument 1 to \"total\" has incompatible type \"str\"; expected \"list[int]\"","commonMistake":"Confondre annotation de type et contrôle obligatoire par l'interpréteur.","masteryQuestion":"Que garantit réellement l'annotation -> str dans une fonction Python ?","masteryProof":"Exécuter la fonction puis expliquer le rôle de l'annotation et celui des tests."}],
-  "exercises": [{"code":"PYTHON-01-E1","title":"Présenter Python","statement":"Complète la fonction pour produire exactement : Python: dynamique et lisible","starterCode":"def describe_language(name: str) -> str:\n    # TODO : retourne la phrase \"<name>: dynamique et lisible\"\n    ...\n\nprint(describe_language(\"Python\"))\n","expectedOutput":"Python: dynamique et lisible"}],
+  "keyConcepts": [
+    {
+      "code": "PYTHON-DYNAMIC-TYPING",
+      "name": "Typage dynamique documenté",
+      "definition": "Le type appartient à la valeur au moment de l'exécution ; une annotation exprime un contrat destiné aux humains et aux outils.",
+      "whyExists": "Il permet une écriture concise tout en laissant la possibilité d'ajouter des contrats progressifs.",
+      "whyImportant": "Comprendre cette différence avec Java évite de croire qu'une annotation Python bloque toutes les erreurs de type à l'exécution.",
+      "minimalExample": "def total(values: list[int]) -> int: return sum(values)",
+      "professionalExample": "Une équipe migrant un service Java vers Python découvre en production qu'une fonction annotée total(values: list[int]) -> int a été appelée avec une chaîne de caractères venant d'un formulaire mal validé : l'annotation ne bloque rien à l'exécution, seule une conversion explicite ou un outil comme mypy exécuté en CI aurait détecté l'erreur avant le déploiement. Depuis, l'équipe ajoute mypy au pipeline d'intégration continue pour retrouver une partie des garanties statiques auxquelles elle était habituée en Java.",
+      "codeExample": "def total(values: list[int]) -> int:\n    return sum(values)\n\npayload = \"12,7,3\"  # donnée mal validée venant d'un formulaire externe\nprint(total(payload))  # TypeError seulement à l'exécution : Python ne vérifie jamais list[int]\n\n# $ mypy service.py\n# error: Argument 1 to \"total\" has incompatible type \"str\"; expected \"list[int]\"",
+      "commonMistake": "Confondre annotation de type et contrôle obligatoire par l'interpréteur.",
+      "masteryQuestion": "Qu'apporte une annotation de type en Python par rapport à un type Java, et pourquoi b = a ne copie-t-il pas une liste ?",
+      "masteryProof": "Écrire une fonction annotée avec compréhension, montrer qu'une annotation n'est pas imposée et distinguer alias et copie."
+    }
+  ],
+  "exercises": [
+    {
+      "code": "PYTHON-01-E1",
+      "title": "Trois réflexes Python pour un développeur Java",
+      "statement": "Complète le programme : une fonction describe_language, une fonction qui nomme les types de valeurs, une somme de carrés pairs avec compréhension, la preuve qu'une annotation n'est pas imposée, et la différence entre alias et copie. Affiche exactement :\nPython: dynamique et lisible\nTypes: int, str, list, float\nSomme des carres pairs: 20\nAnnotation non imposee: aa\nAlias: [1, 2, 3] [1, 2, 3]\nCopie: [1, 2, 3] [1, 2]",
+      "starterCode": "def describe_language(name: str) -> str:\n    # TODO 1 : retourne \"<name>: dynamique et lisible\"\n    ...\n\n\ndef type_names(values: list) -> str:\n    # TODO 2 : retourne les noms de types des valeurs (type(v).__name__) séparés par \", \"\n    ...\n\n\ndef sum_even_squares(numbers: list[int]) -> int:\n    # TODO 3 : somme des carrés des nombres pairs, avec une compréhension / expression génératrice\n    ...\n\n\ndef double(value: int) -> int:\n    return value * 2\n\n\nprint(describe_language(\"Python\"))\nprint(\"Types:\", type_names([3, \"a\", [1], 2.5]))\nprint(\"Somme des carres pairs:\", sum_even_squares([1, 2, 3, 4, 5]))\n# TODO 4 : affiche \"Annotation non imposee: \" suivi de double(\"a\") (aucune erreur : l'annotation n'est pas vérifiée)\n# TODO 5 : a = [1, 2] ; b = a (alias) ; c = a.copy() ; b.append(3)\n#          affiche \"Alias: \" + a et b, puis \"Copie: \" + a et c   (print(a, b) affiche \"[1, 2, 3] [1, 2, 3]\")\n",
+      "expectedOutput": "Python: dynamique et lisible\nTypes: int, str, list, float\nSomme des carres pairs: 20\nAnnotation non imposee: aa\nAlias: [1, 2, 3] [1, 2, 3]\nCopie: [1, 2, 3] [1, 2]"
+    }
+  ],
   "quiz": [
-    {"code":"PYTHON-01-Q1","type":"SINGLE_CHOICE","prompt":"À quoi sert principalement une annotation de type Python ?","choices":["À documenter et aider les outils d'analyse","À compiler automatiquement en Java","À interdire toute valeur différente à l'exécution"],"correctChoice":0,"expectedKeywords":[]},
-    {"code":"PYTHON-01-Q2","type":"FREE_TEXT","prompt":"Compare brièvement le typage Python et Java.","choices":[],"correctChoice":null,"expectedKeywords":["dynamique","statique","exécution"]}
+    {
+      "code": "PYTHON-01-Q1",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Quel rôle jouent réellement les annotations de type en Python ?",
+      "choices": [
+        "Elles sont vérifiées par l'interpréteur à chaque appel",
+        "Elles documentent le contrat et sont exploitées par des outils comme mypy, mais ne sont pas imposées à l'exécution",
+        "Elles accélèrent le programme",
+        "Elles remplacent les tests"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Python ignore les annotations à l'exécution. Elles servent aux humains, aux éditeurs et aux vérificateurs statiques (mypy, pyright). C'est une grande différence avec Java, où le compilateur refuse un type incorrect."
+    },
+    {
+      "code": "PYTHON-01-Q2",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Prédis la sortie :\n```python\na = [1, 2]\nb = a\nb.append(3)\nprint(a)\n```\n",
+      "choices": [
+        "[1, 2]",
+        "[1, 2, 3]",
+        "[3]",
+        "Une erreur"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "b = a ne copie pas : les deux noms désignent le même objet liste. Modifier b modifie a. Pour une copie indépendante, utilise a.copy() ou list(a)."
+    },
+    {
+      "code": "PYTHON-01-Q3",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Trouve le bug :\n```python\ndef add_tag(tag, tags=[]):\n    tags.append(tag)\n    return tags\n\nadd_tag(\"a\")\nprint(add_tag(\"b\"))\n```\n",
+      "choices": [
+        "Il affiche ['b']",
+        "Il affiche ['a', 'b'] : la liste par défaut est créée une seule fois et réutilisée",
+        "Il lève une TypeError",
+        "Il affiche []"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "La valeur par défaut est évaluée une seule fois, à la définition. Le deuxième appel réutilise donc la liste déjà modifiée. On utilise tags=None puis if tags is None: tags = []."
+    },
+    {
+      "code": "PYTHON-01-Q4",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Quelle écriture est la plus pythonique pour savoir si une liste items est non vide ?",
+      "choices": [
+        "if len(items) > 0:",
+        "if items:",
+        "if items != None:",
+        "if items is not []:"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Une liste vide est « fausse », une liste non vide est « vraie » : if items: est idiomatique. Le dernier choix est faux : is compare l'identité, et [] crée un nouvel objet à chaque fois."
+    },
+    {
+      "code": "PYTHON-01-Q5",
+      "type": "FREE_TEXT",
+      "prompt": "Sans relire le cours, explique avec tes mots la différence entre typage dynamique (Python) et typage statique (Java), et ce que change une annotation.",
+      "choices": [],
+      "correctChoice": null,
+      "expectedKeywords": [
+        "execution",
+        "compil",
+        "annotation",
+        "type",
+        "outil"
+      ],
+      "modelAnswer": "En Java, les types sont vérifiés à la compilation : une incohérence empêche d'exécuter le programme. En Python, le type appartient à la valeur et n'est vérifié qu'à l'exécution, quand l'opération échoue. Une annotation documente le contrat et alimente des outils (mypy, éditeur) mais n'est pas imposée par l'interpréteur.",
+      "explanation": "Une bonne réponse oppose vérification à la compilation et à l'exécution, et précise qu'une annotation est un contrat pour humains et outils, pas une contrainte d'exécution."
+    }
   ],
-  "checklist": ["Je sais lancer un script Python", "Je distingue annotation et vérification d'exécution", "Je peux comparer une liste Python à une collection Java"]
+  "checklist": [
+    "Je sais que l'interpréteur n'impose pas les annotations de type",
+    "Je distingue alias et copie d'une liste",
+    "J'évite les valeurs par défaut mutables",
+    "J'ai prédit la sortie des extraits avant de lire les corrections"
+  ]
 }

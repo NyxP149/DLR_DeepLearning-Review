@@ -11,25 +11,30 @@
     "ARCHITECTURE-21"
   ],
   "objectives": [
-    "Relier charge, capacité, saturation et stratégie de mise à l’échelle",
-    "Justifier les compromis et nommer un risque opérationnel",
-    "Produire une preuve reproductible avant d’élargir la solution"
+    "Dimensionner un service à partir du trafic, de la capacité par instance, d'un taux d'utilisation cible et d'une redondance.",
+    "Appliquer la loi de Little (concurrence = débit × latence) pour estimer pools et connexions.",
+    "Définir une règle de mise à l'échelle automatique avec seuils et délai de stabilisation.",
+    "Estimer le coût et repérer les goulots non scalables (base unique, état local)."
   ],
   "sections": [
     {
-      "title": "Concept clé et décision",
+      "title": "Dimensionner, c'est calculer avec des marges",
+      "content": "Combien d'instances faut-il ? La capacité d'une instance se mesure (tests de charge), le trafic se prévoit (pic, croissance), et on ne vise jamais 100 % d'utilisation : au-delà de 70 à 80 %, les files d'attente et les latences explosent. Il faut aussi de la redondance : si une instance tombe, les autres doivent absorber la charge (N+1).\n```\ninstances_utiles = ceil(trafic / (capacité_par_instance × utilisation_cible))\ninstances_total  = instances_utiles + 1   (redondance N+1)\n```"
+    },
+    {
+      "title": "Exemple résolu : de 720 req/s à un nombre d'instances",
       "conceptCodes": [
         "SCALABILITY"
       ],
-      "content": "Dimensionner et faire évoluer la plateforme relie les besoins, le logiciel, les données et l’exploitation. Commence par les contraintes observables, trace les responsabilités, puis choisis la solution la plus simple qui respecte les invariants."
+      "content": "Problème : 720 requêtes par seconde au pic, une instance traite 250 req/s au maximum. Combien d'instances, quelle marge ?\n\nRaisonnement, étape par étape :\n1. Sans marge : 720 / 250 = 2,88, donc 3 instances (arrondi au supérieur : on ne déploie pas 0,88 instance). Capacité = 750 req/s, marge brute 30 req/s (4 %). C'est dangereux : une instance tombe et le système s'effondre.\n2. Utilisation cible 70 % : capacité utile par instance 175 req/s, soit 720 / 175 = 4,11, donc 5 instances.\n3. Redondance N+1 : une instance de plus pour supporter une panne : 6 instances. Avec 5 instances restantes, l'utilisation monte à 82 %, acceptable en situation dégradée.\n4. Loi de Little : concurrence = débit × latence. 720 req/s avec 80 ms de latence moyenne donne 57,6 requêtes en cours en même temps ; avec 6 instances, 9,6 chacune. Les pools de threads et de connexions doivent couvrir ce chiffre avec marge.\n5. Coût : instances × tarif horaire × 730 heures par mois.\n6. Vérification : refaire le calcul pour le pic futur (croissance de 30 % par an).\n```python\nimport math\nneeded = math.ceil(rps / (capacity * target))\nwith_redundancy = needed + 1\nconcurrency = rps * latency_seconds        # loi de Little\n```"
     },
     {
-      "title": "Construction verticale",
-      "content": "La preuve ARCHITECTURE-22 modélise une décision réelle sous forme déterministe. Elle ne remplace pas un déploiement complet : elle rend l’hypothèse testable avant l’intégration Spring Boot, Angular, PostgreSQL et Docker."
+      "title": "Mise à l'échelle et goulots",
+      "content": "Horizontale (plus d'instances) ou verticale (instances plus grosses). L'horizontale exige des instances sans état : sessions et fichiers dans un stockage partagé, pas dans la mémoire locale. Un service qui garde de l'état en mémoire ne se réplique pas simplement.\n\nMise à l'échelle automatique : règle sur une métrique (CPU à 60 %, requêtes par instance, profondeur de file), avec un seuil haut pour monter, un seuil bas pour descendre, un délai de stabilisation pour éviter d'osciller, des bornes minimum et maximum. Les temps de démarrage d'une instance (image, initialisation) retardent l'effet : réagis à une métrique avancée (file) plutôt qu'à la saturation.\n\nGoulots non scalables : une base de données unique (répliques en lecture, cache, partitionnement, files pour lisser les écritures), un verrou global, un service tiers limité en débit, un système de fichiers partagé. Un système scale aussi bien que son maillon le plus étroit : cherche-le avant d'ajouter des instances. Mesure : tests de charge réalistes (montée progressive, pic, endurance), p95 sous charge, saturation des pools, points de rupture.\n\nCapacité et coût : prévoir le pic annuel, négocier des engagements pour le socle, laisser l'automatique absorber l'excédent ; surveiller le coût par requête. Sobriété : ne sur-dimensionne pas « au cas où » : chaque instance coûte, consomme et ajoute de la complexité."
     },
     {
-      "title": "Revue professionnelle",
-      "content": "Documente le contexte, la décision, une option rejetée, les conséquences, le signal à surveiller et la condition qui imposerait de revoir le choix."
+      "title": "Erreurs fréquentes à reconnaître",
+      "content": "1. Dimensionner pour 100 % d'utilisation sans marge ni redondance.\n2. Oublier l'arrondi au supérieur.\n3. Ajouter des instances sans chercher le goulot (la base).\n4. Un état local qui empêche la réplication.\n5. Une règle d'autoscaling qui oscille faute de délai de stabilisation.\n6. Dimensionner sans test de charge.\n\nRetrouve ces erreurs de mémoire avant l'exercice, puis vérifie-toi avec le quiz : c'est la récupération, pas la relecture, qui fixe la notion."
     }
   ],
   "keyConcepts": [
@@ -43,49 +48,97 @@
       "professionalExample": "Pendant une opération commerciale, le trafic triple en dix minutes mais l’auto-scaling ne se déclenche que sur l’utilisation CPU, restée basse car le vrai goulot est la profondeur de la file d’attente de traitement des commandes ; le système accepte des commandes qu’il ne peut plus traiter à temps et certaines sont perdues. En choisissant la profondeur de file comme métrique de mise à l’échelle plutôt que le CPU, l’équipe fait ajouter des instances avant la saturation réelle lors de l’événement suivant. Dimensionner la plateforme suppose de choisir un signal de charge qui reflète le vrai facteur limitant, pas le plus simple à mesurer.",
       "codeExample": "requests_per_second = 720\ncapacity_per_instance = 250\ninstances_needed = -(-requests_per_second // capacity_per_instance)\n\n# Mauvaise métrique de scaling: CPU (reste bas si le goulot est la file)\n# Bonne métrique: profondeur de la file d'attente des commandes\nprint(\"Instances nécessaires:\", instances_needed)",
       "commonMistake": "Choisir un outil avant d’identifier le besoin, la charge, le risque et le propriétaire de la donnée.",
-      "masteryQuestion": "Quel compromis, quel signal et quelle condition de réévaluation associes-tu à « Dimensionner et faire évoluer la plateforme » ?",
-      "masteryProof": "Exécuter la preuve, modifier une contrainte, expliquer le résultat et dessiner la place du composant dans la stack complète."
+      "masteryQuestion": "Pourquoi viser une utilisation cible inférieure à 100 % et ajouter une instance de redondance, et que dit la loi de Little ?",
+      "masteryProof": "Calculer le nombre d'instances avec utilisation cible et redondance, la concurrence par la loi de Little et le coût mensuel."
     }
   ],
   "exercises": [
     {
       "code": "ARCHITECTURE-22-E1",
-      "title": "Relier charge, capacité, saturation et stratégie de mise à l’échelle",
-      "statement": "Complète la preuve pour produire exactement la sortie attendue, puis explique la décision, une alternative et le signal de production qui validerait ton choix.",
-      "starterCode": "requests_per_second = 720\ncapacity_per_instance = 250\n# TODO 1 : calcule le nombre d'instances nécessaires (arrondi à l'entier supérieur)\n# TODO 2 : calcule la marge restante en req/s\n# TODO 3 : affiche \"Instances: <n>\" puis \"Marge: <marge> req/s\"\n",
-      "expectedOutput": "Instances: 3\nMarge: 30 req/s"
+      "title": "Dimensionner un service avec marge et redondance",
+      "statement": "Complète : le nombre d'instances sans marge (arrondi au supérieur), avec utilisation cible de 70 %, avec redondance N+1, l'utilisation en cas de panne d'une instance, la concurrence par la loi de Little et le coût mensuel. Affiche exactement :\nSans marge: 3 instances, marge 30 req/s\nUtilisation cible 70%: 5 instances\nAvec N+1: 6 instances\nPanne d'une instance: 58% d'utilisation\nRequêtes en cours: 57.6 soit 9.6 par instance\nCoût mensuel: 525.60 USD",
+      "starterCode": "import math\n\nRPS = 720\nCAPACITY = 250          # req/s maximum par instance\nTARGET = 0.70           # utilisation cible\nLATENCY_MS = 80\nHOURLY_COST = 0.12      # dollars par instance et par heure\nHOURS_PER_MONTH = 730\n\n\n# TODO 1 : instances sans marge = ceil(RPS / CAPACITY) ; affiche \"Sans marge: <n> instances, marge <capacité totale - RPS> req/s\"\n# TODO 2 : instances à l'utilisation cible = ceil(RPS / (CAPACITY x TARGET)) ; affiche \"Utilisation cible 70%: <n> instances\"\n# TODO 3 : avec redondance N+1 (une de plus) ; affiche \"Avec N+1: <n> instances\"\n# TODO 4 : utilisation (en %, arrondie) si une instance tombe : RPS / ((n - 1) x CAPACITY) ; affiche \"Panne d'une instance: <pourcentage>% d'utilisation\"\n# TODO 5 : loi de Little : concurrence = RPS x latence en secondes ; affiche \"Requêtes en cours: <concurrence 1 décimale> soit <par instance, 1 décimale> par instance\"\n# TODO 6 : coût mensuel = instances N+1 x HOURLY_COST x HOURS_PER_MONTH ; affiche \"Coût mensuel: <montant 2 décimales> USD\"\n",
+      "expectedOutput": "Sans marge: 3 instances, marge 30 req/s\nUtilisation cible 70%: 5 instances\nAvec N+1: 6 instances\nPanne d'une instance: 58% d'utilisation\nRequêtes en cours: 57.6 soit 9.6 par instance\nCoût mensuel: 525.60 USD"
     }
   ],
   "quiz": [
     {
       "code": "ARCHITECTURE-22-Q1",
       "type": "SINGLE_CHOICE",
-      "prompt": "Quelle démarche produit la décision la plus robuste ?",
+      "prompt": "Pourquoi ne pas dimensionner pour une utilisation de 100 % ?",
       "choices": [
-        "Relier contraintes, responsabilités, preuve et observabilité",
-        "Choisir la technologie la plus populaire",
-        "Ajouter des services avant de mesurer"
+        "Pour économiser de l'énergie",
+        "Près de la saturation, les files d'attente et la latence explosent, et aucune marge ne reste pour un pic ou une panne",
+        "Parce que les serveurs refusent",
+        "Pour réduire le coût"
       ],
-      "correctChoice": 0,
-      "expectedKeywords": []
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "La latence croît très vite quand l'utilisation approche 100 %. On vise 60 à 80 % en nominal pour garder de la marge."
     },
     {
       "code": "ARCHITECTURE-22-Q2",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Prédis le nombre d'instances : 720 req/s, 250 req/s par instance, utilisation cible 70 % :",
+      "choices": [
+        "3",
+        "5 : ceil(720 / 175) = 5",
+        "4",
+        "6"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "La capacité utile par instance est 250 × 0,7 = 175 req/s ; 720 / 175 = 4,11 ; arrondi au supérieur : 5."
+    },
+    {
+      "code": "ARCHITECTURE-22-Q3",
+      "type": "SINGLE_CHOICE",
+      "prompt": "720 req/s avec une latence moyenne de 80 ms. Combien de requêtes en cours simultanément (loi de Little) ?",
+      "choices": [
+        "8",
+        "57,6 : 720 × 0,08",
+        "720",
+        "0,11"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Concurrence = débit × temps de séjour. Les pools de threads et de connexions doivent supporter ce nombre, avec marge."
+    },
+    {
+      "code": "ARCHITECTURE-22-Q4",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Trouve le défaut : « On passe de 2 à 20 instances de l'API, mais toutes lisent la même base unique saturée. »",
+      "choices": [
+        "Aucun",
+        "Le goulot est la base : multiplier les instances de l'API augmente la charge sur elle sans améliorer le débit ; il faut traiter la base (index, cache, répliques en lecture)",
+        "20 est un mauvais nombre",
+        "Il faut moins de threads"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Un système va aussi vite que son maillon le plus étroit. On cherche le goulot par la mesure avant d'ajouter des ressources."
+    },
+    {
+      "code": "ARCHITECTURE-22-Q5",
       "type": "FREE_TEXT",
-      "prompt": "Nomme un compromis et le signal qui permettrait de le réévaluer.",
+      "prompt": "Sans relire le cours, explique avec tes mots pourquoi les instances doivent être sans état pour une mise à l'échelle horizontale.",
       "choices": [],
       "correctChoice": null,
       "expectedKeywords": [
-        "compromis",
-        "mesure",
-        "risque"
-      ]
+        "etat",
+        "instance",
+        "memoire",
+        "partage",
+        "session"
+      ],
+      "modelAnswer": "Si une instance garde de l'état en mémoire locale (sessions, fichiers), les requêtes d'un même utilisateur doivent revenir à la même instance, et une instance qui disparaît fait perdre cet état : on ne peut pas ajouter ou retirer librement des instances. En déplaçant l'état dans un stockage partagé (base, cache, stockage d'objets), toutes les instances sont interchangeables et l'on peut en ajouter ou retirer à volonté.",
+      "explanation": "Une bonne réponse dit que l'état local lie un utilisateur à une instance et se perd avec elle, et que l'état partagé rend les instances interchangeables."
     }
   ],
   "checklist": [
-    "Je peux dessiner la circulation de la donnée",
-    "Je sais nommer les responsabilités de chaque couche",
-    "Je justifie une alternative rejetée",
-    "Je définis une mesure et une condition de réévaluation"
+    "Je dimensionne avec une utilisation cible et une redondance N+1",
+    "J'applique la loi de Little pour mes pools et connexions",
+    "Mes instances sont sans état",
+    "Je cherche le goulot (base, tiers) avant d'ajouter des instances"
   ]
 }

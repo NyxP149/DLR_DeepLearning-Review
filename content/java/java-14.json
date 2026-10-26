@@ -1,9 +1,144 @@
 {
-  "code":"JAVA-14","language":"JAVA","number":14,"slug":"immutabilite-records-optional","title":"Immutabilité, records, Optional et bonnes pratiques","difficulty":"AVANCE","threshold":75,"activityType":"LAB","prerequisites":["JAVA-13"],
-  "objectives":["Modéliser une valeur immuable","Utiliser un record","Employer Optional aux frontières pertinentes"],
-  "sections":[{"title":"Valeur stable","content":"Un objet immuable ne change pas après sa construction. Un record exprime un agrégat de données transparent avec égalité par valeur.","conceptCodes":["JAVA-IMMUTABILITY"]},{"title":"Absence explicite","content":"Optional rend visible l'absence possible dans une valeur de retour, mais ne remplace ni la validation ni tous les champs du domaine."}],
-  "keyConcepts":[{"code":"JAVA-IMMUTABILITY","name":"Immutabilité","definition":"L'état observable d'une valeur reste identique après sa création.","whyExists":"Elle réduit le nombre d'états possibles et les modifications imprévues.","whyImportant":"Le raisonnement, les tests et la concurrence deviennent plus sûrs.","minimalExample":"record Profile(String name, int level) {}","professionalExample":"Un record Invoice(String customer, List<Item> items) exposait directement la liste reçue au constructeur : un module d'export, qui recevait cette même référence, ajoutait une ligne de remise a posteriori et modifiait silencieusement la facture déjà émise chez un autre appelant qui partageait l'objet. Copier la liste avec List.copyOf(items) dans le constructeur compact du record rend l'objet réellement immuable, indépendamment de ce que fait l'appelant avec sa propre référence.","codeExample":"record Invoice(String customer, List<Item> items) {\n    Invoice {\n        items = List.copyOf(items); // copie défensive et immuable\n    }\n}\n\nList<Item> mutable = new ArrayList<>(List.of(new Item(\"Licence\", 100)));\nInvoice invoice = new Invoice(\"Ada\", mutable);\nmutable.add(new Item(\"Support\", 50)); // n'affecte plus invoice.items()","commonMistake":"Placer une collection mutable dans un record sans copie défensive.","masteryQuestion":"Pourquoi final ne rend-il pas automatiquement l'objet référencé immuable ?","masteryProof":"Créer une valeur immuable avec validation de construction."}],
-  "exercises":[{"code":"JAVA-14-E1","title":"Modéliser un profil","statement":"Crée un record et affiche exactement : Profil[nom=Nyx, niveau=3]","starterCode":"// TODO 1 : définis un record Profil(String nom, int niveau)\n//          dont le constructeur compact refuse un niveau inférieur à 1 (IllegalArgumentException)\n\npublic class Main {\n    public static void main(String[] args) {\n        // TODO 2 : crée Profil(\"Nyx\", 3) et affiche-le avec System.out.println\n    }\n}\n","expectedOutput":"Profil[nom=Nyx, niveau=3]"}],
-  "quiz":[{"code":"JAVA-14-Q1","type":"SINGLE_CHOICE","prompt":"Que fournit un record ?","choices":["Une valeur concise avec égalité structurelle","Une base de données","Un thread permanent"],"correctChoice":0,"expectedKeywords":[]},{"code":"JAVA-14-Q2","type":"FREE_TEXT","prompt":"Quand Optional est-il utile ?","choices":[],"correctChoice":null,"expectedKeywords":["absence","retour","explicite","null"]}],
-  "checklist":["Je protège les invariants à la construction","Je fais des copies défensives","Je réserve Optional aux absences explicites"]
+  "code": "JAVA-14",
+  "language": "JAVA",
+  "number": 14,
+  "slug": "immutabilite-records-optional",
+  "title": "Immutabilité, records, Optional et bonnes pratiques",
+  "difficulty": "AVANCE",
+  "threshold": 75,
+  "activityType": "LAB",
+  "prerequisites": [
+    "JAVA-13"
+  ],
+  "objectives": [
+    "Définir un record avec validation dans un constructeur compact et copie défensive des collections.",
+    "Expliquer ce que garantit l'immutabilité et ce qu'une copie défensive protège.",
+    "Retourner un Optional depuis une recherche et le consommer sans appeler get().",
+    "Identifier les mauvais usages d'Optional (champ, paramètre, collection)."
+  ],
+  "sections": [
+    {
+      "title": "Une valeur immuable ne change plus après sa création",
+      "content": "Un objet immuable garde le même état toute sa vie. On peut le partager entre threads, l'utiliser comme clé de Map et le raisonner sans surprise. Pour en obtenir un : champs final, pas de setter, classe non extensible, et copie défensive de tout ce qui est modifiable (liste, tableau, date mutable).\n\nUn record fait presque tout ce travail : il génère le constructeur, les accesseurs, equals, hashCode et toString, et ses composants sont final. Mais il ne copie pas pour toi une liste reçue : un record qui contient une List peut encore être modifié si l'appelant garde la liste d'origine."
+    },
+    {
+      "title": "Exemple résolu : un profil validé et protégé",
+      "conceptCodes": [
+        "JAVA-IMMUTABILITY"
+      ],
+      "content": "Problème : modéliser un Profil (nom, niveau, badges) qui refuse un niveau invalide et ne peut pas être altéré après coup.\n\nRaisonnement, étape par étape :\n1. Un record, car le profil est une valeur : Profil(String nom, int niveau, List<String> badges).\n2. Validation dans le constructeur compact : niveau >= 1, sinon IllegalArgumentException.\n3. Copie défensive : badges = List.copyOf(badges) crée une liste immuable indépendante de l'original.\n4. Une « modification » renvoie un nouveau profil : withNiveau(n).\n5. Vérification : modifier la liste d'origine ne change pas le profil.\n```java\nrecord Profil(String nom, int niveau, List<String> badges) {\n    Profil {\n        if (niveau < 1) throw new IllegalArgumentException(\"niveau invalide\");\n        badges = List.copyOf(badges);\n    }\n    Profil withNiveau(int nouveau) { return new Profil(nom, nouveau, badges); }\n}\n```\nLe constructeur compact n'a pas de paramètres déclarés : il réassigne les paramètres implicites avant que les champs ne soient fixés."
+    },
+    {
+      "title": "Optional : exprimer l'absence au retour d'une méthode",
+      "content": "Optional<T> représente une valeur qui peut manquer. Il sert surtout comme type de retour d'une recherche (findByName) : l'appelant est forcé de décider quoi faire dans le cas vide.\n```java\nOptional<Profil> trouve = profils.stream()\n        .filter(p -> p.nom().equals(\"Ada\")).findFirst();\n\nString texte = trouve.map(Profil::nom).orElse(\"absent\");\ntrouve.ifPresent(p -> System.out.println(p));\nProfil p = trouve.orElseThrow(() -> new NoSuchElementException(\"Ada\"));\n```\nÉvite get() sans test (il lève NoSuchElementException), et n'utilise pas Optional comme champ, paramètre ou élément de collection : retourne une liste vide plutôt qu'un Optional<List>. Optional ne remplace pas la validation des entrées, il décrit un retour."
+    },
+    {
+      "title": "Erreurs fréquentes à reconnaître",
+      "content": "1. Stocker directement la liste reçue dans un record : l'appelant peut encore la modifier.\n2. Croire qu'un record est profondément immuable : seules les références sont final.\n3. Appeler optional.get() sans isPresent ni orElse.\n4. Passer un Optional en paramètre ou le stocker dans un champ.\n5. Renvoyer null depuis une méthode qui promet un Optional.\n6. Ajouter des setters à une classe censée être immuable.\n\nRetrouve ces six erreurs de mémoire avant l'exercice, puis vérifie-toi avec le quiz."
+    }
+  ],
+  "keyConcepts": [
+    {
+      "code": "JAVA-IMMUTABILITY",
+      "name": "Immutabilité",
+      "definition": "L'état observable d'une valeur reste identique après sa création.",
+      "whyExists": "Elle réduit le nombre d'états possibles et les modifications imprévues.",
+      "whyImportant": "Le raisonnement, les tests et la concurrence deviennent plus sûrs.",
+      "minimalExample": "record Profile(String name, int level) {}",
+      "professionalExample": "Un record Invoice(String customer, List<Item> items) exposait directement la liste reçue au constructeur : un module d'export, qui recevait cette même référence, ajoutait une ligne de remise a posteriori et modifiait silencieusement la facture déjà émise chez un autre appelant qui partageait l'objet. Copier la liste avec List.copyOf(items) dans le constructeur compact du record rend l'objet réellement immuable, indépendamment de ce que fait l'appelant avec sa propre référence.",
+      "codeExample": "record Invoice(String customer, List<Item> items) {\n    Invoice {\n        items = List.copyOf(items); // copie défensive et immuable\n    }\n}\n\nList<Item> mutable = new ArrayList<>(List.of(new Item(\"Licence\", 100)));\nInvoice invoice = new Invoice(\"Ada\", mutable);\nmutable.add(new Item(\"Support\", 50)); // n'affecte plus invoice.items()",
+      "commonMistake": "Placer une collection mutable dans un record sans copie défensive.",
+      "masteryQuestion": "Un record est-il toujours immuable ? Que faut-il ajouter pour qu'il le soit vraiment ?",
+      "masteryProof": "Écrire un record validé avec copie défensive et une recherche qui retourne un Optional."
+    }
+  ],
+  "exercises": [
+    {
+      "code": "JAVA-14-E1",
+      "title": "Un profil immuable et une recherche sûre",
+      "statement": "Complète Main : un record Profil(nom, niveau, badges) qui valide le niveau et copie la liste, une méthode withNiveau, une recherche qui retourne un Optional. Affiche exactement :\nProfil[nom=Nyx, niveau=3, badges=[java, sql]]\nNiveau suivant : Profil[nom=Nyx, niveau=4, badges=[java, sql]]\nOriginal : 3\nBadges proteges : [java, sql]\nRefuse : niveau invalide\nAda : absent\nNyx : Nyx",
+      "starterCode": "import java.util.*;\n\npublic class Main {\n    // TODO 1 : record Profil(String nom, int niveau, List<String> badges)\n    //          - constructeur compact : refuse niveau < 1 (IllegalArgumentException(\"niveau invalide\"))\n    //          - copie défensive de badges avec List.copyOf\n    //          - méthode withNiveau(int) qui renvoie un NOUVEAU profil\n\n    // TODO 2 : static Optional<Profil> chercher(List<Profil> profils, String nom)\n\n    public static void main(String[] args) {\n        List<String> badges = new ArrayList<>(List.of(\"java\", \"sql\"));\n        // TODO 3 : crée le profil Nyx (niveau 3, badges), affiche-le\n        // TODO 4 : affiche \"Niveau suivant : \" + le profil au niveau 4, puis \"Original : \" + niveau du profil de départ\n        // TODO 5 : ajoute \"docker\" à la liste d'origine, puis affiche \"Badges proteges : \" + badges du profil\n        // TODO 6 : tente un niveau 0 dans un try/catch et affiche \"Refuse : \" + message de l'exception\n        // TODO 7 : cherche \"Ada\" puis \"Nyx\" et affiche \"Ada : absent\" et \"Nyx : Nyx\" avec map/orElse\n    }\n}\n",
+      "expectedOutput": "Profil[nom=Nyx, niveau=3, badges=[java, sql]]\nNiveau suivant : Profil[nom=Nyx, niveau=4, badges=[java, sql]]\nOriginal : 3\nBadges proteges : [java, sql]\nRefuse : niveau invalide\nAda : absent\nNyx : Nyx"
+    }
+  ],
+  "quiz": [
+    {
+      "code": "JAVA-14-Q1",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Que génère automatiquement un record Point(int x, int y) ?",
+      "choices": [
+        "Seulement le constructeur",
+        "Constructeur, accesseurs x() et y(), equals, hashCode et toString",
+        "Des setters setX et setY",
+        "Une interface Comparable"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Le record génère constructeur canonique, accesseurs (x(), pas getX()), equals, hashCode et toString à partir des composants. Il n'y a pas de setters : les champs sont final."
+    },
+    {
+      "code": "JAVA-14-Q2",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Prédis la sortie :\n```java\nrecord Panier(List<String> articles) {}\nList<String> source = new ArrayList<>(List.of(\"pain\"));\nPanier p = new Panier(source);\nsource.add(\"lait\");\nSystem.out.println(p.articles());\n```\n",
+      "choices": [
+        "[pain]",
+        "[pain, lait]",
+        "[lait]",
+        "Une exception"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Le record garde la référence reçue : modifier la liste d'origine modifie le panier. L'immutabilité est superficielle. Un constructeur compact avec articles = List.copyOf(articles) corrige le problème."
+    },
+    {
+      "code": "JAVA-14-Q3",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Trouve le bug :\n```java\nOptional<Profil> p = chercher(profils, \"Ada\");\nSystem.out.println(p.get().nom());\n```\n",
+      "choices": [
+        "get() renvoie toujours null si absent",
+        "Si Ada n'existe pas, get() lève NoSuchElementException",
+        "Optional ne peut pas contenir un record",
+        "chercher doit retourner un Profil"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "get() sur un Optional vide lève NoSuchElementException : on perd tout l'intérêt d'Optional. Préfère map(...).orElse(...), ifPresent ou orElseThrow avec un message précis."
+    },
+    {
+      "code": "JAVA-14-Q4",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Où l'usage d'Optional est-il approprié ?",
+      "choices": [
+        "Comme type de retour d'une recherche qui peut ne rien trouver",
+        "Comme champ d'une entité JPA",
+        "Comme paramètre d'une méthode publique",
+        "Comme élément d'une List<Optional<String>>"
+      ],
+      "correctChoice": 0,
+      "expectedKeywords": [],
+      "explanation": "Optional est conçu pour le retour de méthode. En champ, en paramètre ou dans une collection il complique le code sans valeur ajoutée ; pour une collection, une liste vide exprime déjà l'absence."
+    },
+    {
+      "code": "JAVA-14-Q5",
+      "type": "FREE_TEXT",
+      "prompt": "Sans relire le cours, explique avec tes mots pourquoi un record contenant une List n'est pas forcément immuable et comment le corriger.",
+      "choices": [],
+      "correctChoice": null,
+      "expectedKeywords": [
+        "reference",
+        "copie",
+        "constructeur",
+        "modifi",
+        "List.copyOf"
+      ],
+      "modelAnswer": "Les champs d'un record sont final, mais la référence vers une liste mutable peut être modifiée par quiconque la détient : l'immutabilité est superficielle. On corrige avec une copie défensive dans le constructeur compact (badges = List.copyOf(badges)), qui crée une liste immuable indépendante.",
+      "explanation": "Une bonne réponse distingue la référence final du contenu mutable et nomme la copie défensive dans le constructeur compact."
+    }
+  ],
+  "checklist": [
+    "Je valide les invariants dans le constructeur compact d'un record",
+    "J'utilise une copie défensive pour les collections reçues",
+    "Je consomme un Optional sans appeler get() à l'aveugle",
+    "Je sais pourquoi Optional n'est ni un champ ni un paramètre"
+  ]
 }

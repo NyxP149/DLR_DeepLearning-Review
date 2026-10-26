@@ -11,25 +11,30 @@
     "ARCHITECTURE-15"
   ],
   "objectives": [
-    "Choisir clé, durée de vie et stratégie d’invalidation autour de la source de vérité",
-    "Justifier les compromis et nommer un risque opérationnel",
-    "Produire une preuve reproductible avant d’élargir la solution"
+    "Implémenter un cache à durée de vie (TTL) avec une horloge injectée et compter succès et échecs.",
+    "Distinguer cache-aside, écriture traversante et invalidation, et leurs risques de données périmées.",
+    "Calculer un taux de succès et décider si un cache est rentable.",
+    "Repérer une avalanche de requêtes, une donnée périmée servie ou un cache sans limite de taille."
   ],
   "sections": [
     {
-      "title": "Concept clé et décision",
+      "title": "Un cache est une copie, pas la vérité",
+      "content": "Un cache garde le résultat d'une opération coûteuse pour répondre plus vite la fois suivante. Il introduit une copie de la donnée : elle peut devenir fausse quand la source change. Tout l'art du cache est de décider combien de temps ou jusqu'à quel événement on accepte cette fausseté.\n\nStratégies :\n- Cache-aside : l'application lit le cache ; en cas d'échec (miss) elle lit la source, remplit le cache et répond.\n- Durée de vie (TTL) : l'entrée expire après N secondes ; simple, avec une péremption bornée.\n- Invalidation à l'écriture : quand la donnée source change, on supprime (ou met à jour) l'entrée du cache.\n- Écriture traversante / différée (write-through / write-back) : l'écriture passe par le cache ; plus complexe, risques de perte pour write-back."
+    },
+    {
+      "title": "Exemple résolu : TTL, invalidation et taux de succès",
       "conceptCodes": [
         "CACHE-STRATEGY"
       ],
-      "content": "Introduire un cache sans perdre la vérité relie les besoins, le logiciel, les données et l’exploitation. Commence par les contraintes observables, trace les responsabilités, puis choisis la solution la plus simple qui respecte les invariants."
+      "content": "Problème : mettre en cache une fiche produit avec un TTL de 2 secondes, invalider à la modification et mesurer le taux de succès.\n\nRaisonnement, étape par étape :\n1. L'entrée stocke (valeur, instant d'expiration). L'horloge est injectée (une fonction ou un compteur) pour contrôler le temps dans le test.\n2. get(clé, maintenant) : si l'entrée existe et n'est pas expirée, c'est un succès (hit) ; sinon un échec (miss) : on supprime l'entrée expirée.\n3. En cas de miss, on charge la source, on met en cache avec expiration = maintenant + TTL.\n4. À une modification (price passe de 50 à 60), on invalide l'entrée : la lecture suivante est un miss et récupère la valeur à jour. Sans invalidation, on sert 50 jusqu'à l'expiration du TTL : donnée périmée.\n5. Taux de succès = hits / (hits + misses). Un cache à 20 % de succès coûte plus qu'il ne rapporte.\n6. Vérification : un scénario chronologique (t=0 miss, t=1 hit, t=1 modification et invalidation, t=1 miss, t=3.5 expirée donc miss) donne les compteurs attendus.\n```python\ndef get(key, now):\n    entry = cache.get(key)\n    if entry and entry[1] > now:\n        stats[\"hit\"] += 1\n        return entry[0]\n    stats[\"miss\"] += 1\n    value = load(key)\n    cache[key] = (value, now + TTL)\n    return value\n```"
     },
     {
-      "title": "Construction verticale",
-      "content": "La preuve ARCHITECTURE-16 modélise une décision réelle sous forme déterministe. Elle ne remplace pas un déploiement complet : elle rend l’hypothèse testable avant l’intégration Spring Boot, Angular, PostgreSQL et Docker."
+      "title": "Les vrais problèmes d'un cache",
+      "content": "- Donnée périmée : si la cohérence stricte est requise (solde bancaire), un cache n'est pas adapté, ou il doit être invalidé de façon fiable.\n- Avalanche (cache stampede) : à l'expiration d'une entrée très demandée, des centaines de requêtes ratent en même temps et assaillent la source. Remèdes : verrou par clé (une seule requête recalcule), TTL avec hasard (jitter), rafraîchissement anticipé, servir la valeur périmée pendant le recalcul.\n- Pénétration : des requêtes pour des clés inexistantes qui ratent toujours ; on met en cache aussi l'absence (avec un TTL court).\n- Taille : un cache sans limite finit par saturer la mémoire ; politique d'éviction (LRU, LFU), limite de taille.\n- Clé : elle doit contenir tout ce qui détermine le résultat (utilisateur, langue, version). Une clé incomplète sert la donnée d'un utilisateur à un autre : fuite grave.\n- Granularité : mettre en cache des résultats partagés (catalogue), pas des données privées sans clé par utilisateur.\n- Démarrage à froid : un cache vide après redémarrage laisse passer toute la charge sur la source.\n- Observabilité : suivre le taux de succès, la latence, les éviction, la mémoire.\n- Alternatives : caches HTTP (ETag, Cache-Control, CDN), caches locaux (Caffeine) pour la rapidité, partagés (Redis) pour la cohérence entre instances."
     },
     {
-      "title": "Revue professionnelle",
-      "content": "Documente le contexte, la décision, une option rejetée, les conséquences, le signal à surveiller et la condition qui imposerait de revoir le choix."
+      "title": "Erreurs fréquentes à reconnaître",
+      "content": "1. Un cache sans invalidation ni TTL : des données périmées pour toujours.\n2. Une clé qui n'inclut pas l'utilisateur pour des données privées.\n3. Aucune limite de taille ni éviction.\n4. Ignorer l'avalanche à l'expiration d'une clé populaire.\n5. Introduire un cache sans mesurer son taux de succès.\n6. Utiliser l'heure réelle dans la logique : tests instables.\n\nRetrouve ces erreurs de mémoire avant l'exercice, puis vérifie-toi avec le quiz : c'est la récupération, pas la relecture, qui fixe la notion."
     }
   ],
   "keyConcepts": [
@@ -43,49 +48,97 @@
       "professionalExample": "Le prix d’un produit est mis à jour en base lors d’une promotion flash, mais le cache applicatif garde l’ancien prix pendant deux heures faute d’invalidation explicite, si bien que des clients continuent de voir et de payer l’ancien tarif après la fin de la promotion. L’équipe corrige le problème en invalidant la clé de cache dans la même transaction que l’écriture en base, au lieu de se fier uniquement à un TTL. Introduire un cache sans stratégie d’invalidation liée à la source de vérité transforme une optimisation de performance en bug métier visible des clients.",
       "codeExample": "def update_price(product_id, new_price):\n    db.execute(\"UPDATE product SET price=%s WHERE id=%s\", new_price, product_id)\n    cache.delete(f\"product:{product_id}\")  # invalidation explicite, pas seulement un TTL\n\ndef get_price(product_id):\n    cached = cache.get(f\"product:{product_id}\")\n    return cached if cached else db.fetch_price(product_id)",
       "commonMistake": "Choisir un outil avant d’identifier le besoin, la charge, le risque et le propriétaire de la donnée.",
-      "masteryQuestion": "Quel compromis, quel signal et quelle condition de réévaluation associes-tu à « Introduire un cache sans perdre la vérité » ?",
-      "masteryProof": "Exécuter la preuve, modifier une contrainte, expliquer le résultat et dessiner la place du composant dans la stack complète."
+      "masteryQuestion": "Pourquoi un cache sans invalidation sert-il des données périmées, et qu'est-ce qu'une avalanche de cache ?",
+      "masteryProof": "Écrire un cache TTL avec horloge injectée, invalider à l'écriture et calculer le taux de succès sur un scénario chronologique."
     }
   ],
   "exercises": [
     {
       "code": "ARCHITECTURE-16-E1",
-      "title": "Choisir clé, durée de vie et stratégie d’invalidation autour de la source de vérité",
-      "statement": "Complète la preuve pour produire exactement la sortie attendue, puis explique la décision, une alternative et le signal de production qui validerait ton choix.",
-      "starterCode": "cache = {\"product:7\": (\"Clavier\", 2)}\n\ndef tick(key: str):\n    # TODO : décrémente le TTL de l'entrée ; s'il atteint 0, supprime l'entrée et retourne \"MISS\" ;\n    #        sinon enregistre la nouvelle valeur et retourne \"HIT\"\n    return None\n\nprint(tick(\"product:7\"))\nprint(tick(\"product:7\"))\n",
-      "expectedOutput": "HIT\nMISS"
+      "title": "Un cache TTL avec invalidation et mesure",
+      "statement": "Complète : lecture avec expiration (horloge fournie en paramètre), invalidation à l'écriture et compteurs de succès et d'échecs. Joue le scénario chronologique et affiche exactement :\nt=0.0: lu prix 50\nt=1.0: lu prix 50\nt=1.0: prix modifié à 60, entrée invalidée\nt=1.0: lu prix 60\nt=3.5: lu prix 60\nt=3.6: lu prix 60\nSuccès: 2, échecs: 3, taux: 40%",
+      "starterCode": "TTL = 2.0\nsource = {\"product:7\": {\"name\": \"Clavier\", \"price\": 50}}\ncache: dict[str, tuple[dict, float]] = {}\nstats = {\"hit\": 0, \"miss\": 0}\n\n\ndef get(key: str, now: float) -> dict:\n    # TODO 1 : si l'entrée existe et expire après now -> succès (stats[\"hit\"] += 1) et retourne la valeur ;\n    #          sinon échec (stats[\"miss\"] += 1), lit la source, met en cache avec expiration now + TTL et retourne la valeur\n    return {}\n\n\ndef update(key: str, price: int) -> None:\n    # TODO 2 : modifie le prix dans la source puis invalide l'entrée du cache (supprime-la)\n    pass\n\n\ndef ratio() -> int:\n    # TODO 3 : pourcentage de succès arrondi : hits / (hits + misses) x 100\n    return 0\n\n\ntimeline = [\n    (0.0, \"get\"), (1.0, \"get\"), (1.0, \"update\"), (1.0, \"get\"), (3.5, \"get\"), (3.6, \"get\"),\n]\nfor now, action in timeline:\n    # TODO 4 : pour \"get\" affiche \"t=<now>: lu prix <prix>\" ; pour \"update\" (prix 60) affiche \"t=<now>: prix modifié à 60, entrée invalidée\"\n    pass\n# TODO 5 : affiche \"Succès: <hits>, échecs: <misses>, taux: <ratio>%\"\n",
+      "expectedOutput": "t=0.0: lu prix 50\nt=1.0: lu prix 50\nt=1.0: prix modifié à 60, entrée invalidée\nt=1.0: lu prix 60\nt=3.5: lu prix 60\nt=3.6: lu prix 60\nSuccès: 2, échecs: 3, taux: 40%"
     }
   ],
   "quiz": [
     {
       "code": "ARCHITECTURE-16-Q1",
       "type": "SINGLE_CHOICE",
-      "prompt": "Quelle démarche produit la décision la plus robuste ?",
+      "prompt": "Un produit passe de 50 à 60 en base alors que son entrée de cache (TTL 2 s) a été mise à t=0. À t=1 on lit : que se passe-t-il sans invalidation ?",
       "choices": [
-        "Relier contraintes, responsabilités, preuve et observabilité",
-        "Choisir la technologie la plus populaire",
-        "Ajouter des services avant de mesurer"
+        "On lit 60",
+        "On lit encore 50 : la copie en cache n'a pas expiré et reste périmée jusqu'à t=2",
+        "Une erreur",
+        "Le cache se vide seul"
       ],
-      "correctChoice": 0,
-      "expectedKeywords": []
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Le TTL borne la péremption mais ne l'élimine pas. Pour une donnée qui doit être à jour immédiatement, il faut invalider à l'écriture."
     },
     {
       "code": "ARCHITECTURE-16-Q2",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Prédis le taux de succès : t=0 miss, t=1 hit, (modification, invalidation), t=1 miss, t=3.5 miss (expirée), t=3.6 hit :",
+      "choices": [
+        "25 %",
+        "50 %",
+        "40 % : 2 succès sur 5 lectures",
+        "100 %"
+      ],
+      "correctChoice": 2,
+      "expectedKeywords": [],
+      "explanation": "Cinq lectures : miss, hit, miss, miss, hit = 2 succès sur 5, soit 40 %. Un cache à 40 % de succès mérite d'être questionné (TTL, clés, usage)."
+    },
+    {
+      "code": "ARCHITECTURE-16-Q3",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Trouve le défaut :\n```python\nkey = f'profile:{profile_id}'\n```\npour un cache de pages dont le contenu dépend aussi de l'utilisateur connecté.",
+      "choices": [
+        "profile_id est trop long",
+        "La clé n'inclut pas l'utilisateur : la page personnalisée d'un utilisateur peut être servie à un autre (fuite de données)",
+        "f-string interdite",
+        "Le préfixe est inutile"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "La clé doit contenir tout ce qui détermine le résultat (utilisateur, langue, version). Sinon on sert la mauvaise donnée, parfois à la mauvaise personne."
+    },
+    {
+      "code": "ARCHITECTURE-16-Q4",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Qu'est-ce qu'une avalanche de cache (stampede) ?",
+      "choices": [
+        "Un cache qui grossit trop",
+        "L'expiration d'une entrée très demandée : de nombreuses requêtes ratent simultanément et surchargent la source",
+        "Un bug d'invalidation",
+        "Une panne réseau"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Remèdes : verrou par clé pour qu'une seule requête recalcule, expirations avec hasard, rafraîchissement anticipé, service de la valeur périmée pendant le recalcul."
+    },
+    {
+      "code": "ARCHITECTURE-16-Q5",
       "type": "FREE_TEXT",
-      "prompt": "Nomme un compromis et le signal qui permettrait de le réévaluer.",
+      "prompt": "Sans relire le cours, explique avec tes mots dans quels cas un cache n'est pas adapté et ce qu'il faut mesurer pour décider.",
       "choices": [],
       "correctChoice": null,
       "expectedKeywords": [
-        "compromis",
-        "mesure",
-        "risque"
-      ]
+        "coherence",
+        "perime",
+        "taux",
+        "succes",
+        "invalid"
+      ],
+      "modelAnswer": "Un cache n'est pas adapté quand la donnée doit être strictement à jour à chaque lecture (solde, stock critique) ou quand le taux de succès est faible (données rarement relues, clés trop variées) : il ajoute de la complexité et des risques de péremption pour peu de gain. Il faut mesurer le taux de succès, la latence gagnée, la mémoire utilisée, les évictions et la fréquence des données périmées observées.",
+      "explanation": "Une bonne réponse cite cohérence stricte exigée et faible taux de succès, et les mesures : taux de succès, latence, mémoire, évictions."
     }
   ],
   "checklist": [
-    "Je peux dessiner la circulation de la donnée",
-    "Je sais nommer les responsabilités de chaque couche",
-    "Je justifie une alternative rejetée",
-    "Je définis une mesure et une condition de réévaluation"
+    "Mon cache a un TTL ou une invalidation fiable",
+    "Mes clés contiennent tout ce qui détermine le résultat",
+    "Je mesure le taux de succès avant de conclure à son utilité",
+    "Je prévois l'avalanche sur les entrées très demandées"
   ]
 }

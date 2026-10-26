@@ -1,9 +1,144 @@
 {
-  "code":"JAVA-16","language":"JAVA","number":16,"slug":"solid-clean-code-refactoring","title":"SOLID, clean code et refactoring","difficulty":"AVANCE","threshold":75,"activityType":"LAB","prerequisites":["JAVA-15"],
-  "objectives":["Repérer une responsabilité mélangée","Refactorer sous couverture de tests","Appliquer l'inversion de dépendances"],
-  "sections":[{"title":"Changer sans casser","content":"Un refactoring améliore la structure sans modifier le comportement. Les tests fournissent la preuve de conservation.","conceptCodes":["JAVA-SOLID"]},{"title":"Responsabilités cohérentes","content":"SOLID guide les frontières : raisons de changer limitées, contrats substituables et dépendances dirigées vers des abstractions utiles."}],
-  "keyConcepts":[{"code":"JAVA-SOLID","name":"SOLID","definition":"Cinq principes orientent la conception de composants cohérents et évolutifs.","whyExists":"Ils réduisent le coût des changements et le couplage accidentel.","whyImportant":"Le code professionnel vit plus longtemps que sa première version.","minimalExample":"class BillingService { BillingService(PricePort prices) {} }","professionalExample":"Une classe OrderService validait les commandes, les enregistrait en base et envoyait un email de confirmation dans une seule méthode process() : ajouter un nouveau canal de notification imposait de modifier cette classe déjà fragile, et un bug dans l'envoi d'email faisait parfois échouer l'enregistrement en base à cause d'une exception non isolée. Extraire un OrderValidator, un OrderRepository et un NotificationService, chacun injecté par constructeur, a isolé les raisons de changer et rendu chaque partie testable indépendamment.","codeExample":"class OrderService {\n    private final OrderRepository repository;\n    private final NotificationPort notifier;\n\n    OrderService(OrderRepository repository, NotificationPort notifier) {\n        this.repository = repository;\n        this.notifier = notifier;\n    }\n\n    void place(Order order) {\n        repository.save(order); // une seule raison de changer par collaborateur\n        notifier.confirm(order);\n    }\n}","commonMistake":"Créer une interface pour chaque classe sans besoin de substitution.","masteryQuestion":"Quelle raison de changer révèle une responsabilité distincte ?","masteryProof":"Extraire un calcul pur sans changer sa sortie."}],
-  "exercises":[{"code":"JAVA-16-E1","title":"Extraire le calcul","statement":"Sépare le calcul de l'affichage et affiche exactement : Total: 150","starterCode":"class Invoice {\n    // TODO 1 : écris total(int... amounts) qui additionne les montants\n    //          (le calcul uniquement, sans aucun affichage)\n}\n\npublic class Main {\n    public static void main(String[] args) {\n        // TODO 2 : affiche \"Total: \" suivi du total de 100 et 50\n    }\n}\n","expectedOutput":"Total: 150"}],
-  "quiz":[{"code":"JAVA-16-Q1","type":"SINGLE_CHOICE","prompt":"Que conserve un refactoring ?","choices":["Le comportement observable","Toutes les méthodes privées","Tous les noms initiaux"],"correctChoice":0,"expectedKeywords":[]},{"code":"JAVA-16-Q2","type":"FREE_TEXT","prompt":"Relie responsabilité unique et raison de changer.","choices":[],"correctChoice":null,"expectedKeywords":["responsabilité","changer","cohésion","couplage"]}],
-  "checklist":["Je refactore sous tests","Je sépare les raisons de changer","Je dirige les dépendances vers des contrats"]
+  "code": "JAVA-16",
+  "language": "JAVA",
+  "number": 16,
+  "slug": "solid-clean-code-refactoring",
+  "title": "SOLID, clean code et refactoring",
+  "difficulty": "AVANCE",
+  "threshold": 75,
+  "activityType": "LAB",
+  "prerequisites": [
+    "JAVA-15"
+  ],
+  "objectives": [
+    "Identifier la raison de changer de chaque classe et séparer calcul, règle métier et affichage.",
+    "Appliquer l'inversion de dépendances en injectant une interface au lieu d'instancier une implémentation.",
+    "Ajouter un comportement sans modifier le code existant (ouvert/fermé).",
+    "Refactorer en gardant le comportement, vérifié par des tests ou une sortie de référence."
+  ],
+  "sections": [
+    {
+      "title": "SOLID : cinq principes pour que le code reste modifiable",
+      "content": "SOLID n'est pas un règlement, c'est une aide pour garder un code facile à changer.\n- S, responsabilité unique : une classe a une seule raison de changer.\n- O, ouvert/fermé : on ajoute un comportement en ajoutant du code, pas en modifiant l'existant.\n- L, substitution de Liskov : un sous-type doit pouvoir remplacer son parent sans surprise.\n- I, ségrégation des interfaces : plusieurs petites interfaces valent mieux qu'une interface obèse.\n- D, inversion de dépendances : le métier dépend d'une abstraction, pas d'un détail technique.\n\nLe test pratique : si une demande de changement (nouvelle taxe, nouveau format d'affichage) oblige à rouvrir une classe qui fait déjà autre chose, une responsabilité est mélangée."
+    },
+    {
+      "title": "Exemple résolu : sortir la taxe de la facture",
+      "conceptCodes": [
+        "JAVA-SOLID"
+      ],
+      "content": "Problème : une classe Facture calcule le total, applique la TVA en dur et affiche le résultat. Ajouter un taux réduit oblige à la modifier.\n\nRaisonnement, étape par étape :\n1. Lister les raisons de changer : la règle de taxe, le calcul du sous-total, le format d'affichage. Ce sont trois responsabilités.\n2. Extraire la règle variable derrière une interface : TaxPolicy.\n3. Faire dépendre Invoice de l'interface (on la passe en paramètre), pas d'un taux codé en dur.\n4. Isoler l'affichage dans une classe à part.\n5. Vérification : ajouter un taux réduit ne modifie ni Invoice ni le printer.\n```java\ninterface TaxPolicy { int tax(int amount); }\n\nrecord Invoice(List<Integer> lines) {\n    int subtotal() { return lines.stream().mapToInt(Integer::intValue).sum(); }\n    int total(TaxPolicy policy) { return subtotal() + policy.tax(subtotal()); }\n}\n\nTaxPolicy france = amount -> amount * 20 / 100;\nTaxPolicy reduit = amount -> amount * 10 / 100;   // nouveau comportement, rien à modifier\n```\nInvoice ne connaît aucune taxe concrète : c'est l'inversion de dépendances, et l'ajout de reduit illustre ouvert/fermé."
+    },
+    {
+      "title": "Refactorer sans rien casser",
+      "content": "Refactorer, c'est changer la structure sans changer le comportement observable. La méthode sûre :\n1. Fixer le comportement actuel : un test, ou à défaut une sortie de référence à comparer.\n2. Faire un petit pas (extraire une méthode, renommer, déplacer).\n3. Relancer le test. Vert, on continue ; rouge, on annule ce pas.\n\nQuelques signaux de code à retravailler : méthode de plus de 20 lignes, noms qui parlent de technique plutôt que de métier (data, manager), paramètres booléens qui changent le comportement, condition qui teste le type d'un objet (instanceof) pour choisir quoi faire. Un commentaire qui explique un bloc est souvent un nom de méthode manquant.\n```java\n// avant : le booléen cache deux comportements\nString render(Invoice invoice, boolean detailed)\n// après : deux méthodes aux noms clairs\nString renderSummary(Invoice invoice)\nString renderDetail(Invoice invoice)\n```\nLiskov : un Carre qui hérite de Rectangle et refuse setLargeur seul casse les appelants du Rectangle ; l'héritage doit refléter un vrai « est un » comportemental."
+    },
+    {
+      "title": "Erreurs fréquentes à reconnaître",
+      "content": "1. Une classe « Manager » ou « Util » qui fait tout.\n2. new d'une implémentation concrète dans la logique métier : impossible à remplacer ou à tester.\n3. Un switch ou une cascade de instanceof qu'il faut rouvrir à chaque nouveau cas : une interface suffit.\n4. Une hiérarchie d'héritage créée pour réutiliser du code, pas pour modéliser un comportement.\n5. Refactorer et ajouter une fonctionnalité dans le même changement : impossible de savoir ce qui a cassé.\n6. Abstraire trop tôt : une interface sans deuxième implémentation prévisible est du bruit.\n\nRetrouve ces six erreurs de mémoire avant l'exercice, puis vérifie-toi avec le quiz."
+    }
+  ],
+  "keyConcepts": [
+    {
+      "code": "JAVA-SOLID",
+      "name": "SOLID",
+      "definition": "Cinq principes orientent la conception de composants cohérents et évolutifs.",
+      "whyExists": "Ils réduisent le coût des changements et le couplage accidentel.",
+      "whyImportant": "Le code professionnel vit plus longtemps que sa première version.",
+      "minimalExample": "class BillingService { BillingService(PricePort prices) {} }",
+      "professionalExample": "Une classe OrderService validait les commandes, les enregistrait en base et envoyait un email de confirmation dans une seule méthode process() : ajouter un nouveau canal de notification imposait de modifier cette classe déjà fragile, et un bug dans l'envoi d'email faisait parfois échouer l'enregistrement en base à cause d'une exception non isolée. Extraire un OrderValidator, un OrderRepository et un NotificationService, chacun injecté par constructeur, a isolé les raisons de changer et rendu chaque partie testable indépendamment.",
+      "codeExample": "class OrderService {\n    private final OrderRepository repository;\n    private final NotificationPort notifier;\n\n    OrderService(OrderRepository repository, NotificationPort notifier) {\n        this.repository = repository;\n        this.notifier = notifier;\n    }\n\n    void place(Order order) {\n        repository.save(order); // une seule raison de changer par collaborateur\n        notifier.confirm(order);\n    }\n}",
+      "commonMistake": "Créer une interface pour chaque classe sans besoin de substitution.",
+      "masteryQuestion": "Comment reconnaître qu'une classe a plusieurs responsabilités, et comment l'inversion de dépendances permet d'ajouter un comportement sans la modifier ?",
+      "masteryProof": "Séparer calcul, règle de taxe et affichage d'une facture, puis ajouter un taux réduit sans modifier le code existant."
+    }
+  ],
+  "exercises": [
+    {
+      "code": "JAVA-16-E1",
+      "title": "Séparer calcul, taxe et affichage",
+      "statement": "Complète Main : un record Invoice (calcul du sous-total et du total avec une TaxPolicy injectée), un InvoicePrinter séparé, et trois politiques de taxe (France 20 %, exonéré, réduit 10 %) sans modifier Invoice. Affiche exactement :\nSous-total : 150\nTotal FR (20%) : 180\nTotal exonere : 150\nTotal reduit (10%) : 165\nFacture: 2 lignes, total 180",
+      "starterCode": "import java.util.*;\n\npublic class Main {\n    interface TaxPolicy { int tax(int amount); }\n\n    // TODO 1 : record Invoice(List<Integer> lines) avec :\n    //          - int subtotal() : somme des lignes\n    //          - int total(TaxPolicy policy) : sous-total + taxe calculée par la politique\n    //          (aucun affichage, aucun taux en dur dans cette classe)\n\n    // TODO 2 : classe InvoicePrinter avec String render(Invoice invoice, TaxPolicy policy)\n    //          qui retourne \"Facture: N lignes, total T\" (l'affichage est sa seule responsabilité)\n\n    public static void main(String[] args) {\n        List<Integer> lines = List.of(100, 50);\n        // TODO 3 : crée trois TaxPolicy (lambdas) : france = 20 %, exonere = 0, reduit = 10 % (division entière)\n        // TODO 4 : affiche, dans cet ordre :\n        //   \"Sous-total : 150\", \"Total FR (20%) : 180\", \"Total exonere : 150\", \"Total reduit (10%) : 165\"\n        // TODO 5 : affiche le rendu du printer pour la politique France\n    }\n}\n",
+      "expectedOutput": "Sous-total : 150\nTotal FR (20%) : 180\nTotal exonere : 150\nTotal reduit (10%) : 165\nFacture: 2 lignes, total 180"
+    }
+  ],
+  "quiz": [
+    {
+      "code": "JAVA-16-Q1",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Une classe Facture calcule le total, applique la TVA codée en dur et affiche le résultat. Quel principe est le plus clairement violé ?",
+      "choices": [
+        "Liskov",
+        "Responsabilité unique : elle a plusieurs raisons de changer",
+        "Ségrégation des interfaces",
+        "Aucun, c'est pratique"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Le calcul, la règle de taxe et l'affichage évoluent pour des raisons différentes : un nouveau taux, un nouveau format. Une classe qui regroupe les trois doit être rouverte à chaque fois. On sépare et on injecte la règle variable."
+    },
+    {
+      "code": "JAVA-16-Q2",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Prédis ce qui arrive :\n```java\nclass Rectangle { void setLargeur(int l){...} void setHauteur(int h){...} }\nclass Carre extends Rectangle {\n    void setLargeur(int l){ super.setLargeur(l); super.setHauteur(l); }\n}\nRectangle r = new Carre(); r.setLargeur(4); r.setHauteur(5);\n// le code appelant s'attend à une aire de 20\n```\n",
+      "choices": [
+        "L'aire vaut 20 comme prévu",
+        "L'aire vaut 25 : le Carre ne se comporte pas comme un Rectangle, ce qui viole Liskov",
+        "Le code ne compile pas",
+        "L'aire vaut 16"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Carre modifie aussi la hauteur quand on change la largeur : l'appelant qui manipule un Rectangle obtient un résultat inattendu. Un sous-type doit respecter le contrat de son parent ; ici l'héritage ne représente pas un vrai « est un » comportemental."
+    },
+    {
+      "code": "JAVA-16-Q3",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Trouve le défaut :\n```java\nclass OrderService {\n    private final SmtpMailer mailer = new SmtpMailer();\n    void place(Order o) { ...; mailer.send(o); }\n}\n```\n",
+      "choices": [
+        "Le champ est final",
+        "Le service dépend d'une implémentation concrète : impossible de la remplacer ou de la tester sans vrai SMTP",
+        "SmtpMailer est mal nommé",
+        "Il manque un getter"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "L'inversion de dépendances demande de dépendre d'une interface Mailer fournie de l'extérieur (constructeur). On peut alors injecter un faux en test et une autre implémentation en production."
+    },
+    {
+      "code": "JAVA-16-Q4",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Quelle est la bonne définition d'un refactoring ?",
+      "choices": [
+        "Ajouter une fonctionnalité en réécrivant le code",
+        "Changer la structure du code sans changer son comportement observable",
+        "Corriger un bug en passant par une nouvelle classe",
+        "Supprimer les tests devenus gênants"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Le refactoring préserve le comportement : on le prouve avec des tests ou une sortie de référence avant et après. Mélanger refactoring et nouvelle fonctionnalité rend impossible de savoir ce qui a cassé."
+    },
+    {
+      "code": "JAVA-16-Q5",
+      "type": "FREE_TEXT",
+      "prompt": "Sans relire le cours, explique avec tes mots comment on ajoute un nouveau taux de taxe sans modifier la classe Invoice, et quels principes cela illustre.",
+      "choices": [],
+      "correctChoice": null,
+      "expectedKeywords": [
+        "interface",
+        "injecte",
+        "ouvert",
+        "modifi",
+        "inversion"
+      ],
+      "modelAnswer": "Invoice dépend d'une interface TaxPolicy qu'on lui injecte ; un nouveau taux est une nouvelle implémentation (ou lambda) passée en paramètre, donc on ajoute du code sans modifier Invoice. C'est le principe ouvert/fermé, rendu possible par l'inversion de dépendances (le métier dépend d'une abstraction).",
+      "explanation": "Une bonne réponse nomme l'interface injectée, explique qu'on ajoute au lieu de modifier, et relie cela à ouvert/fermé et à l'inversion de dépendances."
+    }
+  ],
+  "checklist": [
+    "Je sais lister les raisons de changer d'une classe",
+    "J'injecte une interface plutôt que d'instancier une implémentation concrète",
+    "J'ajoute un comportement sans rouvrir le code existant",
+    "Je vérifie un refactoring avec un test ou une sortie de référence"
+  ]
 }

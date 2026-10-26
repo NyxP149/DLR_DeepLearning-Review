@@ -11,21 +11,30 @@
     "TYPESCRIPT-22"
   ],
   "objectives": [
-    "Expliquer projet professionnel : sdk métier typé",
-    "Construire une preuve exécutable et déterministe",
-    "Relier le concept à une décision professionnelle"
+    "Concevoir un client d'API dont les types de réponse dépendent du chemin demandé.",
+    "Typer une table de routes et retrouver le bon type par clé (keyof, indexation).",
+    "Traiter les erreurs (route introuvable, statut) de façon explicite.",
+    "Présenter le SDK : contrat, exemples, tests et limites."
   ],
   "sections": [
     {
-      "title": "Concept et usage professionnel",
-      "content": "Projet professionnel : SDK métier typé répond à un besoin concret de maintenabilité, de sûreté ou de performance. Le laboratoire demande de rendre la décision observable et vérifiable.",
-      "conceptCodes": [
-        "TYPESCRIPT-PROJECT"
-      ]
+      "title": "Un SDK typé : le chemin détermine la réponse",
+      "content": "Un SDK (kit de développement) enveloppe une API pour que les développeurs l'appellent sans manipuler HTTP à la main. Son intérêt : les types guident l'usage. Si le chemin '/users/:id' retourne un User, le compilateur doit le savoir, et refuser de lire un champ qui n'existe pas.\n\nTechnique : une table de types associe chaque route à son type de réponse, et le client générique utilise la clé pour retrouver le bon type :\n```ts\ninterface Routes {\n  '/users/:id': { id: number; name: string };\n  '/orders/:id': { id: number; total: number };\n}\n\nclass Client {\n  async get<P extends keyof Routes>(path: P, params: Record<string, string | number>): Promise<Routes[P]> { ... }\n}\n\nconst user = await client.get('/users/:id', { id: 1 });    // user : { id: number; name: string }\n// user.total   -> erreur de compilation\n```"
     },
     {
-      "title": "Projet portfolio",
-      "content": "La preuve minimale est locale, déterministe et peut être enrichie sans changer le contrat attendu."
+      "title": "Exemple résolu : fill, get typé et erreur de route",
+      "conceptCodes": [
+        "TYPESCRIPT-PROJECT"
+      ],
+      "content": "Problème : construire le cœur d'un client qui remplace les paramètres de chemin, interroge un transport simulé et retourne le bon type.\n\nRaisonnement, étape par étape :\n1. Table Routes : chemin gabarit → type de réponse.\n2. fill(path, params) : remplace chaque :nom du gabarit par la valeur (/users/:id avec id = 1 donne /users/1). Une expression régulière /:(\\w+)/g avec une fonction de remplacement fait le travail ; un paramètre manquant doit lever une erreur claire.\n3. get<P extends keyof Routes>(path: P, params) : Promise<Routes[P]> : le type de retour dépend de la clé.\n4. Le transport (fetch simulé) répond une table URL → réponse ; une URL inconnue donne un statut 404.\n5. Le client convertit un statut différent de 200 en erreur explicite : « route /users/404 introuvable ».\n6. Vérification : le champ name est utilisable pour /users/1 ; lire total sur un User échoue à la compilation.\n```ts\nfunction fill(path: string, params: Record<string, string | number>): string {\n  return path.replace(/:(\\w+)/g, (_, name: string) => {\n    if (!(name in params)) throw new Error(`paramètre ${name} manquant`);\n    return String(params[name]);\n  });\n}\n```\nLe type garantit l'usage correct à la compilation, mais pas la forme réelle de la réponse : un SDK sérieux valide aussi la réponse à l'exécution (voir le laboratoire sur les contrats externes)."
+    },
+    {
+      "title": "Ce qui fait un SDK utilisable et défendable",
+      "content": "- API petite et cohérente : mêmes conventions partout, peu de concepts. Nomme les erreurs (RouteNotFoundError, ApiError avec statut et corps).\n- Pas de secret dans le SDK ; le jeton d'authentification est fourni par l'appelant.\n- Gestion des délais d'attente, des réessais sur erreurs transitoires et de l'annulation (AbortSignal).\n- Versionnage sémantique et fichier de changements ; un changement de type est un changement d'API publique.\n- Tests : des tests de contrat avec un transport simulé (pas de réseau), couvrant le succès, le 404, la validation et les erreurs réseau ; des tests de types (un fichier qui doit échouer à compiler avec // @ts-expect-error) pour verrouiller le typage.\n- Documentation : un exemple minimal, une liste des erreurs, les limites (pagination, concurrence).\n- Générer le SDK depuis une spécification OpenAPI évite que types et API divergent.\n```ts\n// @ts-expect-error  user n'a pas de champ total : cette ligne doit être une erreur de compilation\nclient.get('/users/:id', { id: 1 }).then(u => u.total);\n```"
+    },
+    {
+      "title": "Erreurs fréquentes à reconnaître",
+      "content": "1. Typer toutes les réponses avec any ou un seul type commun.\n2. Croire que le type de retour garantit la forme réelle de la réponse.\n3. Remplacer les paramètres de chemin sans les encoder (encodeURIComponent) : injection de segments.\n4. Aucune erreur typée : l'appelant ne sait pas distinguer 404 d'une panne réseau.\n5. Ne tester que le cas heureux.\n6. Un SDK dont les types et l'API réelle divergent faute de génération ou de tests de contrat.\n\nRetrouve ces erreurs de mémoire avant l'exercice, puis vérifie-toi avec le quiz : c'est la récupération, pas la relecture, qui fixe la notion."
     }
   ],
   "keyConcepts": [
@@ -39,8 +48,8 @@
       "professionalExample": "L'équipe publie un SDK npm interne @dlr/catalog-sdk pour que les équipes partenaires interrogent le catalogue produit sans réimplémenter l'appel HTTP à chaque fois. Le SDK expose des méthodes fortement typées comme getProduct(id): Promise<Product> et embarque ses fichiers .d.ts générés automatiquement à partir du code source, garantissant que toute évolution de contrat côté API casse la compilation chez les consommateurs plutôt qu'en silence à l'exécution.",
       "codeExample": "export interface Product {\n  id: string;\n  name: string;\n  priceCents: number;\n}\n\nexport class CatalogClient {\n  constructor(private readonly baseUrl: string, private readonly apiKey: string) {}\n\n  async getProduct(id: string): Promise<Product> {\n    const response = await fetch(`${this.baseUrl}/products/${id}`, {\n      headers: { Authorization: `Bearer ${this.apiKey}` },\n    });\n    if (!response.ok) {\n      throw new Error(`Produit ${id} introuvable (${response.status})`);\n    }\n    return response.json() as Promise<Product>;\n  }\n}",
       "commonMistake": "Appliquer la technique sans mesurer son effet ni documenter sa frontière.",
-      "masteryQuestion": "Quelle contrainte de projet professionnel : sdk métier typé doit rester vraie lorsque le système évolue ?",
-      "masteryProof": "Exécuter la preuve, expliquer son invariant et proposer un cas d’échec."
+      "masteryQuestion": "Comment une table de routes permet-elle de typer la réponse d'après le chemin, et pourquoi les types ne suffisent-ils pas ?",
+      "masteryProof": "Écrire fill, un Client.get typé par la table Routes et la gestion de l'erreur « route introuvable »."
     }
   ],
   "exercises": [
@@ -56,32 +65,80 @@
     {
       "code": "TYPESCRIPT-23-Q1",
       "type": "SINGLE_CHOICE",
-      "prompt": "Quelle preuve est la plus utile en revue ?",
+      "prompt": "Que renvoie le type de retour Promise<Routes[P]> avec P = '/users/:id' ?",
       "choices": [
-        "Une exécution déterministe avec invariant explicite",
-        "Une sortie aléatoire",
-        "Une capture sans code"
+        "Promise<any>",
+        "Promise<{ id: number; name: string }> : le type associé à cette clé dans la table",
+        "Promise<string>",
+        "Promise<never>"
       ],
-      "correctChoice": 0,
-      "expectedKeywords": []
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "P est inféré comme le littéral du chemin passé en argument, et Routes[P] indexe la table pour retrouver le type de réponse correspondant."
     },
     {
       "code": "TYPESCRIPT-23-Q2",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Prédis la sortie :\n```ts\nfunction fill(path: string, params: Record<string, string | number>) {\n  return path.replace(/:(\\w+)/g, (_, name) => String(params[name]));\n}\nconsole.log(fill('/users/:id', { id: 1 }));\n```\n",
+      "choices": [
+        "/users/:id",
+        "/users/1",
+        "/users/undefined",
+        "Une erreur"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "L'expression régulière capture :id, la fonction de remplacement renvoie String(params.id) = \"1\". Si le paramètre manquait, on obtiendrait \"undefined\" : il faut lever une erreur explicite."
+    },
+    {
+      "code": "TYPESCRIPT-23-Q3",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Trouve le risque :\n```ts\nconst url = `/users/${name}`;\n```\navec name saisi par l'utilisateur, par exemple \"../admin\".",
+      "choices": [
+        "Aucun",
+        "Le segment n'est pas encodé : la saisie modifie la structure du chemin (traversée) ; il faut encodeURIComponent",
+        "name est trop long",
+        "Template literal est interdit"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Un identifiant doit être validé et encodé avant d'être inséré dans un chemin. Sinon la saisie peut viser une autre route de l'API."
+    },
+    {
+      "code": "TYPESCRIPT-23-Q4",
+      "type": "SINGLE_CHOICE",
+      "prompt": "À quoi sert // @ts-expect-error dans un test de types ?",
+      "choices": [
+        "À ignorer une erreur indésirable",
+        "À affirmer que la ligne suivante DOIT produire une erreur de compilation : si elle n'en produit plus, le test échoue",
+        "À désactiver le mode strict",
+        "À accélérer la compilation"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "C'est la manière de tester qu'un typage reste restrictif : lire u.total sur un User doit rester une erreur. Si le type devient trop permissif, @ts-expect-error signale que l'erreur attendue a disparu."
+    },
+    {
+      "code": "TYPESCRIPT-23-Q5",
       "type": "FREE_TEXT",
-      "prompt": "Explique une décision liée à projet professionnel : sdk métier typé.",
+      "prompt": "Sans relire le cours, explique avec tes mots ce qui rend un SDK de qualité et pourquoi on valide aussi les réponses à l'exécution.",
       "choices": [],
       "correctChoice": null,
       "expectedKeywords": [
-        "contrat",
-        "preuve",
-        "test"
-      ]
+        "type",
+        "erreur",
+        "test",
+        "execution",
+        "contrat"
+      ],
+      "modelAnswer": "Un SDK de qualité a une API petite et cohérente, des erreurs typées et distinctes (route introuvable, statut, réseau), une gestion des délais et des réessais, une documentation avec exemples, des tests de contrat avec un transport simulé et des tests de types. Les types sont effacés à l'exécution : seul un contrôle de la forme réelle des réponses détecte un serveur qui change son contrat.",
+      "explanation": "Une bonne réponse cite API cohérente, erreurs typées, tests (contrat et types) et la validation à l'exécution car les types sont effacés."
     }
   ],
   "checklist": [
-    "Je peux expliquer le concept sans réciter une définition",
-    "Je sais exécuter et modifier la preuve",
-    "Je peux nommer un risque et son contrôle",
-    "Je peux présenter cette preuve dans mon portfolio"
+    "Mon client typé retrouve le type de réponse d'après la route",
+    "J'encode les paramètres insérés dans un chemin",
+    "Mes erreurs sont typées et distinguent route, statut et réseau",
+    "Je teste le contrat avec un transport simulé et verrouille les types"
   ]
 }

@@ -11,25 +11,30 @@
     "ARCHITECTURE-04"
   ],
   "objectives": [
-    "Définir identités, relations, contraintes et historique avant la persistance",
-    "Justifier les compromis et nommer un risque opérationnel",
-    "Produire une preuve reproductible avant d’élargir la solution"
+    "Identifier les invariants d'un modèle de données (obligatoire, positif, unique, transitions d'état autorisées).",
+    "Les vérifier dans le code (construction, validation) et dans la base (contraintes).",
+    "Représenter l'argent sans erreur d'arrondi (centimes) et calculer un total.",
+    "Distinguer règle d'entité, règle d'agrégat et règle inter-agrégats."
   ],
   "sections": [
     {
-      "title": "Concept clé et décision",
+      "title": "Un modèle de données exprime des règles",
+      "content": "Un modèle ne décrit pas seulement quelles données on stocke, mais ce qui est toujours vrai : une commande a au moins une ligne, un prix est strictement positif, un statut ne revient pas en arrière, un numéro de commande est unique. Ces invariants définissent la validité des données.\n\nOù les garantir : à la construction de l'objet (il est impossible de créer une commande vide), dans les transitions (une commande expédiée ne redevient pas brouillon), et dans la base (contraintes NOT NULL, UNIQUE, CHECK, clés étrangères) en dernière ligne de défense."
+    },
+    {
+      "title": "Exemple résolu : valider une commande",
       "conceptCodes": [
         "DATA-MODEL"
       ],
-      "content": "Modéliser les données et leurs invariants relie les besoins, le logiciel, les données et l’exploitation. Commence par les contraintes observables, trace les responsabilités, puis choisis la solution la plus simple qui respecte les invariants."
+      "content": "Problème : une commande est un agrégat (id, client, lignes, statut). Valider ses invariants et calculer son total sans erreur d'arrondi.\n\nRaisonnement, étape par étape :\n1. Invariants de l'agrégat : au moins une ligne ; chaque prix en centimes entier strictement positif ; le client existe ; le statut appartient à une liste fermée.\n2. Collecter toutes les violations plutôt que s'arrêter à la première : l'appelant corrige tout en une fois.\n3. Total : somme des prix en centimes (entiers), formatée à l'affichage (4000 centimes = 40,00).\n4. Transitions : DRAFT peut passer à CONFIRMED ou CANCELLED, CONFIRMED à SHIPPED ou CANCELLED, SHIPPED est final. Une table des transitions autorisées remplace une suite de if.\n5. Vérification : une commande valide affiche son total ; une commande avec ligne négative et statut inconnu liste deux violations ; DRAFT → SHIPPED est refusée.\n```python\nTRANSITIONS = {\"DRAFT\": {\"CONFIRMED\", \"CANCELLED\"}, \"CONFIRMED\": {\"SHIPPED\", \"CANCELLED\"}, \"SHIPPED\": set(), \"CANCELLED\": set()}\n\ndef can_move(current, target):\n    return target in TRANSITIONS.get(current, set())\n```\nLe même invariant devient une contrainte SQL : CHECK (price_cents > 0), et une clé primaire ou UNIQUE pour l'identité."
     },
     {
-      "title": "Construction verticale",
-      "content": "La preuve ARCHITECTURE-05 modélise une décision réelle sous forme déterministe. Elle ne remplace pas un déploiement complet : elle rend l’hypothèse testable avant l’intégration Spring Boot, Angular, PostgreSQL et Docker."
+      "title": "Règles, frontières et dérives",
+      "content": "- Règle d'entité : sur un seul objet (prix > 0). Règle d'agrégat : sur un groupe cohérent (somme des lignes, au moins une ligne). Règle inter-agrégats : entre objets distincts (stock suffisant, solvabilité du client) : elle se vérifie dans un service, souvent avec une transaction, et ne peut pas être garantie par un seul objet.\n- Un agrégat est la frontière de cohérence : tout ce qu'il contient se modifie ensemble et reste cohérent à chaque instant ; les autres agrégats sont référencés par identifiant.\n- Argent : centimes entiers ou décimal exact avec arrondi explicite ; jamais de flottants.\n- Identité : une clé technique stable ; les attributs métier (e-mail) peuvent changer.\n- Dates : en UTC, avec fuseau à l'affichage.\n- États : liste fermée, transitions explicites, historique si l'audit l'exige.\n- Données dérivées (total) : calcule-les ou garde-les en cohérence ; un total stocké peut diverger des lignes.\n- Évolution : migrations versionnées ; les contraintes ajoutées après coup exigent de nettoyer les données existantes.\n- Nommage : le vocabulaire du métier, pas celui de l'ORM."
     },
     {
-      "title": "Revue professionnelle",
-      "content": "Documente le contexte, la décision, une option rejetée, les conséquences, le signal à surveiller et la condition qui imposerait de revoir le choix."
+      "title": "Erreurs fréquentes à reconnaître",
+      "content": "1. Des invariants seulement dans la documentation ou l'interface.\n2. S'arrêter à la première erreur de validation.\n3. Des montants en flottants.\n4. Un statut libre (texte) sans transitions contrôlées.\n5. Un total stocké qui diverge des lignes.\n6. Aucune contrainte en base « parce que le code vérifie ».\n\nRetrouve ces erreurs de mémoire avant l'exercice, puis vérifie-toi avec le quiz : c'est la récupération, pas la relecture, qui fixe la notion."
     }
   ],
   "keyConcepts": [
@@ -43,49 +48,97 @@
       "professionalExample": "Un bug en production permet à un client de valider une commande avec une ligne à prix négatif, injectée via un champ de remise mal validé côté client, ce qui rembourse discrètement le client au lieu de le facturer. L’invariant « le prix d’une ligne doit être strictement positif » n’était vérifié nulle part côté serveur ni en base. Modéliser les invariants avant la persistance aurait imposé une contrainte CHECK en base et une validation dans le service, empêchant l’incident.",
       "codeExample": "-- Invariant imposé au niveau base\nALTER TABLE order_line\n  ADD CONSTRAINT price_positive CHECK (price > 0);\n\n-- Invariant redondant côté service (défense en profondeur)\nif line.price <= 0:\n    raise ValueError(\"Le prix d'une ligne doit être positif\")",
       "commonMistake": "Choisir un outil avant d’identifier le besoin, la charge, le risque et le propriétaire de la donnée.",
-      "masteryQuestion": "Quel compromis, quel signal et quelle condition de réévaluation associes-tu à « Modéliser les données et leurs invariants » ?",
-      "masteryProof": "Exécuter la preuve, modifier une contrainte, expliquer le résultat et dessiner la place du composant dans la stack complète."
+      "masteryQuestion": "Qu'est-ce qu'un invariant et où le garantit-on (construction, transitions, base) ? Pourquoi stocker l'argent en centimes ?",
+      "masteryProof": "Valider une commande en collectant ses violations, calculer son total en centimes et contrôler les transitions de statut."
     }
   ],
   "exercises": [
     {
       "code": "ARCHITECTURE-05-E1",
-      "title": "Définir identités, relations, contraintes et historique avant la persistance",
-      "statement": "Complète la preuve pour produire exactement la sortie attendue, puis explique la décision, une alternative et le signal de production qui validerait ton choix.",
-      "starterCode": "order = {\"id\": 42, \"customer_id\": 7, \"lines\": [25, 15], \"status\": \"DRAFT\"}\n# TODO 1 : vérifie avec assert que la commande a des lignes et que tous les prix sont positifs\n# TODO 2 : affiche \"Total: \" suivi de la somme des lignes\n# TODO 3 : affiche \"Invariant: valide\"\n",
-      "expectedOutput": "Total: 40\nInvariant: valide"
+      "title": "Valider une commande et ses transitions",
+      "statement": "Complète : la validation d'une commande (au moins une ligne, prix positifs, statut connu) qui collecte toutes les violations, le total en centimes formaté, et le contrôle des transitions de statut. Affiche exactement :\nCommande 42: valide, total 40.00 EUR\nCommande 43: invalide (aucune ligne)\nCommande 44: invalide (prix non positif, statut inconnu)\nDRAFT -> SHIPPED: refusé\nCONFIRMED -> SHIPPED: autorisé",
+      "starterCode": "TRANSITIONS = {\n    \"DRAFT\": {\"CONFIRMED\", \"CANCELLED\"},\n    \"CONFIRMED\": {\"SHIPPED\", \"CANCELLED\"},\n    \"SHIPPED\": set(),\n    \"CANCELLED\": set(),\n}\nORDERS = [\n    {\"id\": 42, \"customer_id\": 7, \"lines\": [2500, 1500], \"status\": \"DRAFT\"},\n    {\"id\": 43, \"customer_id\": 7, \"lines\": [], \"status\": \"DRAFT\"},\n    {\"id\": 44, \"customer_id\": 8, \"lines\": [1000, -50], \"status\": \"PENDING\"},\n]\n\n\ndef violations(order: dict) -> list[str]:\n    # TODO 1 : liste des violations : \"aucune ligne\" si lines est vide ; \"prix non positif\" si un prix <= 0 ;\n    #          \"statut inconnu\" si le statut n'est pas une clé de TRANSITIONS (dans cet ordre)\n    return []\n\n\ndef euros(cents: int) -> str:\n    # TODO 2 : format \"40.00\" à partir d'un nombre de centimes entier (divmod par 100)\n    return \"\"\n\n\ndef can_move(current: str, target: str) -> bool:\n    # TODO 3 : True si target est dans TRANSITIONS[current]\n    return False\n\n\nfor order in ORDERS:\n    # TODO 4 : affiche \"Commande <id>: valide, total <montant> EUR\" ou \"Commande <id>: invalide (<violations séparées par ', '>)\"\n    pass\n# TODO 5 : affiche \"DRAFT -> SHIPPED: <autorisé/refusé>\" puis \"CONFIRMED -> SHIPPED: <autorisé/refusé>\"\n",
+      "expectedOutput": "Commande 42: valide, total 40.00 EUR\nCommande 43: invalide (aucune ligne)\nCommande 44: invalide (prix non positif, statut inconnu)\nDRAFT -> SHIPPED: refusé\nCONFIRMED -> SHIPPED: autorisé"
     }
   ],
   "quiz": [
     {
       "code": "ARCHITECTURE-05-Q1",
       "type": "SINGLE_CHOICE",
-      "prompt": "Quelle démarche produit la décision la plus robuste ?",
+      "prompt": "Pourquoi stocker les montants en centimes entiers ?",
       "choices": [
-        "Relier contraintes, responsabilités, preuve et observabilité",
-        "Choisir la technologie la plus populaire",
-        "Ajouter des services avant de mesurer"
+        "Pour économiser de la place",
+        "Pour éviter les erreurs d'arrondi des nombres à virgule flottante",
+        "Parce que SQL l'exige",
+        "Pour accélérer les jointures"
       ],
-      "correctChoice": 0,
-      "expectedKeywords": []
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "0,1 + 0,2 ne vaut pas exactement 0,3 en flottant. Les entiers (ou décimaux exacts) donnent des totaux exacts."
     },
     {
       "code": "ARCHITECTURE-05-Q2",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Prédis les violations de {lines: [1000, -50], status: 'PENDING'} avec les statuts connus DRAFT, CONFIRMED, SHIPPED, CANCELLED :",
+      "choices": [
+        "aucune",
+        "prix non positif, statut inconnu",
+        "aucune ligne",
+        "statut inconnu seulement"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "La commande a des lignes (donc pas « aucune ligne »), un prix négatif (-50) et un statut absent de la liste fermée."
+    },
+    {
+      "code": "ARCHITECTURE-05-Q3",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Trouve le défaut :\n« Le statut est un champ texte libre ; l'interface n'affiche que les boutons autorisés. »",
+      "choices": [
+        "Aucun",
+        "La règle des transitions n'est qu'une convention d'interface : un autre client ou un script peut écrire n'importe quel statut ; il faut la garantir dans le domaine et la base",
+        "Texte libre est plus flexible",
+        "Les boutons sont en trop"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Un invariant doit être garanti là où les données sont écrites, pas seulement là où elles sont saisies."
+    },
+    {
+      "code": "ARCHITECTURE-05-Q4",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Une règle « le stock doit suffire » concerne la commande et le produit. De quel type de règle s'agit-il ?",
+      "choices": [
+        "Une règle d'entité",
+        "Une règle inter-agrégats, vérifiée dans un service avec une transaction",
+        "Une règle d'affichage",
+        "Une règle d'index"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Elle porte sur deux objets distincts : un seul agrégat ne peut pas la garantir seul. Elle demande une transaction ou une réservation de stock."
+    },
+    {
+      "code": "ARCHITECTURE-05-Q5",
       "type": "FREE_TEXT",
-      "prompt": "Nomme un compromis et le signal qui permettrait de le réévaluer.",
+      "prompt": "Sans relire le cours, explique avec tes mots où garantir un invariant (code et base) et pourquoi il faut les deux.",
       "choices": [],
       "correctChoice": null,
       "expectedKeywords": [
-        "compromis",
-        "mesure",
-        "risque"
-      ]
+        "invariant",
+        "base",
+        "contrainte",
+        "code",
+        "derniere"
+      ],
+      "modelAnswer": "Le code (construction de l'objet, transitions) empêche de créer ou de modifier un état invalide et donne de bons messages d'erreur. La base, avec ses contraintes (NOT NULL, UNIQUE, CHECK, clés étrangères), est la dernière ligne de défense : elle protège même si le code a un bug, si un autre programme écrit dans la base ou si deux requêtes concurrentes passent un contrôle. Les deux niveaux se complètent.",
+      "explanation": "Une bonne réponse cite construction et transitions côté code, contraintes côté base, et la raison de la double garantie."
     }
   ],
   "checklist": [
-    "Je peux dessiner la circulation de la donnée",
-    "Je sais nommer les responsabilités de chaque couche",
-    "Je justifie une alternative rejetée",
-    "Je définis une mesure et une condition de réévaluation"
+    "Je liste les invariants avant de modéliser",
+    "Je collecte toutes les violations d'une validation",
+    "Mes montants sont en centimes ou en décimal exact",
+    "Mes transitions de statut sont une table explicite"
   ]
 }

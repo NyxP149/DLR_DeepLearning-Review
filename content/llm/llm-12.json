@@ -11,21 +11,30 @@
     "LLM-11"
   ],
   "objectives": [
-    "Choisir une stratégie à partir de qualité, coût et traçabilité",
-    "Produire une expérience hors réseau reproductible",
-    "Documenter une limite et une métrique de contrôle"
+    "Comparer des stratégies de contexte selon qualité, coût et traçabilité avec un score explicite.",
+    "Tester la sensibilité de la décision à la pondération des critères.",
+    "Calculer une réduction de coût en tokens et la justifier.",
+    "Défendre un choix en présentant ses compromis, ses mesures et ses limites."
   ],
   "sections": [
     {
-      "title": "Concept et décision",
-      "content": "Défi final : comparer deux stratégies de contexte doit être évalué comme un composant logiciel : entrées explicites, sorties contrôlées, métriques et cas d’échec. Aucun appel à un service distant n’est nécessaire pour apprendre le mécanisme.",
-      "conceptCodes": [
-        "LLM-CHALLENGE"
-      ]
+      "title": "Décider avec plusieurs critères",
+      "content": "Face à un problème nouveau, plusieurs stratégies sont possibles : envoyer tout le contexte au modèle, ou ne transmettre que les passages retrouvés (RAG ciblé). Chacune a une qualité (exactitude mesurée), un coût (tokens, latence, argent) et une traçabilité (le nombre de citations vérifiables). Il n'existe pas de meilleure stratégie dans l'absolu : tout dépend de la valeur qu'on donne à chaque critère.\n\nUn score pondéré rend le compromis explicite :\nscore = qualité + poids_citations × citations - poids_coût × tokens\nLes poids traduisent des choix métier (l'auditabilité est-elle obligatoire ? le budget est-il serré ?). Les écrire force à les discuter."
     },
     {
-      "title": "Défi de synthèse",
-      "content": "L’expérience isole le mécanisme LLM-CHALLENGE. Elle reste volontairement déterministe afin de distinguer un défaut de pipeline d’une variation propre aux modèles génératifs."
+      "title": "Exemple résolu : contexte complet ou RAG ciblé",
+      "conceptCodes": [
+        "LLM-CHALLENGE"
+      ],
+      "content": "Problème : deux stratégies : contexte complet (qualité 0,90, 900 tokens, 1 citation) et RAG ciblé (qualité 0,88, 240 tokens, 3 citations). Laquelle retenir ?\n\nRaisonnement, étape par étape :\n1. Score avec les poids de l'énoncé : qualité + 0,05 × citations - tokens / 5000. Contexte complet : 0,90 + 0,05 - 0,18 = 0,77. RAG ciblé : 0,88 + 0,15 - 0,048 = 0,982.\n2. Le RAG ciblé gagne : il perd 2 points de qualité mais économise 660 tokens et triple les citations.\n3. Réduction de tokens : (900 - 240) / 900 = 73 % (73,3 arrondi).\n4. Sensibilité : si l'on ignore le coût et les citations, le contexte complet gagne (0,90 contre 0,88). Le choix dépend donc des poids : on teste plusieurs profils (qualité d'abord, coût d'abord, auditabilité d'abord) et on regarde si la décision change.\n5. Une décision robuste est celle qui reste la même sur les profils raisonnables ; sinon, il faut le dire et trancher avec le décideur.\n6. Vérification : on présente les chiffres, pas seulement le gagnant.\n```python\ndef score(s, w_cit=0.05, w_tok=1/5000):\n    return s[\"quality\"] + s[\"citations\"] * w_cit - s[\"tokens\"] * w_tok\n\nbest = max(strategies, key=lambda name: score(strategies[name]))\nreduction = round(100 * (1 - strategies[best][\"tokens\"] / strategies[\"contexte_complet\"][\"tokens\"]))\n```"
+    },
+    {
+      "title": "Présenter une décision défendable",
+      "content": "- Question posée : quelle stratégie, pour quel usage ? Un chatbot grand public et un assistant juridique n'ont pas les mêmes priorités.\n- Mesures : qualité sur un jeu d'évaluation représentatif (avec un intervalle d'incertitude), coût réel (tokens entrée et sortie, tarif), latence, taux de refus justifiés, fidélité des citations.\n- Critères non chiffrés : conformité, confidentialité (envoyer tout un dossier à un fournisseur n'est peut-être pas acceptable), maintenance, dépendance à un fournisseur.\n- Sensibilité : « le résultat change-t-il si le coût compte deux fois plus ? si la qualité exige 0,90 minimum ? » Une contrainte dure (qualité minimale) s'écrit comme un filtre avant le score.\n- Décision et réversibilité : choisir, mesurer en production, prévoir de revenir en arrière ; une décision se révise quand les tarifs, les modèles ou les données changent.\n- Honnêteté : écrire ce qu'on ne sait pas (taille du jeu, domaine non couvert), ce qui invaliderait la conclusion et ce qu'on mesurera ensuite.\n- Hybride : souvent la meilleure réponse est un mélange (RAG ciblé, avec contexte complet seulement si la recherche est incertaine).\n\nFormat court d'une note de décision : contexte, options, critères et poids, mesures, résultat, risques, décision, prochain point de revue."
+    },
+    {
+      "title": "Erreurs fréquentes à reconnaître",
+      "content": "1. Choisir sur la seule qualité, sans coût ni traçabilité.\n2. Des poids arbitraires jamais discutés ni testés.\n3. Présenter un gagnant sans les chiffres.\n4. Ignorer la sensibilité de la décision aux poids.\n5. Une contrainte dure (qualité minimale, confidentialité) noyée dans un score.\n6. Ne pas prévoir de réviser la décision.\n\nRetrouve ces erreurs de mémoire avant l'exercice, puis vérifie-toi avec le quiz : c'est la récupération, pas la relecture, qui fixe la notion."
     }
   ],
   "keyConcepts": [
@@ -39,49 +48,97 @@
       "professionalExample": "Une startup envoie tout l'historique de conversation et la documentation complète du produit dans chaque prompt pour garantir un maximum de contexte. Sa facture d'API triple en un mois à mesure que la base de connaissances grandit, sans gain de qualité mesurable par rapport à une stratégie RAG ciblée. En comparant les deux approches sur qualité, coût en tokens et nombre de citations vérifiables, l'équipe migre vers un contexte ciblé et réduit ses coûts d'inférence de plus de 70% sans perte de précision.",
       "codeExample": "strategies = {\n    \"contexte_complet\": {\"quality\": 0.90, \"tokens\": 900, \"citations\": 1, \"cout_mensuel_usd\": 2400},\n    \"rag_ciblé\": {\"quality\": 0.88, \"tokens\": 240, \"citations\": 3, \"cout_mensuel_usd\": 640},\n}\nfor values in strategies.values():\n    values[\"score\"] = values[\"quality\"] + values[\"citations\"] * 0.05 - values[\"tokens\"] / 5000\nwinner = max(strategies, key=lambda name: strategies[name][\"score\"])\nprint(\"Stratégie retenue:\", winner)\nprint(f\"Économie mensuelle: {strategies['contexte_complet']['cout_mensuel_usd'] - strategies['rag_ciblé']['cout_mensuel_usd']} USD\")",
       "commonMistake": "Évaluer un seul exemple favorable ou confondre plausibilité et exactitude.",
-      "masteryQuestion": "Quelle métrique et quel cas d’échec utiliserais-tu pour défi final : comparer deux stratégies de contexte ?",
-      "masteryProof": "Exécuter la preuve, modifier une entrée et expliquer le résultat ainsi que la limite du modèle local."
+      "masteryQuestion": "Pourquoi tester la sensibilité de la décision aux poids, et comment présenter honnêtement un compromis qualité, coût et traçabilité ?",
+      "masteryProof": "Scorer deux stratégies de contexte, choisir selon plusieurs profils de poids et justifier la réduction de tokens."
     }
   ],
   "exercises": [
     {
       "code": "LLM-12-E1",
-      "title": "Choisir une stratégie à partir de qualité, coût et traçabilité",
-      "statement": "Complète l’expérience pour produire exactement la sortie attendue. Explique ensuite quelle partie serait remplacée par un modèle réel.",
-      "starterCode": "strategies = {\n    \"contexte_complet\": {\"quality\": 0.90, \"tokens\": 900, \"citations\": 1},\n    \"rag_ciblé\": {\"quality\": 0.88, \"tokens\": 240, \"citations\": 3},\n}\n# TODO 1 : ajoute à chaque stratégie un score = quality + citations x 0.05 - tokens / 5000\n# TODO 2 : retiens la stratégie au meilleur score\n# TODO 3 : affiche \"Stratégie retenue: <nom>\" puis \"Réduction tokens: 73%\"\n",
-      "expectedOutput": "Stratégie retenue: rag_ciblé\nRéduction tokens: 73%"
+      "title": "Choisir une stratégie de contexte selon plusieurs profils",
+      "statement": "Complète l'analyse : le score de chaque stratégie, la stratégie retenue avec les poids par défaut, la réduction de tokens, puis la décision sous trois profils de poids et le verdict de robustesse. Affiche exactement :\ncontexte_complet: score 0.770\nrag_ciblé: score 0.982\nStratégie retenue: rag_ciblé\nRéduction tokens: 73%\ndéfaut -> rag_ciblé\nqualité d'abord -> contexte_complet\ncoût d'abord -> rag_ciblé\nDécision robuste: False",
+      "starterCode": "STRATEGIES = {\n    \"contexte_complet\": {\"quality\": 0.90, \"tokens\": 900, \"citations\": 1},\n    \"rag_ciblé\": {\"quality\": 0.88, \"tokens\": 240, \"citations\": 3},\n}\nPROFILES = {\n    \"défaut\": {\"citations\": 0.05, \"tokens\": 1 / 5000},\n    \"qualité d'abord\": {\"citations\": 0.0, \"tokens\": 0.0},\n    \"coût d'abord\": {\"citations\": 0.0, \"tokens\": 1 / 1000},\n}\n\n\ndef score(strategy: dict, weights: dict) -> float:\n    # TODO 1 : quality + citations x poids_citations - tokens x poids_tokens\n    return 0.0\n\n\ndef best(weights: dict) -> str:\n    # TODO 2 : nom de la stratégie au meilleur score (départage par nom)\n    return \"\"\n\n\n# TODO 3 : avec le profil \"défaut\", affiche pour chaque stratégie \"<nom>: score <3 décimales>\"\n# TODO 4 : affiche \"Stratégie retenue: <nom>\" puis \"Réduction tokens: <pourcentage arrondi>%\" par rapport à \"contexte_complet\"\n# TODO 5 : pour chaque profil, affiche \"<profil> -> <stratégie retenue>\"\n# TODO 6 : affiche \"Décision robuste: <True/False>\" (True si la même stratégie gagne sous tous les profils)\n",
+      "expectedOutput": "contexte_complet: score 0.770\nrag_ciblé: score 0.982\nStratégie retenue: rag_ciblé\nRéduction tokens: 73%\ndéfaut -> rag_ciblé\nqualité d'abord -> contexte_complet\ncoût d'abord -> rag_ciblé\nDécision robuste: False"
     }
   ],
   "quiz": [
     {
       "code": "LLM-12-Q1",
       "type": "SINGLE_CHOICE",
-      "prompt": "Quelle validation est la plus solide ?",
+      "prompt": "Pourquoi écrire explicitement les poids d'un score de décision ?",
       "choices": [
-        "Plusieurs cas reproductibles avec métriques et provenance",
-        "Une réponse qui semble correcte",
-        "Une démonstration sans jeu de test"
+        "Pour que le score soit plus grand",
+        "Pour rendre les priorités discutables et testables au lieu de les cacher dans une intuition",
+        "Parce que Python l'exige",
+        "Pour accélérer le calcul"
       ],
-      "correctChoice": 0,
-      "expectedKeywords": []
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Les poids traduisent des choix métier (budget, auditabilité). Explicites, ils peuvent être débattus, justifiés et comparés ; implicites, ils cachent la décision."
     },
     {
       "code": "LLM-12-Q2",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Prédis la réduction de tokens de rag_ciblé (240) par rapport à contexte_complet (900), arrondie :",
+      "choices": [
+        "27 %",
+        "73 %",
+        "660 %",
+        "38 %"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "(900 - 240) / 900 = 0,733 : 73 % de tokens en moins. Attention à ne pas confondre 240/900 = 27 % (part restante) et la réduction."
+    },
+    {
+      "code": "LLM-12-Q3",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Sous le profil « qualité d'abord » (poids nuls pour citations et tokens), quelle stratégie gagne ?",
+      "choices": [
+        "rag_ciblé, 0,88 est plus grand",
+        "contexte_complet : 0,90 est supérieur à 0,88 quand seule la qualité compte",
+        "Elles sont ex æquo",
+        "Aucune"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Sans coût ni citations, le score égale la qualité : 0,90 contre 0,88. C'est pourquoi la décision dépend des poids et pourquoi tester plusieurs profils est utile."
+    },
+    {
+      "code": "LLM-12-Q4",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Une contrainte impose une qualité minimale de 0,90. Comment l'intégrer proprement ?",
+      "choices": [
+        "En augmentant un poids",
+        "Comme un filtre éliminatoire avant le score : les stratégies sous 0,90 sont écartées",
+        "En ignorant le coût",
+        "En répétant le calcul"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Une contrainte dure ne se négocie pas avec un score : elle écarte les options inacceptables. Le score départage ensuite les options acceptables."
+    },
+    {
+      "code": "LLM-12-Q5",
       "type": "FREE_TEXT",
-      "prompt": "Nomme une limite et le contrôle associé.",
+      "prompt": "Sans relire le cours, explique avec tes mots comment tu présentes une décision de compromis pour qu'elle soit défendable.",
       "choices": [],
       "correctChoice": null,
       "expectedKeywords": [
+        "critere",
+        "mesure",
+        "sensibilite",
         "limite",
-        "test",
-        "mesure"
-      ]
+        "revue"
+      ],
+      "modelAnswer": "Je pose la question et le contexte d'usage, je liste les options et les critères avec leurs poids justifiés, je présente les mesures (qualité avec son incertitude, coût réel, latence, fidélité des citations), je teste la sensibilité de la décision à plusieurs profils de poids, j'énonce les contraintes dures, les limites de l'analyse et ce qui la remettrait en cause, puis je décide en prévoyant un point de revue.",
+      "explanation": "Une bonne réponse enchaîne critères et poids, mesures, sensibilité, limites et décision révisable."
     }
   ],
   "checklist": [
-    "Je sais expliquer le mécanisme",
-    "Je peux reproduire la preuve hors réseau",
-    "Je distingue simulation locale et modèle réel",
-    "Je peux nommer une métrique et un risque"
+    "Mes critères et leurs poids sont écrits et justifiés",
+    "Je teste la décision sous plusieurs profils de poids",
+    "Je traite une contrainte dure comme un filtre, pas comme un poids",
+    "Je présente chiffres, limites et point de revue"
   ]
 }

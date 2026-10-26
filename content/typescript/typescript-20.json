@@ -11,21 +11,30 @@
     "TYPESCRIPT-19"
   ],
   "objectives": [
-    "Expliquer sécurité web et validation des données",
-    "Construire une preuve exécutable et déterministe",
-    "Relier le concept à une décision professionnelle"
+    "Distinguer XSS, redirection ouverte, traversée de chemin et injection, et la défense propre à chacune.",
+    "Échapper une sortie HTML selon son contexte et préférer textContent à innerHTML.",
+    "Valider une redirection par liste blanche (chemin interne seulement).",
+    "Gérer secrets et dépendances en front et en Node.js."
   ],
   "sections": [
     {
-      "title": "Concept et usage professionnel",
-      "content": "Sécurité web et validation des données répond à un besoin concret de maintenabilité, de sûreté ou de performance. Le laboratoire demande de rendre la décision observable et vérifiable.",
-      "conceptCodes": [
-        "TYPESCRIPT-SECURITY"
-      ]
+      "title": "Les entrées sont hostiles, les sorties se protègent",
+      "content": "Principe : ne fais jamais confiance à une donnée venant de l'extérieur (formulaire, URL, en-tête, réponse d'API) et protège chaque sortie selon son contexte.\n- XSS (cross-site scripting) : un texte saisi par un utilisateur est affiché comme du HTML et exécute du script chez les autres visiteurs. Défense : échapper à l'affichage, préférer element.textContent à innerHTML, et limiter les scripts avec une politique de sécurité de contenu (CSP).\n- Redirection ouverte : une page /login?next=URL redirige vers une URL fournie par l'attaquant (hameçonnage). Défense : n'accepter que des chemins internes.\n- Injection (SQL, commande) : paramètres liés, jamais de concaténation.\n- Traversée de chemin : resolve puis contrôle d'appartenance au dossier.\n- CSRF : une page tierce déclenche une action avec les cookies de l'utilisateur ; défenses : jeton, cookies SameSite."
     },
     {
-      "title": "Mise en pratique",
-      "content": "La preuve minimale est locale, déterministe et peut être enrichie sans changer le contrat attendu."
+      "title": "Exemple résolu : échapper le HTML et contrôler une redirection",
+      "conceptCodes": [
+        "TYPESCRIPT-SECURITY"
+      ],
+      "content": "Problème : afficher un nom saisi dans une page sans exécuter de script, et rediriger après connexion uniquement vers l'intérieur du site.\n\nRaisonnement, étape par étape :\n1. Échappement HTML : remplacer & par &amp; (en premier !), < par &lt;, > par &gt;, \" par &quot;, ' par &#39;. Si on remplaçait & en dernier, on transformerait les &lt; déjà produits en &amp;lt;.\n2. Test : <script>alert(1)</script> devient &lt;script&gt;alert(1)&lt;/script&gt; : le navigateur l'affiche comme du texte.\n3. Redirection : accepte seulement un chemin qui commence par un seul « / » ; refuse https://evil.example (absolu), //evil.example (le navigateur l'interprète comme un autre site) et /\\evil.example (certains navigateurs transforment \\ en /).\n4. Liste blanche : on définit ce qui est permis (chemin interne simple), pas ce qui est interdit.\n5. Vérification : /dashboard est accepté ; les trois autres sont refusés.\n```ts\nfunction escapeHtml(text: string): string {\n  return text\n    .replace(/&/g, '&amp;')       // d'abord !\n    .replace(/</g, '&lt;')\n    .replace(/>/g, '&gt;')\n    .replace(/\"/g, '&quot;')\n    .replace(/'/g, '&#39;');\n}\n\nfunction isSafeRedirect(target: string): boolean {\n  return target.startsWith('/') && !target.startsWith('//') && !target.startsWith('/\\\\');\n}\n```"
+    },
+    {
+      "title": "Défense en profondeur côté web",
+      "content": "- Les frameworks modernes (Angular, React) échappent par défaut ; les contournements (innerHTML, bypassSecurityTrustHtml, dangerouslySetInnerHTML) sont les endroits à auditer. Si tu dois afficher du HTML venant d'un utilisateur, nettoie-le avec une bibliothèque dédiée (DOMPurify), jamais avec tes propres expressions régulières.\n- Le contexte compte : l'échappement HTML ne suffit pas dans un attribut non guillemeté, dans du JavaScript ou dans une URL (javascript:...). Valide le schéma d'une URL (http, https) avant de l'utiliser dans un lien.\n- CSP : en-tête Content-Security-Policy qui limite l'origine des scripts ; réduit l'impact d'une XSS.\n- Cookies : HttpOnly (inaccessible au JavaScript), Secure (HTTPS seulement), SameSite (limite l'envoi inter-sites).\n- Aucun secret dans le code front : tout ce qui est livré au navigateur est lisible. Les clés d'API sensibles restent côté serveur.\n- Dépendances : npm audit, verrouillage, revue des mises à jour ; une dépendance compromise s'exécute avec tes droits.\n- Messages d'erreur : jamais de trace de pile ni de détail interne à l'utilisateur.\n- Validation de forme côté client = confort ; la validation décisive est côté serveur."
+    },
+    {
+      "title": "Erreurs fréquentes à reconnaître",
+      "content": "1. Échapper & en dernier (double échappement) ou oublier les guillemets.\n2. innerHTML avec une donnée utilisateur.\n3. Valider une redirection avec startsWith('http') ou en cherchant « evil » : liste noire contournable.\n4. Accepter // ou /\\ comme chemin interne.\n5. Une clé secrète dans le code front ou dans un dépôt public.\n6. Construire des requêtes SQL ou des commandes par concaténation.\n\nRetrouve ces erreurs de mémoire avant l'exercice, puis vérifie-toi avec le quiz : c'est la récupération, pas la relecture, qui fixe la notion."
     }
   ],
   "keyConcepts": [
@@ -39,8 +48,8 @@
       "professionalExample": "Un formulaire de profil utilisateur affichait le champ 'bio' saisi par l'utilisateur directement dans le HTML côté serveur avant envoi, ce qui exposait l'application à une faille XSS si un utilisateur saisissait une balise script. L'équipe a ajouté une étape de validation et d'échappement systématique de toute entrée utilisateur avant stockage et avant rendu, en s'appuyant sur un schéma de validation strict qui rejette les champs excédant la longueur attendue et échappe les caractères HTML sensibles.",
       "codeExample": "import { z } from 'zod';\n\nconst ProfileInputSchema = z.object({\n  bio: z.string().max(280),\n  displayName: z.string().min(1).max(50),\n});\n\nfunction escapeHtml(value: string): string {\n  return value\n    .replace(/&/g, '&amp;')\n    .replace(/</g, '&lt;')\n    .replace(/>/g, '&gt;');\n}\n\nfunction saveProfile(rawInput: unknown): { bio: string; displayName: string } {\n  const input = ProfileInputSchema.parse(rawInput); // rejette les entrées invalides\n  return { bio: escapeHtml(input.bio), displayName: escapeHtml(input.displayName) };\n}",
       "commonMistake": "Appliquer la technique sans mesurer son effet ni documenter sa frontière.",
-      "masteryQuestion": "Quelle contrainte de sécurité web et validation des données doit rester vraie lorsque le système évolue ?",
-      "masteryProof": "Exécuter la preuve, expliquer son invariant et proposer un cas d’échec."
+      "masteryQuestion": "Pourquoi échapper & en premier, et pourquoi //evil.example n'est-il pas un chemin interne ?",
+      "masteryProof": "Écrire escapeHtml et isSafeRedirect, puis les appliquer à une charge XSS et à quatre cibles de redirection."
     }
   ],
   "exercises": [
@@ -56,32 +65,80 @@
     {
       "code": "TYPESCRIPT-20-Q1",
       "type": "SINGLE_CHOICE",
-      "prompt": "Quelle preuve est la plus utile en revue ?",
+      "prompt": "Quelle méthode DOM est la plus sûre pour afficher un texte saisi par un utilisateur ?",
       "choices": [
-        "Une exécution déterministe avec invariant explicite",
-        "Une sortie aléatoire",
-        "Une capture sans code"
+        "element.innerHTML = texte",
+        "element.textContent = texte",
+        "document.write(texte)",
+        "eval(texte)"
       ],
-      "correctChoice": 0,
-      "expectedKeywords": []
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "textContent insère du texte brut : aucun balisage n'est interprété. innerHTML interprète le HTML et exécute potentiellement du script injecté."
     },
     {
       "code": "TYPESCRIPT-20-Q2",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Prédis la sortie de ce mauvais échappement (& traité en dernier) pour la chaîne <b> :\n```ts\ntext.replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/&/g, '&amp;')\n```\n",
+      "choices": [
+        "&lt;b&gt;",
+        "&amp;lt;b&amp;gt; : les entités produites sont échappées une seconde fois",
+        "<b>",
+        "&b&"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Après les deux premiers remplacements on a &lt;b&gt;. Le dernier remplace chaque & par &amp;, donnant &amp;lt;b&amp;gt; : le texte s'affiche littéralement avec « &lt; » au lieu de <b>. Il faut remplacer & en premier."
+    },
+    {
+      "code": "TYPESCRIPT-20-Q3",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Quelle cible de redirection doit être refusée après connexion ?",
+      "choices": [
+        "/dashboard",
+        "/orders?page=2",
+        "//evil.example",
+        "/"
+      ],
+      "correctChoice": 2,
+      "expectedKeywords": [],
+      "explanation": "//evil.example est une URL relative au protocole : le navigateur la traite comme http(s)://evil.example. Un chemin interne légitime commence par un seul / suivi d'autre chose que / ou \\."
+    },
+    {
+      "code": "TYPESCRIPT-20-Q4",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Trouve le défaut :\n```ts\nif (!target.includes('evil.com')) window.location.href = target;\n```\n",
+      "choices": [
+        "includes est interdit",
+        "C'est une liste noire : evil.org, un sous-domaine ou une URL encodée la contourne ; il faut une liste blanche de chemins internes",
+        "href est en lecture seule",
+        "Il faut utiliser var"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "On autorise ce qu'on sait sûr (chemin interne simple), plutôt que d'interdire ce qu'on pense dangereux. Les listes noires oublient toujours une variante."
+    },
+    {
+      "code": "TYPESCRIPT-20-Q5",
       "type": "FREE_TEXT",
-      "prompt": "Explique une décision liée à sécurité web et validation des données.",
+      "prompt": "Sans relire le cours, explique avec tes mots ce qu'est une XSS et deux défenses complémentaires.",
       "choices": [],
       "correctChoice": null,
       "expectedKeywords": [
-        "contrat",
-        "preuve",
-        "test"
-      ]
+        "script",
+        "echapp",
+        "textcontent",
+        "csp",
+        "utilisateur"
+      ],
+      "modelAnswer": "Une XSS survient quand un texte contrôlé par un utilisateur est interprété comme du HTML ou du script dans la page d'un autre visiteur, ce qui permet de voler une session ou d'agir à sa place. On s'en protège en échappant les sorties selon leur contexte (ou en utilisant textContent plutôt qu'innerHTML, et le rendu échappé par défaut des frameworks) et en limitant l'impact avec une politique de sécurité de contenu (CSP) et des cookies HttpOnly.",
+      "explanation": "Une bonne réponse décrit l'exécution de script injecté et cite au moins deux défenses : échappement ou textContent, CSP, cookies HttpOnly."
     }
   ],
   "checklist": [
-    "Je peux expliquer le concept sans réciter une définition",
-    "Je sais exécuter et modifier la preuve",
-    "Je peux nommer un risque et son contrôle",
-    "Je relie cette étape à la suivante"
+    "J'échappe les sorties selon leur contexte et je préfère textContent",
+    "Je contrôle les redirections par liste blanche",
+    "Je ne mets aucun secret dans le code livré au navigateur",
+    "Je sais que la validation côté client n'est qu'un confort"
   ]
 }

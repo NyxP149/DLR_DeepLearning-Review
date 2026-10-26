@@ -11,21 +11,30 @@
     "PYTHON-15"
   ],
   "objectives": [
-    "Expliquer sql, transactions et couches de persistance",
-    "Construire une preuve exécutable et déterministe",
-    "Relier le concept à une décision professionnelle"
+    "Écrire des requêtes SQL paramétrées avec sqlite3 et expliquer pourquoi elles empêchent l'injection.",
+    "Utiliser la connexion comme gestionnaire de contexte pour valider ou annuler un lot (atomicité).",
+    "Traduire une erreur technique de base (IntegrityError) en erreur métier dans un repository.",
+    "Séparer le domaine de la persistance et repérer un N+1 ou une transaction trop large."
   ],
   "sections": [
     {
-      "title": "Concept et usage professionnel",
-      "content": "SQL, transactions et couches de persistance répond à un besoin concret de maintenabilité, de sûreté ou de performance. Le laboratoire demande de rendre la décision observable et vérifiable.",
-      "conceptCodes": [
-        "PYTHON-PERSISTENCE"
-      ]
+      "title": "sqlite3 : paramètres, transactions et ressources",
+      "content": "sqlite3 est le client SQL de la bibliothèque standard, et son modèle (connexion, curseur, transaction) ressemble à JDBC. Règle de sécurité n°1 : n'insère jamais une valeur dans le texte SQL, utilise des paramètres.\n```python\nimport sqlite3\n\nconnexion = sqlite3.connect(\":memory:\")\nconnexion.execute(\"CREATE TABLE users (id INTEGER PRIMARY KEY, email TEXT UNIQUE NOT NULL, name TEXT)\")\n\n# SÛR : la valeur voyage séparément de la requête\nconnexion.execute(\"INSERT INTO users (email, name) VALUES (?, ?)\", (\"ada@dlr.dev\", \"Ada\"))\n\n# DANGEREUX : f\"... WHERE name = '{saisie}'\" permet l'injection (' OR '1'='1)\n```\nAvec des paramètres, la requête est analysée avant que les valeurs n'arrivent : une saisie n'est jamais interprétée comme du SQL. Les contraintes (UNIQUE, NOT NULL, CHECK) appartiennent à la base : elle est la dernière ligne de défense."
     },
     {
-      "title": "Mise en pratique",
-      "content": "La preuve minimale est locale, déterministe et peut être enrichie sans changer le contrat attendu."
+      "title": "Exemple résolu : un lot atomique dans un repository",
+      "conceptCodes": [
+        "PYTHON-PERSISTENCE"
+      ],
+      "content": "Problème : ajouter plusieurs utilisateurs d'un coup. Si un seul e-mail est en double, aucun ne doit être ajouté.\n\nRaisonnement, étape par étape :\n1. Utiliser la connexion comme gestionnaire de contexte : with connexion: valide (commit) si le bloc réussit et annule (rollback) si une exception en sort.\n2. Dans le bloc, insérer chaque utilisateur avec une requête paramétrée.\n3. Un doublon d'e-mail viole la contrainte UNIQUE : sqlite3.IntegrityError est levée, le with annule tout le lot.\n4. Le repository traduit cette erreur technique en erreur métier ValueError(\"email déjà utilisé\") : l'appelant ne dépend pas de sqlite3.\n5. Vérification : après un lot en échec, le total en base n'a pas changé.\n```python\nclass UserRepository:\n    def __init__(self, connexion):\n        self.connexion = connexion\n\n    def add_many(self, users):\n        try:\n            with self.connexion:                      # commit ou rollback automatique\n                self.connexion.executemany(\n                    \"INSERT INTO users (email, name) VALUES (?, ?)\", users)\n        except sqlite3.IntegrityError as erreur:\n            raise ValueError(\"email déjà utilisé\") from erreur\n        return len(users)\n```\nLe with d'une connexion sqlite3 gère la transaction, mais ne ferme pas la connexion : pense à connexion.close() (ou contextlib.closing)."
+    },
+    {
+      "title": "Couches de persistance et performances",
+      "content": "Un repository expose des opérations du domaine (add, find_by_email) et cache le SQL : le reste du code ne manipule ni curseur ni ligne de base. On peut ainsi remplacer SQLite par PostgreSQL, ou le repository par un faux en mémoire dans les tests.\n\nPratiques :\n- row_factory = sqlite3.Row pour lire les colonnes par nom ; convertis en objets du domaine (dataclass) à la sortie du repository.\n- Garde les transactions courtes : une transaction retient des verrous.\n- Évite le N+1 : une boucle qui exécute une requête par élément ; préfère une jointure ou WHERE id IN (...).\n- Les schémas évoluent par migrations versionnées (Alembic, Flyway), jamais par des CREATE TABLE exécutés au hasard.\n- Place des index sur les colonnes filtrées souvent ; EXPLAIN QUERY PLAN montre si un index est utilisé.\n- Par défaut SQLite n'impose pas les clés étrangères : PRAGMA foreign_keys = ON à chaque connexion."
+    },
+    {
+      "title": "Erreurs fréquentes à reconnaître",
+      "content": "1. Construire la requête avec une f-string : injection SQL.\n2. Plusieurs écritures dépendantes sans transaction : état incohérent après une erreur.\n3. Laisser fuiter sqlite3.IntegrityError jusqu'à l'interface utilisateur.\n4. Oublier de fermer la connexion (le with de la connexion ne la ferme pas).\n5. Une requête dans une boucle (N+1).\n6. Mettre les règles uniquement en Python, sans contrainte en base.\n\nRetrouve ces erreurs de mémoire avant l'exercice, puis vérifie-toi avec le quiz : c'est la récupération, pas la relecture, qui fixe la notion."
     }
   ],
   "keyConcepts": [
@@ -39,8 +48,8 @@
       "professionalExample": "Un service de gestion de stock mettait à jour la quantité d'un produit avec deux requêtes SQL séparées (lecture puis écriture) sans transaction, et deux commandes simultanées ont fini par décrémenter le même stock deux fois à partir de la même valeur lue, créant un stock négatif. En englobant la lecture et l'écriture dans une transaction unique, l'opération est devenue atomique et l'incident de survente ne s'est plus reproduit.",
       "codeExample": "import sqlite3\n\ndef reserve_stock(conn: sqlite3.Connection, product_id: str, quantity: int) -> None:\n    with conn:  # transaction : commit automatique, rollback si exception\n        cursor = conn.execute(\n            \"SELECT stock FROM products WHERE id = ?\", (product_id,)\n        )\n        current_stock = cursor.fetchone()[0]\n        if current_stock < quantity:\n            raise ValueError(f\"Stock insuffisant pour {product_id}\")\n        conn.execute(\n            \"UPDATE products SET stock = stock - ? WHERE id = ?\",\n            (quantity, product_id),\n        )",
       "commonMistake": "Appliquer la technique sans mesurer son effet ni documenter sa frontière.",
-      "masteryQuestion": "Quelle contrainte de sql, transactions et couches de persistance doit rester vraie lorsque le système évolue ?",
-      "masteryProof": "Exécuter la preuve, expliquer son invariant et proposer un cas d’échec."
+      "masteryQuestion": "Pourquoi un lot dans with connexion est-il atomique, et pourquoi traduire IntegrityError en ValueError dans le repository ?",
+      "masteryProof": "Écrire un UserRepository sqlite3 : requêtes paramétrées, lot atomique annulé sur doublon, erreur métier lisible."
     }
   ],
   "exercises": [
@@ -56,32 +65,80 @@
     {
       "code": "PYTHON-16-Q1",
       "type": "SINGLE_CHOICE",
-      "prompt": "Quelle preuve est la plus utile en revue ?",
+      "prompt": "Pourquoi cette requête est-elle dangereuse ?\n```python\nconnexion.execute(f\"SELECT * FROM users WHERE name = '{saisie}'\")\n```\n",
       "choices": [
-        "Une exécution déterministe avec invariant explicite",
-        "Une sortie aléatoire",
-        "Une capture sans code"
+        "Elle est trop lente",
+        "Une saisie comme ' OR '1'='1 modifie la logique de la requête : injection SQL",
+        "SELECT * est interdit",
+        "Elle ne ferme pas la connexion"
       ],
-      "correctChoice": 0,
-      "expectedKeywords": []
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "La valeur est collée dans le texte SQL, donc interprétée comme du SQL. Avec des paramètres (?, saisie), la valeur reste une donnée."
     },
     {
       "code": "PYTHON-16-Q2",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Prédis le résultat :\n```python\ntry:\n    with connexion:\n        connexion.execute(\"INSERT INTO users (email) VALUES ('a@x')\")\n        connexion.execute(\"INSERT INTO users (email) VALUES ('a@x')\")   # UNIQUE violée\nexcept sqlite3.IntegrityError:\n    pass\nprint(connexion.execute(\"SELECT COUNT(*) FROM users\").fetchone()[0])\n```\n(la table était vide)",
+      "choices": [
+        "1",
+        "0 : le bloc with a annulé les deux insertions",
+        "2",
+        "Une exception"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "L'exception sort du bloc with : la connexion fait un rollback de tout ce qui a été fait dans la transaction, y compris la première insertion valide. La table reste vide."
+    },
+    {
+      "code": "PYTHON-16-Q3",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Trouve le défaut :\n```python\ndef inscrire(email):\n    try:\n        repo.add(email)\n    except sqlite3.IntegrityError:\n        return \"erreur\"\n```\ndans la couche service de l'application.",
+      "choices": [
+        "Il manque un else",
+        "Le service connaît une exception de la couche base : le repository devrait lever une erreur métier",
+        "IntegrityError n'existe pas",
+        "return est interdit dans except"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "La technologie de persistance doit rester dans le repository, qui traduit en erreurs du domaine (ValueError, DuplicateEmail). Sinon changer de base oblige à modifier la logique métier."
+    },
+    {
+      "code": "PYTHON-16-Q4",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Une boucle fait « pour chaque commande, SELECT ... WHERE order_id = ? ». Quel est le problème ?",
+      "choices": [
+        "Aucun",
+        "N+1 : une requête par commande ; une jointure ou un IN ramène les lignes en une seule requête",
+        "SELECT est interdit dans une boucle",
+        "Il manque un index sur toutes les colonnes"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Chaque requête a un coût fixe d'aller-retour. Pour 1 000 commandes, 1 000 requêtes au lieu d'une. On charge en lot avec une jointure ou WHERE order_id IN (...)."
+    },
+    {
+      "code": "PYTHON-16-Q5",
       "type": "FREE_TEXT",
-      "prompt": "Explique une décision liée à sql, transactions et couches de persistance.",
+      "prompt": "Sans relire le cours, explique avec tes mots pourquoi une contrainte UNIQUE en base est utile même si le code vérifie déjà l'unicité.",
       "choices": [],
       "correctChoice": null,
       "expectedKeywords": [
-        "contrat",
-        "preuve",
-        "test"
-      ]
+        "concurren",
+        "base",
+        "contrainte",
+        "verifi",
+        "simultan"
+      ],
+      "modelAnswer": "Le code qui vérifie « cet e-mail existe-t-il ? » puis insère n'est pas atomique : deux requêtes simultanées peuvent passer le contrôle avant l'écriture. La contrainte UNIQUE est garantie par la base, qui arbitre de façon atomique, et reste valable pour tous les programmes qui écrivent dans la table. Le code gère ensuite proprement l'erreur de violation.",
+      "explanation": "Une bonne réponse mentionne la concurrence (contrôle puis écriture non atomique) et la garantie de la base pour tous les écrivains."
     }
   ],
   "checklist": [
-    "Je peux expliquer le concept sans réciter une définition",
-    "Je sais exécuter et modifier la preuve",
-    "Je peux nommer un risque et son contrôle",
-    "Je relie cette étape à la suivante"
+    "J'utilise toujours des requêtes paramétrées",
+    "Mes lots sont atomiques avec with connexion",
+    "Mon repository traduit les erreurs techniques en erreurs métier",
+    "Mes règles essentielles sont aussi des contraintes de base"
   ]
 }

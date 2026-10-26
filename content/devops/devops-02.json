@@ -11,21 +11,30 @@
     "DEVOPS-01"
   ],
   "objectives": [
-    "Expliquer compose, réseaux, volumes et santé",
-    "Construire une preuve exécutable et déterministe",
-    "Relier le concept à une décision professionnelle"
+    "Décrire une pile Docker Compose : services, réseaux, volumes, healthchecks.",
+    "Calculer l'ordre de démarrage à partir des dépendances et détecter un cycle.",
+    "Distinguer démarré et prêt (depends_on avec condition service_healthy).",
+    "Repérer des données perdues faute de volume, un port exposé inutilement ou un service qui attend un autre sans test de santé."
   ],
   "sections": [
     {
-      "title": "Concept et usage professionnel",
-      "content": "Compose, réseaux, volumes et santé répond à un besoin concret de maintenabilité, de sûreté ou de performance. Le laboratoire demande de rendre la décision observable et vérifiable.",
-      "conceptCodes": [
-        "DEVOPS-COMPOSE"
-      ]
+      "title": "Compose décrit une application multi-services",
+      "content": "Docker Compose décrit dans un fichier les services d'une application (api, base, cache), leurs réseaux, leurs volumes et leurs dépendances.\n```yaml\nservices:\n  db:\n    image: postgres:16\n    volumes: [dbdata:/var/lib/postgresql/data]       # les données survivent au conteneur\n    healthcheck:\n      test: [\"CMD-SHELL\", \"pg_isready -U app\"]\n      interval: 5s\n      retries: 10\n  api:\n    build: .\n    depends_on:\n      db: { condition: service_healthy }              # attend que db soit PRÊT, pas seulement démarré\n    environment:\n      DB_URL: jdbc:postgresql://db:5432/app\nvolumes:\n  dbdata:\n```\nLes services d'un même réseau se joignent par leur nom (db) grâce à la résolution DNS interne. Un volume conserve les données quand le conteneur est recréé ; sans volume, un docker compose down supprime la base."
     },
     {
-      "title": "Mise en pratique",
-      "content": "La preuve minimale est locale, déterministe et peut être enrichie sans changer le contrat attendu."
+      "title": "Exemple résolu : l'ordre de démarrage",
+      "conceptCodes": [
+        "DEVOPS-COMPOSE"
+      ],
+      "content": "Problème : à partir des depends_on, calculer l'ordre de démarrage, détecter un cycle et repérer les attentes de santé impossibles.\n\nRaisonnement, étape par étape :\n1. Graphe : chaque service pointe vers les services dont il dépend (web → api → db).\n2. Ordre de démarrage = tri topologique : un service ne démarre qu'après ses dépendances. Pour web → api → db, l'ordre est db, api, web.\n3. Algorithme : tant qu'il reste des services, démarrer ceux dont toutes les dépendances sont déjà démarrées. Si, à un tour, aucun service n'est démarrable alors qu'il en reste, il existe un cycle.\n4. Cycle : a dépend de b, b dépend de a : aucun ne peut démarrer en premier. Le message nomme le cycle (a → b → a).\n5. Santé : si un service attend un autre avec condition: service_healthy mais que celui-ci n'a pas de healthcheck, l'attente ne peut jamais être satisfaite. On le signale.\n6. Pour un ordre stable, trie les ex æquo par nom.\n```python\ndef order(deps: dict[str, list[str]]) -> list[str]:\n    started: list[str] = []\n    pending = sorted(deps)\n    while pending:\n        ready = [s for s in pending if all(d in started for d in deps[s])]\n        if not ready:\n            raise ValueError('cycle')\n        started.append(ready[0]); pending.remove(ready[0])\n    return started\n```"
+    },
+    {
+      "title": "Prêt n'est pas démarré, et autres pièges",
+      "content": "depends_on sans condition attend seulement que le conteneur soit lancé, pas que l'application à l'intérieur accepte des connexions : une API qui démarre avant que PostgreSQL ait fini son initialisation échoue. Deux protections complémentaires : condition: service_healthy côté Compose, et surtout un client résilient (réessais avec délai) côté application, car en production la base peut redémarrer à tout moment.\n\nAutres repères :\n- Réseaux : un réseau par groupe de services qui doivent communiquer ; la base ne doit pas être exposée au monde. Publie un port (ports: \"8080:8080\") uniquement pour ce qui doit être joignable de l'extérieur ; entre services, pas besoin de publier.\n- Variables et secrets : un fichier .env non versionné ou des secrets Compose (secrets:) ; jamais de mot de passe dans le fichier versionné.\n- Volumes nommés pour les données ; bind mounts pour le développement (code monté).\n- Healthcheck : une commande rapide et fiable qui reflète la capacité à servir (pg_isready, curl /health), avec un délai de grâce au démarrage (start_period).\n- Ressources : limites de mémoire et de CPU pour qu'un service ne prive pas les autres.\n- restart: unless-stopped pour redémarrer après un incident.\n- Compose convient au développement, aux tests et aux petits déploiements ; pour la haute disponibilité et la montée en charge, on passe à un orchestrateur (Kubernetes)."
+    },
+    {
+      "title": "Erreurs fréquentes à reconnaître",
+      "content": "1. Supposer que depends_on attend que le service soit prêt.\n2. Une dépendance circulaire entre services.\n3. Un service qui attend service_healthy sur un service sans healthcheck.\n4. Aucune persistance : la base repart vide à chaque recréation.\n5. Publier le port de la base sur toute la machine.\n6. Un mot de passe en clair dans docker-compose.yml versionné.\n\nRetrouve ces erreurs de mémoire avant l'exercice, puis vérifie-toi avec le quiz : c'est la récupération, pas la relecture, qui fixe la notion."
     }
   ],
   "keyConcepts": [
@@ -39,8 +48,8 @@
       "professionalExample": "Un développeur démarre son environnement local avec docker compose up et voit son service backend planter au démarrage car il tente de se connecter à la base de données avant que celle-ci ait fini son initialisation. En ajoutant un healthcheck sur le service de base de données et une condition depends_on: service_healthy sur le backend, Compose attend que la base réponde réellement avant de lancer l'application, au lieu de se fier au simple ordre de démarrage des conteneurs. Le même fichier définit aussi un réseau dédié et un volume nommé pour que les données survivent aux redémarrages, ce qui évite de perdre l'historique local à chaque docker compose down.",
       "codeExample": "services:\n  db:\n    image: postgres:16.1\n    environment:\n      POSTGRES_DB: app\n    volumes:\n      - db_data:/var/lib/postgresql/data\n    healthcheck:\n      test: [\"CMD-SHELL\", \"pg_isready -U postgres\"]\n      interval: 5s\n      timeout: 3s\n      retries: 5\n    networks:\n      - backend\n\n  api:\n    build: .\n    depends_on:\n      db:\n        condition: service_healthy\n    networks:\n      - backend\n\nvolumes:\n  db_data:\n\nnetworks:\n  backend:",
       "commonMistake": "Appliquer la technique sans mesurer son effet ni documenter sa frontière.",
-      "masteryQuestion": "Quelle contrainte de compose, réseaux, volumes et santé doit rester vraie lorsque le système évolue ?",
-      "masteryProof": "Exécuter la preuve, expliquer son invariant et proposer un cas d’échec."
+      "masteryQuestion": "Pourquoi depends_on ne suffit-il pas à garantir qu'une base est prête, et comment détecte-t-on un cycle de dépendances ?",
+      "masteryProof": "Calculer l'ordre de démarrage d'après depends_on, détecter un cycle et signaler un service qui attend la santé d'un service sans healthcheck."
     }
   ],
   "exercises": [
@@ -56,32 +65,80 @@
     {
       "code": "DEVOPS-02-Q1",
       "type": "SINGLE_CHOICE",
-      "prompt": "Quelle preuve est la plus utile en revue ?",
+      "prompt": "Que garantit depends_on sans condition ?",
       "choices": [
-        "Une exécution déterministe avec invariant explicite",
-        "Une sortie aléatoire",
-        "Une capture sans code"
+        "Que la base accepte des connexions",
+        "Que le conteneur dépendu a été lancé avant, pas qu'il est prêt à servir",
+        "Que l'application est testée",
+        "Que les ports sont publiés"
       ],
-      "correctChoice": 0,
-      "expectedKeywords": []
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Le conteneur démarre, mais l'application à l'intérieur peut mettre plusieurs secondes à être prête. Il faut un healthcheck, la condition service_healthy et un client qui réessaie."
     },
     {
       "code": "DEVOPS-02-Q2",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Prédis l'ordre de démarrage : web dépend de api, api dépend de db.",
+      "choices": [
+        "web, api, db",
+        "db, api, web",
+        "api, db, web",
+        "db, web, api"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Un service ne démarre qu'après ses dépendances : db d'abord, puis api, puis web."
+    },
+    {
+      "code": "DEVOPS-02-Q3",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Trouve le défaut :\n```yaml\na: { depends_on: [b] }\nb: { depends_on: [a] }\n```\n",
+      "choices": [
+        "Il manque des images",
+        "Dépendance circulaire : chacun attend l'autre, aucun ne peut démarrer en premier",
+        "depends_on est déprécié",
+        "Les noms sont trop courts"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Le tri topologique est impossible dans un cycle. Il faut casser la dépendance : l'un des deux services doit tolérer l'absence de l'autre (réessais) ou la logique commune doit être déplacée."
+    },
+    {
+      "code": "DEVOPS-02-Q4",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Que se passe-t-il pour les données d'une base sans volume lors de docker compose down puis up ?",
+      "choices": [
+        "Elles sont conservées",
+        "Elles sont perdues : le conteneur recréé repart d'un système de fichiers vide",
+        "Elles sont sauvegardées automatiquement",
+        "Elles sont chiffrées"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Le système de fichiers d'un conteneur est éphémère. Un volume nommé monté sur le répertoire de données de la base les conserve entre recréations."
+    },
+    {
+      "code": "DEVOPS-02-Q5",
       "type": "FREE_TEXT",
-      "prompt": "Explique une décision liée à compose, réseaux, volumes et santé.",
+      "prompt": "Sans relire le cours, explique avec tes mots la différence entre « démarré » et « prêt » pour un service, et comment Compose et l'application s'en protègent.",
       "choices": [],
       "correctChoice": null,
       "expectedKeywords": [
-        "contrat",
-        "preuve",
-        "test"
-      ]
+        "demarre",
+        "pret",
+        "healthcheck",
+        "reessai",
+        "connexion"
+      ],
+      "modelAnswer": "Un service est démarré quand son conteneur est lancé, et prêt quand l'application à l'intérieur accepte réellement des requêtes (après son initialisation). Compose se protège avec un healthcheck et la condition service_healthy. L'application doit en plus tolérer l'absence temporaire d'un voisin en réessayant la connexion avec un délai, car une dépendance peut redémarrer à tout moment.",
+      "explanation": "Une bonne réponse distingue conteneur lancé et application prête, cite healthcheck et service_healthy, et ajoute les réessais côté client."
     }
   ],
   "checklist": [
-    "Je peux expliquer le concept sans réciter une définition",
-    "Je sais exécuter et modifier la preuve",
-    "Je peux nommer un risque et son contrôle",
-    "Je relie cette étape à la suivante"
+    "Mes dépendances utilisent des healthchecks et service_healthy",
+    "Mes données persistantes sont dans des volumes nommés",
+    "Je ne publie que les ports qui doivent l'être",
+    "Mon application réessaie ses connexions"
   ]
 }

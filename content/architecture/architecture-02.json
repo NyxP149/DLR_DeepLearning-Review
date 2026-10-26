@@ -11,25 +11,30 @@
     "ARCHITECTURE-01"
   ],
   "objectives": [
-    "Transformer un parcours utilisateur en capacités, endpoints et critères vérifiables",
-    "Justifier les compromis et nommer un risque opérationnel",
-    "Produire une preuve reproductible avant d’élargir la solution"
+    "Partir d'un besoin utilisateur pour en dériver critères d'acceptation et contrat d'API.",
+    "Écrire un contrat complet : méthode, chemin, entrées, statuts de succès et d'erreur.",
+    "Vérifier que chaque critère d'acceptation est couvert par un cas du contrat.",
+    "Reconnaître quand une conception top-down est risquée (besoin mal compris, contraintes ignorées)."
   ],
   "sections": [
     {
-      "title": "Concept clé et décision",
+      "title": "Top-down : du pourquoi au comment",
+      "content": "Une approche descendante commence par le besoin : qui veut quoi, pour quelle valeur. Puis elle descend : scénarios, critères d'acceptation, contrat d'API, modèle de données, implémentation. Chaque niveau découle du précédent et peut être vérifié contre lui.\n```\nBesoin        : un client veut passer une commande\nCritères      : une commande valide est créée ; une commande vide est refusée ; un client inconnu est refusé\nContrat       : POST /orders -> 201 (créée) | 400 (vide) | 404 (client inconnu)\n```\nL'intérêt : on ne code pas ce qui n'a pas de raison d'être, et le contrat est un support de discussion avec le front, les tests et les clients avant la première ligne de code."
+    },
+    {
+      "title": "Exemple résolu : de l'histoire au contrat",
       "conceptCodes": [
         "TOP-DOWN-DESIGN"
       ],
-      "content": "Top-down : du besoin utilisateur aux contrats relie les besoins, le logiciel, les données et l’exploitation. Commence par les contraintes observables, trace les responsabilités, puis choisis la solution la plus simple qui respecte les invariants."
+      "content": "Problème : pour « Créer une commande », produire un contrat qui couvre chaque critère d'acceptation.\n\nRaisonnement, étape par étape :\n1. Histoire utilisateur : « En tant que client, je veux créer une commande pour la suivre ».\n2. Critères d'acceptation, formulés en observations : commande valide créée (succès), commande sans ligne refusée (erreur de validation), client inconnu refusé (ressource absente), même clé d'idempotence rejouée sans doublon.\n3. Contrat : méthode et chemin (POST /orders), statut de succès (201 avec l'emplacement de la ressource), statuts d'erreur (400, 404, 409), format du corps d'erreur.\n4. Traçabilité : chaque critère pointe vers un statut ; un statut sans critère signale un comportement non demandé, un critère sans statut un cas oublié.\n5. Tests dérivés : un test d'acceptation par critère.\n6. Vérification : tous les critères sont couverts et le contrat ne contient aucun statut sans critère.\n```python\ncontract = {\"method\": \"POST\", \"path\": \"/orders\", \"responses\": {201: \"créée\", 400: \"vide\", 404: \"client inconnu\"}}\ncriteria = {\"valide\": 201, \"vide\": 400, \"client inconnu\": 404}\nuncovered = [name for name, status in criteria.items() if status not in contract[\"responses\"]]\n```"
     },
     {
-      "title": "Construction verticale",
-      "content": "La preuve ARCHITECTURE-02 modélise une décision réelle sous forme déterministe. Elle ne remplace pas un déploiement complet : elle rend l’hypothèse testable avant l’intégration Spring Boot, Angular, PostgreSQL et Docker."
+      "title": "Forces et dangers du top-down",
+      "content": "Forces : vision claire de la valeur, contrats discutés tôt, tests dérivés du besoin, parallélisation (front et back avancent sur le contrat).\n\nDangers :\n- Besoin mal compris : on conçoit finement la mauvaise chose. Valider avec un prototype ou des exemples concrets.\n- Contraintes ignorées : performance, données existantes, intégrations. Le bas du système (base, réseau) peut rendre le contrat irréaliste (voir le laboratoire bottom-up).\n- Sur-conception : prévoir dix cas d'usage dont un seul est demandé. Concevoir le contrat minimal qui satisfait les critères actuels.\n- Contrat figé trop tôt : prévoir l'évolution (champs optionnels, versionnement).\n\nBonnes pratiques de contrat : décrire entrées, sorties, statuts, erreurs (format unique), idempotence et pagination ; l'exprimer en OpenAPI pour générer documentation, mocks et tests ; revoir le contrat avec ses consommateurs ; ne pas exposer le modèle de données interne.\n\nEn pratique, on alterne descendre (besoin vers contrat) et remonter (contraintes des données et de l'exploitation vers contrat) jusqu'à convergence."
     },
     {
-      "title": "Revue professionnelle",
-      "content": "Documente le contexte, la décision, une option rejetée, les conséquences, le signal à surveiller et la condition qui imposerait de revoir le choix."
+      "title": "Erreurs fréquentes à reconnaître",
+      "content": "1. Un contrat sans erreurs : seul le chemin heureux est décrit.\n2. Un critère d'acceptation sans test ni statut correspondant.\n3. Un statut ou un champ que personne n'a demandé.\n4. Concevoir sans consulter les contraintes de données et d'exploitation.\n5. Figer le contrat sans prévoir son évolution.\n6. Exposer la structure interne de la base dans le contrat.\n\nRetrouve ces erreurs de mémoire avant l'exercice, puis vérifie-toi avec le quiz : c'est la récupération, pas la relecture, qui fixe la notion."
     }
   ],
   "keyConcepts": [
@@ -43,49 +48,97 @@
       "professionalExample": "Une product owner décrit le besoin « permettre à un client d’annuler une commande dans les 10 minutes suivant l’achat ». L’architecte traduit ce besoin en contrat avant que le backend n’existe : DELETE /orders/{id} renvoyant 204 si le délai est respecté et 409 sinon, ce qui permet à l’équipe frontend de construire son écran en parallèle sur un mock. Sans cette démarche descendante, l’équipe frontend aurait dû deviner la forme de la réponse et tout refaire une fois l’API livrée.",
       "codeExample": "User story: \"Annuler une commande dans les 10 minutes\"\n\nContrat dérivé:\nDELETE /orders/{id}\n  -> 204 No Content   si now - order.createdAt <= 10min\n  -> 409 Conflict     si le délai est dépassé\n  -> 404 Not Found    si la commande n'existe pas",
       "commonMistake": "Choisir un outil avant d’identifier le besoin, la charge, le risque et le propriétaire de la donnée.",
-      "masteryQuestion": "Quel compromis, quel signal et quelle condition de réévaluation associes-tu à « Top-down : du besoin utilisateur aux contrats » ?",
-      "masteryProof": "Exécuter la preuve, modifier une contrainte, expliquer le résultat et dessiner la place du composant dans la stack complète."
+      "masteryQuestion": "Comment passe-t-on d'une histoire utilisateur à un contrat vérifiable, et que révèle un critère sans statut (ou l'inverse) ?",
+      "masteryProof": "Dériver un contrat d'API d'une histoire utilisateur et vérifier que chaque critère d'acceptation est couvert."
     }
   ],
   "exercises": [
     {
       "code": "ARCHITECTURE-02-E1",
-      "title": "Transformer un parcours utilisateur en capacités, endpoints et critères vérifiables",
-      "statement": "Complète la preuve pour produire exactement la sortie attendue, puis explique la décision, une alternative et le signal de production qui validerait ton choix.",
-      "starterCode": "story = \"Créer une commande\"\ncontract = {\"method\": \"POST\", \"path\": \"/orders\", \"success\": 201}\n# TODO 1 : affiche \"Besoin:\" suivi de la story\n# TODO 2 : affiche \"Contrat: <méthode> <chemin> -> <code de succès>\" à partir du dictionnaire contract\n",
-      "expectedOutput": "Besoin: Créer une commande\nContrat: POST /orders -> 201"
+      "title": "Du besoin au contrat, avec traçabilité",
+      "statement": "Complète : l'affichage du besoin et du contrat (méthode, chemin, statut de succès), la couverture de chaque critère d'acceptation par un statut du contrat, et la détection des statuts du contrat sans critère. Affiche exactement :\nBesoin: Créer une commande\nContrat: POST /orders -> 201\ncommande valide créée: couvert (201)\ncommande vide refusée: couvert (400)\nclient inconnu refusé: couvert (404)\nlivraison express gratuite: couvert (201)\npaiement refusé: NON COUVERT (402)\nStatuts sans critère: 409\nCouverture: 4/5",
+      "starterCode": "STORY = \"Créer une commande\"\nCONTRACT = {\n    \"method\": \"POST\",\n    \"path\": \"/orders\",\n    \"success\": 201,\n    \"errors\": {400: \"commande vide\", 404: \"client inconnu\", 409: \"clé rejouée avec un autre contenu\"},\n}\nCRITERIA = {\n    \"commande valide créée\": 201,\n    \"commande vide refusée\": 400,\n    \"client inconnu refusé\": 404,\n    \"livraison express gratuite\": 201,\n    \"paiement refusé\": 402,\n}\n\n# TODO 1 : affiche \"Besoin: <STORY>\" puis \"Contrat: <méthode> <chemin> -> <succès>\"\n# TODO 2 : statuts du contrat = {succès} + clés de errors ; pour chaque critère (dans l'ordre) affiche\n#          \"<critère>: couvert (<statut>)\" ou \"<critère>: NON COUVERT (<statut>)\"\n# TODO 3 : affiche \"Statuts sans critère: \" suivi des statuts du contrat qu'aucun critère n'utilise (triés, séparés par \", \") ou \"aucun\"\n# TODO 4 : affiche \"Couverture: <couverts>/<total>\"\n",
+      "expectedOutput": "Besoin: Créer une commande\nContrat: POST /orders -> 201\ncommande valide créée: couvert (201)\ncommande vide refusée: couvert (400)\nclient inconnu refusé: couvert (404)\nlivraison express gratuite: couvert (201)\npaiement refusé: NON COUVERT (402)\nStatuts sans critère: 409\nCouverture: 4/5"
     }
   ],
   "quiz": [
     {
       "code": "ARCHITECTURE-02-Q1",
       "type": "SINGLE_CHOICE",
-      "prompt": "Quelle démarche produit la décision la plus robuste ?",
+      "prompt": "Un contrat d'API prévoit le statut 409 mais aucun critère d'acceptation ne le mentionne. Que signifie cela ?",
       "choices": [
-        "Relier contraintes, responsabilités, preuve et observabilité",
-        "Choisir la technologie la plus populaire",
-        "Ajouter des services avant de mesurer"
+        "Rien",
+        "Un comportement non demandé ou un critère oublié : il faut trancher et aligner contrat et critères",
+        "Le contrat est parfait",
+        "Le statut 409 est interdit"
       ],
-      "correctChoice": 0,
-      "expectedKeywords": []
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "La traçabilité va dans les deux sens : un critère sans statut est un cas oublié, un statut sans critère est du travail non justifié (ou un besoin non écrit)."
     },
     {
       "code": "ARCHITECTURE-02-Q2",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Prédis la couverture : cinq critères dont deux utilisent des statuts absents du contrat (402 et un cas express réutilisant 201 déjà présent). Combien sont couverts ?",
+      "choices": [
+        "5/5",
+        "4/5 : seul le critère sur 402 n'est pas couvert",
+        "3/5",
+        "0/5"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Le critère « paiement refusé » attend 402, absent du contrat. Les autres utilisent 201, 400 ou 404, présents. (Le critère express réutilisant 201 est couvert au sens du statut, ce qui montre qu'un statut seul ne prouve pas le comportement : il faut aussi un test.)"
+    },
+    {
+      "code": "ARCHITECTURE-02-Q3",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Trouve le défaut :\n```\nPOST /orders -> 201\n```\ncomme unique description du contrat.",
+      "choices": [
+        "Il manque une méthode",
+        "Seul le chemin heureux est décrit : ni erreurs, ni validation, ni idempotence, ni format de corps",
+        "201 est interdit",
+        "Le chemin est trop court"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Un contrat utile décrit aussi les erreurs et les cas limites, car c'est là que consommateurs et serveur se désaccordent."
+    },
+    {
+      "code": "ARCHITECTURE-02-Q4",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Quel danger principal d'une conception uniquement descendante ?",
+      "choices": [
+        "Elle est trop rapide",
+        "Ignorer les contraintes du bas (données, performance, exploitation) et concevoir un contrat irréaliste",
+        "Elle interdit les tests",
+        "Elle exige un seul langage"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Le haut décide de ce qui est souhaitable, le bas de ce qui est possible. On alterne les deux regards jusqu'à convergence."
+    },
+    {
+      "code": "ARCHITECTURE-02-Q5",
       "type": "FREE_TEXT",
-      "prompt": "Nomme un compromis et le signal qui permettrait de le réévaluer.",
+      "prompt": "Sans relire le cours, explique avec tes mots le chemin besoin, critères, contrat, tests et ce que la traçabilité apporte.",
       "choices": [],
       "correctChoice": null,
       "expectedKeywords": [
-        "compromis",
-        "mesure",
-        "risque"
-      ]
+        "besoin",
+        "critere",
+        "contrat",
+        "test",
+        "tracab"
+      ],
+      "modelAnswer": "On part d'un besoin exprimé par l'utilisateur, on le traduit en critères d'acceptation observables, puis en contrat d'API (méthode, chemin, statuts, erreurs), puis en tests dérivés de chaque critère. La traçabilité relie chaque critère à un comportement du contrat et à un test : on voit ce qui est oublié (critère sans statut) et ce qui est superflu (statut sans critère).",
+      "explanation": "Une bonne réponse enchaîne besoin, critères, contrat, tests et explique la double vérification d'oublis et de superflu."
     }
   ],
   "checklist": [
-    "Je peux dessiner la circulation de la donnée",
-    "Je sais nommer les responsabilités de chaque couche",
-    "Je justifie une alternative rejetée",
-    "Je définis une mesure et une condition de réévaluation"
+    "Chaque critère d'acceptation pointe vers un statut ou un comportement du contrat",
+    "Mon contrat décrit succès, erreurs et idempotence",
+    "Je repère un statut sans critère et un critère sans statut",
+    "Je confronte mon contrat aux contraintes des données et de l'exploitation"
   ]
 }

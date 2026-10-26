@@ -11,25 +11,30 @@
     "ARCHITECTURE-13"
   ],
   "objectives": [
-    "Combiner modules, contrôle d’accès, transaction et audit dans une livraison testable",
-    "Justifier les compromis et nommer un risque opérationnel",
-    "Produire une preuve reproductible avant d’élargir la solution"
+    "Concevoir un flux d'approbation avec rôles, seuils et séparation des tâches.",
+    "Journaliser chaque décision (acceptée ou refusée) dans un journal d'audit horodaté et immuable.",
+    "Appliquer le moindre privilège : l'auteur d'une demande ne peut pas l'approuver.",
+    "Documenter un système modulaire sécurisé : modèle de menaces, contrôles, limites."
   ],
   "sections": [
     {
-      "title": "Concept clé et décision",
+      "title": "Sécurité par conception d'un flux métier",
+      "content": "Un flux d'approbation (dépense, accès, mise en production) est un cas d'école de contrôle d'accès : qui peut demander, qui peut approuver, jusqu'à quel montant, et que reste-t-il comme preuve ? Règles classiques :\n- Séparation des tâches : celui qui crée une demande ne peut pas l'approuver (sinon une seule personne peut tout faire).\n- Seuils : un manager approuve jusqu'à un montant, au-delà il faut un rôle supérieur ou une double approbation.\n- Moindre privilège : chaque rôle ne dispose que des actions nécessaires.\n- Traçabilité : chaque tentative, réussie ou refusée, est consignée (qui, quoi, quand, résultat, raison) dans un journal d'audit qu'on ne modifie pas."
+    },
+    {
+      "title": "Exemple résolu : approuver avec des règles et un audit",
       "conceptCodes": [
         "SECURE-MODULAR-PROJECT"
       ],
-      "content": "Projet 2 : système modulaire sécurisé relie les besoins, le logiciel, les données et l’exploitation. Commence par les contraintes observables, trace les responsabilités, puis choisis la solution la plus simple qui respecte les invariants."
+      "content": "Problème : une demande de dépense peut être approuvée par un manager jusqu'à 1 000 €, par un directeur au-delà ; l'auteur ne peut pas approuver sa propre demande. Journaliser chaque décision.\n\nRaisonnement, étape par étape :\n1. Authentification déjà faite : on reçoit l'utilisateur (nom, rôle).\n2. Règle 1, rôle : seuls manager et directeur peuvent approuver ; un employé reçoit un refus (403).\n3. Règle 2, séparation des tâches : si l'utilisateur est l'auteur de la demande, refus.\n4. Règle 3, seuil : au-delà de 1 000 €, seul un directeur peut approuver.\n5. Audit : à chaque décision, on ajoute une entrée immuable (identifiant de la demande, utilisateur, décision, raison, horodatage injecté). Un refus est consigné aussi : c'est souvent lui qui signale une tentative suspecte.\n6. Vérification : la suite de décisions donne les statuts attendus et un journal complet ; le journal n'est jamais modifié, seulement complété.\n```python\ndef approve(user, request, now):\n    reason = None\n    if user[\"role\"] not in {\"manager\", \"director\"}:\n        reason = \"rôle insuffisant\"\n    elif user[\"name\"] == request[\"author\"]:\n        reason = \"auto-approbation interdite\"\n    elif request[\"amount\"] > 1000 and user[\"role\"] != \"director\":\n        reason = \"seuil dépassé\"\n    audit.append((now, request[\"id\"], user[\"name\"], \"DENIED\" if reason else \"APPROVED\", reason or \"-\"))\n    return 403 if reason else 200\n```"
     },
     {
-      "title": "Projet d’architecture",
-      "content": "La preuve ARCHITECTURE-14 modélise une décision réelle sous forme déterministe. Elle ne remplace pas un déploiement complet : elle rend l’hypothèse testable avant l’intégration Spring Boot, Angular, PostgreSQL et Docker."
+      "title": "Un système modulaire sécurisé : le dossier",
+      "content": "Pour un projet de portfolio crédible, documente :\n- Périmètre et acteurs : qui utilise le système, quelles données sensibles (montants, identités).\n- Modèle de menaces (STRIDE) : usurpation (jetons volés), altération (modification d'un montant), répudiation (« ce n'est pas moi »), divulgation (fuite de données), déni de service, élévation de privilèges. Pour chaque menace, le contrôle associé.\n- Contrôles : authentification forte, autorisation par rôle et par propriété, séparation des tâches, validation des entrées, chiffrement en transit (TLS) et au repos pour les données sensibles, journal d'audit inaltérable (écriture seule, copie externe), limitation de débit, secrets hors dépôt.\n- Modules : qui possède quelles données, interfaces publiques, absence de cycle ; l'audit est un module transverse alimenté par des événements.\n- Tests de sécurité : cas d'autorisation (matrice rôle × action), auto-approbation, seuil, élévation de privilège, entrées malveillantes.\n- Limites : ce qui n'est pas couvert (double approbation, délégation, absences) et la suite prévue.\n- Conformité : durée de conservation du journal, données personnelles (minimisation, droit d'accès).\nUne matrice de décision (rôle, action, condition → résultat) se teste exhaustivement : elle est la meilleure documentation des règles."
     },
     {
-      "title": "Revue professionnelle",
-      "content": "Documente le contexte, la décision, une option rejetée, les conséquences, le signal à surveiller et la condition qui imposerait de revoir le choix."
+      "title": "Erreurs fréquentes à reconnaître",
+      "content": "1. Permettre l'auto-approbation.\n2. Ne journaliser que les succès : les refus sont ignorés.\n3. Un journal d'audit modifiable ou effaçable par ceux qu'il surveille.\n4. Des seuils codés en dur dispersés dans plusieurs fichiers.\n5. Une horloge réelle dans la logique : tests instables et horodatages falsifiables.\n6. Contrôles d'accès uniquement côté interface.\n\nRetrouve ces erreurs de mémoire avant l'exercice, puis vérifie-toi avec le quiz : c'est la récupération, pas la relecture, qui fixe la notion."
     }
   ],
   "keyConcepts": [
@@ -43,49 +48,97 @@
       "professionalExample": "Lors d’un audit de conformité financière, l’auditeur demande de retrouver qui a approuvé une commande de 50 000 € trois mois plus tôt ; l’équipe découvre que l’action d’approbation était enregistrée dans les logs applicatifs mais jamais dans une table d’audit immuable liée à la transaction métier. Le projet est repris pour écrire l’entrée d’audit dans la même transaction que l’approbation, garantissant qu’aucune décision sensible ne peut exister sans trace. Combiner modules, contrôle d’accès et audit dans la même livraison évite cette dette de conformité découverte trop tard.",
       "codeExample": "@Transactional\npublic ApprovalResult approve(Long orderId, User approver) {\n    if (!approver.hasRole(\"MANAGER\")) throw new ForbiddenException();\n    orderRepository.markApproved(orderId);\n    auditRepository.record(orderId, approver.getId(), \"APPROVED\"); // même transaction\n    return ApprovalResult.OK;\n}",
       "commonMistake": "Choisir un outil avant d’identifier le besoin, la charge, le risque et le propriétaire de la donnée.",
-      "masteryQuestion": "Quel compromis, quel signal et quelle condition de réévaluation associes-tu à « Projet 2 : système modulaire sécurisé » ?",
-      "masteryProof": "Exécuter la preuve, modifier une contrainte, expliquer le résultat et dessiner la place du composant dans la stack complète."
+      "masteryQuestion": "Pourquoi interdire l'auto-approbation, et pourquoi journaliser aussi les refus ?",
+      "masteryProof": "Implémenter une approbation avec rôle, séparation des tâches et seuil, et produire un journal d'audit complet."
     }
   ],
   "exercises": [
     {
       "code": "ARCHITECTURE-14-E1",
-      "title": "Combiner modules, contrôle d’accès, transaction et audit dans une livraison testable",
-      "statement": "Complète la preuve pour produire exactement la sortie attendue, puis explique la décision, une alternative et le signal de production qui validerait ton choix.",
-      "starterCode": "audit = []\n\ndef approve(role: str, order_id: int) -> str:\n    # TODO : si le rôle n'est pas \"manager\", journalise (order_id, \"DENIED\") et retourne \"403\" ;\n    #        sinon journalise (order_id, \"APPROVED\") et retourne \"200\"\n    return \"\"\n\nprint(\"Employé:\", approve(\"employee\", 42))\nprint(\"Manager:\", approve(\"manager\", 42))\nprint(\"Audit:\", audit)\n",
-      "expectedOutput": "Employé: 403\nManager: 200\nAudit: [(42, 'DENIED'), (42, 'APPROVED')]"
+      "title": "Un flux d'approbation avec audit",
+      "statement": "Complète approve : rôle (manager ou directeur), auteur différent de l'approbateur, seuil de 1 000 € réservé au directeur. Chaque décision, acceptée ou refusée, ajoute une entrée d'audit horodatée avec une horloge injectée. Affiche exactement :\neva approuve r1 -> 403\nmarc approuve r2 -> 403\ndina approuve r2 -> 200\nmarc approuve r3 -> 403\nmarc approuve r1 -> 200\nAudit:\n  100 r1 eva DENIED rôle insuffisant\n  110 r2 marc DENIED seuil dépassé\n  120 r2 dina APPROVED -\n  130 r3 marc DENIED auto-approbation interdite\n  140 r1 marc APPROVED -",
+      "starterCode": "REQUESTS = {\n    \"r1\": {\"author\": \"eva\", \"amount\": 400},\n    \"r2\": {\"author\": \"eva\", \"amount\": 1500},\n    \"r3\": {\"author\": \"marc\", \"amount\": 250},\n}\nUSERS = {\n    \"eva\": \"employee\",\n    \"marc\": \"manager\",\n    \"dina\": \"director\",\n}\nAPPROVERS = {\"manager\", \"director\"}\nTHRESHOLD = 1000\naudit: list[tuple] = []\nclock = iter(range(100, 200, 10))   # horloge injectée : 100, 110, 120...\n\n\ndef approve(user: str, request_id: str) -> int:\n    # TODO 1 : détermine la raison de refus (ou None) dans cet ordre :\n    #          \"rôle insuffisant\" (rôle hors APPROVERS), \"auto-approbation interdite\" (l'utilisateur est l'auteur),\n    #          \"seuil dépassé\" (montant > THRESHOLD et rôle différent de \"director\")\n    # TODO 2 : ajoute à audit un tuple (instant suivant de clock, request_id, user, \"APPROVED\" ou \"DENIED\", raison ou \"-\")\n    # TODO 3 : retourne 200 si approuvé, 403 sinon\n    return 0\n\n\nattempts = [(\"eva\", \"r1\"), (\"marc\", \"r2\"), (\"dina\", \"r2\"), (\"marc\", \"r3\"), (\"marc\", \"r1\")]\nfor user, request_id in attempts:\n    # TODO 4 : affiche \"<user> approuve <request_id> -> <statut>\"\n    pass\n# TODO 5 : affiche \"Audit:\" puis une ligne \"  <instant> <demande> <utilisateur> <décision> <raison>\" par entrée\n",
+      "expectedOutput": "eva approuve r1 -> 403\nmarc approuve r2 -> 403\ndina approuve r2 -> 200\nmarc approuve r3 -> 403\nmarc approuve r1 -> 200\nAudit:\n  100 r1 eva DENIED rôle insuffisant\n  110 r2 marc DENIED seuil dépassé\n  120 r2 dina APPROVED -\n  130 r3 marc DENIED auto-approbation interdite\n  140 r1 marc APPROVED -"
     }
   ],
   "quiz": [
     {
       "code": "ARCHITECTURE-14-Q1",
       "type": "SINGLE_CHOICE",
-      "prompt": "Quelle démarche produit la décision la plus robuste ?",
+      "prompt": "Pourquoi l'auteur d'une demande ne doit-il pas pouvoir l'approuver ?",
       "choices": [
-        "Relier contraintes, responsabilités, preuve et observabilité",
-        "Choisir la technologie la plus populaire",
-        "Ajouter des services avant de mesurer"
+        "Pour ralentir le processus",
+        "La séparation des tâches : une seule personne ne doit pas pouvoir à la fois demander et valider, sinon la fraude est triviale",
+        "Parce que les managers sont occupés",
+        "Parce que le journal est limité"
       ],
-      "correctChoice": 0,
-      "expectedKeywords": []
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Le contrôle repose sur l'intervention d'une seconde personne indépendante. Sans cette règle, le contrôle n'existe plus."
     },
     {
       "code": "ARCHITECTURE-14-Q2",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Prédis le statut : marc (manager) approuve r2 (auteur eva, 1 500 €) alors que le seuil du manager est 1 000 :",
+      "choices": [
+        "200",
+        "403 : seuil dépassé, seul un directeur peut approuver",
+        "401",
+        "404"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Le rôle est suffisant en général et l'auteur est différent, mais le montant excède le seuil du rôle manager."
+    },
+    {
+      "code": "ARCHITECTURE-14-Q3",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Trouve le défaut :\n```python\nif decision == 'APPROVED':\n    audit.append(entry)\n```\n",
+      "choices": [
+        "append est lent",
+        "Les refus ne sont pas journalisés : on perd la trace des tentatives suspectes et la possibilité d'enquêter",
+        "entry est un mauvais nom",
+        "audit doit être un dictionnaire"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Un journal d'audit complet consigne toutes les décisions et tentatives, y compris les refus, qui sont souvent les signaux les plus intéressants."
+    },
+    {
+      "code": "ARCHITECTURE-14-Q4",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Quelle propriété doit avoir un journal d'audit ?",
+      "choices": [
+        "Être modifiable par les administrateurs pour corriger les erreurs",
+        "Être en écriture seule (append-only), horodaté de façon fiable et protégé contre la modification",
+        "Être stocké dans le navigateur",
+        "Être supprimé chaque jour"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Un journal altérable ne prouve rien. On le rend inaltérable (écriture seule, copies externes) et on corrige une erreur par une entrée de correction, pas par une modification."
+    },
+    {
+      "code": "ARCHITECTURE-14-Q5",
       "type": "FREE_TEXT",
-      "prompt": "Nomme un compromis et le signal qui permettrait de le réévaluer.",
+      "prompt": "Sans relire le cours, explique avec tes mots ce qu'est la séparation des tâches et donne un autre exemple que l'approbation de dépenses.",
       "choices": [],
       "correctChoice": null,
       "expectedKeywords": [
-        "compromis",
-        "mesure",
-        "risque"
-      ]
+        "separation",
+        "une seule personne",
+        "controle",
+        "independ",
+        "exemple"
+      ],
+      "modelAnswer": "La séparation des tâches répartit les étapes d'un processus sensible entre des personnes différentes pour qu'aucune ne puisse seule commettre ou masquer une fraude ou une erreur. Autres exemples : la personne qui écrit le code n'est pas celle qui approuve sa mise en production, le développeur ne peut pas fusionner sa propre demande de revue sans relecteur, celui qui crée un compte bancaire ne valide pas le virement.",
+      "explanation": "Une bonne réponse définit le principe (étapes réparties, pas de pouvoir unique) et donne un exemple différent de la dépense."
     }
   ],
   "checklist": [
-    "Je peux dessiner la circulation de la donnée",
-    "Je sais nommer les responsabilités de chaque couche",
-    "Je justifie une alternative rejetée",
-    "Je définis une mesure et une condition de réévaluation"
+    "L'auteur d'une demande ne peut pas l'approuver",
+    "Mes seuils et rôles sont centralisés et testés par une matrice",
+    "Mon journal d'audit consigne succès et refus, en écriture seule",
+    "Mon horloge est injectée pour des tests déterministes"
   ]
 }

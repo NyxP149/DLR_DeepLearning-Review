@@ -11,21 +11,30 @@
     "LLM-06"
   ],
   "objectives": [
-    "Découper un corpus en unités traçables pour la recherche",
-    "Produire une expérience hors réseau reproductible",
-    "Documenter une limite et une métrique de contrôle"
+    "Découper un corpus en morceaux (chunks) de taille et de chevauchement paramétrés.",
+    "Attacher des métadonnées (source, position) pour garder la traçabilité jusqu'à la citation.",
+    "Valider les paramètres (un chevauchement supérieur ou égal à la taille ne progresse jamais) et vérifier la couverture.",
+    "Choisir une stratégie de découpage selon le type de document et la fenêtre de contexte."
   ],
   "sections": [
     {
-      "title": "Concept et décision",
-      "content": "Découpage, chevauchement et métadonnées doit être évalué comme un composant logiciel : entrées explicites, sorties contrôlées, métriques et cas d’échec. Aucun appel à un service distant n’est nécessaire pour apprendre le mécanisme.",
-      "conceptCodes": [
-        "LLM-CHUNKING"
-      ]
+      "title": "Pourquoi découper",
+      "content": "Un document entier est trop long pour une fenêtre de contexte et trop dilué pour une recherche précise : un embedding de 50 pages représente un sens moyen qui ne ressemble à aucune question. On le découpe en morceaux (chunks) assez petits pour porter une idée, assez grands pour avoir un sens complet.\n\nTrois paramètres :\n- Taille : en tokens ou en mots (souvent 200 à 500 tokens). Trop petit : le contexte est perdu. Trop grand : la recherche est floue et le prompt coûteux.\n- Chevauchement (overlap) : les morceaux voisins partagent quelques mots, pour qu'une phrase coupée à la frontière reste lisible dans au moins un morceau.\n- Frontières : couper à des limites naturelles (paragraphes, titres, phrases) plutôt qu'au milieu d'une phrase quand c'est possible."
     },
     {
-      "title": "Expérience locale",
-      "content": "L’expérience isole le mécanisme LLM-CHUNKING. Elle reste volontairement déterministe afin de distinguer un défaut de pipeline d’une variation propre aux modèles génératifs."
+      "title": "Exemple résolu : une fenêtre glissante avec métadonnées",
+      "conceptCodes": [
+        "LLM-CHUNKING"
+      ],
+      "content": "Problème : découper « un deux trois quatre cinq six » en morceaux de 3 mots avec 1 mot de chevauchement, en gardant la source et la position.\n\nRaisonnement, étape par étape :\n1. Le pas de la fenêtre vaut taille - chevauchement = 2. Si le pas est inférieur ou égal à 0, la fenêtre ne progresse jamais : il faut refuser ces paramètres (taille <= chevauchement).\n2. Début des morceaux : indices 0, 2, 4, 6...\n3. Morceaux : mots 0 à 2 (« un deux trois »), mots 2 à 4 (« trois quatre cinq »), mots 4 à 5 (« cinq six »). Le dernier est plus court.\n4. On arrête quand un morceau commence au-delà de la fin, et on ignore les morceaux vides ; on arrête aussi dès qu'un morceau atteint la fin du texte, sinon on produirait un morceau redondant entièrement inclus dans le précédent.\n5. Métadonnées : chaque morceau garde la source (nom du document) et le décalage de début (start) pour pouvoir citer et retrouver l'original.\n6. Vérification de couverture : l'ensemble des mots des morceaux égale celui du document (aucun mot perdu).\n```python\ndef chunks(words, size, overlap):\n    if size <= overlap:\n        raise ValueError(\"size doit dépasser overlap\")\n    step = size - overlap\n    result = []\n    for start in range(0, len(words), step):\n        part = words[start:start + size]\n        if part:\n            result.append((start, part))\n        if start + size >= len(words):\n            break\n    return result\n```"
+    },
+    {
+      "title": "Choisir une stratégie et tester",
+      "content": "- Taille fixe avec chevauchement : simple et prévisible, mais coupe sans égard au sens.\n- Découpage par structure : un morceau par section, paragraphe ou entrée de FAQ ; garde la cohérence sémantique, mais les tailles varient (découpe encore les sections trop longues).\n- Découpage récursif : essaie d'abord les titres, puis les paragraphes, puis les phrases, jusqu'à respecter la taille maximale.\n- Hiérarchique : petits morceaux pour la recherche, morceau parent (plus de contexte) pour le prompt.\n- Code, tableaux, PDF : demandent des découpages dédiés (par fonction, par ligne de tableau avec l'en-tête répété) ; un PDF mal extrait (colonnes mélangées) ruine tout le reste.\n- Métadonnées utiles : source, titre, section, date, version, langue, droits d'accès (pour filtrer par permissions avant la recherche), position. Elles servent aux citations, au filtrage et à la mise à jour.\n- Mise à jour : quand un document change, remplace tous ses morceaux (identifiant stable), sinon d'anciennes versions restent consultables.\n- Tests : couverture (rien de perdu), taille maximale respectée, ordre, cas limites (document vide, plus court que la taille, taille exacte), paramètres invalides.\n- Évalue en bout de chaîne : la bonne taille se choisit en mesurant la qualité de la recherche et des réponses, pas à l'intuition."
+    },
+    {
+      "title": "Erreurs fréquentes à reconnaître",
+      "content": "1. Un chevauchement supérieur ou égal à la taille : boucle infinie ou aucun progrès.\n2. Perdre les métadonnées : impossible de citer ou de mettre à jour.\n3. Couper au milieu d'une phrase importante sans chevauchement.\n4. Des morceaux énormes qui diluent le sens, ou minuscules qui perdent le contexte.\n5. Ne pas gérer les documents plus courts que la taille.\n6. Choisir la taille sans mesurer la qualité de la recherche.\n\nRetrouve ces erreurs de mémoire avant l'exercice, puis vérifie-toi avec le quiz : c'est la récupération, pas la relecture, qui fixe la notion."
     }
   ],
   "keyConcepts": [
@@ -39,49 +48,97 @@
       "professionalExample": "Une base de connaissances technique découpe ses pages en chunks de 500 tokens sans chevauchement pour l'indexation. Une réponse RAG cite un chunk qui commence au milieu d'une phrase de procédure de sécurité, coupant la condition qui rendait l'instruction valable, et un technicien applique la procédure hors contexte. Après l'incident, l'équipe introduit un chevauchement entre chunks et attache à chacun des métadonnées (document source, section, version) pour garantir la traçabilité et limiter les coupures dangereuses.",
       "codeExample": "def chunks(words: list[str], size: int, overlap: int) -> list[dict]:\n    step = size - overlap\n    return [\n        {\"text\": \" \".join(words[i:i+size]), \"start\": i, \"doc\": \"procedure-securite-v3\"}\n        for i in range(0, len(words), step) if words[i:i+size]\n    ]\n\nresult = chunks(\"couper le courant avant toute intervention sur le boîtier\".split(), 4, 1)\nfor c in result:\n    print(c[\"start\"], c[\"doc\"], c[\"text\"])",
       "commonMistake": "Évaluer un seul exemple favorable ou confondre plausibilité et exactitude.",
-      "masteryQuestion": "Quelle métrique et quel cas d’échec utiliserais-tu pour découpage, chevauchement et métadonnées ?",
-      "masteryProof": "Exécuter la preuve, modifier une entrée et expliquer le résultat ainsi que la limite du modèle local."
+      "masteryQuestion": "Pourquoi chevaucher les morceaux, et pourquoi refuser un chevauchement supérieur ou égal à la taille ?",
+      "masteryProof": "Découper un texte en morceaux avec chevauchement et métadonnées, vérifier la couverture et refuser des paramètres invalides."
     }
   ],
   "exercises": [
     {
       "code": "LLM-07-E1",
-      "title": "Découper un corpus en unités traçables pour la recherche",
-      "statement": "Complète l’expérience pour produire exactement la sortie attendue. Explique ensuite quelle partie serait remplacée par un modèle réel.",
-      "starterCode": "def chunks(words: list[str], size: int, overlap: int) -> list[list[str]]:\n    # TODO : découpe words en morceaux de `size` mots qui se chevauchent de `overlap` mots\n    #        (le pas vaut size - overlap) en ignorant les morceaux vides\n    return []\n\nparts = chunks(\"un deux trois quatre cinq six\".split(), 3, 1)\nprint(\" | \".join(\" \".join(part) for part in parts))\n",
-      "expectedOutput": "un deux trois | trois quatre cinq | cinq six"
+      "title": "Découper en morceaux traçables",
+      "statement": "Écris chunks : fenêtre glissante de `size` mots avec `overlap` mots de chevauchement, qui refuse un chevauchement supérieur ou égal à la taille, renvoie pour chaque morceau sa source, son début et son texte, et s'arrête quand le texte est couvert. Vérifie aussi la couverture. Affiche exactement :\nun deux trois | trois quatre cinq | cinq six\ndoc-1@0: un deux trois\ndoc-1@2: trois quatre cinq\ndoc-1@4: cinq six\nCouverture complète: True\nRefusé: size doit dépasser overlap\nCourt texte: 1",
+      "starterCode": "def chunks(source: str, words: list[str], size: int, overlap: int) -> list[dict]:\n    # TODO 1 : si size <= overlap, lève ValueError(\"size doit dépasser overlap\")\n    # TODO 2 : fenêtre glissante de pas size - overlap ; chaque morceau est un dict\n    #          {\"source\": source, \"start\": indice du premier mot, \"text\": mots du morceau joints par un espace}\n    #          arrête-toi dès qu'un morceau atteint la fin des mots ; ignore les morceaux vides\n    return []\n\n\nwords = \"un deux trois quatre cinq six\".split()\nparts = chunks(\"doc-1\", words, 3, 1)\nprint(\" | \".join(part[\"text\"] for part in parts))\n# TODO 3 : affiche, pour chaque morceau, \"<source>@<start>: <text>\"\n# TODO 4 : affiche \"Couverture complète: <True/False>\" (tous les mots du document figurent dans au moins un morceau)\n# TODO 5 : tente chunks(\"doc-1\", words, 2, 2) ; affiche \"Refusé: <message de l'erreur>\"\n# TODO 6 : affiche \"Court texte: \" suivi du nombre de morceaux obtenus pour [\"a\", \"b\"] avec size=5 et overlap=1\n",
+      "expectedOutput": "un deux trois | trois quatre cinq | cinq six\ndoc-1@0: un deux trois\ndoc-1@2: trois quatre cinq\ndoc-1@4: cinq six\nCouverture complète: True\nRefusé: size doit dépasser overlap\nCourt texte: 1"
     }
   ],
   "quiz": [
     {
       "code": "LLM-07-Q1",
       "type": "SINGLE_CHOICE",
-      "prompt": "Quelle validation est la plus solide ?",
+      "prompt": "Pourquoi un chevauchement entre morceaux voisins est-il utile ?",
       "choices": [
-        "Plusieurs cas reproductibles avec métriques et provenance",
-        "Une réponse qui semble correcte",
-        "Une démonstration sans jeu de test"
+        "Pour gagner de la place",
+        "Pour qu'une phrase coupée à la frontière reste intacte dans au moins un morceau",
+        "Pour accélérer la recherche",
+        "Pour chiffrer les morceaux"
       ],
-      "correctChoice": 0,
-      "expectedKeywords": []
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Sans chevauchement, une idée à cheval sur deux morceaux est coupée en deux et chaque moitié est difficile à retrouver. Le chevauchement garde le contexte autour de la frontière, au prix d'un peu de redondance."
     },
     {
       "code": "LLM-07-Q2",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Prédis les morceaux de « un deux trois quatre cinq six » avec size=3 et overlap=1 :",
+      "choices": [
+        "un deux trois | quatre cinq six",
+        "un deux trois | trois quatre cinq | cinq six",
+        "un deux | deux trois | trois quatre",
+        "un deux trois quatre | cinq six"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Le pas vaut 3 - 1 = 2 : débuts aux indices 0, 2 et 4. Le dernier morceau est plus court (cinq six). Chaque frontière partage un mot."
+    },
+    {
+      "code": "LLM-07-Q3",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Trouve le défaut :\n```python\nfor start in range(0, len(words), size - overlap):\n    ...\n```\nappelé avec size=3 et overlap=3.",
+      "choices": [
+        "range est interdit",
+        "Le pas vaut 0 : range lève une erreur (ou, avec while, la boucle ne progresse jamais) ; il faut refuser size <= overlap",
+        "len est lent",
+        "Il faut utiliser overlap=0"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Un pas nul ne fait jamais avancer la fenêtre. Valide les paramètres en entrée avec un message clair."
+    },
+    {
+      "code": "LLM-07-Q4",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Quelle métadonnée est indispensable pour pouvoir citer une réponse ?",
+      "choices": [
+        "La couleur du document",
+        "La source (document) et la position du morceau",
+        "La date du jour d'exécution",
+        "Le nombre de tokens du prompt"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Pour citer, il faut remonter du morceau au document et à l'endroit exact. Sans source ni position, la réponse ne peut pas être vérifiée."
+    },
+    {
+      "code": "LLM-07-Q5",
       "type": "FREE_TEXT",
-      "prompt": "Nomme une limite et le contrôle associé.",
+      "prompt": "Sans relire le cours, explique avec tes mots le compromis entre des morceaux petits et des morceaux grands pour la recherche.",
       "choices": [],
       "correctChoice": null,
       "expectedKeywords": [
-        "limite",
-        "test",
-        "mesure"
-      ]
+        "contexte",
+        "dilu",
+        "precis",
+        "petit",
+        "grand"
+      ],
+      "modelAnswer": "Des morceaux petits sont précis (un seul sujet, bon score de similarité) mais perdent le contexte autour, ce qui rend la réponse incomplète. Des morceaux grands gardent le contexte mais diluent le sens (le vecteur représente un mélange de sujets), consomment plus de tokens dans le prompt et ramènent des passages bruyants. On choisit la taille en mesurant la qualité de la recherche et des réponses, avec un chevauchement et des frontières naturelles.",
+      "explanation": "Une bonne réponse oppose précision et contexte perdu pour les petits morceaux, dilution et coût pour les grands, et conclut qu'il faut mesurer."
     }
   ],
   "checklist": [
-    "Je sais expliquer le mécanisme",
-    "Je peux reproduire la preuve hors réseau",
-    "Je distingue simulation locale et modèle réel",
-    "Je peux nommer une métrique et un risque"
+    "Je refuse un chevauchement supérieur ou égal à la taille",
+    "Mes morceaux gardent source et position",
+    "Je vérifie qu'aucun mot du document n'est perdu",
+    "Je choisis la taille en mesurant la qualité en bout de chaîne"
   ]
 }

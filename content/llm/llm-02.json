@@ -11,21 +11,30 @@
     "LLM-01"
   ],
   "objectives": [
-    "Comparer une sélection déterministe et une sélection plus exploratoire",
-    "Produire une expérience hors réseau reproductible",
-    "Documenter une limite et une métrique de contrôle"
+    "Expliquer comment un LLM choisit le token suivant : logits, softmax, température, top-k.",
+    "Calculer une distribution de probabilités avec température et la renormaliser après un top-k.",
+    "Choisir entre sélection déterministe et échantillonnage selon l'usage (extraction contre création).",
+    "Rendre un échantillonnage reproductible avec des tirages fixes pour les tests."
   ],
   "sections": [
     {
-      "title": "Concept et décision",
-      "content": "Température, top-k et échantillonnage contrôlé doit être évalué comme un composant logiciel : entrées explicites, sorties contrôlées, métriques et cas d’échec. Aucun appel à un service distant n’est nécessaire pour apprendre le mécanisme.",
-      "conceptCodes": [
-        "LLM-SAMPLING"
-      ]
+      "title": "Du score à la probabilité",
+      "content": "À chaque étape, le modèle produit un score (logit) pour chaque token candidat. La fonction softmax transforme ces scores en probabilités positives dont la somme vaut 1 :\np_i = exp(logit_i / T) / somme_j exp(logit_j / T)\nT est la température. T = 1 laisse les scores tels quels ; T < 1 accentue l'écart (le favori gagne en probabilité, sortie plus prévisible) ; T > 1 aplatit la distribution (plus de diversité, plus d'erreurs). T tend vers 0 équivaut à toujours choisir le meilleur (sélection gloutonne, greedy)."
     },
     {
-      "title": "Expérience locale",
-      "content": "L’expérience isole le mécanisme LLM-SAMPLING. Elle reste volontairement déterministe afin de distinguer un défaut de pipeline d’une variation propre aux modèles génératifs."
+      "title": "Exemple résolu : trois mots, deux températures, un top-k",
+      "conceptCodes": [
+        "LLM-SAMPLING"
+      ],
+      "content": "Problème : trois candidats avec les scores clair=2,0, précis=1,0, créatif=0,0. Observer l'effet de la température et du top-k, puis tirer des mots avec des tirages fixes.\n\nRaisonnement, étape par étape :\n1. Softmax à T=1 : exp(2)=7,389, exp(1)=2,718, exp(0)=1 ; somme 11,107 ; probabilités 0,665 / 0,245 / 0,090.\n2. À T=0,5 : on divise les scores par 0,5 (4, 2, 0) puis softmax : le favori monte à environ 0,867 ; la distribution est plus concentrée.\n3. Top-k=2 : on ne garde que les deux meilleurs candidats et on renormalise (leur somme redevient 1) : 0,665/0,910 = 0,731 et 0,245/0,910 = 0,269.\n4. Tirage : on trie les candidats par probabilité décroissante, on cumule, et on choisit le premier dont le cumul est >= u (un nombre entre 0 et 1). Avec u fixé à 0,10, 0,80 et 0,95 le résultat est reproductible : clair, précis, créatif.\n5. Sélection gloutonne : toujours le meilleur score, soit clair.\n6. Vérification : chaque distribution somme à 1 (à l'arrondi près).\n```python\nimport math\n\ndef softmax(logits: dict, t: float = 1.0) -> dict:\n    exps = {w: math.exp(s / t) for w, s in logits.items()}\n    total = sum(exps.values())\n    return {w: v / total for w, v in exps.items()}\n\ndef top_k(probs: dict, k: int) -> dict:\n    best = dict(sorted(probs.items(), key=lambda it: (-it[1], it[0]))[:k])\n    total = sum(best.values())\n    return {w: p / total for w, p in best.items()}\n```"
+    },
+    {
+      "title": "Choisir ses réglages selon l'usage",
+      "content": "- Extraction, classification, code, réponses factuelles : température basse (0 à 0,3), voire greedy. On cherche la réponse la plus probable et la reproductibilité.\n- Rédaction créative, brainstorming : température plus élevée (0,7 à 1,0), top-p ou top-k pour garder la diversité sans partir dans l'absurde.\n- top-k : ne garder que les k meilleurs candidats. top-p (nucleus) : garder le plus petit ensemble dont la probabilité cumulée atteint p (0,9 par exemple) ; s'adapte à la forme de la distribution. Ne règle pas température et top-p fortement en même temps ; change un paramètre à la fois et mesure.\n- Reproductibilité : même graine (seed) et même température 0 donnent des sorties plus stables, sans garantie absolue (changements de version, parallélisme matériel).\n- Tests : n'écris pas de test qui suppose la sortie exacte d'un modèle échantillonné. Teste le code autour (validation, formatage) avec des sorties simulées, et mesure la qualité sur un jeu d'évaluation avec plusieurs échantillons.\n- Une température élevée augmente la variété mais aussi le risque de réponses incohérentes ou fausses.\n- Contrôle ≠ vérité : baisser la température rend la sortie plus prévisible, pas plus exacte."
+    },
+    {
+      "title": "Erreurs fréquentes à reconnaître",
+      "content": "1. Utiliser une température élevée pour une extraction de données.\n2. Oublier de renormaliser après un top-k : les probabilités ne somment plus à 1.\n3. Tester un échantillonnage aléatoire sans graine ni tirages fixes : test instable.\n4. Croire que température 0 garantit la vérité.\n5. Régler température, top-k et top-p ensemble sans mesure.\n6. Comparer deux réglages sur un seul essai.\n\nRetrouve ces erreurs de mémoire avant l'exercice, puis vérifie-toi avec le quiz : c'est la récupération, pas la relecture, qui fixe la notion."
     }
   ],
   "keyConcepts": [
@@ -39,49 +48,97 @@
       "professionalExample": "Une équipe fixe temperature=0 dans son pipeline de non-régression pour obtenir des réponses reproductibles, mais déploie temperature=0.7 en production pour des réponses plus naturelles. Un ingénieur oublie un jour de repasser à temperature=0 dans le job nocturne : la suite de tests échoue de façon aléatoire sur des assertions de texte exact alors que le modèle et le prompt n'ont pas changé. Diagnostiquer l'incident exige de comprendre que la température et le top-k contrôlent l'aléa du tirage, pas la qualité intrinsèque de la réponse.",
       "codeExample": "import random\n\ndef sample(scores: dict[str, float], temperature: float) -> str:\n    if temperature == 0:\n        return max(scores, key=scores.get)\n    weights = [v ** (1 / temperature) for v in scores.values()]\n    return random.choices(list(scores), weights=weights, k=1)[0]\n\nscores = {\"clair\": 0.55, \"précis\": 0.30, \"créatif\": 0.15}\nprint(sample(scores, temperature=0))    # toujours \"clair\" : reproductible pour les tests\nprint(sample(scores, temperature=0.9))  # varie d'une exécution à l'autre",
       "commonMistake": "Évaluer un seul exemple favorable ou confondre plausibilité et exactitude.",
-      "masteryQuestion": "Quelle métrique et quel cas d’échec utiliserais-tu pour température, top-k et échantillonnage contrôlé ?",
-      "masteryProof": "Exécuter la preuve, modifier une entrée et expliquer le résultat ainsi que la limite du modèle local."
+      "masteryQuestion": "Que fait la température sur la distribution de probabilités, et pourquoi renormaliser après un top-k ?",
+      "masteryProof": "Calculer une softmax à deux températures, appliquer un top-k renormalisé et tirer des mots avec des tirages fixes."
     }
   ],
   "exercises": [
     {
       "code": "LLM-02-E1",
-      "title": "Comparer une sélection déterministe et une sélection plus exploratoire",
-      "statement": "Complète l’expérience pour produire exactement la sortie attendue. Explique ensuite quelle partie serait remplacée par un modèle réel.",
-      "starterCode": "scores = {\"clair\": 0.55, \"précis\": 0.30, \"créatif\": 0.15}\n# TODO 1 : trie les mots par score décroissant\n# TODO 2 : affiche \"Choix déterministe: \" suivi du mot au meilleur score\n# TODO 3 : affiche \"Top-2: \" suivi des deux meilleurs mots séparés par \", \"\n",
-      "expectedOutput": "Choix déterministe: clair\nTop-2: clair, précis"
+      "title": "Softmax, température, top-k et tirage reproductible",
+      "statement": "Complète l'expérience : softmax avec température, top-k avec renormalisation, et un tirage par somme cumulée avec des nombres u fixés (pas de hasard). Affiche exactement :\nT=1.0: clair=0.665 précis=0.245 créatif=0.090\nT=0.5: clair=0.867 précis=0.117 créatif=0.016\nTop-2 (T=1.0): clair=0.731 précis=0.269\nTirages u=0.10/0.80/0.95 (T=1.0): clair, précis, créatif\nGreedy: clair\nAvec un modèle réel, les logits viendraient de l'API et le tirage serait fait par le fournisseur.",
+      "starterCode": "import math\n\nlogits = {\"clair\": 2.0, \"précis\": 1.0, \"créatif\": 0.0}\n\n\ndef softmax(scores: dict, temperature: float = 1.0) -> dict:\n    # TODO 1 : exp(score / temperature) pour chaque mot, divisé par la somme de ces valeurs\n    return {}\n\n\ndef top_k(probs: dict, k: int) -> dict:\n    # TODO 2 : garde les k mots les plus probables (tri par probabilité décroissante, puis par nom) et renormalise (somme = 1)\n    return {}\n\n\ndef pick(probs: dict, u: float) -> str:\n    # TODO 3 : trie par probabilité décroissante (puis par nom), cumule, et retourne le premier mot dont le cumul est >= u\n    return \"\"\n\n\ndef show(label: str, probs: dict) -> None:\n    print(label + \" \" + \" \".join(f\"{word}={p:.3f}\" for word, p in probs.items()))\n\n\n# TODO 4 : affiche (avec show) \"T=1.0:\" puis softmax(logits, 1.0), puis \"T=0.5:\" avec softmax(logits, 0.5)\n# TODO 5 : affiche \"Top-2 (T=1.0):\" puis top_k(softmax(logits, 1.0), 2)\n# TODO 6 : affiche \"Tirages u=0.10/0.80/0.95 (T=1.0): \" suivi des trois mots choisis séparés par \", \"\n# TODO 7 : affiche \"Greedy: \" suivi du mot au plus grand score\n",
+      "expectedOutput": "T=1.0: clair=0.665 précis=0.245 créatif=0.090\nT=0.5: clair=0.867 précis=0.117 créatif=0.016\nTop-2 (T=1.0): clair=0.731 précis=0.269\nTirages u=0.10/0.80/0.95 (T=1.0): clair, précis, créatif\nGreedy: clair"
     }
   ],
   "quiz": [
     {
       "code": "LLM-02-Q1",
       "type": "SINGLE_CHOICE",
-      "prompt": "Quelle validation est la plus solide ?",
+      "prompt": "Que se passe-t-il quand on baisse la température d'une softmax de 1,0 à 0,5 ?",
       "choices": [
-        "Plusieurs cas reproductibles avec métriques et provenance",
-        "Une réponse qui semble correcte",
-        "Une démonstration sans jeu de test"
+        "La distribution devient plus plate",
+        "La distribution se concentre sur les meilleurs candidats : le favori gagne en probabilité",
+        "Les probabilités ne somment plus à 1",
+        "Le modèle devient plus créatif"
       ],
-      "correctChoice": 0,
-      "expectedKeywords": []
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Diviser les scores par une température inférieure à 1 accentue les écarts avant la softmax. À la limite (T tend vers 0), le meilleur candidat reçoit toute la probabilité (sélection gloutonne)."
     },
     {
       "code": "LLM-02-Q2",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Prédis la somme des probabilités après un top-k sans renormalisation, avec p = (0,665 ; 0,245 ; 0,090) et k = 2.",
+      "choices": [
+        "1,0",
+        "0,910 : il faut renormaliser pour que la somme vaille 1",
+        "0,665",
+        "2,0"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Les deux candidats gardés sommaient 0,665 + 0,245 = 0,910. Sans diviser chaque probabilité par 0,910, la distribution n'en est plus une et le tirage serait biaisé."
+    },
+    {
+      "code": "LLM-02-Q3",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Trouve le défaut :\n```python\ndef test_reponse():\n    assert llm.generate('Capitale de la France ?', temperature=1.0) == 'Paris'\n```\n",
+      "choices": [
+        "Paris est faux",
+        "Avec échantillonnage, la sortie peut varier d'un appel à l'autre ; le test est instable. Il faut simuler le modèle ou mesurer sur plusieurs essais",
+        "assert est interdit",
+        "temperature doit être un entier"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Un test unitaire ne doit pas dépendre d'une sortie non déterministe. On teste le code autour avec une sortie simulée, et la qualité du modèle par une évaluation sur un jeu de cas avec plusieurs échantillons."
+    },
+    {
+      "code": "LLM-02-Q4",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Pour extraire une date d'un texte, quel réglage de température privilégier ?",
+      "choices": [
+        "Élevée (1,0 ou plus), pour la créativité",
+        "Basse (0 à 0,3), pour la réponse la plus probable et reproductible",
+        "Peu importe",
+        "Négative"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "L'extraction cherche une réponse précise, pas de la diversité. Une température basse réduit la variabilité, mais ne garantit pas l'exactitude : la sortie doit rester validée."
+    },
+    {
+      "code": "LLM-02-Q5",
       "type": "FREE_TEXT",
-      "prompt": "Nomme une limite et le contrôle associé.",
+      "prompt": "Sans relire le cours, explique avec tes mots la différence entre top-k et top-p (nucleus) et dis quand l'un est plus adapté.",
       "choices": [],
       "correctChoice": null,
       "expectedKeywords": [
-        "limite",
-        "test",
-        "mesure"
-      ]
+        "k meilleurs",
+        "cumul",
+        "probabilite",
+        "distribution",
+        "adapte"
+      ],
+      "modelAnswer": "Top-k garde toujours les k candidats les plus probables, quelle que soit la forme de la distribution. Top-p garde le plus petit ensemble de candidats dont la probabilité cumulée atteint p (par exemple 0,9) : il garde peu de candidats quand le modèle est sûr de lui et davantage quand la distribution est étalée. Top-p s'adapte donc mieux à la confiance du modèle.",
+      "explanation": "Une bonne réponse oppose un nombre fixe de candidats (k) à un seuil de probabilité cumulée (p) qui s'adapte à la distribution."
     }
   ],
   "checklist": [
-    "Je sais expliquer le mécanisme",
-    "Je peux reproduire la preuve hors réseau",
-    "Je distingue simulation locale et modèle réel",
-    "Je peux nommer une métrique et un risque"
+    "Je sais calculer une softmax avec température",
+    "Je renormalise après un top-k",
+    "Je choisis température basse pour l'extraction et plus haute pour la création",
+    "Mes tests n'attendent pas une sortie aléatoire exacte"
   ]
 }

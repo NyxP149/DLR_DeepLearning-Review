@@ -11,25 +11,30 @@
     "ARCHITECTURE-11"
   ],
   "objectives": [
-    "Promouvoir le même artefact entre environnements sans embarquer de secret",
-    "Justifier les compromis et nommer un risque opérationnel",
-    "Produire une preuve reproductible avant d’élargir la solution"
+    "Séparer l'artefact (identique partout) de la configuration (propre à l'environnement) et des secrets.",
+    "Résoudre une configuration par couches (défauts, fichier d'environnement, variables) avec priorité explicite.",
+    "Détecter des secrets en clair et les remplacer par des références.",
+    "Déployer le même artefact en recette et en production et prouver qu'aucun secret n'est dans l'image."
   ],
   "sections": [
     {
-      "title": "Concept clé et décision",
+      "title": "Un artefact, plusieurs environnements",
+      "content": "Règle des applications 12 facteurs : on construit l'artefact une seule fois (image, jar), et on le déploie dans chaque environnement avec une configuration différente. Ce qui change entre recette et production (URL de base de données, niveau de journalisation, taille des pools) vit en dehors de l'artefact : variables d'environnement, fichiers montés, gestionnaire de configuration. Les secrets (mots de passe, clés, certificats) sont encore à part : injectés à l'exécution par un gestionnaire de secrets, jamais dans l'image ni dans le dépôt.\n\nAvantage : ce qui a été testé est exactement ce qui part en production ; la seule différence est la configuration, qu'on peut examiner et versionner (hors secrets)."
+    },
+    {
+      "title": "Exemple résolu : des couches de configuration",
       "conceptCodes": [
         "DEPLOYMENT-CONFIG"
       ],
-      "content": "Déployer avec configuration et secrets séparés relie les besoins, le logiciel, les données et l’exploitation. Commence par les contraintes observables, trace les responsabilités, puis choisis la solution la plus simple qui respecte les invariants."
+      "content": "Problème : résoudre la configuration d'un service en recette et en production, sans secret en clair.\n\nRaisonnement, étape par étape :\n1. Valeurs par défaut dans le code (niveau de log INFO, taille de pool 5) : un comportement raisonnable sans configuration.\n2. Fichier d'environnement (staging.env, production.env), versionné sans secret : URL de la base, taille du pool.\n3. Variables d'environnement : priorité la plus haute (injectées par l'orchestrateur), utiles pour surcharger et pour les secrets.\n4. Priorité : défauts < fichier d'environnement < variables. La dernière couche l'emporte.\n5. Secrets : dans le fichier versionné, ils ne sont que des références (${DB_PASSWORD}) résolues à l'exécution depuis l'environnement ; une valeur littérale dans un champ sensible (password, token, secret, key) est une fuite potentielle.\n6. Vérification : le même artefact donne deux configurations différentes selon l'environnement, et l'audit signale chaque secret littéral.\n```python\ndef resolve(defaults, env_file, env_vars):\n    config = {**defaults, **env_file}\n    config.update({k: v for k, v in env_vars.items() if k in config})\n    return config\n\nSENSITIVE = (\"password\", \"token\", \"secret\", \"key\")\ndef leaked(config):\n    return [k for k, v in config.items() if any(m in k.lower() for m in SENSITIVE) and not str(v).startswith(\"${\")]\n```"
     },
     {
-      "title": "Construction verticale",
-      "content": "La preuve ARCHITECTURE-12 modélise une décision réelle sous forme déterministe. Elle ne remplace pas un déploiement complet : elle rend l’hypothèse testable avant l’intégration Spring Boot, Angular, PostgreSQL et Docker."
+      "title": "Configuration sûre en pratique",
+      "content": "- Valider la configuration au démarrage : champs requis, types, bornes ; refuser de démarrer sur une configuration invalide plutôt que d'échouer plus tard.\n- Pas de valeur par défaut dangereuse en production (mot de passe par défaut, mode debug actif, CORS ouvert).\n- Séparer configuration publique et secrets ; limiter l'accès aux secrets à ceux qui en ont besoin ; rotation régulière ; journaux sans secret.\n- Profils : changer des valeurs, pas la logique ; éviter les « if production » dans le code métier.\n- Un fichier de configuration par environnement dans le dépôt est acceptable sans secret ; pour des changements fréquents sans redéploiement, un service de configuration centralisé.\n- Dérives : comparer régulièrement la configuration réelle à la configuration attendue (infrastructure as code).\n- Variables d'environnement : lisibles par le processus et par les outils d'inspection du conteneur ; pour les secrets très sensibles, un fichier monté en lecture seule ou un appel au coffre.\n- Image : aucun secret dans ses couches (vérifié par un scan) ; un secret copié puis supprimé reste dans l'historique de l'image.\n- Traçabilité : l'artefact porte sa version ; le déploiement enregistre quelle configuration a été appliquée."
     },
     {
-      "title": "Revue professionnelle",
-      "content": "Documente le contexte, la décision, une option rejetée, les conséquences, le signal à surveiller et la condition qui imposerait de revoir le choix."
+      "title": "Erreurs fréquentes à reconnaître",
+      "content": "1. Reconstruire l'image pour chaque environnement.\n2. Un mot de passe en clair dans un fichier versionné.\n3. Une valeur par défaut dangereuse laissée en production.\n4. Des « if environment == production » dans le code métier.\n5. Une configuration non validée au démarrage.\n6. Un secret copié dans l'image puis supprimé dans une couche suivante.\n\nRetrouve ces erreurs de mémoire avant l'exercice, puis vérifie-toi avec le quiz : c'est la récupération, pas la relecture, qui fixe la notion."
     }
   ],
   "keyConcepts": [
@@ -43,49 +48,97 @@
       "professionalExample": "Un développeur pressé de livrer copie le mot de passe de la base de production directement dans le Dockerfile pour faire fonctionner un test rapide, puis oublie de le retirer avant de pousser l’image sur un registre partagé. Un audit de sécurité découvre les identifiants en clair dans une des couches de l’image, exposée à toute personne ayant accès au registre. Séparer configuration et secrets de l’artefact — injectés à l’exécution via des variables d’environnement ou un coffre-fort — permet de promouvoir le même binaire de staging à production sans jamais embarquer de credentials.",
       "codeExample": "# Mauvais : secret figé dans l'image\nENV DB_PASSWORD=\"s3cr3t-prod\"\n\n# Bon : secret injecté à l'exécution, jamais dans l'image\n# docker run -e DB_PASSWORD=$(vault read -field=password secret/db) dlr-api:1.4.0\nENV DB_HOST=\"\"\nENV DB_PASSWORD=\"\"",
       "commonMistake": "Choisir un outil avant d’identifier le besoin, la charge, le risque et le propriétaire de la donnée.",
-      "masteryQuestion": "Quel compromis, quel signal et quelle condition de réévaluation associes-tu à « Déployer avec configuration et secrets séparés » ?",
-      "masteryProof": "Exécuter la preuve, modifier une contrainte, expliquer le résultat et dessiner la place du composant dans la stack complète."
+      "masteryQuestion": "Pourquoi construire l'artefact une seule fois, et dans quel ordre de priorité résout-on défauts, fichier d'environnement et variables ?",
+      "masteryProof": "Résoudre une configuration par couches pour deux environnements avec le même artefact et signaler les secrets en clair."
     }
   ],
   "exercises": [
     {
       "code": "ARCHITECTURE-12-E1",
-      "title": "Promouvoir le même artefact entre environnements sans embarquer de secret",
-      "statement": "Complète la preuve pour produire exactement la sortie attendue, puis explique la décision, une alternative et le signal de production qui validerait ton choix.",
-      "starterCode": "artifact = \"dlr-api:1.4.0\"\nenvironments = {\"staging\": \"stg-db\", \"production\": \"prod-db\"}\n# TODO 1 : pour chaque environnement, affiche \"<env>: <artefact> -> <base de données>\"\n# TODO 2 : affiche \"Secrets dans image: 0\"\n",
-      "expectedOutput": "staging: dlr-api:1.4.0 -> stg-db\nproduction: dlr-api:1.4.0 -> prod-db\nSecrets dans image: 0"
+      "title": "Configuration par couches et audit des secrets",
+      "statement": "Complète : la résolution de configuration (défauts, puis fichier d'environnement, puis variables d'environnement connues), l'affichage par environnement avec le même artefact, et l'audit des champs sensibles dont la valeur n'est pas une référence ${...}. Affiche exactement :\nstaging: dlr-api:1.4.0 log=DEBUG pool=5 db=jdbc:postgresql://stg-db/dlr\n  secrets en clair: aucun\nproduction: dlr-api:1.4.0 log=WARN pool=20 db=jdbc:postgresql://prod-db/dlr\n  secrets en clair: db_password\nMême artefact partout: True",
+      "starterCode": "ARTIFACT = \"dlr-api:1.4.0\"\nDEFAULTS = {\"log_level\": \"INFO\", \"pool_size\": 5, \"db_url\": \"jdbc:postgresql://localhost/dlr\", \"db_password\": \"${DB_PASSWORD}\"}\nENV_FILES = {\n    \"staging\": {\"db_url\": \"jdbc:postgresql://stg-db/dlr\", \"log_level\": \"DEBUG\"},\n    \"production\": {\"db_url\": \"jdbc:postgresql://prod-db/dlr\", \"pool_size\": 20, \"db_password\": \"hunter2\"},\n}\nENV_VARS = {\"production\": {\"log_level\": \"WARN\"}, \"staging\": {}}\nSENSITIVE = (\"password\", \"token\", \"secret\", \"key\")\n\n\ndef resolve(environment: str) -> dict:\n    # TODO 1 : défauts, puis fichier de l'environnement, puis variables d'environnement (la dernière couche l'emporte)\n    return {}\n\n\ndef leaked(config: dict) -> list[str]:\n    # TODO 2 : clés sensibles (le nom en minuscules contient un mot de SENSITIVE) dont la valeur ne commence pas par \"${\"\n    return []\n\n\nfor environment in (\"staging\", \"production\"):\n    config = resolve(environment)\n    # TODO 3 : affiche \"<environnement>: <ARTIFACT> log=<niveau> pool=<taille> db=<url>\"\n    # TODO 4 : affiche \"  secrets en clair: \" suivi des clés (séparées par ', ') ou \"aucun\"\n# TODO 5 : affiche \"Même artefact partout: \" + True (le nom de l'artefact ne change pas)\n",
+      "expectedOutput": "staging: dlr-api:1.4.0 log=DEBUG pool=5 db=jdbc:postgresql://stg-db/dlr\n  secrets en clair: aucun\nproduction: dlr-api:1.4.0 log=WARN pool=20 db=jdbc:postgresql://prod-db/dlr\n  secrets en clair: db_password\nMême artefact partout: True"
     }
   ],
   "quiz": [
     {
       "code": "ARCHITECTURE-12-Q1",
       "type": "SINGLE_CHOICE",
-      "prompt": "Quelle démarche produit la décision la plus robuste ?",
+      "prompt": "Pourquoi construire l'image une seule fois et la déployer partout ?",
       "choices": [
-        "Relier contraintes, responsabilités, preuve et observabilité",
-        "Choisir la technologie la plus populaire",
-        "Ajouter des services avant de mesurer"
+        "Pour économiser de l'espace disque",
+        "Pour que ce qui a été testé soit exactement ce qui tourne en production : seule la configuration change",
+        "Parce que la CI l'impose",
+        "Pour chiffrer l'image"
       ],
-      "correctChoice": 0,
-      "expectedKeywords": []
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Reconstruire par environnement introduit des différences possibles (dépendances, variables de build). Un artefact unique supprime cette source d'écart."
     },
     {
       "code": "ARCHITECTURE-12-Q2",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Prédis le niveau de log en production : défaut INFO, fichier de production sans log_level, variable d'environnement log_level=WARN.",
+      "choices": [
+        "INFO",
+        "WARN : la variable d'environnement est la couche la plus prioritaire",
+        "DEBUG",
+        "ERROR"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Défauts, puis fichier d'environnement, puis variables : la dernière couche l'emporte. Ainsi un opérateur peut surcharger sans reconstruire."
+    },
+    {
+      "code": "ARCHITECTURE-12-Q3",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Trouve le défaut :\n```yaml\n# production.env (versionné)\ndb_password: hunter2\n```\n",
+      "choices": [
+        "yaml est interdit",
+        "Un secret est en clair dans un fichier versionné : visible par tous ceux qui ont accès au dépôt, et conservé dans l'historique ; il faut une référence résolue à l'exécution",
+        "db_password est trop court",
+        "Il manque un commentaire"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Les secrets vivent dans un gestionnaire, injectés à l'exécution. Le fichier ne contient que ${DB_PASSWORD}. Un secret déjà commité est considéré compromis."
+    },
+    {
+      "code": "ARCHITECTURE-12-Q4",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Que faire quand la configuration est invalide au démarrage ?",
+      "choices": [
+        "Démarrer quand même avec des valeurs par défaut dangereuses",
+        "Refuser de démarrer avec un message précis plutôt que d'échouer plus tard à l'usage",
+        "Ignorer l'erreur",
+        "Redémarrer en boucle sans journal"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Échouer vite rend le problème visible et évite de servir avec une configuration incorrecte."
+    },
+    {
+      "code": "ARCHITECTURE-12-Q5",
       "type": "FREE_TEXT",
-      "prompt": "Nomme un compromis et le signal qui permettrait de le réévaluer.",
+      "prompt": "Sans relire le cours, explique avec tes mots la différence entre configuration et secret, et où vit chacun.",
       "choices": [],
       "correctChoice": null,
       "expectedKeywords": [
-        "compromis",
-        "mesure",
-        "risque"
-      ]
+        "configuration",
+        "secret",
+        "environnement",
+        "gestionnaire",
+        "depot"
+      ],
+      "modelAnswer": "La configuration regroupe les paramètres qui changent selon l'environnement (URL, tailles de pools, niveau de log) : elle peut être versionnée et lue sans danger. Un secret (mot de passe, clé, jeton) donne un accès : il ne doit jamais figurer dans le dépôt ni dans l'image, mais être injecté à l'exécution depuis un gestionnaire de secrets, avec des droits limités et une rotation.",
+      "explanation": "Une bonne réponse distingue paramètres versionnables et secrets injectés à l'exécution par un gestionnaire, absents du dépôt et de l'image."
     }
   ],
   "checklist": [
-    "Je peux dessiner la circulation de la donnée",
-    "Je sais nommer les responsabilités de chaque couche",
-    "Je justifie une alternative rejetée",
-    "Je définis une mesure et une condition de réévaluation"
+    "Je construis l'artefact une fois et je le déploie partout",
+    "Ma configuration est résolue par couches avec priorité explicite",
+    "Mes fichiers versionnés ne contiennent que des références de secrets",
+    "Ma configuration est validée au démarrage"
   ]
 }

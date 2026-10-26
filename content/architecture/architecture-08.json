@@ -11,25 +11,30 @@
     "ARCHITECTURE-07"
   ],
   "objectives": [
-    "Séparer identité, session, permissions et décisions métier",
-    "Justifier les compromis et nommer un risque opérationnel",
-    "Produire une preuve reproductible avant d’élargir la solution"
+    "Distinguer authentification (qui es-tu) et autorisation (que peux-tu faire) et leurs statuts 401 et 403.",
+    "Vérifier un jeton (existence, expiration) puis un droit par rôle et par propriété de la ressource.",
+    "Concevoir un modèle de rôles et de permissions avec refus par défaut.",
+    "Repérer un contrôle d'accès cassé (IDOR), un jeton sans expiration ou une vérification faite seulement côté client."
   ],
   "sections": [
     {
-      "title": "Concept clé et décision",
+      "title": "Deux questions, deux échecs",
+      "content": "L'authentification établit l'identité (jeton, session, mot de passe) : sans identité valide, la réponse est 401. L'autorisation décide des droits de cette identité : identité connue mais droit insuffisant, la réponse est 403. Les deux contrôles ont lieu côté serveur, à chaque requête, sur chaque ressource.\n\nModèle de droits usuel : des rôles (reader, editor, admin) regroupent des permissions (read, write, delete). Une règle d'appartenance complète le modèle : un éditeur modifie ses propres ressources, pas celles d'autrui. Principe directeur : refuser par défaut, autoriser explicitement."
+    },
+    {
+      "title": "Exemple résolu : de la requête à la décision",
       "conceptCodes": [
         "IDENTITY-ACCESS"
       ],
-      "content": "Authentification et autorisation de bout en bout relie les besoins, le logiciel, les données et l’exploitation. Commence par les contraintes observables, trace les responsabilités, puis choisis la solution la plus simple qui respecte les invariants."
+      "content": "Problème : pour chaque requête (jeton, action, ressource), produire 200, 401 ou 403 de façon cohérente.\n\nRaisonnement, étape par étape :\n1. Authentifier : le jeton est-il présent, connu et non expiré ? Sinon 401. Comparer l'expiration à l'horloge injectée pour rendre le test déterministe.\n2. Identité obtenue : un utilisateur avec un rôle.\n3. Permissions du rôle : reader {read}, editor {read, write}, admin {read, write, delete}. Un rôle inconnu n'a aucune permission.\n4. Autoriser l'action : l'action est-elle dans les permissions du rôle ? Sinon 403.\n5. Appartenance : pour write ou delete d'une ressource d'autrui, seul admin passe ; un editor ne modifie que ses ressources. Sinon 403.\n6. Succès : 200. Le contrôle doit précéder tout accès aux données.\n```python\ndef authenticate(token, now):\n    entry = TOKENS.get(token)\n    if entry is None or entry[\"expires\"] <= now:\n        return None\n    return entry[\"user\"]\n\ndef authorize(user, action, resource):\n    if action not in PERMISSIONS.get(user[\"role\"], set()):\n        return 403\n    if action in {\"write\", \"delete\"} and user[\"role\"] != \"admin\" and resource[\"owner\"] != user[\"name\"]:\n        return 403\n    return 200\n```\nEn pratique, un jeton signé (JWT) porte l'identité et l'expiration ; le serveur vérifie la signature, l'expiration, l'audience, et consulte les droits."
     },
     {
-      "title": "Construction verticale",
-      "content": "La preuve ARCHITECTURE-08 modélise une décision réelle sous forme déterministe. Elle ne remplace pas un déploiement complet : elle rend l’hypothèse testable avant l’intégration Spring Boot, Angular, PostgreSQL et Docker."
+      "title": "Pièges du contrôle d'accès",
+      "content": "- IDOR (référence d'objet directe non sécurisée) : GET /orders/42 accessible à n'importe quel utilisateur connecté. Vérifie toujours que la ressource appartient à l'utilisateur ou qu'il a un droit explicite.\n- Contrôle seulement côté client (bouton masqué) : n'importe quel client HTTP contourne l'interface.\n- Rôles trop larges : un compte de service administrateur partout ; applique le moindre privilège.\n- Jetons sans expiration ou à longue durée de vie : un jeton volé reste exploitable. Durée courte, renouvellement par jeton de rafraîchissement, révocation possible.\n- Jeton dans l'URL : journalisé partout ; place-le dans l'en-tête Authorization.\n- Secrets de signature faibles ou dans le dépôt.\n- Mots de passe hachés avec un algorithme lent et salé (Argon2, bcrypt), jamais stockés en clair.\n- Messages d'erreur : ne révèle pas si un compte existe (« identifiants invalides »).\n- Journalisation d'audit des accès refusés et des actions sensibles.\n- Choix 403 ou 404 : 404 pour une ressource d'autrui évite de confirmer son existence."
     },
     {
-      "title": "Revue professionnelle",
-      "content": "Documente le contexte, la décision, une option rejetée, les conséquences, le signal à surveiller et la condition qui imposerait de revoir le choix."
+      "title": "Erreurs fréquentes à reconnaître",
+      "content": "1. Confondre 401 et 403.\n2. Vérifier le rôle mais pas l'appartenance de la ressource.\n3. Masquer un bouton au lieu de refuser côté serveur.\n4. Un jeton sans expiration.\n5. Autoriser par défaut et interdire au cas par cas.\n6. Un jeton transmis dans l'URL.\n\nRetrouve ces erreurs de mémoire avant l'exercice, puis vérifie-toi avec le quiz : c'est la récupération, pas la relecture, qui fixe la notion."
     }
   ],
   "keyConcepts": [
@@ -43,49 +48,97 @@
       "professionalExample": "Un audit de sécurité révèle qu’un bouton « Supprimer un utilisateur » est caché côté Angular pour les rôles non-administrateurs, mais que l’endpoint DELETE /users/{id} ne vérifie jamais le rôle côté serveur. N’importe quel utilisateur authentifié peut donc supprimer un compte en appelant l’API directement avec curl. Séparer clairement identité (qui es-tu), session (es-tu connecté) et autorisation (as-tu le droit) impose que chaque décision métier sensible revérifie les permissions côté serveur, jamais seulement côté interface.",
       "codeExample": "@DeleteMapping(\"/users/{id}\")\n@PreAuthorize(\"hasRole('ADMIN')\")  // revérifié côté serveur, pas seulement caché en UI\npublic ResponseEntity<Void> delete(@PathVariable Long id) {\n    userService.delete(id);\n    return ResponseEntity.noContent().build();\n}",
       "commonMistake": "Choisir un outil avant d’identifier le besoin, la charge, le risque et le propriétaire de la donnée.",
-      "masteryQuestion": "Quel compromis, quel signal et quelle condition de réévaluation associes-tu à « Authentification et autorisation de bout en bout » ?",
-      "masteryProof": "Exécuter la preuve, modifier une contrainte, expliquer le résultat et dessiner la place du composant dans la stack complète."
+      "masteryQuestion": "Comment distinguer 401 et 403, et pourquoi vérifier l'appartenance de la ressource en plus du rôle ?",
+      "masteryProof": "Authentifier un jeton avec expiration, autoriser par rôle et par propriété, et produire 200, 401 ou 403."
     }
   ],
   "exercises": [
     {
       "code": "ARCHITECTURE-08-E1",
-      "title": "Séparer identité, session, permissions et décisions métier",
-      "statement": "Complète la preuve pour produire exactement la sortie attendue, puis explique la décision, une alternative et le signal de production qui validerait ton choix.",
-      "starterCode": "permissions = {\"reader\": {\"read\"}, \"editor\": {\"read\", \"write\"}}\n\ndef authorize(role: str, action: str) -> int:\n    # TODO : retourne 200 si le rôle possède l'action, sinon 403 (un rôle inconnu obtient 403)\n    return 0\n\nprint(\"reader/write:\", authorize(\"reader\", \"write\"))\nprint(\"editor/write:\", authorize(\"editor\", \"write\"))\n",
-      "expectedOutput": "reader/write: 403\neditor/write: 200"
+      "title": "Du jeton à la décision : 401, 403 ou 200",
+      "statement": "Complète : l'authentification (jeton connu et non expiré à l'instant donné), l'autorisation par permission de rôle et par propriété de la ressource (seul admin modifie ou supprime la ressource d'autrui), puis le traitement de sept requêtes. Affiche exactement :\nt-reader read doc-1 -> 200\nt-reader write doc-1 -> 403\nt-editor write doc-1 -> 200\nt-editor write doc-2 -> 403\nt-admin delete doc-1 -> 200\nt-old read doc-1 -> 401\nsans jeton read doc-1 -> 401",
+      "starterCode": "NOW = 1000\nTOKENS = {\n    \"t-reader\": {\"user\": {\"name\": \"rita\", \"role\": \"reader\"}, \"expires\": 2000},\n    \"t-editor\": {\"user\": {\"name\": \"eva\", \"role\": \"editor\"}, \"expires\": 2000},\n    \"t-admin\": {\"user\": {\"name\": \"adam\", \"role\": \"admin\"}, \"expires\": 2000},\n    \"t-old\": {\"user\": {\"name\": \"eva\", \"role\": \"editor\"}, \"expires\": 900},\n}\nPERMISSIONS = {\"reader\": {\"read\"}, \"editor\": {\"read\", \"write\"}, \"admin\": {\"read\", \"write\", \"delete\"}}\nRESOURCES = {\"doc-1\": {\"owner\": \"eva\"}, \"doc-2\": {\"owner\": \"adam\"}}\n\n\ndef authenticate(token: str | None, now: int):\n    # TODO 1 : l'utilisateur du jeton s'il existe et n'est pas expiré (expires > now) ; sinon None\n    return None\n\n\ndef authorize(user: dict, action: str, resource: dict) -> int:\n    # TODO 2 : 403 si l'action n'est pas dans les permissions du rôle (rôle inconnu : aucune permission) ;\n    #          403 si action est write ou delete, que le rôle n'est pas admin et que l'utilisateur n'est pas le propriétaire ;\n    #          sinon 200\n    return 0\n\n\ndef handle(token: str | None, action: str, resource_id: str) -> int:\n    # TODO 3 : 401 si non authentifié ; 404 si la ressource n'existe pas ; sinon la décision de authorize\n    return 0\n\n\nrequests = [\n    (\"t-reader\", \"read\", \"doc-1\"),\n    (\"t-reader\", \"write\", \"doc-1\"),\n    (\"t-editor\", \"write\", \"doc-1\"),\n    (\"t-editor\", \"write\", \"doc-2\"),\n    (\"t-admin\", \"delete\", \"doc-1\"),\n    (\"t-old\", \"read\", \"doc-1\"),\n    (None, \"read\", \"doc-1\"),\n]\nfor token, action, resource_id in requests:\n    # TODO 4 : affiche \"<jeton ou sans jeton> <action> <ressource> -> <statut>\"\n    pass\n",
+      "expectedOutput": "t-reader read doc-1 -> 200\nt-reader write doc-1 -> 403\nt-editor write doc-1 -> 200\nt-editor write doc-2 -> 403\nt-admin delete doc-1 -> 200\nt-old read doc-1 -> 401\nsans jeton read doc-1 -> 401"
     }
   ],
   "quiz": [
     {
       "code": "ARCHITECTURE-08-Q1",
       "type": "SINGLE_CHOICE",
-      "prompt": "Quelle démarche produit la décision la plus robuste ?",
+      "prompt": "Un jeton expiré est présenté. Quel statut ?",
       "choices": [
-        "Relier contraintes, responsabilités, preuve et observabilité",
-        "Choisir la technologie la plus populaire",
-        "Ajouter des services avant de mesurer"
+        "403",
+        "401 : l'identité n'est plus valide",
+        "404",
+        "200"
       ],
-      "correctChoice": 0,
-      "expectedKeywords": []
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Un jeton expiré n'établit plus d'identité : la requête est non authentifiée (401). 403 suppose une identité valide sans droit."
     },
     {
       "code": "ARCHITECTURE-08-Q2",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Prédis le statut : l'éditeur eva écrit sur doc-2, propriété d'adam.",
+      "choices": [
+        "200",
+        "403 : elle a la permission write mais pas sur la ressource d'un autre",
+        "401",
+        "404"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Le rôle autorise l'action en général ; l'appartenance de la ressource la limite. Sans cette seconde vérification, tout éditeur pourrait modifier tous les documents (IDOR)."
+    },
+    {
+      "code": "ARCHITECTURE-08-Q3",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Trouve le défaut :\n```python\n@app.get('/orders/{id}')\ndef read(id, user=Depends(current_user)):\n    return db.get_order(id)\n```\n",
+      "choices": [
+        "Il manque un POST",
+        "L'utilisateur est authentifié mais aucun contrôle n'établit qu'il a le droit de lire cette commande : n'importe quel utilisateur lit celle de n'importe qui",
+        "current_user est interdit",
+        "db.get_order est lent"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Authentifier ne suffit pas. Il faut autoriser l'accès à cet objet précis (propriétaire ou rôle), avant de renvoyer les données."
+    },
+    {
+      "code": "ARCHITECTURE-08-Q4",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Où faut-il faire respecter les droits ?",
+      "choices": [
+        "Dans l'interface (boutons masqués)",
+        "Côté serveur, à chaque requête, avant d'accéder aux données",
+        "Dans la base uniquement",
+        "Dans le navigateur uniquement"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "L'interface est contournable. Le serveur est la seule frontière de confiance."
+    },
+    {
+      "code": "ARCHITECTURE-08-Q5",
       "type": "FREE_TEXT",
-      "prompt": "Nomme un compromis et le signal qui permettrait de le réévaluer.",
+      "prompt": "Sans relire le cours, explique avec tes mots la différence entre authentification et autorisation et les statuts qui leur correspondent.",
       "choices": [],
       "correctChoice": null,
       "expectedKeywords": [
-        "compromis",
-        "mesure",
-        "risque"
-      ]
+        "identite",
+        "droit",
+        "401",
+        "403",
+        "serveur"
+      ],
+      "modelAnswer": "L'authentification établit qui fait la requête (jeton valide, non expiré) : en cas d'échec, 401. L'autorisation décide si cette identité a le droit d'effectuer l'action sur cette ressource (rôle, propriété) : identité valide mais droit insuffisant donne 403. Les deux contrôles se font côté serveur à chaque requête, avec un refus par défaut.",
+      "explanation": "Une bonne réponse distingue identité (401) et droits (403) et précise que les contrôles se font côté serveur, par défaut en refus."
     }
   ],
   "checklist": [
-    "Je peux dessiner la circulation de la donnée",
-    "Je sais nommer les responsabilités de chaque couche",
-    "Je justifie une alternative rejetée",
-    "Je définis une mesure et une condition de réévaluation"
+    "J'authentifie (jeton, expiration) avant d'autoriser",
+    "Je vérifie le rôle et la propriété de la ressource",
+    "Mes contrôles sont côté serveur, avec refus par défaut",
+    "Mes jetons ont une expiration et ne passent pas dans l'URL"
   ]
 }

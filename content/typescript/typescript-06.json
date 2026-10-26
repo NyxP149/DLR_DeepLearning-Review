@@ -11,21 +11,30 @@
     "TYPESCRIPT-05"
   ],
   "objectives": [
-    "Expliquer tableaux, tuples et données readonly",
-    "Construire une preuve exécutable et déterministe",
-    "Relier le concept à une décision professionnelle"
+    "Distinguer tableaux, tuples et tableaux readonly et choisir le bon type.",
+    "Écrire des fonctions qui ne mutent pas leurs paramètres et vérifier que l'original est intact.",
+    "Prédire l'effet de sort, push, reverse (mutants) contre toSorted, map, slice, spread (non mutants).",
+    "Repérer le tri lexicographique par défaut, une copie superficielle ou un accès hors limites."
   ],
   "sections": [
     {
-      "title": "Concept et usage professionnel",
-      "content": "Tableaux, tuples et données readonly répond à un besoin concret de maintenabilité, de sûreté ou de performance. Le laboratoire demande de rendre la décision observable et vérifiable.",
-      "conceptCodes": [
-        "TYPESCRIPT-READONLY"
-      ]
+      "title": "Tableaux, tuples et lecture seule",
+      "content": "number[] est un tableau de longueur variable ; un tuple [number, number] a une longueur fixe et un type par position ; readonly number[] interdit au code d'appeler push, sort ou d'affecter par indice.\n```ts\nfunction minMax(values: readonly number[]): [number, number] {   // promet de ne pas modifier values\n  return [Math.min(...values), Math.max(...values)];\n}\n\nconst [min, max] = minMax([9, 2, 4]);        // déstructuration d'un tuple\nconst point: readonly [number, number] = [3, 4];\n```\nUn paramètre readonly est une promesse faite à l'appelant : « je ne toucherai pas à ton tableau ». Le compilateur la fait respecter dans le corps de la fonction. Un tuple convient à une paire ou un petit enregistrement positionnel (coordonnées, [clé, valeur]) ; un objet nommé est plus lisible dès qu'il y a trois champs."
     },
     {
-      "title": "Mise en pratique",
-      "content": "La preuve minimale est locale, déterministe et peut être enrichie sans changer le contrat attendu."
+      "title": "Exemple résolu : trier sans toucher à l'original",
+      "conceptCodes": [
+        "TYPESCRIPT-READONLY"
+      ],
+      "content": "Problème : retourner une version triée d'un tableau, sans modifier celui que l'appelant a passé.\n\nRaisonnement, étape par étape :\n1. sort() trie sur place (il mute) ; appliqué à un readonly number[], le compilateur refuse.\n2. On copie d'abord : [...values] (spread) ou values.slice() ; la copie est un nouveau tableau.\n3. Le tri par défaut de JavaScript est lexicographique (comme des chaînes) : [10, 9, 1].sort() donne [1, 10, 9]. Pour des nombres, fournis un comparateur : (a, b) => a - b.\n4. On trie la copie et on la retourne.\n5. Vérification : après l'appel, le tableau d'origine a gardé son ordre.\n```ts\nfunction sortedCopy(values: readonly number[]): number[] {\n  return [...values].sort((a, b) => a - b);\n}\n\nconst data: readonly number[] = [9, 2, 4];\nsortedCopy(data);       // [2, 4, 9]\ndata.join(',');         // '9,2,4' : inchangé\n// Node 20+ : data.toSorted((a, b) => a - b) fait la copie et le tri en un appel\n```\nMath.hypot(x, y) calcule la distance à l'origine d'un point sans débordement."
+    },
+    {
+      "title": "Mutants, copies et accès sûrs",
+      "content": "Méthodes qui mutent le tableau : push, pop, shift, unshift, splice, sort, reverse, fill. Méthodes qui retournent un nouveau tableau : map, filter, slice, concat, flat, spread [...a]. Récentes et non mutantes : toSorted, toReversed, toSpliced, with.\n\nCopie superficielle : [...a] et slice() copient le tableau, pas les objets qu'il contient. Modifier un objet dans la copie le modifie aussi dans l'original. structuredClone fait une copie profonde.\n\nAccès : un indice hors limites ne lève pas d'erreur, il donne undefined (a[10]). L'option noUncheckedIndexedAccess type a[i] en T | undefined pour forcer le contrôle. Pour parcourir : for...of (valeurs), pas for...in (qui énumère les clés sous forme de chaînes). as const fige un littéral en tuple readonly de littéraux :\n```ts\nconst couleurs = ['rouge', 'vert'] as const;     // readonly ['rouge', 'vert']\ntype Couleur = typeof couleurs[number];           // 'rouge' | 'vert'\n```"
+    },
+    {
+      "title": "Erreurs fréquentes à reconnaître",
+      "content": "1. [10, 9, 1].sort() sans comparateur : tri lexicographique, donc [1, 10, 9].\n2. Trier ou inverser le tableau reçu en paramètre : l'appelant voit son tableau changer.\n3. Croire que [...a] copie aussi les objets internes.\n4. Utiliser for...in sur un tableau.\n5. Lire a[i] sans traiter undefined.\n6. Un tuple de cinq éléments dont on ne retient plus l'ordre : utilise un objet.\n\nRetrouve ces erreurs de mémoire avant l'exercice, puis vérifie-toi avec le quiz : c'est la récupération, pas la relecture, qui fixe la notion."
     }
   ],
   "keyConcepts": [
@@ -39,8 +48,8 @@
       "professionalExample": "La configuration des taux de TVA par pays est chargée une fois au démarrage du service et partagée par toutes les requêtes. En la typant comme readonly VatRate[] et en gelant le tableau, l'équipe a empêché un bug où un module de test modifiait accidentellement le tableau partagé via push(), ce qui faussait silencieusement les calculs de TVA pour toutes les requêtes suivantes exécutées dans le même processus Node.",
       "codeExample": "interface VatRate {\n  readonly country: string;\n  readonly rate: number;\n}\n\nconst VAT_RATES: readonly VatRate[] = [\n  { country: 'FR', rate: 0.2 },\n  { country: 'DE', rate: 0.19 },\n];\n\nfunction rateFor(country: string): number {\n  const entry = VAT_RATES.find(r => r.country === country);\n  return entry?.rate ?? 0;\n}\n\n// VAT_RATES.push({ country: 'BE', rate: 0.21 }); // erreur de compilation : push n'existe pas sur readonly[]",
       "commonMistake": "Appliquer la technique sans mesurer son effet ni documenter sa frontière.",
-      "masteryQuestion": "Quelle contrainte de tableaux, tuples et données readonly doit rester vraie lorsque le système évolue ?",
-      "masteryProof": "Exécuter la preuve, expliquer son invariant et proposer un cas d’échec."
+      "masteryQuestion": "Pourquoi sort() sur un tableau reçu en paramètre est-il dangereux, et pourquoi faut-il un comparateur pour trier des nombres ?",
+      "masteryProof": "Écrire minMax (tuple), sortedCopy (copie triée) et distance (point readonly), puis vérifier que l'original est intact."
     }
   ],
   "exercises": [
@@ -56,32 +65,80 @@
     {
       "code": "TYPESCRIPT-06-Q1",
       "type": "SINGLE_CHOICE",
-      "prompt": "Quelle preuve est la plus utile en revue ?",
+      "prompt": "Prédis la sortie :\n```ts\nconsole.log([10, 9, 1].sort());\n```\n",
       "choices": [
-        "Une exécution déterministe avec invariant explicite",
-        "Une sortie aléatoire",
-        "Une capture sans code"
+        "[1, 9, 10]",
+        "[1, 10, 9]",
+        "[10, 9, 1]",
+        "[9, 10, 1]"
       ],
-      "correctChoice": 0,
-      "expectedKeywords": []
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Sans comparateur, sort convertit les éléments en chaînes et trie dans l'ordre alphabétique : \"1\" < \"10\" < \"9\". Pour des nombres, il faut (a, b) => a - b."
     },
     {
       "code": "TYPESCRIPT-06-Q2",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Prédis la sortie :\n```ts\nconst a = [3, 1, 2];\nconst b = a;\nb.sort((x, y) => x - y);\nconsole.log(a.join(','));\n```\n",
+      "choices": [
+        "3,1,2",
+        "1,2,3",
+        "undefined",
+        "Erreur"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "b est une autre référence vers le même tableau, et sort modifie ce tableau. a voit donc le tri. Pour conserver a, il fallait trier une copie ([...a])."
+    },
+    {
+      "code": "TYPESCRIPT-06-Q3",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Trouve le défaut :\n```ts\nfunction top3(scores: number[]): number[] {\n  return scores.sort((a, b) => b - a).slice(0, 3);\n}\n```\n",
+      "choices": [
+        "slice mute le tableau",
+        "sort mute le tableau reçu : l'appelant perd son ordre d'origine ; il faut trier une copie ou typer le paramètre readonly",
+        "slice est incorrect",
+        "b - a est faux"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Typer le paramètre readonly number[] fait refuser sort par le compilateur et force la copie [...scores] avant le tri."
+    },
+    {
+      "code": "TYPESCRIPT-06-Q4",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Que contient const [a, b] = [1, 2, 3] ?",
+      "choices": [
+        "Une erreur",
+        "a vaut 1 et b vaut 2 ; le troisième élément est ignoré",
+        "a vaut 1 et b vaut [2, 3]",
+        "a et b valent undefined"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "La déstructuration lit les positions demandées. Pour récupérer le reste, on écrit [a, ...reste]. Un tuple typé [number, number] refuserait en revanche un tableau de trois éléments."
+    },
+    {
+      "code": "TYPESCRIPT-06-Q5",
       "type": "FREE_TEXT",
-      "prompt": "Explique une décision liée à tableaux, tuples et données readonly.",
+      "prompt": "Sans relire le cours, explique avec tes mots la différence entre méthodes qui mutent un tableau et méthodes qui en retournent un nouveau, avec un risque concret.",
       "choices": [],
       "correctChoice": null,
       "expectedKeywords": [
-        "contrat",
-        "preuve",
-        "test"
-      ]
+        "mute",
+        "copie",
+        "original",
+        "reference",
+        "appelant"
+      ],
+      "modelAnswer": "Les méthodes mutantes (push, sort, reverse, splice) modifient le tableau sur place ; les autres (map, filter, slice, spread) retournent un nouveau tableau. Comme un tableau passé à une fonction est une référence, une fonction qui le trie sur place change aussi le tableau de l'appelant sans qu'il le sache. Typer le paramètre readonly et trier une copie évite ce piège.",
+      "explanation": "Une bonne réponse oppose modification sur place et nouvelle valeur, et cite le risque pour l'appelant partageant la référence."
     }
   ],
   "checklist": [
-    "Je peux expliquer le concept sans réciter une définition",
-    "Je sais exécuter et modifier la preuve",
-    "Je peux nommer un risque et son contrôle",
-    "Je relie cette étape à la suivante"
+    "Je trie toujours une copie avec un comparateur numérique",
+    "Je type en readonly les paramètres que je ne modifie pas",
+    "Je distingue copie superficielle et profonde",
+    "J'utilise un tuple pour une paire et un objet pour trois champs ou plus"
   ]
 }

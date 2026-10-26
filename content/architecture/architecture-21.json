@@ -11,25 +11,30 @@
     "ARCHITECTURE-20"
   ],
   "objectives": [
-    "Combiner délais, retries bornés, circuit breaker, sauvegarde et objectifs de reprise",
-    "Justifier les compromis et nommer un risque opérationnel",
-    "Produire une preuve reproductible avant d’élargir la solution"
+    "Calculer un délai de réessai exponentiel avec plafond et hasard (jitter) injecté.",
+    "Implémenter un disjoncteur (circuit breaker) avec ses états fermé, ouvert, semi-ouvert et une horloge injectée.",
+    "Vérifier qu'une stratégie de sauvegarde respecte un RPO et un RTO.",
+    "Combiner délai d'attente, réessais, disjoncteur et repli pour éviter les pannes en cascade."
   ],
   "sections": [
     {
-      "title": "Concept clé et décision",
+      "title": "Les pannes partielles sont normales",
+      "content": "Dans un système distribué, un appel peut échouer, être lent ou ne jamais répondre. La résilience ne consiste pas à éviter les pannes mais à limiter leurs effets. Les briques :\n- Délai d'attente (timeout) sur chaque appel : sans lui, un service lent bloque ses appelants.\n- Réessai (retry) pour les erreurs transitoires, avec un délai exponentiel (1 s, 2 s, 4 s...), un plafond et du hasard (jitter) pour éviter que tous les clients réessaient en même temps.\n- Disjoncteur : après plusieurs échecs, on cesse d'appeler le service défaillant pendant un temps, pour lui laisser le temps de récupérer et préserver l'appelant.\n- Repli (fallback) : une réponse dégradée (cache, valeur par défaut, fonction désactivée) plutôt qu'une erreur.\n- Isolation (bulkhead) : des pools de ressources séparés pour qu'une dépendance lente n'épuise pas tout."
+    },
+    {
+      "title": "Exemple résolu : un disjoncteur et un RPO/RTO",
       "conceptCodes": [
         "RESILIENCE"
       ],
-      "content": "Concevoir la résilience et la reprise relie les besoins, le logiciel, les données et l’exploitation. Commence par les contraintes observables, trace les responsabilités, puis choisis la solution la plus simple qui respecte les invariants."
+      "content": "Problème : protéger les appels à un service de paiement par un disjoncteur ; vérifier une stratégie de sauvegarde.\n\nRaisonnement, étape par étape :\n1. États : fermé (les appels passent, on compte les échecs consécutifs), ouvert (les appels sont refusés immédiatement), semi-ouvert (après un délai, on laisse passer un appel d'essai).\n2. Transitions : fermé → ouvert après 3 échecs consécutifs ; ouvert → semi-ouvert quand 30 s se sont écoulées depuis l'ouverture ; semi-ouvert → fermé si l'essai réussit, → ouvert s'il échoue.\n3. Une horloge injectée (un instant passé en paramètre) rend le comportement déterministe dans les tests.\n4. Réessais : délai = min(plafond, base × 2^(tentative - 1)) ; le jitter est appliqué en multipliant par un facteur aléatoire ; en test, les facteurs sont fournis, pas tirés.\n5. RPO (Recovery Point Objective) : perte de données maximale tolérée ; il doit être supérieur ou égal à l'intervalle entre sauvegardes (sauvegarde toutes les 15 min → RPO d'au moins 15 min). RTO (Recovery Time Objective) : durée maximale d'indisponibilité tolérée ; il doit couvrir la durée réelle de restauration mesurée.\n6. Vérification : une séquence d'appels qui échoue, ouvre le disjoncteur, le voit refuser, se rouvrir en semi-ouvert puis se fermer.\n```python\ndef call(now, succeeds):\n    if state == \"open\" and now - opened_at >= RESET:\n        state = \"half-open\"\n    if state == \"open\":\n        return \"REFUSÉ\"\n    ...\n```"
     },
     {
-      "title": "Construction verticale",
-      "content": "La preuve ARCHITECTURE-21 modélise une décision réelle sous forme déterministe. Elle ne remplace pas un déploiement complet : elle rend l’hypothèse testable avant l’intégration Spring Boot, Angular, PostgreSQL et Docker."
+      "title": "Concevoir la résilience sans l'aggraver",
+      "content": "- Réessayer sans limite aggrave la panne (tempête de réessais). Nombre borné, délai croissant, jitter, et budget de réessais global.\n- Les réessais exigent l'idempotence : réessayer un paiement non idempotent le double.\n- Timeouts en cascade : le timeout d'un appelant doit être supérieur à la somme de ses appels en aval, sinon l'appelant abandonne avant que l'aval ait fini.\n- Dégradation gracieuse : décider à l'avance ce qui reste disponible sans chaque dépendance (recommandations désactivées, catalogue en cache) ; un tableau des dépendances, de leur criticité et du repli.\n- Sauvegardes : règle 3-2-1 (trois copies, deux supports, une hors site), chiffrées, avec test de restauration réguliers : une sauvegarde jamais restaurée n'est qu'une hypothèse.\n- Haute disponibilité : redondance (plusieurs instances, zones de disponibilité), répartition de charge, vérifications de santé, déploiements progressifs.\n- Reprise après sinistre : plan écrit, responsable, exercices périodiques (game days), mesure du RTO réel.\n- Tests de chaos : injecter des pannes (arrêt d'une instance, latence) en préproduction pour vérifier que les mécanismes fonctionnent.\n- Observabilité : état du disjoncteur, taux de réessais, saturation, RPO/RTO réellement atteints."
     },
     {
-      "title": "Revue professionnelle",
-      "content": "Documente le contexte, la décision, une option rejetée, les conséquences, le signal à surveiller et la condition qui imposerait de revoir le choix."
+      "title": "Erreurs fréquentes à reconnaître",
+      "content": "1. Aucun timeout sur un appel réseau.\n2. Réessais immédiats et infinis : tempête de réessais.\n3. Réessayer une opération non idempotente.\n4. Un disjoncteur jamais testé, sans horloge injectée donc intestable.\n5. Des sauvegardes jamais restaurées.\n6. Un RTO affiché jamais mesuré.\n\nRetrouve ces erreurs de mémoire avant l'exercice, puis vérifie-toi avec le quiz : c'est la récupération, pas la relecture, qui fixe la notion."
     }
   ],
   "keyConcepts": [
@@ -43,49 +48,97 @@
       "professionalExample": "Le fournisseur de paiement externe ralentit soudainement à 8 secondes par appel ; sans délai ni disjoncteur, chaque requête de paiement bloque un thread du service commandes jusqu’à épuisement total du pool, provoquant une panne en cascade sur l’ensemble du site de vente alors que seul le paiement était en cause. Un circuit breaker qui s’ouvre après un seuil d’échecs, combiné à un timeout court et des tentatives bornées, aurait isolé la panne au module de paiement et laissé le reste du site fonctionnel. Concevoir la résilience avant l’incident transforme une panne totale en dégradation partielle et mesurable.",
       "codeExample": "state = \"CLOSED\"\nfailures = 0\n\ndef call_payment_provider():\n    global state, failures\n    if state == \"OPEN\":\n        raise CircuitOpenError(\"paiement indisponible, échec rapide\")\n    try:\n        return payment_api.charge()\n    except TimeoutError:\n        failures += 1\n        if failures >= 5:\n            state = \"OPEN\"  # isole la panne au lieu de bloquer tout le site\n        raise",
       "commonMistake": "Choisir un outil avant d’identifier le besoin, la charge, le risque et le propriétaire de la donnée.",
-      "masteryQuestion": "Quel compromis, quel signal et quelle condition de réévaluation associes-tu à « Concevoir la résilience et la reprise » ?",
-      "masteryProof": "Exécuter la preuve, modifier une contrainte, expliquer le résultat et dessiner la place du composant dans la stack complète."
+      "masteryQuestion": "Comment un disjoncteur protège-t-il appelant et appelé, et comment vérifier qu'une sauvegarde respecte un RPO et un RTO ?",
+      "masteryProof": "Implémenter un disjoncteur à horloge injectée, calculer des délais de réessai plafonnés et vérifier RPO et RTO."
     }
   ],
   "exercises": [
     {
       "code": "ARCHITECTURE-21-E1",
-      "title": "Combiner délais, retries bornés, circuit breaker, sauvegarde et objectifs de reprise",
-      "statement": "Complète la preuve pour produire exactement la sortie attendue, puis explique la décision, une alternative et le signal de production qui validerait ton choix.",
-      "starterCode": "attempts = [False, False, True]\n# TODO 1 : parcours les tentatives (numérotées à partir de 1) : affiche \"Tentative <n>: OK\"\n#          en cas de succès (et arrête la boucle), sinon \"Tentative <n>: RETRY\"\n# TODO 2 : affiche \"RPO: 5 min | RTO: 30 min\"\n",
-      "expectedOutput": "Tentative 1: RETRY\nTentative 2: RETRY\nTentative 3: OK\nRPO: 5 min | RTO: 30 min"
+      "title": "Disjoncteur, délais de réessai et RPO/RTO",
+      "statement": "Complète : le calcul des délais de réessai (exponentiel, plafonné), le disjoncteur (3 échecs ouvrent, 30 s avant l'essai semi-ouvert) piloté par une horloge injectée, et la vérification d'une stratégie de sauvegarde contre un RPO et un RTO. Affiche exactement :\nDélais de réessai: 1.0, 2.0, 4.0, 8.0, 8.0\nt=0: ÉCHEC (état closed)\nt=1: ÉCHEC (état closed)\nt=2: ÉCHEC (état open)\nt=3: REFUSÉ (état open)\nt=31: REFUSÉ (état open)\nt=32: ÉCHEC (état open)\nt=33: REFUSÉ (état open)\nRPO 5 min: NON respecté\nRTO 45 min: respecté",
+      "starterCode": "BASE, CAP = 1.0, 8.0\nFAILURE_THRESHOLD, RESET_AFTER = 3, 30\nBACKUP_INTERVAL_MIN, MEASURED_RESTORE_MIN = 15, 30\nRPO_MIN, RTO_MIN = 5, 45\n\n\ndef backoff(attempt: int) -> float:\n    # TODO 1 : min(CAP, BASE * 2 ** (attempt - 1)) pour attempt = 1, 2, 3...\n    return 0.0\n\n\nclass Breaker:\n    def __init__(self) -> None:\n        self.state = \"closed\"\n        self.failures = 0\n        self.opened_at = 0\n\n    def call(self, now: int, succeeds: bool) -> str:\n        # TODO 2 : si l'état est \"open\" et now - opened_at >= RESET_AFTER -> état \"half-open\"\n        # TODO 3 : si l'état est \"open\" -> retourne \"REFUSÉ\" (aucun appel)\n        # TODO 4 : appel effectué : si succeeds -> failures = 0, état \"closed\", retourne \"OK\" ;\n        #          sinon failures += 1 ; si l'état est \"half-open\" ou failures >= FAILURE_THRESHOLD -> état \"open\", opened_at = now ;\n        #          retourne \"ÉCHEC\"\n        return \"\"\n\n\n# TODO 5 : affiche \"Délais de réessai: \" suivi des délais des tentatives 1 à 5 (1 décimale) séparés par \", \"\nbreaker = Breaker()\ntimeline = [(0, False), (1, False), (2, False), (3, True), (31, True), (32, False), (33, True)]\nfor now, succeeds in timeline:\n    # TODO 6 : affiche \"t=<now>: <résultat> (état <état>)\" après chaque appel\n    pass\n# TODO 7 : RPO : la sauvegarde toutes les BACKUP_INTERVAL_MIN minutes respecte-t-elle RPO_MIN ? (intervalle <= RPO)\n#          RTO : la restauration mesurée (MEASURED_RESTORE_MIN) respecte-t-elle RTO_MIN ? (mesuré <= RTO)\n#          affiche \"RPO <RPO_MIN> min: <respecté/NON respecté>\" et \"RTO <RTO_MIN> min: <respecté/NON respecté>\"\n",
+      "expectedOutput": "Délais de réessai: 1.0, 2.0, 4.0, 8.0, 8.0\nt=0: ÉCHEC (état closed)\nt=1: ÉCHEC (état closed)\nt=2: ÉCHEC (état open)\nt=3: REFUSÉ (état open)\nt=31: REFUSÉ (état open)\nt=32: ÉCHEC (état open)\nt=33: REFUSÉ (état open)\nRPO 5 min: NON respecté\nRTO 45 min: respecté"
     }
   ],
   "quiz": [
     {
       "code": "ARCHITECTURE-21-Q1",
       "type": "SINGLE_CHOICE",
-      "prompt": "Quelle démarche produit la décision la plus robuste ?",
+      "prompt": "Prédis les délais de réessai pour les tentatives 1 à 5 avec base 1 s et plafond 8 s :",
       "choices": [
-        "Relier contraintes, responsabilités, preuve et observabilité",
-        "Choisir la technologie la plus populaire",
-        "Ajouter des services avant de mesurer"
+        "1, 2, 3, 4, 5",
+        "1, 2, 4, 8, 8 (exponentiel plafonné)",
+        "1, 1, 1, 1, 1",
+        "2, 4, 8, 16, 32"
       ],
-      "correctChoice": 0,
-      "expectedKeywords": []
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "1 × 2^(n-1) donne 1, 2, 4, 8, 16 ; le plafond limite à 8. Un délai exponentiel laisse au service le temps de récupérer."
     },
     {
       "code": "ARCHITECTURE-21-Q2",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Après l'ouverture du disjoncteur à t=2, que renvoie un appel à t=3 ?",
+      "choices": [
+        "OK",
+        "REFUSÉ : l'état est ouvert, l'appel n'est pas effectué",
+        "ÉCHEC",
+        "Une exception"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Un disjoncteur ouvert refuse immédiatement : l'appelant est préservé et le service défaillant n'est pas assailli."
+    },
+    {
+      "code": "ARCHITECTURE-21-Q3",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Trouve le défaut :\n« Nos sauvegardes sont faites toutes les 24 h ; notre RPO est de 5 minutes. »",
+      "choices": [
+        "Aucun",
+        "Après une panne juste avant la sauvegarde, jusqu'à 24 h de données seraient perdues : l'intervalle doit être inférieur ou égal au RPO (ou utiliser une réplication continue)",
+        "Le RPO est une durée de restauration",
+        "Il faut sauvegarder moins souvent"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "RPO = perte de données maximale tolérée. Une sauvegarde toutes les 24 h ne peut pas garantir mieux que 24 h de perte."
+    },
+    {
+      "code": "ARCHITECTURE-21-Q4",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Pourquoi ajouter du hasard (jitter) aux délais de réessai ?",
+      "choices": [
+        "Pour ralentir les clients",
+        "Pour que des milliers de clients qui ont échoué en même temps ne réessaient pas tous au même instant et ne recréent pas un pic",
+        "Pour sécuriser l'appel",
+        "Pour économiser des requêtes"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Sans jitter, les réessais synchronisés forment des vagues qui peuvent empêcher le service de récupérer."
+    },
+    {
+      "code": "ARCHITECTURE-21-Q5",
       "type": "FREE_TEXT",
-      "prompt": "Nomme un compromis et le signal qui permettrait de le réévaluer.",
+      "prompt": "Sans relire le cours, explique avec tes mots la différence entre RPO et RTO et comment on vérifie qu'ils sont respectés.",
       "choices": [],
       "correctChoice": null,
       "expectedKeywords": [
-        "compromis",
-        "mesure",
-        "risque"
-      ]
+        "rpo",
+        "rto",
+        "perte",
+        "restauration",
+        "test"
+      ],
+      "modelAnswer": "Le RPO est la quantité maximale de données qu'on accepte de perdre (exprimée en durée) : il impose la fréquence des sauvegardes ou de la réplication. Le RTO est la durée maximale d'indisponibilité acceptable : il impose une restauration plus rapide que cette durée. On les vérifie par des exercices de restauration réguliers qui mesurent la durée réelle et la fraîcheur des données restaurées, non par des promesses.",
+      "explanation": "Une bonne réponse définit RPO (perte de données) et RTO (durée d'indisponibilité) et la vérification par des tests de restauration mesurés."
     }
   ],
   "checklist": [
-    "Je peux dessiner la circulation de la donnée",
-    "Je sais nommer les responsabilités de chaque couche",
-    "Je justifie une alternative rejetée",
-    "Je définis une mesure et une condition de réévaluation"
+    "Chaque appel réseau a un délai d'attente",
+    "Mes réessais sont bornés, exponentiels et avec jitter, sur des opérations idempotentes",
+    "Mon disjoncteur est testé avec une horloge injectée",
+    "Mon RPO et mon RTO sont vérifiés par des restaurations réelles"
   ]
 }

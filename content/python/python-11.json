@@ -11,21 +11,30 @@
     "PYTHON-10"
   ],
   "objectives": [
-    "Expliquer tests avec pytest, doublures et couverture utile",
-    "Construire une preuve exécutable et déterministe",
-    "Relier le concept à une décision professionnelle"
+    "Écrire un test pytest lisible (assert simple, fixture, paramétrage).",
+    "Isoler une dépendance avec un Mock et vérifier un appel (une fois, avec les bons arguments).",
+    "Tester un comportement de repli (timeout) sans réseau ni attente.",
+    "Interpréter la couverture sans la confondre avec la qualité."
   ],
   "sections": [
     {
-      "title": "Concept et usage professionnel",
-      "content": "Tests avec pytest, doublures et couverture utile répond à un besoin concret de maintenabilité, de sûreté ou de performance. Le laboratoire demande de rendre la décision observable et vérifiable.",
-      "conceptCodes": [
-        "PYTHON-TESTS"
-      ]
+      "title": "pytest : des tests qui se lisent comme des phrases",
+      "content": "pytest découvre les fonctions test_* et utilise l'assert natif : en cas d'échec, il affiche les valeurs comparées. Les tests suivent Arrange / Act / Assert.\n```python\ndef test_prix_avec_taxe():\n    assert prix_ttc(100, taux=20) == 120\n\n@pytest.mark.parametrize(\"net, attendu\", [(0, 0), (100, 120), (50, 60)])\ndef test_prix_ttc(net, attendu):\n    assert prix_ttc(net, taux=20) == attendu\n\ndef test_montant_negatif_refuse():\n    with pytest.raises(ValueError, match=\"négatif\"):\n        prix_ttc(-1, taux=20)\n```\nLes fixtures préparent un contexte réutilisable (@pytest.fixture) : tmp_path fournit un dossier temporaire, monkeypatch modifie une variable d'environnement ou un attribut le temps du test. La paramétrisation remplace dix copies de test par une table de cas, dont les valeurs limites."
     },
     {
-      "title": "Mise en pratique",
-      "content": "La preuve minimale est locale, déterministe et peut être enrichie sans changer le contrat attendu."
+      "title": "Exemple résolu : tester un paiement avec un Mock",
+      "conceptCodes": [
+        "PYTHON-TESTS"
+      ],
+      "content": "Problème : pay(gateway, amount) appelle gateway.charge(amount). Elle renvoie True si le paiement est accepté et False si la passerelle dépasse le délai. Comment tester sans service réel ?\n\nRaisonnement, étape par étape :\n1. La passerelle est passée en paramètre : on peut donc injecter un faux.\n2. Test du cas heureux : un Mock dont charge répond « ok ». On vérifie le résultat (True) et que la passerelle a été appelée une seule fois avec le bon montant : assert_called_once_with(120).\n3. Test du repli : un Mock dont charge a side_effect = TimeoutError. On vérifie que pay renvoie False au lieu de laisser l'exception sortir.\n4. Chaque test crée ses propres Mock : pas d'état partagé.\n```python\nfrom unittest.mock import Mock\n\ndef test_paiement_accepte():\n    gateway = Mock()\n    gateway.charge.return_value = \"ok\"\n    assert pay(gateway, 120) is True\n    gateway.charge.assert_called_once_with(120)\n\ndef test_paiement_timeout():\n    gateway = Mock()\n    gateway.charge.side_effect = TimeoutError\n    assert pay(gateway, 120) is False\n```\npatch(\"module.fonction\") remplace un nom pendant le test ; il faut patcher là où le nom est utilisé, pas là où il est défini (patch(\"app.service.requests.get\") et non requests.get si service a fait from requests import get)."
+    },
+    {
+      "title": "Couverture utile et doublures sobres",
+      "content": "Doublures : un stub renvoie des valeurs préprogrammées, un fake est une implémentation simplifiée (dépôt en mémoire), un mock enregistre les appels. Un Mock accepte n'importe quel appel par défaut : une faute de frappe sur le nom d'une méthode ne fait pas échouer le test. Utilise Mock(spec=Classe) ou create_autospec pour que le Mock refuse un attribut inexistant.\n\nLa couverture (pytest --cov) indique quelles lignes ont été exécutées, pas si les assertions vérifient quelque chose. Cherche les branches non testées (erreurs, repli, valeurs limites), pas un pourcentage. Un test utile échoue quand le comportement casse, pas quand on renomme une méthode interne.\n\nLes tests doivent être indépendants (ordre libre), rapides, sans réseau, sans horloge réelle (injecte le temps), et déterministes (graine fixe pour le hasard). Garde les tests lents ou d'intégration marqués à part (@pytest.mark.integration)."
+    },
+    {
+      "title": "Erreurs fréquentes à reconnaître",
+      "content": "1. Un test sans assert : il passe toujours.\n2. Un Mock sans spec : une faute de frappe passe inaperçue.\n3. Patcher au mauvais endroit (là où c'est défini plutôt que là où c'est utilisé).\n4. Mocker tout, y compris la fonction testée.\n5. Des tests qui dépendent les uns des autres ou de l'heure.\n6. Courir derrière 100 % de couverture avec des assertions vides.\n\nRetrouve ces erreurs de mémoire avant l'exercice, puis vérifie-toi avec le quiz : c'est la récupération, pas la relecture, qui fixe la notion."
     }
   ],
   "keyConcepts": [
@@ -39,8 +48,8 @@
       "professionalExample": "Un service qui appelle une passerelle de paiement externe voyait ses tests échouer de manière aléatoire en CI parce qu'ils déclenchaient de vrais appels réseau vers un bac à sable instable. En remplaçant le client réel par une doublure (fake) injectée via une fixture pytest, l'équipe a rendu les tests déterministes et rapides, tout en gardant un test d'intégration séparé et clairement marqué pour valider le vrai client de temps en temps.",
       "codeExample": "import pytest\n\nclass FakePaymentGateway:\n    def __init__(self, should_succeed: bool = True) -> None:\n        self.should_succeed = should_succeed\n        self.calls: list[str] = []\n\n    def charge(self, order_id: str) -> bool:\n        self.calls.append(order_id)\n        return self.should_succeed\n\n@pytest.fixture\ndef gateway() -> FakePaymentGateway:\n    return FakePaymentGateway(should_succeed=False)\n\ndef test_failed_charge_raises(gateway: FakePaymentGateway) -> None:\n    with pytest.raises(PaymentError):\n        process_order(\"ORD-42\", gateway)\n    assert gateway.calls == [\"ORD-42\"]",
       "commonMistake": "Appliquer la technique sans mesurer son effet ni documenter sa frontière.",
-      "masteryQuestion": "Quelle contrainte de tests avec pytest, doublures et couverture utile doit rester vraie lorsque le système évolue ?",
-      "masteryProof": "Exécuter la preuve, expliquer son invariant et proposer un cas d’échec."
+      "masteryQuestion": "Pourquoi un Mock sans spec peut-il cacher une faute de frappe, et que mesure réellement la couverture ?",
+      "masteryProof": "Tester pay avec un Mock qui répond ok (appelé une fois avec le bon montant) puis avec un Mock qui lève TimeoutError."
     }
   ],
   "exercises": [
@@ -56,32 +65,80 @@
     {
       "code": "PYTHON-11-Q1",
       "type": "SINGLE_CHOICE",
-      "prompt": "Quelle preuve est la plus utile en revue ?",
+      "prompt": "Que fait gateway.charge.assert_called_once_with(120) ?",
       "choices": [
-        "Une exécution déterministe avec invariant explicite",
-        "Une sortie aléatoire",
-        "Une capture sans code"
+        "Il appelle charge avec 120",
+        "Il vérifie que charge a été appelée exactement une fois, avec l'argument 120",
+        "Il renvoie 120",
+        "Il remplace charge"
       ],
-      "correctChoice": 0,
-      "expectedKeywords": []
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "C'est une assertion sur les appels enregistrés par le Mock : nombre d'appels et arguments. Elle échoue si charge n'a pas été appelée, l'a été deux fois ou avec un autre montant."
     },
     {
       "code": "PYTHON-11-Q2",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Prédis le résultat :\n```python\nfrom unittest.mock import Mock\ng = Mock()\ng.charg(120)       # faute de frappe\ng.charge.assert_not_called()\n```\n",
+      "choices": [
+        "AssertionError : charge n'a jamais existé",
+        "Le test passe : g.charg a été créé silencieusement, charge n'a pas été appelée",
+        "AttributeError",
+        "TypeError"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Un Mock crée n'importe quel attribut à la demande. La faute de frappe n'est donc pas détectée. Avec Mock(spec=Passerelle), g.charg lèverait AttributeError."
+    },
+    {
+      "code": "PYTHON-11-Q3",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Trouve le défaut : service.py fait « from requests import get » et ton test fait patch(\"requests.get\"). Pourquoi le vrai get est-il quand même appelé ?",
+      "choices": [
+        "patch ne fonctionne pas avec requests",
+        "Le nom get a déjà été copié dans service ; il faut patcher « service.get », là où il est utilisé",
+        "Il faut importer le test avant",
+        "Le Mock est trop lent"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "from requests import get lie le nom get dans le module service. Remplacer requests.get n'affecte pas cette référence. On patche le nom à l'endroit où il est consulté : patch(\"service.get\")."
+    },
+    {
+      "code": "PYTHON-11-Q4",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Une suite atteint 100 % de couverture. Que peut-on en conclure ?",
+      "choices": [
+        "Le code est correct",
+        "Toutes les lignes ont été exécutées, mais rien ne dit que les assertions vérifient le bon comportement",
+        "Il n'y a plus de bug",
+        "Les tests sont rapides"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "La couverture mesure l'exécution, pas la vérification. Un test sans assertion donne de la couverture sans protection. Il faut surtout couvrir les cas d'erreur et les valeurs limites avec des assertions précises."
+    },
+    {
+      "code": "PYTHON-11-Q5",
       "type": "FREE_TEXT",
-      "prompt": "Explique une décision liée à tests avec pytest, doublures et couverture utile.",
+      "prompt": "Sans relire le cours, explique avec tes mots la différence entre stub, fake et mock, et quand utiliser Mock(spec=...) plutôt qu'un Mock nu.",
       "choices": [],
       "correctChoice": null,
       "expectedKeywords": [
-        "contrat",
-        "preuve",
-        "test"
-      ]
+        "stub",
+        "fake",
+        "mock",
+        "spec",
+        "attribut"
+      ],
+      "modelAnswer": "Un stub renvoie des réponses préprogrammées ; un fake est une implémentation simplifiée mais fonctionnelle (un dépôt en mémoire) ; un mock enregistre les appels reçus pour les vérifier. Un Mock nu accepte n'importe quel attribut, donc une faute de frappe passe : Mock(spec=Classe) limite le Mock aux attributs réels de la classe et fait échouer les appels erronés.",
+      "explanation": "Une bonne réponse distingue les trois doublures et explique que spec protège contre les fautes de frappe en limitant les attributs autorisés."
     }
   ],
   "checklist": [
-    "Je peux expliquer le concept sans réciter une définition",
-    "Je sais exécuter et modifier la preuve",
-    "Je peux nommer un risque et son contrôle",
-    "Je relie cette étape à la suivante"
+    "J'écris des tests lisibles avec assert, fixtures et parametrize",
+    "Je vérifie le repli et l'erreur, pas seulement le cas heureux",
+    "J'utilise spec pour mes Mock et je patche au bon endroit",
+    "Je lis la couverture comme un indice, pas comme un objectif"
   ]
 }

@@ -11,25 +11,30 @@
     "ARCHITECTURE-02"
   ],
   "objectives": [
-    "Partir des invariants de données pour construire repository, service, API et écran",
-    "Justifier les compromis et nommer un risque opérationnel",
-    "Produire une preuve reproductible avant d’élargir la solution"
+    "Construire un produit en partant des données : schéma, dépôt, service, API, interface.",
+    "Vérifier qu'une couche ne dépend que de la couche immédiatement inférieure.",
+    "Repérer une dépendance qui saute une couche ou remonte (interface vers base de données).",
+    "Comparer les approches ascendante et descendante et dire quand privilégier l'une ou l'autre."
   ],
   "sections": [
     {
-      "title": "Concept clé et décision",
+      "title": "Bottom-up : partir de ce qui est contraint",
+      "content": "Une approche ascendante commence par ce qui est le plus contraint et le plus durable : les données. Le schéma, les invariants et les volumes déterminent ce qui est possible ; on construit ensuite vers le haut : dépôt (accès aux données), service (règles métier), API (contrat), interface (usage).\n```\n1. PostgreSQL  (schéma, contraintes)\n2. Repository  (requêtes, mapping)\n3. Service     (règles, transactions)\n4. API REST    (contrat, validation, sécurité)\n5. Interface   (parcours utilisateur)\n```\nChaque couche n'utilise que celle du dessous. Résultat : on peut tester chaque niveau seul et remplacer un niveau sans toucher aux autres."
+    },
+    {
+      "title": "Exemple résolu : vérifier le sens des dépendances",
       "conceptCodes": [
         "BOTTOM-UP-DESIGN"
       ],
-      "content": "Bottom-up : des données vers le produit relie les besoins, le logiciel, les données et l’exploitation. Commence par les contraintes observables, trace les responsabilités, puis choisis la solution la plus simple qui respecte les invariants."
+      "content": "Problème : cinq couches de bas en haut, plus un appel de l'interface directement vers le dépôt. Le détecter.\n\nRaisonnement, étape par étape :\n1. Numéroter les couches à partir de 1 (la plus basse). L'ordre définit la règle : une couche de niveau n peut appeler le niveau n - 1.\n2. Pour chaque dépendance déclarée, comparer le niveau de l'appelant et de l'appelé.\n3. Écart de 1 vers le bas : conforme. Plus de 1 vers le bas : saut de couche (l'interface contourne l'API et le service). Vers le haut ou égal : dépendance inversée ou interne.\n4. Chaque violation est signalée avec son type et la correction attendue.\n5. Résultat : liste ordonnée des couches, conformité de chaque appel et nombre de violations.\n6. Un saut de couche n'est pas toujours une erreur de conception, mais il doit être volontaire et documenté.\n```python\nlevel = {name: i for i, name in enumerate(layers, start=1)}\nfor caller, callee in calls:\n    gap = level[caller] - level[callee]\n    ok = gap == 1\n```\nLa règle stricte (couches fermées) donne de la stabilité ; une couche ouverte (l'interface peut aussi appeler directement le service pour une lecture simple) donne de la souplesse, au prix d'une règle moins claire."
     },
     {
-      "title": "Construction verticale",
-      "content": "La preuve ARCHITECTURE-03 modélise une décision réelle sous forme déterministe. Elle ne remplace pas un déploiement complet : elle rend l’hypothèse testable avant l’intégration Spring Boot, Angular, PostgreSQL et Docker."
+      "title": "Données d'abord : forces et pièges",
+      "content": "Forces : les invariants sont garantis à la source (contraintes, transactions), la performance est pensée tôt (index, volumes), le modèle réel du métier émerge des données existantes. Idéal pour migrer un système existant ou intégrer une base héritée.\n\nPièges :\n- Le modèle de données dicte l'API : on expose des tables au lieu de besoins d'utilisateurs (API anémique, CRUD sur tout). Garde un contrat orienté usage.\n- Sur-modélisation : des tables pour des cas qui n'arriveront pas.\n- Couplage au schéma : toute modification de la base casse les couches supérieures ; protège-toi par le dépôt et des migrations versionnées.\n- Découverte tardive des besoins : l'interface révèle ce qui manque en bas ; prévois des itérations.\n\nChoix pratique : descendre quand le besoin est incertain (prototype, produit nouveau), remonter quand les contraintes de données dominent (existant, volumes, conformité). Dans les deux cas, un trait vertical fin (un cas d'usage de bout en bout) valide très tôt que les couches s'emboîtent."
     },
     {
-      "title": "Revue professionnelle",
-      "content": "Documente le contexte, la décision, une option rejetée, les conséquences, le signal à surveiller et la condition qui imposerait de revoir le choix."
+      "title": "Erreurs fréquentes à reconnaître",
+      "content": "1. L'interface qui appelle directement la base ou le dépôt.\n2. Une couche qui remonte (le dépôt qui appelle le service).\n3. Une API qui reflète les tables au lieu des usages.\n4. Des couches vides qui ne font que transmettre (bruit sans valeur).\n5. Ne jamais construire un cas d'usage de bout en bout pour vérifier l'ensemble.\n6. Un schéma modifié à la main sans migration versionnée.\n\nRetrouve ces erreurs de mémoire avant l'exercice, puis vérifie-toi avec le quiz : c'est la récupération, pas la relecture, qui fixe la notion."
     }
   ],
   "keyConcepts": [
@@ -43,49 +48,97 @@
       "professionalExample": "Avant de dessiner le moindre écran, une équipe modélise d’abord l’invariant central : une ligne de commande ne peut pas exister sans commande parente et son prix doit rester positif. Ce travail bottom-up évite l’erreur d’une équipe voisine qui avait commencé par l’interface d’édition de commande, avant de découvrir que la base autorisait des lignes orphelines et devait être migrée en urgence. Partir des données vers le produit garantit que repository, service, API et écran respectent tous la même vérité.",
       "codeExample": "# 1. Donnée et invariant\nclass OrderLine:\n    price: float  # doit être > 0\n    order_id: int  # doit référencer une commande existante\n\n# 2. Repository -> 3. Service -> 4. API -> 5. Écran\ndef add_line(order_id, price):\n    assert price > 0, \"prix invalide\"\n    return repository.insert(order_id, price)",
       "commonMistake": "Choisir un outil avant d’identifier le besoin, la charge, le risque et le propriétaire de la donnée.",
-      "masteryQuestion": "Quel compromis, quel signal et quelle condition de réévaluation associes-tu à « Bottom-up : des données vers le produit » ?",
-      "masteryProof": "Exécuter la preuve, modifier une contrainte, expliquer le résultat et dessiner la place du composant dans la stack complète."
+      "masteryQuestion": "Pourquoi vérifier que chaque couche n'appelle que la couche immédiatement inférieure, et quand une couche ouverte se justifie-t-elle ?",
+      "masteryProof": "Numéroter des couches de bas en haut et détecter un appel qui saute une couche ou remonte."
     }
   ],
   "exercises": [
     {
       "code": "ARCHITECTURE-03-E1",
-      "title": "Partir des invariants de données pour construire repository, service, API et écran",
-      "statement": "Complète la preuve pour produire exactement la sortie attendue, puis explique la décision, une alternative et le signal de production qui validerait ton choix.",
-      "starterCode": "layers = [\"PostgreSQL\", \"Repository\", \"Service\", \"API REST\", \"Interface\"]\n# TODO : affiche les couches de bas en haut, numérotées à partir de 1,\n#        au format \"1. PostgreSQL\" (une par ligne)\n",
-      "expectedOutput": "1. PostgreSQL\n2. Repository\n3. Service\n4. API REST\n5. Interface"
+      "title": "Vérifier le sens des dépendances entre couches",
+      "statement": "Complète : la liste numérotée des couches de bas en haut, et le contrôle de chaque dépendance (conforme si l'appelant est exactement une couche au-dessus de l'appelé, sinon saut de couche ou dépendance inversée), puis le nombre de violations. Affiche exactement :\n1. PostgreSQL\n2. Repository\n3. Service\n4. API REST\n5. Interface\nRepository -> PostgreSQL: conforme\nService -> Repository: conforme\nAPI REST -> Service: conforme\nInterface -> API REST: conforme\nInterface -> Repository: SAUT DE COUCHE (2 couche(s) ignorée(s))\nRepository -> Service: DÉPENDANCE INVERSÉE\nViolations: 2",
+      "starterCode": "LAYERS = [\"PostgreSQL\", \"Repository\", \"Service\", \"API REST\", \"Interface\"]\nCALLS = [\n    (\"Repository\", \"PostgreSQL\"),\n    (\"Service\", \"Repository\"),\n    (\"API REST\", \"Service\"),\n    (\"Interface\", \"API REST\"),\n    (\"Interface\", \"Repository\"),\n    (\"Repository\", \"Service\"),\n]\n\n# TODO 1 : affiche chaque couche numérotée à partir de 1, de bas en haut : \"1. PostgreSQL\"\n# TODO 2 : niveau de chaque couche = son numéro. Pour chaque appel (appelant, appelé) :\n#          écart = niveau(appelant) - niveau(appelé)\n#          écart == 1 -> \"<appelant> -> <appelé>: conforme\"\n#          écart > 1  -> \"<appelant> -> <appelé>: SAUT DE COUCHE (<écart - 1> couche(s) ignorée(s))\"\n#          écart <= 0 -> \"<appelant> -> <appelé>: DÉPENDANCE INVERSÉE\"\n# TODO 3 : affiche \"Violations: <nombre>\"\n",
+      "expectedOutput": "1. PostgreSQL\n2. Repository\n3. Service\n4. API REST\n5. Interface\nRepository -> PostgreSQL: conforme\nService -> Repository: conforme\nAPI REST -> Service: conforme\nInterface -> API REST: conforme\nInterface -> Repository: SAUT DE COUCHE (2 couche(s) ignorée(s))\nRepository -> Service: DÉPENDANCE INVERSÉE\nViolations: 2"
     }
   ],
   "quiz": [
     {
       "code": "ARCHITECTURE-03-Q1",
       "type": "SINGLE_CHOICE",
-      "prompt": "Quelle démarche produit la décision la plus robuste ?",
+      "prompt": "Par quoi commence une approche ascendante ?",
       "choices": [
-        "Relier contraintes, responsabilités, preuve et observabilité",
-        "Choisir la technologie la plus populaire",
-        "Ajouter des services avant de mesurer"
+        "Par l'interface",
+        "Par les données et leurs contraintes (schéma, invariants, volumes)",
+        "Par le déploiement",
+        "Par la documentation"
       ],
-      "correctChoice": 0,
-      "expectedKeywords": []
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "On part de ce qui est le plus contraint et durable, puis on construit vers le haut."
     },
     {
       "code": "ARCHITECTURE-03-Q2",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Prédis le verdict de l'appel Interface -> Repository avec les couches PostgreSQL(1), Repository(2), Service(3), API REST(4), Interface(5) :",
+      "choices": [
+        "conforme",
+        "SAUT DE COUCHE : écart de 3, deux couches (Service et API) contournées",
+        "DÉPENDANCE INVERSÉE",
+        "Erreur"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "L'interface appelle directement le dépôt en ignorant l'API et le service : les règles métier et la sécurité de ces couches sont contournées."
+    },
+    {
+      "code": "ARCHITECTURE-03-Q3",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Trouve le défaut de conception :\n« L'API expose une route CRUD par table de la base, avec les mêmes noms de colonnes. »",
+      "choices": [
+        "Aucun",
+        "Le modèle de données dicte le contrat : l'API reflète les tables au lieu des usages, et chaque changement de schéma casse les clients",
+        "Il faut plus de tables",
+        "CRUD est interdit"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Le contrat doit être orienté usages (cas d'usage), pas orienté stockage. Un dépôt et un service font la traduction."
+    },
+    {
+      "code": "ARCHITECTURE-03-Q4",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Que signifie « dépendance inversée » ?",
+      "choices": [
+        "Une couche inférieure qui dépend d'une couche supérieure (le dépôt appelle le service)",
+        "Une dépendance plus rapide",
+        "Une dépendance optionnelle",
+        "Une dépendance externe"
+      ],
+      "correctChoice": 0,
+      "expectedKeywords": [],
+      "explanation": "Les dépendances doivent descendre. Une dépendance qui remonte crée des cycles et empêche de tester ou remplacer les couches basses séparément."
+    },
+    {
+      "code": "ARCHITECTURE-03-Q5",
       "type": "FREE_TEXT",
-      "prompt": "Nomme un compromis et le signal qui permettrait de le réévaluer.",
+      "prompt": "Sans relire le cours, explique avec tes mots les avantages et un danger de partir des données plutôt que du besoin.",
       "choices": [],
       "correctChoice": null,
       "expectedKeywords": [
-        "compromis",
-        "mesure",
-        "risque"
-      ]
+        "donnee",
+        "invariant",
+        "contrainte",
+        "usage",
+        "schema"
+      ],
+      "modelAnswer": "Partir des données garantit les invariants à la source (contraintes, transactions), force à penser tôt volumes et performance, et convient bien à un système existant. Le danger est que le schéma dicte le contrat : on expose des tables au lieu des besoins d'usage, on couple les clients au stockage et on découvre tard ce que l'interface exige. Un cas d'usage de bout en bout très tôt aide à valider l'ensemble.",
+      "explanation": "Une bonne réponse cite invariants et contraintes comme avantage, et un danger : contrat calqué sur le schéma, couplage, besoins découverts tard."
     }
   ],
   "checklist": [
-    "Je peux dessiner la circulation de la donnée",
-    "Je sais nommer les responsabilités de chaque couche",
-    "Je justifie une alternative rejetée",
-    "Je définis une mesure et une condition de réévaluation"
+    "Chaque couche n'appelle que celle immédiatement inférieure",
+    "Mon API est orientée usages, pas calquée sur les tables",
+    "Je construis tôt un cas d'usage de bout en bout",
+    "Mon schéma évolue par migrations versionnées"
   ]
 }

@@ -11,21 +11,30 @@
     "TYPESCRIPT-02"
   ],
   "objectives": [
-    "Expliquer unions, littéraux et narrowing exhaustif",
-    "Construire une preuve exécutable et déterministe",
-    "Relier le concept à une décision professionnelle"
+    "Modéliser des variantes par une union discriminée et un littéral de type.",
+    "Réduire (narrow) une union avec typeof, in, instanceof ou le champ discriminant.",
+    "Rendre un switch exhaustif avec never et assertNever.",
+    "Choisir entre union de littéraux et enum."
   ],
   "sections": [
     {
-      "title": "Concept et usage professionnel",
-      "content": "Unions, littéraux et narrowing exhaustif répond à un besoin concret de maintenabilité, de sûreté ou de performance. Le laboratoire demande de rendre la décision observable et vérifiable.",
-      "conceptCodes": [
-        "TYPESCRIPT-NARROWING"
-      ]
+      "title": "Une union dit : « l'une de ces formes »",
+      "content": "Une union A | B accepte une valeur de l'un ou l'autre type. Une union de littéraux restreint à des valeurs précises : type Status = 'draft' | 'paid' | 'shipped'. Une union discriminée donne à chaque variante un champ commun à valeur littérale (kind), qui permet au compilateur de savoir quelle variante il a en main :\n```ts\ntype Shape =\n  | { kind: 'circle'; radius: number }\n  | { kind: 'rectangle'; width: number; height: number }\n  | { kind: 'square'; side: number };\n```\nC'est l'équivalent des types algébriques (sealed interfaces et records en Java récent), sans hiérarchie de classes."
     },
     {
-      "title": "Mise en pratique",
-      "content": "La preuve minimale est locale, déterministe et peut être enrichie sans changer le contrat attendu."
+      "title": "Exemple résolu : une aire par forme, exhaustive",
+      "conceptCodes": [
+        "TYPESCRIPT-NARROWING"
+      ],
+      "content": "Problème : calculer l'aire de n'importe quelle forme et être prévenu à la compilation si on ajoute une forme sans la traiter.\n\nRaisonnement, étape par étape :\n1. Switch sur shape.kind : dans chaque case, le compilateur sait quelle variante il a (narrowing) et autorise radius, width, height ou side selon le cas.\n2. Cercle : Math.PI × radius², rectangle : width × height, carré : side².\n3. default : return assertNever(shape). Dans default, shape a le type never si tous les cas sont traités.\n4. Si quelqu'un ajoute 'triangle' à l'union sans l'ajouter au switch, shape n'est plus never dans default : erreur de compilation.\n5. Vérification : arrondis l'affichage avec toFixed(2) (78.54 pour un rayon de 5).\n```ts\nfunction assertNever(value: never): never {\n  throw new Error(`cas non géré: ${JSON.stringify(value)}`);\n}\n\nfunction area(shape: Shape): number {\n  switch (shape.kind) {\n    case 'circle': return Math.PI * shape.radius ** 2;\n    case 'rectangle': return shape.width * shape.height;\n    case 'square': return shape.side ** 2;\n    default: return assertNever(shape);\n  }\n}\n```\nLe compilateur devient un garde-fou des évolutions : ajouter une variante force à revoir chaque switch."
+    },
+    {
+      "title": "Narrowing et choix de modélisation",
+      "content": "Le compilateur affine un type selon le code :\n- typeof x === 'string' (primitives), x instanceof Date (classes), 'radius' in shape (présence d'une propriété), shape.kind === 'circle' (discriminant), Array.isArray(x).\n- Un type guard personnalisé : function isUser(x: unknown): x is User { ... } indique au compilateur qu'après un test réussi, x est un User.\n- never est le type vide : une fonction qui ne retourne jamais, ou une valeur impossible.\n\nUnion de littéraux ou enum ? L'union de littéraux disparaît à la compilation (aucun code généré), se sérialise naturellement en JSON et s'utilise avec as const. Les enum TypeScript génèrent du code et leur version numérique accepte des valeurs hors plage ; préfère l'union de littéraux sauf contrainte particulière.\n```ts\nconst STATUSES = ['draft', 'paid', 'shipped'] as const;\ntype Status = typeof STATUSES[number];       // 'draft' | 'paid' | 'shipped'\nconst labels: Record<Status, string> = { draft: 'brouillon', paid: 'payé', shipped: 'expédié' };   // exhaustif\n```"
+    },
+    {
+      "title": "Erreurs fréquentes à reconnaître",
+      "content": "1. Modéliser les variantes par un seul type avec des champs optionnels (radius?, width?) : des combinaisons impossibles deviennent possibles.\n2. Un switch sans default ou avec un default silencieux : l'ajout d'une variante passe inaperçu.\n3. Tester une variante avec une chaîne magique non typée.\n4. Utiliser un enum numérique et accepter n'importe quel nombre.\n5. Caster (as Circle) au lieu de réduire par un test.\n6. Oublier le break dans un switch d'instructions (les cas retombent en cascade).\n\nRetrouve ces erreurs de mémoire avant l'exercice, puis vérifie-toi avec le quiz : c'est la récupération, pas la relecture, qui fixe la notion."
     }
   ],
   "keyConcepts": [
@@ -39,8 +48,8 @@
       "professionalExample": "Un système de facturation modélise le statut d'une commande avec un type union littéral 'pending' | 'paid' | 'refunded' | 'cancelled'. Lorsqu'un nouveau statut 'partially_refunded' est ajouté, le compilateur signale immédiatement tous les switch qui ne le gèrent pas grâce à une clause default assertNever, évitant qu'une commande partiellement remboursée soit traitée en silence comme payée dans le calcul du chiffre d'affaires.",
       "codeExample": "type OrderStatus = 'pending' | 'paid' | 'refunded' | 'cancelled';\n\nfunction assertNever(value: never): never {\n  throw new Error(`Cas non géré : ${JSON.stringify(value)}`);\n}\n\nfunction describeStatus(status: OrderStatus): string {\n  switch (status) {\n    case 'pending': return 'En attente de paiement';\n    case 'paid': return 'Payée';\n    case 'refunded': return 'Remboursée';\n    case 'cancelled': return 'Annulée';\n    default: return assertNever(status);\n  }\n}",
       "commonMistake": "Appliquer la technique sans mesurer son effet ni documenter sa frontière.",
-      "masteryQuestion": "Quelle contrainte de unions, littéraux et narrowing exhaustif doit rester vraie lorsque le système évolue ?",
-      "masteryProof": "Exécuter la preuve, expliquer son invariant et proposer un cas d’échec."
+      "masteryQuestion": "Comment un switch exhaustif avec assertNever protège-t-il d'un oubli lors de l'ajout d'une variante ?",
+      "masteryProof": "Calculer l'aire de trois formes avec une union discriminée et un switch terminé par assertNever."
     }
   ],
   "exercises": [
@@ -56,32 +65,80 @@
     {
       "code": "TYPESCRIPT-03-Q1",
       "type": "SINGLE_CHOICE",
-      "prompt": "Quelle preuve est la plus utile en revue ?",
+      "prompt": "Que signifie le type never pour le paramètre de assertNever(value: never) ?",
       "choices": [
-        "Une exécution déterministe avec invariant explicite",
-        "Une sortie aléatoire",
-        "Une capture sans code"
+        "La valeur peut être n'importe quoi",
+        "Le compilateur ne laisse appeler cette fonction que si aucune valeur possible ne reste : tous les cas ont été traités",
+        "La fonction ne s'exécute jamais",
+        "La valeur est null"
       ],
-      "correctChoice": 0,
-      "expectedKeywords": []
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "À l'endroit du default, si toutes les variantes ont été gérées, le type restant est never. Passer une valeur d'un autre type à assertNever est une erreur de compilation : c'est ce qui signale un cas oublié."
     },
     {
       "code": "TYPESCRIPT-03-Q2",
+      "type": "SINGLE_CHOICE",
+      "prompt": "On ajoute { kind: 'triangle'; base: number; height: number } à l'union Shape, sans toucher à la fonction area. Que se passe-t-il à la compilation ?",
+      "choices": [
+        "Rien",
+        "Erreur dans area : à l'endroit de assertNever(shape), shape n'est plus de type never",
+        "L'aire du triangle vaut 0",
+        "Le programme refuse de démarrer à l'exécution seulement"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Le default reçoit maintenant un triangle, qui n'est pas assignable à never : le compilateur refuse. Chaque fonction qui traitait toutes les variantes doit être complétée."
+    },
+    {
+      "code": "TYPESCRIPT-03-Q3",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Trouve le défaut de modélisation :\n```ts\ninterface Shape {\n  kind: string;\n  radius?: number;\n  width?: number;\n  height?: number;\n}\n```\n",
+      "choices": [
+        "Les champs optionnels sont interdits",
+        "Rien n'empêche { kind: 'circle', width: 3 } : des combinaisons invalides sont représentables, et il faut tester chaque champ avant usage",
+        "kind devrait être un number",
+        "L'interface est trop courte"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Une union discriminée rend les états invalides impossibles à représenter : un cercle a un rayon, point. Le compilateur sait alors quels champs existent dans chaque branche."
+    },
+    {
+      "code": "TYPESCRIPT-03-Q4",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Prédis le résultat :\n```ts\nfunction f(x: string | number) {\n  if (typeof x === 'string') return x.toUpperCase();\n  return x.toFixed(1);\n}\nconsole.log(f('ab'), f(2));\n```\n",
+      "choices": [
+        "AB 2.0",
+        "ab 2",
+        "Erreur de compilation",
+        "AB 2"
+      ],
+      "correctChoice": 0,
+      "expectedKeywords": [],
+      "explanation": "Dans la branche string, x est réduit à string (toUpperCase donne AB) ; après le return, x est réduit à number (toFixed(1) donne 2.0)."
+    },
+    {
+      "code": "TYPESCRIPT-03-Q5",
       "type": "FREE_TEXT",
-      "prompt": "Explique une décision liée à unions, littéraux et narrowing exhaustif.",
+      "prompt": "Sans relire le cours, explique avec tes mots ce qu'est une union discriminée et ce qu'elle apporte par rapport à un type avec des champs optionnels.",
       "choices": [],
       "correctChoice": null,
       "expectedKeywords": [
-        "contrat",
-        "preuve",
-        "test"
-      ]
+        "variante",
+        "kind",
+        "discrimin",
+        "impossible",
+        "narrowing"
+      ],
+      "modelAnswer": "Une union discriminée regroupe plusieurs variantes qui partagent un champ à valeur littérale (par exemple kind). Tester ce champ permet au compilateur de réduire le type et de savoir exactement quels champs existent dans chaque branche. Contrairement à un seul type avec des champs optionnels, les combinaisons invalides sont impossibles à représenter, et un switch exhaustif détecte les variantes oubliées.",
+      "explanation": "Une bonne réponse cite le champ discriminant, le narrowing par le compilateur, l'impossibilité des états invalides et l'exhaustivité."
     }
   ],
   "checklist": [
-    "Je peux expliquer le concept sans réciter une définition",
-    "Je sais exécuter et modifier la preuve",
-    "Je peux nommer un risque et son contrôle",
-    "Je relie cette étape à la suivante"
+    "Je modélise des variantes par une union discriminée",
+    "Mes switch se terminent par assertNever",
+    "Je réduis un type par un test plutôt que par un cast",
+    "Je préfère une union de littéraux à un enum quand c'est possible"
   ]
 }

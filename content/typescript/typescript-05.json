@@ -11,21 +11,30 @@
     "TYPESCRIPT-04"
   ],
   "objectives": [
-    "Expliquer fonctions, surcharges et paramètres sûrs",
-    "Construire une preuve exécutable et déterministe",
-    "Relier le concept à une décision professionnelle"
+    "Écrire des surcharges, un paramètre rest et une valeur par défaut avec des signatures sûres.",
+    "Distinguer paramètre optionnel (?) et valeur par défaut, void et undefined.",
+    "Typer une fonction passée en paramètre (callback) et comprendre le contexte de this.",
+    "Repérer une surcharge inutile, un mauvais ordre de signatures ou un callback qui perd this."
   ],
   "sections": [
     {
-      "title": "Concept et usage professionnel",
-      "content": "Fonctions, surcharges et paramètres sûrs répond à un besoin concret de maintenabilité, de sûreté ou de performance. Le laboratoire demande de rendre la décision observable et vérifiable.",
-      "conceptCodes": [
-        "TYPESCRIPT-FUNCTIONS"
-      ]
+      "title": "Une signature, c'est un contrat",
+      "content": "La signature d'une fonction (paramètres, types, retour) est ce que le compilateur vérifie à chaque appel. Quelques formes :\n```ts\nfunction sum(...values: number[]): number {         // rest : n arguments regroupés en tableau\n  return values.reduce((a, b) => a + b, 0);\n}\n\nfunction retryDelay(attempt: number, base = 100): number {   // valeur par défaut : le type est inféré\n  return base * 2 ** attempt;\n}\n\nfunction log(message: string, level?: 'info' | 'warn'): void { ... }   // paramètre optionnel : string | undefined\n```\nOptionnel (level?) : l'appelant peut l'omettre et la valeur vaut undefined dans la fonction. Valeur par défaut (base = 100) : si absent ou undefined, la valeur par défaut est utilisée, et le paramètre n'est plus undefined dans le corps. Les paramètres optionnels et par défaut viennent après les obligatoires."
     },
     {
-      "title": "Mise en pratique",
-      "content": "La preuve minimale est locale, déterministe et peut être enrichie sans changer le contrat attendu."
+      "title": "Exemple résolu : des surcharges pour deux formes d'entrée",
+      "conceptCodes": [
+        "TYPESCRIPT-FUNCTIONS"
+      ],
+      "content": "Problème : une fonction split doit accepter soit un texte à découper sur la virgule, soit un tableau déjà découpé, et toujours renvoyer un tableau de chaînes.\n\nRaisonnement, étape par étape :\n1. Deux signatures de surcharge décrivent ce que l'appelant peut faire : split(value: string): string[] et split(value: string[]): string[].\n2. Une seule implémentation, avec la signature large string | string[], gère les deux cas.\n3. La signature d'implémentation n'est pas visible de l'extérieur : seules les surcharges comptent pour l'appelant.\n4. Dans l'implémentation, Array.isArray(value) réduit le type : tableau retourné tel quel, texte découpé avec split(',').\n5. Vérification : split('a,b,c') et split(['x', 'y']) compilent ; split(42) est refusé.\n```ts\nfunction split(value: string): string[];\nfunction split(value: string[]): string[];\nfunction split(value: string | string[]): string[] {\n  return Array.isArray(value) ? value : value.split(',');\n}\n```\nUne surcharge se justifie quand le type de retour dépend du type d'entrée (par exemple string vers string[] et number vers number[]). Si le retour est identique, une union suffit : function split(value: string | string[]): string[]."
+    },
+    {
+      "title": "Callbacks, this et pièges",
+      "content": "Un callback est une fonction passée en paramètre : (valeur: number) => boolean décrit son type. Le compilateur infère les paramètres d'un callback à partir du contexte (items.filter(x => x > 2) : x est number).\n\nthis en JavaScript dépend de l'appel, pas de la définition : une méthode extraite de son objet perd son this.\n```ts\nclass Counter {\n  count = 0;\n  increment() { this.count++; }\n  incrementArrow = () => { this.count++; };      // fonction fléchée : this lié à l'instance\n}\nconst c = new Counter();\nconst f = c.increment;\n// f();                 // TypeError : this est undefined\nsetTimeout(c.incrementArrow, 0);   // OK\n```\nvoid indique qu'on ignore la valeur de retour (un callback void peut en fait retourner autre chose) ; undefined est une valeur précise. never est pour une fonction qui ne retourne jamais (elle lève toujours une erreur).\n\nLes fonctions fléchées n'ont pas leur propre this ni arguments : parfaites pour les callbacks. Évite d'imbriquer des callbacks sur plusieurs niveaux : préfère async/await."
+    },
+    {
+      "title": "Erreurs fréquentes à reconnaître",
+      "content": "1. Passer une méthode comme callback (liste.map(obj.methode)) et perdre this.\n2. Mettre un paramètre optionnel avant un obligatoire.\n3. Écrire des surcharges là où une union suffit.\n4. Oublier que la signature d'implémentation n'est pas visible : ajouter un cas dans l'implémentation sans l'ajouter aux surcharges.\n5. Utiliser arguments au lieu d'un paramètre rest typé.\n6. Un paramètre booléen « drapeau » qui change le comportement (trois comportements dans une fonction).\n\nRetrouve ces erreurs de mémoire avant l'exercice, puis vérifie-toi avec le quiz : c'est la récupération, pas la relecture, qui fixe la notion."
     }
   ],
   "keyConcepts": [
@@ -39,8 +48,8 @@
       "professionalExample": "Le client HTTP interne d'une équipe expose une fonction findUser avec des surcharges : appelée avec un simple id elle renvoie toujours un User, appelée avec des options { includeDeleted: true } elle renvoie un User | null. Sans surcharges, une signature unique aurait forcé chaque appelant à gérer un null même dans les cas où c'est impossible, ou pire, aurait masqué un vrai risque de valeur nulle dans les cas où c'est nécessaire.",
       "codeExample": "interface User { id: string; name: string; }\n\nconst db = new Map<string, User>([\n  ['u_1', { id: 'u_1', name: 'Alice' }],\n]);\n\nfunction findUser(id: string): User;\nfunction findUser(id: string, options: { includeDeleted: true }): User | null;\nfunction findUser(id: string, options?: { includeDeleted: true }): User | null {\n  const user = db.get(id) ?? null;\n  return options?.includeDeleted ? user : (user as User);\n}\n\nconst active = findUser('u_1'); // typé User\nconst maybeMissing = findUser('u_9', { includeDeleted: true }); // typé User | null",
       "commonMistake": "Appliquer la technique sans mesurer son effet ni documenter sa frontière.",
-      "masteryQuestion": "Quelle contrainte de fonctions, surcharges et paramètres sûrs doit rester vraie lorsque le système évolue ?",
-      "masteryProof": "Exécuter la preuve, expliquer son invariant et proposer un cas d’échec."
+      "masteryQuestion": "Quelle différence entre paramètre optionnel et valeur par défaut, et quand une surcharge se justifie-t-elle plutôt qu'une union ?",
+      "masteryProof": "Écrire split avec deux surcharges, sum avec un paramètre rest et retryDelay avec une valeur par défaut."
     }
   ],
   "exercises": [
@@ -56,32 +65,80 @@
     {
       "code": "TYPESCRIPT-05-Q1",
       "type": "SINGLE_CHOICE",
-      "prompt": "Quelle preuve est la plus utile en revue ?",
+      "prompt": "Quelle est la différence entre « function f(x?: number) » et « function f(x = 10) » ?",
       "choices": [
-        "Une exécution déterministe avec invariant explicite",
-        "Une sortie aléatoire",
-        "Une capture sans code"
+        "Aucune",
+        "Avec ?, x vaut undefined si absent ; avec = 10, x vaut 10 si absent ou undefined",
+        "x? est obligatoire",
+        "x = 10 interdit d'omettre x"
       ],
-      "correctChoice": 0,
-      "expectedKeywords": []
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Le paramètre optionnel laisse la gestion de l'absence à la fonction (x est number | undefined). La valeur par défaut fournit une valeur et x reste de type number dans le corps."
     },
     {
       "code": "TYPESCRIPT-05-Q2",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Prédis le résultat :\n```ts\nfunction retryDelay(attempt: number, base = 100) { return base * 2 ** attempt; }\nconsole.log(retryDelay(2), retryDelay(2, 50));\n```\n",
+      "choices": [
+        "400 200",
+        "200 100",
+        "100 50",
+        "4 2"
+      ],
+      "correctChoice": 0,
+      "expectedKeywords": [],
+      "explanation": "2 ** 2 vaut 4 : 100 × 4 = 400 avec la base par défaut, et 50 × 4 = 200 avec la base fournie."
+    },
+    {
+      "code": "TYPESCRIPT-05-Q3",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Trouve le bug :\n```ts\nclass Timer {\n  ticks = 0;\n  tick() { this.ticks++; }\n}\nconst t = new Timer();\nsetInterval(t.tick, 1000);\n```\n",
+      "choices": [
+        "setInterval attend un nombre",
+        "tick est passée sans son objet : this n'est plus t quand le minuteur l'appelle",
+        "ticks est privé",
+        "Il manque async"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Une méthode extraite de son objet perd son this. On passe une fonction fléchée (() => t.tick()), on lie avec bind, ou on définit la méthode comme propriété fléchée."
+    },
+    {
+      "code": "TYPESCRIPT-05-Q4",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Quand une surcharge est-elle préférable à une union dans la signature ?",
+      "choices": [
+        "Toujours",
+        "Quand le type de retour dépend du type de l'argument",
+        "Jamais",
+        "Quand la fonction a plus de trois paramètres"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Avec une union simple, le retour est le même pour toutes les entrées. Une surcharge permet de relier explicitement chaque type d'entrée à son type de sortie."
+    },
+    {
+      "code": "TYPESCRIPT-05-Q5",
       "type": "FREE_TEXT",
-      "prompt": "Explique une décision liée à fonctions, surcharges et paramètres sûrs.",
+      "prompt": "Sans relire le cours, explique avec tes mots pourquoi une méthode passée comme callback peut perdre this, et deux façons de l'éviter.",
       "choices": [],
       "correctChoice": null,
       "expectedKeywords": [
-        "contrat",
-        "preuve",
-        "test"
-      ]
+        "this",
+        "appel",
+        "fleche",
+        "bind",
+        "objet"
+      ],
+      "modelAnswer": "En JavaScript, this dépend de la façon dont la fonction est appelée, pas de l'endroit où elle est définie. Une méthode extraite de son objet et passée en callback est appelée sans objet : this vaut undefined. On l'évite avec une fonction fléchée qui capture this (ou une propriété fléchée dans la classe), ou avec bind pour lier explicitement l'instance.",
+      "explanation": "Une bonne réponse explique que this dépend de l'appel et propose fonction fléchée ou bind."
     }
   ],
   "checklist": [
-    "Je peux expliquer le concept sans réciter une définition",
-    "Je sais exécuter et modifier la preuve",
-    "Je peux nommer un risque et son contrôle",
-    "Je relie cette étape à la suivante"
+    "Je sais écrire des surcharges et une signature d'implémentation cohérente",
+    "Je distingue paramètre optionnel et valeur par défaut",
+    "Je ne perds pas this en passant une méthode comme callback",
+    "J'utilise un paramètre rest typé au lieu de arguments"
   ]
 }

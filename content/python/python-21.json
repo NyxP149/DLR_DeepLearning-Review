@@ -11,21 +11,30 @@
     "PYTHON-20"
   ],
   "objectives": [
-    "Expliquer conception d’une api fastapi testable",
-    "Construire une preuve exécutable et déterministe",
-    "Relier le concept à une décision professionnelle"
+    "Décrire le rôle d'une route, d'un modèle Pydantic, d'une dépendance et d'un code de statut dans FastAPI.",
+    "Expliquer l'injection de dépendances de FastAPI (Depends) et son remplacement en test (dependency_overrides).",
+    "Traduire une erreur du domaine en réponse HTTP (404, 422, 409) de façon uniforme.",
+    "Concevoir une API testable avec TestClient, sans serveur ni base réels."
   ],
   "sections": [
     {
-      "title": "Concept et usage professionnel",
-      "content": "Conception d’une API FastAPI testable répond à un besoin concret de maintenabilité, de sûreté ou de performance. Le laboratoire demande de rendre la décision observable et vérifiable.",
-      "conceptCodes": [
-        "PYTHON-FASTAPI"
-      ]
+      "title": "FastAPI : des fonctions annotées deviennent une API",
+      "content": "FastAPI associe des fonctions Python à des routes HTTP et utilise les annotations de type pour valider les entrées, convertir les données et produire la documentation OpenAPI automatiquement.\n```python\nfrom fastapi import FastAPI, Depends, HTTPException\nfrom pydantic import BaseModel\n\napp = FastAPI()\n\nclass UserOut(BaseModel):\n    id: int\n    name: str\n\n@app.get(\"/users/{user_id}\", response_model=UserOut)\ndef get_user(user_id: int, repo = Depends(get_repo)):\n    utilisateur = repo.find(user_id)\n    if utilisateur is None:\n        raise HTTPException(status_code=404, detail=\"introuvable\")\n    return utilisateur\n```\nuser_id: int est converti et validé : /users/abc renvoie automatiquement 422. response_model filtre la sortie : seuls les champs du modèle sortent (jamais un mot de passe). Les corps de requête JSON sont décrits par un modèle Pydantic ; une validation échouée produit une 422 détaillée."
     },
     {
-      "title": "Mise en pratique",
-      "content": "La preuve minimale est locale, déterministe et peut être enrichie sans changer le contrat attendu."
+      "title": "Exemple résolu : un mini framework pour comprendre Depends",
+      "conceptCodes": [
+        "PYTHON-FASTAPI"
+      ],
+      "content": "Problème : comprendre comment FastAPI enregistre une route, injecte une dépendance et permet de la remplacer en test.\n\nRaisonnement, étape par étape :\n1. Le décorateur @get(\"/users/{id}\") enregistre la fonction dans un registre de routes (chemin → gestionnaire).\n2. dispatch(méthode, chemin) retrouve la route qui correspond ; sinon 404 « route inconnue ».\n3. Si le gestionnaire demande une dépendance (get_repo), le framework l'appelle et passe le résultat en argument.\n4. Une dépendance remplaçable : un dictionnaire dependency_overrides {get_repo: fake_repo}. S'il y a un remplaçant, il est utilisé à la place de la vraie.\n5. Les erreurs du domaine (LookupError) sont traduites en 404 « introuvable » à un seul endroit.\n6. Vérification : avec la dépendance remplacée, le même appel renvoie les données du faux.\n```python\ndef resolve(dependance):\n    return dependency_overrides.get(dependance, dependance)()\n\n# test\ndependency_overrides[get_repo] = lambda: FakeRepo({1: \"Fake\"})\n```\nC'est exactement le mécanisme de app.dependency_overrides en FastAPI : les tests n'ont pas besoin de vraie base."
+    },
+    {
+      "title": "Concevoir une API FastAPI testable",
+      "content": "- Garde les gestionnaires de route minces : ils traduisent HTTP vers un appel de cas d'usage et le résultat vers une réponse. La logique métier vit ailleurs (voir l'architecture hexagonale).\n- Sépare les modèles : un modèle d'entrée (UserIn), un modèle de sortie (UserOut) et l'entité interne. Ne renvoie jamais l'entité telle quelle.\n- Dépendances : base de données, utilisateur courant, configuration passent par Depends : en test, on les remplace avec app.dependency_overrides.\n- Tests : fastapi.testclient.TestClient(app) envoie des requêtes sans serveur ; on vérifie statut et corps. Teste les cas 200, 404, 422 et les erreurs d'autorisation.\n- Erreurs : lève HTTPException ou enregistre un gestionnaire d'exceptions pour un format uniforme ({\"detail\": ...}).\n- async def pour des appels non bloquants (base async, httpx) ; def ordinaire pour du code bloquant (FastAPI l'exécute dans un thread) : ne bloque jamais la boucle avec un appel synchrone dans une route async.\n- Configuration par variables d'environnement (pydantic-settings), jamais en dur."
+    },
+    {
+      "title": "Erreurs fréquentes à reconnaître",
+      "content": "1. Renvoyer directement un objet de base de données (fuite de champs).\n2. Mettre la logique métier dans la fonction de route.\n3. Créer la connexion à la base dans le corps de la route au lieu de la déclarer comme dépendance.\n4. Un appel bloquant dans une route async.\n5. Répondre 200 avec un message d'erreur au lieu d'un statut adapté.\n6. Ne tester qu'avec la vraie base : lent et dépendant de l'environnement.\n\nRetrouve ces erreurs de mémoire avant l'exercice, puis vérifie-toi avec le quiz : c'est la récupération, pas la relecture, qui fixe la notion."
     }
   ],
   "keyConcepts": [
@@ -39,8 +48,8 @@
       "professionalExample": "Une équipe avait construit un endpoint FastAPI qui instanciait directement sa connexion à la base de données dans le corps de la fonction, ce qui rendait impossible de tester la route sans une vraie base disponible. En remplaçant cette dépendance codée en dur par le système d'injection de dépendances de FastAPI (Depends), les tests ont pu remplacer la session de base de données par une doublure en mémoire tout en gardant exactement le même code en production.",
       "codeExample": "from fastapi import Depends, FastAPI, HTTPException\nfrom pydantic import BaseModel\n\napp = FastAPI()\n\nclass OrderIn(BaseModel):\n    customer_id: str\n    amount: float\n\ndef get_repository():\n    return real_database_repository  # remplacé par une doublure dans les tests\n\n@app.post(\"/orders\", status_code=201)\ndef create_order(order: OrderIn, repo=Depends(get_repository)) -> dict:\n    if order.amount <= 0:\n        raise HTTPException(status_code=422, detail=\"Montant invalide\")\n    order_id = repo.save(order.customer_id, order.amount)\n    return {\"order_id\": order_id}",
       "commonMistake": "Appliquer la technique sans mesurer son effet ni documenter sa frontière.",
-      "masteryQuestion": "Quelle contrainte de conception d’une api fastapi testable doit rester vraie lorsque le système évolue ?",
-      "masteryProof": "Exécuter la preuve, expliquer son invariant et proposer un cas d’échec."
+      "masteryQuestion": "Pourquoi déclarer la base comme dépendance plutôt que l'ouvrir dans la route, et à quoi sert response_model ?",
+      "masteryProof": "Construire un mini framework : routes enregistrées, dispatch avec 404, dépendance injectée et remplaçable, LookupError traduite en 404."
     }
   ],
   "exercises": [
@@ -56,32 +65,80 @@
     {
       "code": "PYTHON-21-Q1",
       "type": "SINGLE_CHOICE",
-      "prompt": "Quelle preuve est la plus utile en revue ?",
+      "prompt": "Une route déclare user_id: int. Que renvoie FastAPI pour GET /users/abc ?",
       "choices": [
-        "Une exécution déterministe avec invariant explicite",
-        "Une sortie aléatoire",
-        "Une capture sans code"
+        "200 avec user_id = 0",
+        "422 Unprocessable Entity : la validation échoue avant d'appeler la fonction",
+        "500",
+        "404"
       ],
-      "correctChoice": 0,
-      "expectedKeywords": []
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Les annotations servent à valider : « abc » ne peut pas devenir un entier, FastAPI répond 422 avec le détail de l'erreur sans exécuter ton code."
     },
     {
       "code": "PYTHON-21-Q2",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Prédis la réponse :\n```python\napp.dependency_overrides[get_repo] = lambda: FakeRepo({1: \"Fake\"})\nclient.get(\"/users/1\")\n```\nsi la vraie dépendance interroge une base de production.",
+      "choices": [
+        "Elle interroge quand même la base de production",
+        "Elle utilise FakeRepo : le remplaçant prend la place de la vraie dépendance",
+        "Une erreur de configuration",
+        "Elle renvoie 404"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "dependency_overrides substitue la dépendance déclarée par Depends. En test, aucune base réelle n'est touchée."
+    },
+    {
+      "code": "PYTHON-21-Q3",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Trouve le défaut :\n```python\n@app.get(\"/users/{id}\")\ndef get_user(id: int):\n    db = sqlite3.connect(\"prod.db\")\n    return db.execute(\"SELECT * FROM users WHERE id = ?\", (id,)).fetchone()\n```\n",
+      "choices": [
+        "Il manque async",
+        "La connexion est créée dans la route : impossible à remplacer en test, jamais fermée, et la ligne brute est renvoyée sans modèle de sortie",
+        "Le paramètre id est interdit",
+        "SELECT * est une injection"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "La base doit être une dépendance injectée (Depends), fermée proprement, et la sortie passer par un response_model qui contrôle les champs exposés."
+    },
+    {
+      "code": "PYTHON-21-Q4",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Quand utiliser async def plutôt que def pour une route ?",
+      "choices": [
+        "Toujours, c'est plus rapide",
+        "Quand la route utilise des bibliothèques async (await) ; avec du code bloquant, def est mieux car FastAPI l'exécute dans un thread",
+        "Jamais",
+        "Seulement pour les POST"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Un appel bloquant dans une route async gèle la boucle d'événements pour toutes les requêtes. Avec def, FastAPI délègue la route à un pool de threads."
+    },
+    {
+      "code": "PYTHON-21-Q5",
       "type": "FREE_TEXT",
-      "prompt": "Explique une décision liée à conception d’une api fastapi testable.",
+      "prompt": "Sans relire le cours, explique avec tes mots pourquoi on garde les fonctions de route minces et ce que cela permet de tester.",
       "choices": [],
       "correctChoice": null,
       "expectedKeywords": [
-        "contrat",
-        "preuve",
-        "test"
-      ]
+        "route",
+        "metier",
+        "cas d'usage",
+        "test",
+        "http"
+      ],
+      "modelAnswer": "Une route ne devrait que traduire HTTP en appel de cas d'usage puis le résultat en réponse. La logique métier vit dans des fonctions ou classes indépendantes du framework : on la teste directement, sans client HTTP, avec des dépendances factices. On teste la route séparément pour vérifier statuts, validation et format de réponse.",
+      "explanation": "Une bonne réponse sépare traduction HTTP et métier, et explique que le métier se teste sans le framework."
     }
   ],
   "checklist": [
-    "Je peux expliquer le concept sans réciter une définition",
-    "Je sais exécuter et modifier la preuve",
-    "Je peux nommer un risque et son contrôle",
-    "Je relie cette étape à la suivante"
+    "Je sais lire une route FastAPI : paramètres, modèle, dépendance, statut",
+    "Mes dépendances passent par Depends et se remplacent en test",
+    "Je renvoie des modèles de sortie, pas les objets internes",
+    "Je ne mets aucun appel bloquant dans une route async"
   ]
 }

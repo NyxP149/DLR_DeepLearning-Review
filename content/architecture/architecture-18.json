@@ -11,25 +11,30 @@
     "ARCHITECTURE-17"
   ],
   "objectives": [
-    "Séparer métadonnées, contenu binaire, contrôle d’accès et durée de conservation",
-    "Justifier les compromis et nommer un risque opérationnel",
-    "Produire une preuve reproductible avant d’élargir la solution"
+    "Stocker des fichiers dans un stockage d'objets avec des clés générées par le serveur et des métadonnées.",
+    "Valider un envoi (taille, type, extension) sans faire confiance au nom fourni par l'utilisateur.",
+    "Donner un accès temporaire par URL signée (HMAC) et vérifier signature et expiration.",
+    "Repérer une traversée de chemin, un type usurpé ou un fichier public par erreur."
   ],
   "sections": [
     {
-      "title": "Concept clé et décision",
+      "title": "Les fichiers ne se rangent pas dans la base",
+      "content": "Les fichiers (PDF, images, exports) sont volumineux et se traitent mal dans une base relationnelle. On les stocke dans un stockage d'objets (S3, Azure Blob, MinIO) : chaque objet a une clé, un contenu et des métadonnées. La base ne garde que la référence : la clé, le propriétaire, le type, la taille, la somme de contrôle (sha256), la date.\n\nDistribution : plutôt que de faire passer chaque téléchargement par le serveur d'application, on délivre au client une URL signée à durée limitée qui pointe vers le stockage (ou un CDN) : l'accès est temporaire, vérifiable, et ne coûte pas de bande passante à l'application."
+    },
+    {
+      "title": "Exemple résolu : valider, ranger, signer",
       "conceptCodes": [
         "OBJECT-STORAGE"
       ],
-      "content": "Stocker et distribuer les fichiers relie les besoins, le logiciel, les données et l’exploitation. Commence par les contraintes observables, trace les responsabilités, puis choisis la solution la plus simple qui respecte les invariants."
+      "content": "Problème : accepter un envoi de fichier, le ranger sous une clé sûre et donner une URL valable 5 minutes.\n\nRaisonnement, étape par étape :\n1. Ne fais jamais confiance au nom de fichier : il peut contenir ../../etc/passwd ou des caractères spéciaux. La clé de stockage est générée par le serveur (préfixe du propriétaire + identifiant aléatoire ou somme de contrôle), jamais dérivée du nom brut.\n2. Validation : taille maximale, type MIME dans une liste blanche (application/pdf, image/png), extension cohérente, et mieux, vérification du contenu (signature magique des premiers octets). Le type annoncé par le client n'est qu'une déclaration.\n3. Métadonnées : propriétaire, taille, sha256, type : permettent de contrôler les droits, de dédoublonner et de vérifier l'intégrité.\n4. URL signée : signature = HMAC-SHA256(secret, clé + expiration). L'URL contient la clé, l'instant d'expiration et la signature.\n5. Vérification : recalculer la signature avec le secret ; refuser si elle diffère (altération) ou si l'instant courant dépasse l'expiration. Comparer avec hmac.compare_digest (temps constant).\n6. Test : une URL valide passe, une URL expirée est refusée, une URL dont la clé a été modifiée est refusée.\n```python\nimport hmac, hashlib\n\ndef sign(key: str, expires: int, secret: bytes) -> str:\n    message = f\"{key}:{expires}\".encode()\n    return hmac.new(secret, message, hashlib.sha256).hexdigest()\n\ndef verify(key, expires, signature, secret, now) -> bool:\n    return now <= expires and hmac.compare_digest(signature, sign(key, expires, secret))\n```"
     },
     {
-      "title": "Construction verticale",
-      "content": "La preuve ARCHITECTURE-18 modélise une décision réelle sous forme déterministe. Elle ne remplace pas un déploiement complet : elle rend l’hypothèse testable avant l’intégration Spring Boot, Angular, PostgreSQL et Docker."
+      "title": "Sécuriser le stockage de fichiers",
+      "content": "- Stockage privé par défaut : aucun objet public sans décision explicite ; les téléchargements passent par des URL signées ou une autorisation vérifiée.\n- Isolation : un fichier est rattaché à un propriétaire ; l'accès contrôle la propriété (IDOR sur /files/42).\n- Contenu actif : un SVG ou un HTML envoyé par un utilisateur peut contenir du script ; sers-le avec Content-Disposition: attachment, un type fixe et un domaine séparé.\n- Analyse antivirus pour les envois venant d'inconnus ; limites de taille et de débit ; quotas par utilisateur.\n- Envoi direct vers le stockage par URL signée de téléversement (le serveur ne relaie pas les gros fichiers), puis notification et validation a posteriori.\n- Intégrité : somme de contrôle stockée et recalculée ; versionnement du bucket pour récupérer une suppression accidentelle.\n- Chiffrement au repos et en transit ; gestion des clés ; cycle de vie (suppression ou archivage après N jours), conformité (droit à l'effacement).\n- Noms : ne réutilise pas le nom d'origine dans la clé ; conserve-le comme métadonnée d'affichage, nettoyée.\n- Cache et CDN : clés versionnées pour éviter de servir un ancien fichier ; Cache-Control adapté, privé pour les contenus protégés.\n- Surveillance : volume stocké, erreurs d'accès, accès anormaux."
     },
     {
-      "title": "Revue professionnelle",
-      "content": "Documente le contexte, la décision, une option rejetée, les conséquences, le signal à surveiller et la condition qui imposerait de revoir le choix."
+      "title": "Erreurs fréquentes à reconnaître",
+      "content": "1. Construire la clé de stockage avec le nom de fichier fourni.\n2. Faire confiance au type MIME annoncé par le client.\n3. Un bucket public par erreur.\n4. Une URL signée sans expiration, ou une signature comparée avec == (attaque par temps).\n5. Servir du HTML ou du SVG utilisateur depuis le domaine principal.\n6. Stocker les fichiers dans la base ou sur le disque de l'application sans quota.\n\nRetrouve ces erreurs de mémoire avant l'exercice, puis vérifie-toi avec le quiz : c'est la récupération, pas la relecture, qui fixe la notion."
     }
   ],
   "keyConcepts": [
@@ -43,49 +48,97 @@
       "professionalExample": "Une application stocke les justificatifs PDF uploadés par les clients directement en BLOB dans PostgreSQL ; après un an, la base fait 400 Go, les sauvegardes nocturnes dépassent la fenêtre de maintenance et les migrations de schéma deviennent trop lentes pour produire un déploiement fiable. L’équipe migre les fichiers vers un stockage objet dédié, ne conservant en base que les métadonnées (clé, propriétaire, empreinte, taille) et générant des URL signées à durée limitée pour le téléchargement. Séparer contenu binaire et métadonnées redonne à la base sa vitesse et limite l’exposition des fichiers dans le temps.",
       "codeExample": "# Métadonnées en base, contenu dans le stockage objet\nfile = {\"key\": \"exports/42.pdf\", \"owner\": 7, \"sha256\": \"a1b2\", \"size\": 2048}\n\n# URL signée temporaire au lieu d'un accès permanent\nurl = storage.generate_presigned_url(file[\"key\"], expires_in=300)\n# Le fichier binaire ne transite jamais par la base de données",
       "commonMistake": "Choisir un outil avant d’identifier le besoin, la charge, le risque et le propriétaire de la donnée.",
-      "masteryQuestion": "Quel compromis, quel signal et quelle condition de réévaluation associes-tu à « Stocker et distribuer les fichiers » ?",
-      "masteryProof": "Exécuter la preuve, modifier une contrainte, expliquer le résultat et dessiner la place du composant dans la stack complète."
+      "masteryQuestion": "Pourquoi la clé de stockage doit-elle être générée par le serveur, et comment une URL signée prouve-t-elle son authenticité et son expiration ?",
+      "masteryProof": "Valider un envoi, générer une clé sûre, signer une URL avec HMAC et rejeter une URL expirée ou altérée."
     }
   ],
   "exercises": [
     {
       "code": "ARCHITECTURE-18-E1",
-      "title": "Séparer métadonnées, contenu binaire, contrôle d’accès et durée de conservation",
-      "statement": "Complète la preuve pour produire exactement la sortie attendue, puis explique la décision, une alternative et le signal de production qui validerait ton choix.",
-      "starterCode": "file = {\"key\": \"exports/42.pdf\", \"owner\": 7, \"sha256\": \"a1b2\", \"size\": 2048}\nurl_ttl_seconds = 300\n# TODO 1 : affiche \"Objet: \" suivi de la clé du fichier\n# TODO 2 : affiche \"Métadonnées: \" suivi du sha256 et de la taille\n# TODO 3 : affiche \"URL temporaire: \" suivi de la durée puis de \"s\"\n",
-      "expectedOutput": "Objet: exports/42.pdf\nMétadonnées: a1b2 2048\nURL temporaire: 300 s"
+      "title": "Valider un envoi et signer une URL temporaire",
+      "statement": "Complète : la validation d'un envoi (type autorisé, taille maximale, nom de fichier sans chemin), la clé de stockage générée à partir du propriétaire et de la somme de contrôle, la signature HMAC d'une URL et sa vérification (altération, expiration). Affiche exactement :\nrapport.pdf: accepté\n../../etc/passwd: refusé (nom invalide)\nfilm.mp4: refusé (type non autorisé)\ngros.png: refusé (fichier trop gros)\nClé: files/7/794932ef\nURL temporaire: 300 s\nContrôle à t=1100: valide\nContrôle à t=1400: expirée\nClé altérée: signature invalide",
+      "starterCode": "import hashlib\nimport hmac\n\nSECRET = b\"secret-de-test\"\nALLOWED_TYPES = {\"application/pdf\", \"image/png\"}\nMAX_SIZE = 5_000_000\nTTL = 300\n\n\ndef validate(name: str, content_type: str, size: int) -> str | None:\n    # TODO 1 : retourne la raison du refus ou None :\n    #          \"type non autorisé\" (type hors ALLOWED_TYPES), \"fichier trop gros\" (size > MAX_SIZE),\n    #          \"nom invalide\" (le nom contient \"/\" ou \"\\\\\" ou \"..\")   (dans cet ordre)\n    return None\n\n\ndef storage_key(owner: int, content: bytes) -> str:\n    # TODO 2 : \"files/<owner>/<8 premiers caractères du sha256 hexadécimal du contenu>\"\n    return \"\"\n\n\ndef sign(key: str, expires: int) -> str:\n    # TODO 3 : HMAC-SHA256 hexdigest de f\"{key}:{expires}\" avec SECRET\n    return \"\"\n\n\ndef verify(key: str, expires: int, signature: str, now: int) -> str:\n    # TODO 4 : \"expirée\" si now > expires ; \"signature invalide\" si la signature ne correspond pas\n    #          (hmac.compare_digest) ; sinon \"valide\"\n    return \"\"\n\n\nuploads = [(\"rapport.pdf\", \"application/pdf\", 2048), (\"../../etc/passwd\", \"application/pdf\", 10),\n           (\"film.mp4\", \"video/mp4\", 1000), (\"gros.png\", \"image/png\", 9_000_000)]\nfor name, content_type, size in uploads:\n    # TODO 5 : affiche \"<nom>: accepté\" ou \"<nom>: refusé (<raison>)\"\n    pass\nkey = storage_key(7, b\"contenu du fichier\")\nnow = 1000\nexpires = now + TTL\nsignature = sign(key, expires)\n# TODO 6 : affiche \"Clé: <key>\", \"URL temporaire: <TTL> s\", puis\n#          \"Contrôle à t=1100: <verify(...)>\", \"Contrôle à t=1400: <verify(...)>\" et\n#          \"Clé altérée: <verify avec la clé 'files/8/abcd1234' et la même signature, à t=1100>\"\n",
+      "expectedOutput": "rapport.pdf: accepté\n../../etc/passwd: refusé (nom invalide)\nfilm.mp4: refusé (type non autorisé)\ngros.png: refusé (fichier trop gros)\nClé: files/7/794932ef\nURL temporaire: 300 s\nContrôle à t=1100: valide\nContrôle à t=1400: expirée\nClé altérée: signature invalide"
     }
   ],
   "quiz": [
     {
       "code": "ARCHITECTURE-18-Q1",
       "type": "SINGLE_CHOICE",
-      "prompt": "Quelle démarche produit la décision la plus robuste ?",
+      "prompt": "Pourquoi ne pas construire la clé de stockage à partir du nom de fichier fourni ?",
       "choices": [
-        "Relier contraintes, responsabilités, preuve et observabilité",
-        "Choisir la technologie la plus populaire",
-        "Ajouter des services avant de mesurer"
+        "Les noms sont trop longs",
+        "Il peut contenir des séquences comme ../../ (traversée de chemin), des caractères spéciaux ou des collisions ; la clé doit être générée par le serveur",
+        "Les noms ne sont pas uniques en France",
+        "Cela ralentit le stockage"
       ],
-      "correctChoice": 0,
-      "expectedKeywords": []
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Une clé issue d'une saisie permet d'écrire hors du dossier prévu ou d'écraser les fichiers d'autrui. On conserve le nom d'origine seulement comme métadonnée d'affichage nettoyée."
     },
     {
       "code": "ARCHITECTURE-18-Q2",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Prédis le verdict de la vérification d'une URL signée à t=1400 alors qu'elle expirait à t=1300 :",
+      "choices": [
+        "valide",
+        "expirée",
+        "signature invalide",
+        "Erreur"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "L'expiration est vérifiée en premier : la signature est correcte mais le temps imparti est dépassé."
+    },
+    {
+      "code": "ARCHITECTURE-18-Q3",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Trouve le défaut :\n```python\nif signature == expected_signature:\n    serve(file)\n```\n",
+      "choices": [
+        "serve est interdit",
+        "== peut fuiter la valeur par temps de comparaison ; il faut hmac.compare_digest, et l'expiration doit aussi être vérifiée",
+        "signature est un mauvais nom",
+        "Il manque un try"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Une comparaison classique s'arrête au premier caractère différent : un attaquant peut déduire la signature par mesure du temps. compare_digest compare en temps constant."
+    },
+    {
+      "code": "ARCHITECTURE-18-Q4",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Pourquoi le type MIME annoncé par le client ne suffit-il pas pour valider un envoi ?",
+      "choices": [
+        "Il est toujours exact",
+        "Le client le déclare lui-même : un exécutable peut se faire passer pour une image ; il faut vérifier le contenu (signature des premiers octets) et servir avec un type fixe",
+        "Les types MIME n'existent pas",
+        "Il est trop long"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Toute information venant du client est contrôlée par lui. La liste blanche de types, la vérification du contenu et un service en pièce jointe réduisent le risque."
+    },
+    {
+      "code": "ARCHITECTURE-18-Q5",
       "type": "FREE_TEXT",
-      "prompt": "Nomme un compromis et le signal qui permettrait de le réévaluer.",
+      "prompt": "Sans relire le cours, explique avec tes mots l'intérêt d'une URL signée temporaire pour télécharger un fichier privé.",
       "choices": [],
       "correctChoice": null,
       "expectedKeywords": [
-        "compromis",
-        "mesure",
-        "risque"
-      ]
+        "temporaire",
+        "signature",
+        "secret",
+        "bande passante",
+        "autoris"
+      ],
+      "modelAnswer": "Une URL signée contient la clé de l'objet, un instant d'expiration et une signature calculée avec un secret côté serveur. Elle donne un accès limité dans le temps sans exposer le stockage ni les identifiants, ne peut pas être altérée sans invalider la signature, et permet au client de télécharger directement depuis le stockage ou un CDN sans que l'application relaie les octets.",
+      "explanation": "Une bonne réponse cite la signature par secret, l'expiration, l'impossibilité de modifier l'URL et l'économie de bande passante pour l'application."
     }
   ],
   "checklist": [
-    "Je peux dessiner la circulation de la donnée",
-    "Je sais nommer les responsabilités de chaque couche",
-    "Je justifie une alternative rejetée",
-    "Je définis une mesure et une condition de réévaluation"
+    "Mes clés de stockage sont générées par le serveur",
+    "Je valide taille, type et contenu, pas seulement le nom annoncé",
+    "Mes URL signées expirent et sont comparées en temps constant",
+    "Mon stockage est privé par défaut"
   ]
 }

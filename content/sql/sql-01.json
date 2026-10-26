@@ -9,21 +9,30 @@
   "activityType": "LAB",
   "prerequisites": [],
   "objectives": [
-    "Expliquer modélisation relationnelle et ddl",
-    "Construire une preuve exécutable et déterministe",
-    "Relier le concept à une décision professionnelle"
+    "Modéliser deux tables reliées avec clé primaire, clé étrangère, NOT NULL et UNIQUE.",
+    "Expliquer pourquoi les contraintes appartiennent à la base et pas seulement au code applicatif.",
+    "Choisir un type de colonne adapté (entier en centimes, texte, date) et éviter les erreurs d'arrondi.",
+    "Repérer une table sans clé, une relation sans clé étrangère ou une clé étrangère non activée (SQLite)."
   ],
   "sections": [
     {
-      "title": "Concept et usage professionnel",
-      "content": "Modélisation relationnelle et DDL répond à un besoin concret de maintenabilité, de sûreté ou de performance. Le laboratoire demande de rendre la décision observable et vérifiable.",
-      "conceptCodes": [
-        "SQL-MODELING"
-      ]
+      "title": "Un schéma est un contrat que la base fait respecter",
+      "content": "Le modèle relationnel range les données dans des tables (lignes et colonnes) reliées entre elles. DDL (Data Definition Language) désigne les instructions qui définissent le schéma : CREATE TABLE, ALTER TABLE, DROP TABLE.\n```sql\nCREATE TABLE customer (\n    id    INTEGER PRIMARY KEY,\n    email TEXT NOT NULL UNIQUE\n);\n\nCREATE TABLE orders (\n    id          INTEGER PRIMARY KEY,\n    customer_id INTEGER NOT NULL REFERENCES customer(id),\n    total_cents INTEGER NOT NULL\n);\n```\nChaque contrainte traduit une règle : PRIMARY KEY identifie une ligne de façon unique, NOT NULL interdit l'absence, UNIQUE interdit les doublons, REFERENCES (clé étrangère) interdit une valeur qui ne correspond à aucune ligne de la table parente. Ainsi une commande ne peut pas exister pour un client qui n'existe pas, quelle que soit l'application qui écrit."
     },
     {
-      "title": "Mise en pratique",
-      "content": "La requête est exécutée sur SQLite en mémoire pour rester locale et reproductible ; les différences PostgreSQL et l'analyse EXPLAIN sont signalées dans le cours."
+      "title": "Exemple résolu : le schéma client et commandes",
+      "conceptCodes": [
+        "SQL-MODELING"
+      ],
+      "content": "Problème : modéliser des clients et leurs commandes, et prouver que la base refuse une commande orpheline.\n\nRaisonnement, étape par étape :\n1. Une table par concept : customer et orders (le nom order est un mot réservé SQL, d'où orders).\n2. Clé primaire dans chacune pour identifier chaque ligne.\n3. Relation un-à-plusieurs : un client a plusieurs commandes, donc la clé étrangère est dans orders (customer_id), pas l'inverse.\n4. Contraintes métier : e-mail obligatoire et unique ; client obligatoire sur une commande ; total obligatoire.\n5. Montant : stocké en centimes entiers (total_cents) pour éviter les erreurs d'arrondi des décimaux flottants.\n6. SQLite n'applique les clés étrangères que si PRAGMA foreign_keys = ON est exécuté sur chaque connexion.\n7. Vérification : INSERT INTO orders (customer_id, total_cents) VALUES (999, 100) est refusé avec « FOREIGN KEY constraint failed ».\n```python\nconnexion.execute(\"PRAGMA foreign_keys = ON\")\ntry:\n    connexion.execute(\"INSERT INTO orders (customer_id, total_cents) VALUES (?, ?)\", (999, 1000))\nexcept sqlite3.IntegrityError as erreur:\n    print(f\"Insertion orpheline refusée: {erreur}\")\n```\nPour inspecter le schéma : PRAGMA table_info(orders) liste les colonnes, PRAGMA foreign_key_list(orders) les clés étrangères."
+    },
+    {
+      "title": "Types, clés et choix de conception",
+      "content": "- Types : INTEGER pour les identifiants et les montants en centimes, TEXT pour les chaînes, NUMERIC(12,2) ou DECIMAL en PostgreSQL pour les montants exacts, jamais FLOAT pour l'argent. Dates : un type date/horodatage natif (TIMESTAMPTZ en PostgreSQL), en UTC.\n- Clé primaire : une clé technique (identifiant auto-incrémenté ou UUID) est stable ; une clé naturelle (e-mail) peut changer. L'e-mail reste UNIQUE sans être la clé primaire.\n- Clé étrangère : choisis ce qui arrive à la suppression du parent (ON DELETE RESTRICT par défaut sûr, CASCADE seulement si les enfants n'ont aucun sens seuls).\n- NULL signifie « inconnu » : NULL = NULL n'est pas vrai ; on teste avec IS NULL. Une colonne obligatoire est NOT NULL.\n- CHECK (total_cents >= 0) pour les règles simples (voir le labo sur les contraintes).\n- Nomme clairement : singulier ou pluriel, mais de façon cohérente ; pas de mots réservés ; snake_case.\n- Évolution du schéma : migrations versionnées (Flyway, Liquibase, Alembic), jamais de modification manuelle en production.\n- Index : la clé primaire et UNIQUE en créent un ; une clé étrangère n'en crée pas toujours (PostgreSQL) : ajoute-le si tu joins ou supprimes souvent par cette colonne."
+    },
+    {
+      "title": "Erreurs fréquentes à reconnaître",
+      "content": "1. Une table sans clé primaire : lignes impossibles à identifier, doublons.\n2. Une relation sans clé étrangère : orphelins qui s'accumulent.\n3. Oublier PRAGMA foreign_keys = ON avec SQLite : les clés étrangères sont ignorées.\n4. Stocker de l'argent en FLOAT.\n5. Mettre la règle « e-mail unique » uniquement dans le code : deux requêtes simultanées passent le contrôle.\n6. Utiliser un mot réservé (order, user, group) comme nom de table.\n\nRetrouve ces erreurs de mémoire avant l'exercice, puis vérifie-toi avec le quiz : c'est la récupération, pas la relecture, qui fixe la notion."
     }
   ],
   "keyConcepts": [
@@ -37,8 +46,8 @@
       "professionalExample": "Sur un backend e-commerce, l'équipe modélise les tables customers, orders et order_items avec des clés primaires explicites et des clés étrangères vers customers et orders. Un incident classique survient quand une table orders est créée sans contrainte de clé étrangère sur customer_id : un bug applicatif insère des commandes avec un client inexistant, et ces lignes orphelines ne sont détectées que des mois plus tard lors d'un rapport de facturation. Choisir le bon type de colonne (DECIMAL pour un prix, jamais FLOAT) évite aussi des écarts d'arrondi visibles en comptabilité.",
       "codeExample": "CREATE TABLE customers (\n  id INTEGER PRIMARY KEY,\n  email TEXT NOT NULL UNIQUE,\n  created_at TEXT NOT NULL\n);\n\nCREATE TABLE orders (\n  id INTEGER PRIMARY KEY,\n  customer_id INTEGER NOT NULL,\n  status TEXT NOT NULL CHECK (status IN ('pending', 'paid', 'shipped')),\n  total_cents INTEGER NOT NULL CHECK (total_cents >= 0),\n  FOREIGN KEY (customer_id) REFERENCES customers(id)\n);\n\nCREATE TABLE order_items (\n  id INTEGER PRIMARY KEY,\n  order_id INTEGER NOT NULL,\n  product_name TEXT NOT NULL,\n  unit_price_cents INTEGER NOT NULL,\n  quantity INTEGER NOT NULL CHECK (quantity > 0),\n  FOREIGN KEY (order_id) REFERENCES orders(id)\n);",
       "commonMistake": "Appliquer la technique sans mesurer son effet ni documenter sa frontière.",
-      "masteryQuestion": "Quelle contrainte de modélisation relationnelle et ddl doit rester vraie lorsque le système évolue ?",
-      "masteryProof": "Exécuter la preuve, expliquer son invariant et proposer un cas d’échec."
+      "masteryQuestion": "Pourquoi les contraintes doivent-elles vivre dans la base, et pourquoi la clé étrangère se place-t-elle côté « plusieurs » ?",
+      "masteryProof": "Écrire le schéma customer et orders avec ses clés et prouver que la base refuse une commande pour un client inexistant."
     }
   ],
   "exercises": [
@@ -54,32 +63,80 @@
     {
       "code": "SQL-01-Q1",
       "type": "SINGLE_CHOICE",
-      "prompt": "Quelle preuve est la plus utile en revue ?",
+      "prompt": "Un client a plusieurs commandes. Dans quelle table se trouve la clé étrangère ?",
       "choices": [
-        "Une exécution déterministe avec invariant explicite",
-        "Une sortie aléatoire",
-        "Une capture sans code"
+        "customer, avec une colonne order_id",
+        "orders, avec une colonne customer_id",
+        "Dans les deux tables",
+        "Dans aucune : un identifiant suffit"
       ],
-      "correctChoice": 0,
-      "expectedKeywords": []
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Du côté « plusieurs » : chaque commande référence son client. Mettre la clé du côté « un » exigerait de stocker plusieurs commandes dans une colonne, ce que le modèle relationnel interdit."
     },
     {
       "code": "SQL-01-Q2",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Prédis le résultat (SQLite, PRAGMA foreign_keys non activé) :\n```sql\nINSERT INTO orders (customer_id, total_cents) VALUES (999, 1000);\n```\nsi aucun client n'a l'identifiant 999.",
+      "choices": [
+        "Erreur : FOREIGN KEY constraint failed",
+        "La ligne est insérée : SQLite n'applique les clés étrangères que si on les active",
+        "Le client 999 est créé automatiquement",
+        "La requête est ignorée"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "SQLite désactive par défaut les contraintes de clé étrangère pour des raisons historiques. Il faut exécuter PRAGMA foreign_keys = ON à chaque connexion. PostgreSQL et MySQL (InnoDB) les appliquent toujours."
+    },
+    {
+      "code": "SQL-01-Q3",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Trouve le défaut :\n```sql\nCREATE TABLE product (name TEXT, price FLOAT);\n```\n",
+      "choices": [
+        "TEXT est interdit",
+        "Pas de clé primaire, pas de NOT NULL, et un FLOAT pour un prix : des doublons, des valeurs absentes et des erreurs d'arrondi",
+        "FLOAT est le meilleur type pour un prix",
+        "Il manque un index sur tout"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Une table doit pouvoir identifier chaque ligne (clé primaire), exprimer ce qui est obligatoire (NOT NULL) et stocker l'argent en centimes entiers ou en décimal exact."
+    },
+    {
+      "code": "SQL-01-Q4",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Que signifie NULL = NULL en SQL ?",
+      "choices": [
+        "Vrai",
+        "Ni vrai ni faux (inconnu) : il faut écrire IS NULL",
+        "Faux",
+        "Une erreur de syntaxe"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "NULL représente une valeur inconnue. Comparer deux inconnus donne inconnu, pas vrai. La requête WHERE colonne = NULL ne ramène donc jamais de ligne."
+    },
+    {
+      "code": "SQL-01-Q5",
       "type": "FREE_TEXT",
-      "prompt": "Explique une décision liée à modélisation relationnelle et ddl.",
+      "prompt": "Sans relire le cours, explique avec tes mots pourquoi une contrainte UNIQUE en base est préférable à une simple vérification dans le code.",
       "choices": [],
       "correctChoice": null,
       "expectedKeywords": [
-        "contrat",
-        "preuve",
-        "test"
-      ]
+        "concurren",
+        "base",
+        "contrainte",
+        "simultan",
+        "ecrit"
+      ],
+      "modelAnswer": "Une vérification dans le code (« cet e-mail existe-t-il ? ») puis une insertion ne sont pas atomiques : deux requêtes simultanées peuvent passer le contrôle avant l'écriture et créer un doublon. La base arbitre de façon atomique, et sa contrainte vaut pour tous les programmes qui écrivent dans la table (autres services, scripts, corrections manuelles). Le code gère ensuite proprement l'erreur de violation.",
+      "explanation": "Une bonne réponse mentionne la course entre contrôle et écriture et la garantie de la base pour tous les écrivains."
     }
   ],
   "checklist": [
-    "Je peux expliquer le concept sans réciter une définition",
-    "Je sais exécuter et modifier la preuve",
-    "Je peux nommer un risque et son contrôle",
-    "Je relie cette étape à la suivante"
+    "Chaque table a une clé primaire et les relations ont une clé étrangère",
+    "Mes règles essentielles sont des contraintes (NOT NULL, UNIQUE, CHECK)",
+    "Je stocke l'argent en entiers ou en décimal exact",
+    "J'active les clés étrangères avec SQLite"
   ]
 }

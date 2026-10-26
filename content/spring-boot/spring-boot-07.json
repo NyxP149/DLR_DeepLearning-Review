@@ -11,21 +11,30 @@
     "SPRING_BOOT-06"
   ],
   "objectives": [
-    "Expliquer transactions, cohérence et idempotence",
-    "Construire une preuve exécutable et déterministe",
-    "Relier le concept à une décision professionnelle"
+    "Expliquer ce que garantit @Transactional et quelles exceptions déclenchent un rollback par défaut.",
+    "Identifier les cas où l'annotation n'a aucun effet (auto-appel, méthode privée).",
+    "Rendre une opération rejouable grâce à une clé d'idempotence.",
+    "Choisir la portée d'une transaction et éviter les appels externes sous transaction."
   ],
   "sections": [
     {
-      "title": "Concept et usage professionnel",
-      "content": "Transactions, cohérence et idempotence répond à un besoin concret de maintenabilité, de sûreté ou de performance. Le laboratoire demande de rendre la décision observable et vérifiable.",
-      "conceptCodes": [
-        "SPRING-TRANSACTIONS"
-      ]
+      "title": "Tout ou rien, avec une limite à connaître",
+      "content": "Une transaction regroupe des opérations qui réussissent toutes ou sont toutes annulées (atomicité). Avec Spring, @Transactional sur une méthode de service ouvre la transaction avant l'appel, valide (commit) si tout se passe bien et annule (rollback) en cas d'exception.\n\nRègle par défaut à retenir : le rollback est déclenché par une RuntimeException ou une Error, pas par une exception contrôlée (checked). Pour annuler aussi sur une exception contrôlée, on écrit @Transactional(rollbackFor = Exception.class).\n\nSpring implémente cela avec un proxy autour du bean. Conséquence : seuls les appels qui passent par le proxy sont transactionnels. Un appel d'une méthode à une autre dans la même classe (auto-appel, this.autre()) contourne le proxy : l'annotation n'a alors aucun effet. Une méthode privée n'est pas non plus interceptée."
     },
     {
-      "title": "Mise en pratique",
-      "content": "La preuve unifichier valide ici la frontière d'architecture hors réseau ; le laboratoire explique ensuite son branchement aux annotations et dépendances Spring Boot réelles."
+      "title": "Exemple résolu : un virement rejouable",
+      "conceptCodes": [
+        "SPRING-TRANSACTIONS"
+      ],
+      "content": "Problème : débiter A et créditer B. Si le débit échoue, rien ne doit changer. Si le client rejoue la requête après un délai dépassé, A ne doit pas être débité deux fois.\n\nRaisonnement, étape par étape :\n1. Clé d'idempotence : le client envoie un identifiant unique par intention de virement (T1).\n2. Si la clé est déjà enregistrée, on renvoie le résultat précédent sans rien refaire (« ignoré »).\n3. Instantané ou transaction : toutes les écritures forment une seule unité.\n4. Invariant : un solde ne devient jamais négatif. Si le débit le violerait, on lève une exception : rollback.\n5. La clé n'est mémorisée qu'en cas de succès, dans la même transaction que le virement.\n6. Vérification : après un échec, les soldes sont identiques à l'état initial.\n```java\n@Transactional\npublic String transfer(String key, String from, String to, int amount) {\n    if (processed.exists(key)) return \"ignoré\";\n    accounts.credit(to, amount);\n    accounts.debit(from, amount);        // lève IllegalStateException si fonds insuffisants -> rollback\n    processed.save(key);                  // même transaction : tout ou rien\n    return \"OK\";\n}\n```\nEn base, une contrainte UNIQUE sur la clé d'idempotence protège aussi contre deux requêtes simultanées : la seconde échoue proprement."
+    },
+    {
+      "title": "Portée, propagation et pièges",
+      "content": "- Portée : place @Transactional sur la méthode de service qui représente un cas d'usage, pas sur le contrôleur ni sur chaque méthode de dépôt.\n- Garde la transaction courte : pas d'appel HTTP, d'envoi d'e-mail ni d'attente d'utilisateur à l'intérieur ; elle retient des verrous et une connexion du pool.\n- readOnly = true pour les lectures : optimisation et garde-fou.\n- Propagation : REQUIRED (défaut) rejoint la transaction existante ; REQUIRES_NEW en ouvre une indépendante (utile pour un journal d'audit qui doit survivre à un rollback).\n- Isolation : plus elle est forte, moins il y a d'anomalies de lecture mais plus de contention ; le défaut de la base convient souvent.\n- Évite d'avaler une exception dans la méthode transactionnelle : si tu l'attrapes, Spring ne voit plus l'échec et valide.\n```java\n// L'exception est attrapée : Spring commit malgré l'échec\n@Transactional\nvoid mauvais() { try { risque(); } catch (RuntimeException e) { log.warn(\"...\", e); } }\n```"
+    },
+    {
+      "title": "Erreurs fréquentes à reconnaître",
+      "content": "1. Appeler une méthode @Transactional de la même classe : le proxy est contourné.\n2. S'attendre à un rollback sur une exception contrôlée sans rollbackFor.\n3. Attraper l'exception dans la méthode transactionnelle : Spring valide quand même.\n4. Un appel réseau ou un envoi d'e-mail à l'intérieur de la transaction.\n5. @Transactional sur une méthode privée ou package-private selon la configuration du proxy.\n6. Un POST rejouable sans clé d'idempotence : doublons après un délai dépassé.\n\nRetrouve ces erreurs de mémoire avant l'exercice, puis vérifie-toi avec le quiz : c'est la récupération, pas la relecture, qui fixe la notion."
     }
   ],
   "keyConcepts": [
@@ -39,8 +48,8 @@
       "professionalExample": "Sur un service de paiement, un client mobile avec une connexion instable renvoyait automatiquement sa requête de débit après un timeout réseau côté client, alors que le serveur avait en réalité déjà traité le premier appel : le client était débité deux fois. La correction impose une clé d'idempotence transmise par le client, stockée avec une contrainte d'unicité en base et vérifiée dans la même transaction @Transactional que le débit, de sorte qu'un rejeu renvoie la réponse déjà produite au lieu de recréer un second mouvement bancaire.",
       "codeExample": "@Service\npublic class PaymentService {\n\n    private final PaymentRepository paymentRepository;\n\n    @Transactional\n    public PaymentResult charge(String idempotencyKey, ChargeRequest request) {\n        return paymentRepository.findByIdempotencyKey(idempotencyKey)\n                .map(PaymentEntity::toResult)\n                .orElseGet(() -> {\n                    PaymentEntity payment = new PaymentEntity(idempotencyKey, request.amount(), request.accountId());\n                    // la contrainte UNIQUE(idempotency_key) fait échouer un doublon concurrent\n                    paymentRepository.save(payment);\n                    return payment.toResult();\n                });\n    }\n}",
       "commonMistake": "Appliquer la technique sans mesurer son effet ni documenter sa frontière.",
-      "masteryQuestion": "Quelle contrainte de transactions, cohérence et idempotence doit rester vraie lorsque le système évolue ?",
-      "masteryProof": "Exécuter la preuve, expliquer son invariant et proposer un cas d’échec."
+      "masteryQuestion": "Quand @Transactional n'a-t-elle aucun effet, et comment une clé d'idempotence évite-t-elle un double débit ?",
+      "masteryProof": "Écrire un virement avec rollback sur fonds insuffisants et une clé d'idempotence qui ignore un rejeu."
     }
   ],
   "exercises": [
@@ -56,32 +65,80 @@
     {
       "code": "SPRING_BOOT-07-Q1",
       "type": "SINGLE_CHOICE",
-      "prompt": "Quelle preuve est la plus utile en revue ?",
+      "prompt": "Une méthode @Transactional lève une IOException (exception contrôlée). Que fait Spring par défaut ?",
       "choices": [
-        "Une exécution déterministe avec invariant explicite",
-        "Une sortie aléatoire",
-        "Une capture sans code"
+        "Il annule la transaction",
+        "Il valide la transaction : le rollback automatique ne concerne que les exceptions non contrôlées",
+        "Il relance la méthode",
+        "Il ferme l'application"
       ],
-      "correctChoice": 0,
-      "expectedKeywords": []
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Par défaut, seuls RuntimeException et Error déclenchent le rollback. Pour une exception contrôlée, il faut @Transactional(rollbackFor = IOException.class) ou Exception.class."
     },
     {
       "code": "SPRING_BOOT-07-Q2",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Prédis le comportement :\n```java\n@Service class Billing {\n    void process() { charge(); }          // appelle charge() de la même classe\n    @Transactional void charge() { ... }\n}\n```\nappelé via billing.process() depuis un contrôleur.",
+      "choices": [
+        "charge s'exécute dans une transaction",
+        "charge s'exécute sans transaction : l'auto-appel contourne le proxy",
+        "Spring lève une exception au démarrage",
+        "La transaction s'ouvre deux fois"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Le proxy n'intercepte que les appels venant de l'extérieur du bean. process() appelle this.charge() directement : aucune transaction. On déplace charge dans un autre bean ou on annote process()."
+    },
+    {
+      "code": "SPRING_BOOT-07-Q3",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Trouve le défaut :\n```java\n@Transactional\nvoid pay(Order o) {\n    paymentGateway.charge(o);          // appel HTTP externe lent\n    repository.markPaid(o);\n}\n```\n",
+      "choices": [
+        "markPaid doit être static",
+        "Un appel externe lent garde la transaction (verrous, connexion du pool) ouverte ; en cas de panne après le débit, la base annule mais le paiement est parti",
+        "charge devrait être asynchrone obligatoirement",
+        "Il manque readOnly"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Mélanger un effet externe non annulable et une transaction crée des incohérences : la base revient en arrière mais le paiement reste débité. On enregistre l'intention, on appelle l'extérieur hors transaction, puis on confirme, avec une clé d'idempotence."
+    },
+    {
+      "code": "SPRING_BOOT-07-Q4",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Un client rejoue un POST /transfers avec la même clé d'idempotence T1 déjà traitée. Que doit faire le serveur ?",
+      "choices": [
+        "Refaire le virement",
+        "Reconnaître la clé et renvoyer le résultat d'origine sans rien débiter de nouveau",
+        "Retourner 500",
+        "Supprimer la clé"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "L'idempotence garantit que répéter la demande produit le même effet qu'une seule exécution. Sans cela, un nouvel essai après un délai dépassé débiterait deux fois."
+    },
+    {
+      "code": "SPRING_BOOT-07-Q5",
       "type": "FREE_TEXT",
-      "prompt": "Explique une décision liée à transactions, cohérence et idempotence.",
+      "prompt": "Sans relire le cours, explique avec tes mots pourquoi un auto-appel contourne @Transactional et comment l'éviter.",
       "choices": [],
       "correctChoice": null,
       "expectedKeywords": [
-        "contrat",
-        "preuve",
-        "test"
-      ]
+        "proxy",
+        "appel",
+        "meme classe",
+        "intercepte",
+        "bean"
+      ],
+      "modelAnswer": "Spring applique @Transactional avec un proxy placé autour du bean : seuls les appels qui passent par ce proxy ouvrent la transaction. Un appel de méthode dans la même classe (this.autre()) ne passe pas par le proxy, donc aucune transaction n'est ouverte. On l'évite en déplaçant la méthode dans un autre bean, ou en plaçant l'annotation sur la méthode appelée de l'extérieur.",
+      "explanation": "Une bonne réponse mentionne le proxy, l'appel interne qui le contourne et un remède (autre bean, annotation sur le point d'entrée)."
     }
   ],
   "checklist": [
-    "Je peux expliquer le concept sans réciter une définition",
-    "Je sais exécuter et modifier la preuve",
-    "Je peux nommer un risque et son contrôle",
-    "Je relie cette étape à la suivante"
+    "Je sais quelles exceptions déclenchent un rollback",
+    "Je repère un auto-appel qui contourne @Transactional",
+    "Je garde mes transactions courtes, sans appel externe",
+    "J'utilise une clé d'idempotence pour les opérations rejouables"
   ]
 }

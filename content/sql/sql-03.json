@@ -11,21 +11,30 @@
     "SQL-02"
   ],
   "objectives": [
-    "Expliquer jointures et relations métier",
-    "Construire une preuve exécutable et déterministe",
-    "Relier le concept à une décision professionnelle"
+    "Choisir entre INNER JOIN et LEFT JOIN selon la question posée.",
+    "Compter correctement avec LEFT JOIN et GROUP BY (COUNT de la colonne jointe, pas COUNT(*)).",
+    "Trouver les lignes sans correspondance (anti-jointure).",
+    "Repérer une multiplication de lignes, un filtre WHERE qui annule un LEFT JOIN ou une jointure sans condition."
   ],
   "sections": [
     {
-      "title": "Concept et usage professionnel",
-      "content": "Jointures et relations métier répond à un besoin concret de maintenabilité, de sûreté ou de performance. Le laboratoire demande de rendre la décision observable et vérifiable.",
-      "conceptCodes": [
-        "SQL-JOINS"
-      ]
+      "title": "Une jointure relie les lignes de deux tables",
+      "content": "Une jointure combine deux tables selon une condition (en général clé étrangère = clé primaire).\n- INNER JOIN : ne garde que les lignes qui ont une correspondance des deux côtés.\n- LEFT JOIN : garde toutes les lignes de la table de gauche ; s'il n'y a pas de correspondance, les colonnes de droite valent NULL.\n```sql\nSELECT c.name, o.id\nFROM customer c\nINNER JOIN orders o ON o.customer_id = c.id;      -- clients qui ont au moins une commande (une ligne par commande)\n\nSELECT c.name, o.id\nFROM customer c\nLEFT JOIN orders o ON o.customer_id = c.id;       -- tous les clients, avec id NULL pour ceux sans commande\n```\nLa question métier décide : « quels clients ont commandé ? » est un INNER JOIN (ou EXISTS) ; « combien de commandes par client, y compris ceux qui n'en ont aucune ? » est un LEFT JOIN."
     },
     {
-      "title": "Mise en pratique",
-      "content": "La requête est exécutée sur SQLite en mémoire pour rester locale et reproductible ; les différences PostgreSQL et l'analyse EXPLAIN sont signalées dans le cours."
+      "title": "Exemple résolu : trois questions, trois requêtes",
+      "conceptCodes": [
+        "SQL-JOINS"
+      ],
+      "content": "Problème : avec Ada (2 commandes), Linus (1) et Grace (aucune), répondre à trois questions.\n\nRaisonnement, étape par étape :\n1. Qui a commandé ? INNER JOIN, puis DISTINCT pour ne pas répéter Ada deux fois (ou EXISTS). Résultat : Ada, Linus.\n2. Combien de commandes par client, y compris zéro ? LEFT JOIN puis GROUP BY. On compte la colonne de la table de droite : COUNT(o.id) ignore les NULL et donne 0 pour Grace, alors que COUNT(*) compterait la ligne produite par le LEFT JOIN et donnerait 1. Résultat : Ada=2, Grace=0, Linus=1.\n3. Qui n'a jamais commandé ? LEFT JOIN, puis WHERE o.id IS NULL : on garde les clients pour lesquels aucune commande n'a été trouvée. Résultat : Grace. (Variante équivalente : NOT EXISTS.)\n4. Piège : WHERE o.total > 0 placé après un LEFT JOIN élimine les lignes NULL et transforme la jointure en INNER JOIN. Mets la condition dans le ON.\n5. Vérification : la somme des comptes (3) égale le nombre de commandes.\n```sql\nSELECT c.name, COUNT(o.id) AS commandes\nFROM customer c LEFT JOIN orders o ON o.customer_id = c.id\nGROUP BY c.id, c.name\nORDER BY c.name;\n\nSELECT c.name FROM customer c LEFT JOIN orders o ON o.customer_id = c.id WHERE o.id IS NULL;\n```"
+    },
+    {
+      "title": "Pièges de jointure",
+      "content": "- Multiplication de lignes : joindre un client à ses commandes puis à ses factures multiplie les lignes (2 commandes × 3 factures = 6 lignes). Une somme calculée après coup est alors fausse. Agrège chaque côté séparément (sous-requêtes ou CTE) puis joins.\n- Condition oubliée : une jointure sans ON produit le produit cartésien (n × m lignes).\n- Condition dans WHERE ou dans ON : pour un INNER JOIN c'est équivalent ; pour un LEFT JOIN elle change le sens (WHERE filtre après la jointure, ON avant).\n- Jointure sur une colonne non indexée : parcours complet ; indexe les clés étrangères utilisées dans des jointures fréquentes.\n- Auto-jointure : une table jointe à elle-même (employé et manager) avec deux alias.\n- RIGHT JOIN est un LEFT JOIN inversé ; préfère LEFT JOIN et réordonne les tables pour la lisibilité. FULL OUTER JOIN garde les lignes sans correspondance des deux côtés.\n- EXISTS est souvent plus clair qu'une jointure + DISTINCT pour tester une existence.\n- Nomme les colonnes avec leur alias (c.name) : sans cela, une colonne ambiguë produit une erreur ou un mauvais résultat."
+    },
+    {
+      "title": "Erreurs fréquentes à reconnaître",
+      "content": "1. COUNT(*) après un LEFT JOIN : les clients sans commande comptent 1 au lieu de 0.\n2. Un filtre sur la table de droite dans WHERE qui annule le LEFT JOIN.\n3. DISTINCT utilisé pour masquer une multiplication de lignes.\n4. Jointure sans condition.\n5. Additionner après avoir joint deux relations un-à-plusieurs.\n6. SELECT * avec des colonnes de même nom dans deux tables.\n\nRetrouve ces erreurs de mémoire avant l'exercice, puis vérifie-toi avec le quiz : c'est la récupération, pas la relecture, qui fixe la notion."
     }
   ],
   "keyConcepts": [
@@ -39,8 +48,8 @@
       "professionalExample": "Pour un rapport mensuel, une équipe data doit lister tous les clients avec le nombre de commandes passées, y compris les clients inscrits mais n'ayant encore jamais commandé. Utiliser un INNER JOIN entre customers et orders exclut silencieusement ces clients inactifs du rapport, faussant le taux d'activation communiqué à la direction marketing. Le correctif consiste à passer en LEFT JOIN depuis customers vers orders, avec un COUNT qui ignore correctement les valeurs NULL côté commandes.",
       "codeExample": "-- Bug : exclut les clients sans commande\nSELECT c.id, c.email, COUNT(o.id) AS nb_orders\nFROM customers c\nJOIN orders o ON o.customer_id = c.id\nGROUP BY c.id, c.email;\n\n-- Correction : conserve tous les clients\nSELECT c.id, c.email, COUNT(o.id) AS nb_orders\nFROM customers c\nLEFT JOIN orders o ON o.customer_id = c.id\nGROUP BY c.id, c.email\nORDER BY nb_orders DESC;",
       "commonMistake": "Appliquer la technique sans mesurer son effet ni documenter sa frontière.",
-      "masteryQuestion": "Quelle contrainte de jointures et relations métier doit rester vraie lorsque le système évolue ?",
-      "masteryProof": "Exécuter la preuve, expliquer son invariant et proposer un cas d’échec."
+      "masteryQuestion": "Pourquoi COUNT(o.id) et non COUNT(*) après un LEFT JOIN, et pourquoi un filtre dans WHERE peut-il annuler un LEFT JOIN ?",
+      "masteryProof": "Écrire trois requêtes : clients ayant commandé (INNER JOIN), commandes par client y compris zéro (LEFT JOIN), clients sans commande (LEFT JOIN filtré sur l'absence)."
     }
   ],
   "exercises": [
@@ -56,32 +65,80 @@
     {
       "code": "SQL-03-Q1",
       "type": "SINGLE_CHOICE",
-      "prompt": "Quelle preuve est la plus utile en revue ?",
+      "prompt": "Quelle jointure répond à « liste tous les clients, même ceux sans commande » ?",
       "choices": [
-        "Une exécution déterministe avec invariant explicite",
-        "Une sortie aléatoire",
-        "Une capture sans code"
+        "INNER JOIN",
+        "LEFT JOIN depuis customer",
+        "CROSS JOIN",
+        "Aucune"
       ],
-      "correctChoice": 0,
-      "expectedKeywords": []
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "LEFT JOIN conserve toutes les lignes de la table de gauche (customer), avec des NULL à droite quand aucune commande ne correspond. INNER JOIN éliminerait les clients sans commande."
     },
     {
       "code": "SQL-03-Q2",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Grace n'a aucune commande. Que donne :\n```sql\nSELECT c.name, COUNT(*) FROM customer c LEFT JOIN orders o ON o.customer_id = c.id GROUP BY c.name;\n```\npour Grace ?",
+      "choices": [
+        "0",
+        "1 : la ligne produite par le LEFT JOIN est comptée même avec o.id NULL",
+        "NULL",
+        "Une erreur"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "COUNT(*) compte les lignes, y compris celle générée avec des NULL. COUNT(o.id) ignore les NULL et donne 0."
+    },
+    {
+      "code": "SQL-03-Q3",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Trouve le défaut :\n```sql\nSELECT c.name, COUNT(o.id)\nFROM customer c LEFT JOIN orders o ON o.customer_id = c.id\nWHERE o.total_cents > 1000\nGROUP BY c.name;\n```\nqui devait lister aussi les clients sans grosse commande.",
+      "choices": [
+        "COUNT est interdit avec WHERE",
+        "Le WHERE sur la table de droite élimine les lignes NULL : le LEFT JOIN se comporte comme un INNER JOIN ; mets la condition dans le ON",
+        "GROUP BY doit venir avant WHERE",
+        "total_cents n'existe pas"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Après un LEFT JOIN, WHERE o.colonne > x ne peut pas être vrai pour NULL. Écris LEFT JOIN orders o ON o.customer_id = c.id AND o.total_cents > 1000 pour garder les clients sans correspondance."
+    },
+    {
+      "code": "SQL-03-Q4",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Un client a 2 commandes et 3 factures. On joint customer, orders et invoice puis on fait SUM(o.total). Quel est le risque ?",
+      "choices": [
+        "Aucun",
+        "Chaque commande apparaît 3 fois (2 × 3 = 6 lignes) : la somme est triplée",
+        "La somme est divisée par 3",
+        "SUM ignore les jointures"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Deux relations un-à-plusieurs jointes côte à côte multiplient les lignes. Agrège chacune séparément avant de joindre, ou utilise des sous-requêtes."
+    },
+    {
+      "code": "SQL-03-Q5",
       "type": "FREE_TEXT",
-      "prompt": "Explique une décision liée à jointures et relations métier.",
+      "prompt": "Sans relire le cours, explique avec tes mots comment trouver les clients sans aucune commande, et pourquoi la condition porte sur une colonne de la table de droite.",
       "choices": [],
       "correctChoice": null,
       "expectedKeywords": [
-        "contrat",
-        "preuve",
-        "test"
-      ]
+        "left join",
+        "null",
+        "absence",
+        "correspondance",
+        "exists"
+      ],
+      "modelAnswer": "On fait un LEFT JOIN des clients vers les commandes puis on garde les lignes où une colonne de la table de droite (par exemple o.id, jamais NULL quand une commande existe) vaut NULL : cela signifie qu'aucune commande n'a été trouvée. NOT EXISTS exprime la même idée. La condition porte sur la table de droite car c'est elle qui est absente.",
+      "explanation": "Une bonne réponse décrit LEFT JOIN suivi de IS NULL sur la table de droite (ou NOT EXISTS) comme anti-jointure."
     }
   ],
   "checklist": [
-    "Je peux expliquer le concept sans réciter une définition",
-    "Je sais exécuter et modifier la preuve",
-    "Je peux nommer un risque et son contrôle",
-    "Je relie cette étape à la suivante"
+    "Je choisis INNER ou LEFT JOIN d'après la question métier",
+    "Je compte avec COUNT(colonne_jointe) après un LEFT JOIN",
+    "Je mets les conditions de la table de droite dans le ON",
+    "Je repère une multiplication de lignes avant d'additionner"
   ]
 }

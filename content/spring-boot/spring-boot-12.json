@@ -11,21 +11,30 @@
     "SPRING_BOOT-11"
   ],
   "objectives": [
-    "Expliquer revue d’architecture et durcissement final",
-    "Construire une preuve exécutable et déterministe",
-    "Relier le concept à une décision professionnelle"
+    "Auditer une configuration contre une liste de règles de durcissement et expliquer chaque risque.",
+    "Justifier un verdict (acceptée ou refusée) par des violations précises et leur remède.",
+    "Prioriser les corrections selon l'exposition et l'impact.",
+    "Défendre une revue d'architecture : décisions, compromis et risques résiduels."
   ],
   "sections": [
     {
-      "title": "Concept et usage professionnel",
-      "content": "Revue d’architecture et durcissement final répond à un besoin concret de maintenabilité, de sûreté ou de performance. Le laboratoire demande de rendre la décision observable et vérifiable.",
-      "conceptCodes": [
-        "SPRING-CHALLENGE"
-      ]
+      "title": "Durcir, c'est réduire la surface d'attaque avant la production",
+      "content": "Une revue de durcissement (hardening) vérifie que la configuration d'une application n'ouvre pas de porte inutile. Les points qui reviennent le plus souvent :\n- Actuator exposé en entier (/env, /heapdump, /beans) : fuite de secrets et de mémoire.\n- CORS ouvert à tous (allowed-origins=*) : n'importe quel site peut appeler l'API depuis le navigateur d'un utilisateur connecté.\n- Mode debug actif : traces, détails internes et coût.\n- Identifiants par défaut ou en clair (db.password=admin) : accès immédiat pour qui trouve le dépôt.\n- HTTPS absent, en-têtes de sécurité manquants, dépendances vulnérables non mises à jour.\n\nChaque règle se formule comme : propriété, valeur interdite, remède. Cela se traduit par un audit automatisable."
     },
     {
-      "title": "Défi de synthèse",
-      "content": "Le défi s’appuie sur projects/spring-professional-api : inspecte les frontières Controller/Service, exécute mvn test, puis ajoute un cas d’erreur HTTP sans casser le contrat nominal."
+      "title": "Exemple résolu : un audit qui explique",
+      "conceptCodes": [
+        "SPRING-CHALLENGE"
+      ],
+      "content": "Problème : auditer une configuration avant la mise en production et rendre un verdict argumenté.\n\nRaisonnement, étape par étape :\n1. Définir les règles : (propriété, valeur interdite, conseil).\n2. Pour chaque règle, comparer la valeur de la configuration à la valeur interdite.\n3. Pour chaque violation, produire « propriété=valeur : conseil », pas un simple drapeau.\n4. Trier les violations alphabétiquement : le résultat est reproductible.\n5. Verdict : REFUSÉ s'il y a au moins une violation, sinon ACCEPTÉ.\n6. Vérification : db.password = s3cr3t ne viole pas la règle « admin » (mais mériterait un coffre à secrets).\n```java\nfor (Rule rule : RULES) {\n    String value = config.get(rule.key());\n    if (rule.forbidden().equals(value)) violations.add(rule.key() + \"=\" + value + \" : \" + rule.advice());\n}\nCollections.sort(violations);\n```\nUne règle bien formée porte son remède : le développeur n'a pas à deviner quoi changer. Un audit qui ne dit que « non » est ignoré."
+    },
+    {
+      "title": "Prioriser et défendre ses choix",
+      "content": "Toutes les corrections n'ont pas la même urgence. Classe par exposition (internet ou réseau interne) et impact (fuite de données, prise de contrôle, simple bruit). Un Actuator ouvert sur internet passe avant un en-tête manquant sur un outil interne.\n\nDéfendre une revue d'architecture, c'est expliquer : le risque évité, le compromis accepté, le risque résiduel et le coût. Exemple : « on garde un secret dans une variable d'environnement plutôt qu'un coffre dédié : suffisant pour ce périmètre, à revoir si le nombre de services dépasse X ». Dire ce qu'on n'a pas traité est une force, pas une faiblesse.\n\nHygiène minimale : dépendances mises à jour et analysées, secrets hors du dépôt (et rotation si l'un a fuité), principe du moindre privilège pour la base et les comptes de service, sauvegardes testées, journaux sans donnée sensible."
+    },
+    {
+      "title": "Erreurs fréquentes à reconnaître",
+      "content": "1. Livrer avec les valeurs par défaut du développement (debug, mot de passe par défaut, CORS ouvert).\n2. Un audit manuel unique oublié au fil des évolutions : automatise-le.\n3. Un secret commité puis « supprimé » dans un commit suivant : il reste dans l'historique et doit être renouvelé.\n4. Corriger tout en même temps sans priorité.\n5. Un verdict sans remède.\n6. Ne pas dire ce qui reste risqué.\n\nRetrouve ces erreurs de mémoire avant l'exercice, puis vérifie-toi avec le quiz : c'est la récupération, pas la relecture, qui fixe la notion."
     }
   ],
   "keyConcepts": [
@@ -39,8 +48,8 @@
       "professionalExample": "Avant l'ouverture d'une API à un partenaire externe, une revue d'architecture systématique relit les frontières Controller/Service/Repository du projet spring-professional-api et découvre qu'une exception SQLException remontait telle quelle jusqu'au client, exposant le nom des tables internes dans le message d'erreur HTTP 500. Le durcissement final ajoute un cas d'erreur HTTP explicite (404 quand la ressource n'existe pas, 409 en cas de conflit métier) dans le gestionnaire global d'exceptions, sans modifier le comportement du chemin nominal déjà couvert par les tests d'intégration, ce qui est précisément ce que mvn test doit continuer à valider après le changement.",
       "codeExample": "@RestControllerAdvice\npublic class GlobalExceptionHandler {\n\n    @ExceptionHandler(OrderNotFoundException.class)\n    public ResponseEntity<ApiError> handleNotFound(OrderNotFoundException ex) {\n        return ResponseEntity.status(HttpStatus.NOT_FOUND)\n                .body(new ApiError(\"ORDER_NOT_FOUND\", ex.getMessage()));\n    }\n\n    @ExceptionHandler(OptimisticLockingFailureException.class)\n    public ResponseEntity<ApiError> handleConflict(OptimisticLockingFailureException ex) {\n        return ResponseEntity.status(HttpStatus.CONFLICT)\n                .body(new ApiError(\"ORDER_CONFLICT\", \"La commande a été modifiée entretemps\"));\n    }\n\n    @ExceptionHandler(Exception.class)\n    public ResponseEntity<ApiError> handleUnexpected(Exception ex) {\n        // ne jamais renvoyer ex.getMessage() ici : il peut contenir des détails internes (SQL, chemins)\n        return ResponseEntity.internalServerError().body(new ApiError(\"INTERNAL_ERROR\", \"Erreur inattendue\"));\n    }\n}",
       "commonMistake": "Appliquer la technique sans mesurer son effet ni documenter sa frontière.",
-      "masteryQuestion": "Quelle contrainte de revue d’architecture et durcissement final doit rester vraie lorsque le système évolue ?",
-      "masteryProof": "Exécuter la preuve, expliquer son invariant et proposer un cas d’échec."
+      "masteryQuestion": "Comment priorises-tu des violations de durcissement, et que dois-tu faire d'un secret qui a été commité ?",
+      "masteryProof": "Auditer une configuration avec quatre règles, lister les violations triées avec leur conseil et rendre un verdict."
     }
   ],
   "exercises": [
@@ -56,32 +65,80 @@
     {
       "code": "SPRING_BOOT-12-Q1",
       "type": "SINGLE_CHOICE",
-      "prompt": "Quelle preuve est la plus utile en revue ?",
+      "prompt": "Quel risque principal présente management.endpoints.web.exposure.include=* en production ?",
       "choices": [
-        "Une exécution déterministe avec invariant explicite",
-        "Une sortie aléatoire",
-        "Une capture sans code"
+        "Un démarrage plus lent",
+        "L'exposition de /env, /heapdump ou /beans, qui peut révéler des secrets et des données en mémoire",
+        "Aucun risque",
+        "Une perte de métriques"
       ],
-      "correctChoice": 0,
-      "expectedKeywords": []
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Ces endpoints donnent la configuration (parfois des secrets) et un instantané de la mémoire. On expose seulement health et info, protégés et idéalement sur un port de gestion interne."
     },
     {
       "code": "SPRING_BOOT-12-Q2",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Prédis le verdict : une configuration a actuator.exposure=*, cors.allowed-origins=*, debug=true et db.password=s3cr3t. Les règles interdisent *, *, true et admin.",
+      "choices": [
+        "ACCEPTÉ : db.password n'est pas admin",
+        "REFUSÉ avec trois violations (actuator, cors, debug)",
+        "REFUSÉ avec quatre violations",
+        "ACCEPTÉ avec trois avertissements"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Trois règles sont violées (actuator, cors, debug). db.password = s3cr3t ne correspond pas à la valeur interdite « admin », donc pas de violation, même si le secret devrait venir d'un coffre. Une violation suffit pour REFUSÉ."
+    },
+    {
+      "code": "SPRING_BOOT-12-Q3",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Un mot de passe de base a été commité puis supprimé par un commit suivant. Est-ce réglé ?",
+      "choices": [
+        "Oui, il n'est plus dans le code",
+        "Non : il reste dans l'historique Git ; il faut le révoquer et en générer un nouveau",
+        "Oui, si le dépôt est privé",
+        "Oui, après un git pull"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "L'historique conserve toutes les versions. Supprimer le fichier ne retire pas le secret : on considère qu'il a fuité, on le renouvelle et on en vérifie l'usage."
+    },
+    {
+      "code": "SPRING_BOOT-12-Q4",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Deux corrections sont possibles : un en-tête de sécurité manquant sur un outil interne, ou un Actuator /env ouvert sur internet. Que traiter d'abord ?",
+      "choices": [
+        "L'en-tête manquant, plus simple",
+        "L'Actuator /env exposé sur internet : exposition forte et impact élevé",
+        "Aucun ordre n'importe",
+        "Les deux simultanément sans priorité"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "On priorise par exposition et impact. Un endpoint qui révèle la configuration sur internet est exploitable immédiatement et gravement ; l'autre est un défaut mineur sur un périmètre restreint."
+    },
+    {
+      "code": "SPRING_BOOT-12-Q5",
       "type": "FREE_TEXT",
-      "prompt": "Explique une décision liée à revue d’architecture et durcissement final.",
+      "prompt": "Sans relire le cours, défends une décision de sécurité en citant le risque évité, le compromis accepté et le risque résiduel.",
       "choices": [],
       "correctChoice": null,
       "expectedKeywords": [
-        "contrat",
-        "preuve",
-        "test"
-      ]
+        "risque",
+        "compromis",
+        "residuel",
+        "cout",
+        "decision"
+      ],
+      "modelAnswer": "Une bonne défense nomme le risque évité (par exemple l'exposition de secrets), le compromis accepté (une solution plus simple ou moins coûteuse qu'un coffre dédié) et le risque résiduel qu'on assume et surveille, avec la condition qui ferait revoir la décision (taille du système, sensibilité des données).",
+      "explanation": "Une bonne réponse articule risque évité, compromis, risque résiduel et condition de révision."
     }
   ],
   "checklist": [
-    "Je peux expliquer le concept sans réciter une définition",
-    "Je sais exécuter et modifier la preuve",
-    "Je peux nommer un risque et son contrôle",
-    "Je peux présenter cette preuve dans mon portfolio"
+    "Je sais lister les points de durcissement avant une mise en production",
+    "Mon audit donne des violations avec leur remède",
+    "Je priorise par exposition et impact",
+    "Je sais quoi faire d'un secret qui a fuité"
   ]
 }

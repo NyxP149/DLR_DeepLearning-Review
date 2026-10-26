@@ -11,25 +11,30 @@
     "ARCHITECTURE-22"
   ],
   "objectives": [
-    "Concevoir une plateforme avec frontières métier, événements, observabilité et déploiement progressif",
-    "Justifier les compromis et nommer un risque opérationnel",
-    "Produire une preuve reproductible avant d’élargir la solution"
+    "Définir un SLI, un SLO et un budget d'erreur et calculer le budget restant.",
+    "Décider d'une promotion de canary d'après la santé des services et la consommation du budget.",
+    "Agréger la santé de plusieurs services et nommer celui à traiter en priorité.",
+    "Documenter une plateforme multi-services observable : cartographie, signaux, décisions de release."
   ],
   "sections": [
     {
-      "title": "Concept clé et décision",
+      "title": "Une plateforme se pilote avec des objectifs mesurables",
+      "content": "Une plateforme multi-services est trop complexe pour être pilotée à l'intuition. On définit :\n- SLI (indicateur) : ce qu'on mesure du point de vue de l'utilisateur, par exemple le pourcentage de requêtes réussies en moins de 300 ms.\n- SLO (objectif) : la valeur visée sur une fenêtre, par exemple 99,5 % sur 30 jours.\n- Budget d'erreur : 100 % - SLO, soit 0,5 % de requêtes (ou de temps) qu'on peut rater sans manquer l'objectif. Il se dépense en incidents, en déploiements risqués, en maintenance.\nTant que le budget n'est pas épuisé, on peut déployer et innover ; une fois épuisé, on gèle les nouveautés et on stabilise."
+    },
+    {
+      "title": "Exemple résolu : promouvoir ou non une release",
       "conceptCodes": [
         "DISTRIBUTED-PROJECT"
       ],
-      "content": "Projet professionnel : plateforme multi-services observable relie les besoins, le logiciel, les données et l’exploitation. Commence par les contraintes observables, trace les responsabilités, puis choisis la solution la plus simple qui respecte les invariants."
+      "content": "Problème : une release 2.0 est en canary à 10 % du trafic. Trois services (gateway, orders, billing) ; billing est dégradé. Le SLO est 99,5 % sur 30 jours. Promouvoir ?\n\nRaisonnement, étape par étape :\n1. Budget d'erreur : 30 jours = 43 200 minutes ; 0,5 % donne 216 minutes d'indisponibilité tolérée.\n2. Budget consommé : par exemple 150 minutes déjà utilisées ; restant 66 minutes (31 %).\n3. Santé : tous les services doivent être « healthy » pour promouvoir ; un service dégradé bloque (STOP) et on nomme celui à traiter (billing).\n4. Vitesse de consommation (burn rate) : un burn rate de 1 consomme exactement le budget sur la période ; supérieur à 1 l'épuise avant. Une alerte « 14 × sur 1 h » signale une consommation rapide.\n5. Règle de promotion : GO si tous les services sont sains ET que le budget restant dépasse un seuil (par exemple 25 %) ET que le canary ne dégrade pas les indicateurs. Sinon STOP, avec la raison.\n6. Vérification : trois cas (tout sain budget confortable, service dégradé, budget faible) donnent GO, STOP (billing), STOP (budget).\n```python\nbudget_minutes = 30 * 24 * 60 * (1 - 0.995)        # 216\nremaining = budget_minutes - consumed\nunhealthy = [name for name, state in services.items() if state != \"healthy\"]\ndecision = \"GO\" if not unhealthy and remaining / budget_minutes >= 0.25 else \"STOP\"\n```"
     },
     {
-      "title": "Projet d’architecture",
-      "content": "La preuve ARCHITECTURE-23 modélise une décision réelle sous forme déterministe. Elle ne remplace pas un déploiement complet : elle rend l’hypothèse testable avant l’intégration Spring Boot, Angular, PostgreSQL et Docker."
+      "title": "La plateforme complète : le dossier",
+      "content": "Dossier d'un projet de plateforme multi-services observable :\n- Cartographie : services, responsabilités, dépendances, propriétaires, criticité, repli en cas de panne (réutilise les labos précédents).\n- Signaux : métriques RED par service, traces propagées par identifiant de corrélation, journaux structurés ; tableau de bord par SLO.\n- SLO par parcours utilisateur (commander, payer), pas seulement par service technique.\n- Politique de release : canary par paliers, critères de promotion et de retour arrière automatiques, gel quand le budget est épuisé.\n- Alertes : sur la consommation de budget (burn rate multi-fenêtres), pas sur chaque pic.\n- Gestion des incidents : rôles (commandant d'incident, communication), runbooks, post-mortem sans blâme, actions suivies.\n- Sécurité et conformité : frontières de confiance, secrets, journaux d'audit.\n- Coût : coût par requête, par service ; revue périodique.\n- Limites assumées : ce qui n'est pas surveillé, dépendances tierces sans SLO contractuel, hypothèses de charge.\n- Preuve : un scénario reproductible (jeu de données, sortie attendue) qui montre une décision de promotion, un retour arrière et un budget.\nUne plateforme crédible présente ses décisions de release avec des chiffres et ses incidents avec les actions correctives, pas une liste d'outils."
     },
     {
-      "title": "Revue professionnelle",
-      "content": "Documente le contexte, la décision, une option rejetée, les conséquences, le signal à surveiller et la condition qui imposerait de revoir le choix."
+      "title": "Erreurs fréquentes à reconnaître",
+      "content": "1. Un SLO de 100 % : impossible et paralysant.\n2. Des SLO sur des métriques techniques sans lien avec l'expérience utilisateur.\n3. Des alertes sur chaque dépassement de seuil au lieu de la consommation du budget.\n4. Promouvoir une release alors qu'un service est dégradé.\n5. Un budget d'erreur jamais utilisé pour décider (aucun gel, aucune priorisation de la fiabilité).\n6. Une documentation qui liste des outils sans décisions ni chiffres.\n\nRetrouve ces erreurs de mémoire avant l'exercice, puis vérifie-toi avec le quiz : c'est la récupération, pas la relecture, qui fixe la notion."
     }
   ],
   "keyConcepts": [
@@ -43,49 +48,97 @@
       "professionalExample": "Une nouvelle version du service facturation est déployée en canary sur 10 % du trafic ; l’observabilité mise en place dans les labs précédents détecte immédiatement un taux d’erreur anormal sur ce sous-ensemble de trafic et déclenche un rollback automatique avant que la majorité des clients ne soient impactés. Sans cette combinaison de frontières de service claires, d’événements traçables et de déploiement progressif, l’équipe aurait déployé à 100 % et découvert le problème via les tickets support du lendemain. Ce projet assemble modularité, messagerie, observabilité et déploiement progressif dans une seule plateforme livrable.",
       "codeExample": "canary = {\"version\": \"2.0\", \"traffic_percent\": 10, \"error_rate\": 0.08}\nthreshold = 0.02\n\nif canary[\"error_rate\"] > threshold:\n    print(\"Rollback automatique déclenché\")\nelse:\n    print(\"Promotion du canary à 50%\")",
       "commonMistake": "Choisir un outil avant d’identifier le besoin, la charge, le risque et le propriétaire de la donnée.",
-      "masteryQuestion": "Quel compromis, quel signal et quelle condition de réévaluation associes-tu à « Projet professionnel : plateforme multi-services observable » ?",
-      "masteryProof": "Exécuter la preuve, modifier une contrainte, expliquer le résultat et dessiner la place du composant dans la stack complète."
+      "masteryQuestion": "Qu'est-ce qu'un budget d'erreur et comment guide-t-il la décision de promouvoir une release ?",
+      "masteryProof": "Calculer un budget d'erreur à partir d'un SLO, agréger la santé de services et décider GO ou STOP avec la raison."
     }
   ],
   "exercises": [
     {
       "code": "ARCHITECTURE-23-E1",
-      "title": "Concevoir une plateforme avec frontières métier, événements, observabilité et déploiement progressif",
-      "statement": "Complète la preuve pour produire exactement la sortie attendue, puis explique la décision, une alternative et le signal de production qui validerait ton choix.",
-      "starterCode": "services = {\"gateway\": \"healthy\", \"orders\": \"healthy\", \"billing\": \"degraded\"}\nrelease = {\"version\": \"2.0\", \"traffic_percent\": 10}\n# TODO 1 : détermine si tous les services sont \"healthy\"\n# TODO 2 : affiche \"Canary: <pourcentage> %\"\n# TODO 3 : affiche \"Promotion: GO\" si tout est sain, \"Promotion: STOP\" sinon\n# TODO 4 : affiche \"Service à traiter: \" suivi du premier service qui n'est pas sain\n",
-      "expectedOutput": "Canary: 10 %\nPromotion: STOP\nService à traiter: billing"
+      "title": "Décider d'une promotion avec santé et budget d'erreur",
+      "statement": "Complète : le budget d'erreur en minutes pour un SLO de 99,5 % sur 30 jours, le budget restant en pourcentage, la liste des services non sains et la décision de promotion (tous sains ET au moins 25 % de budget restant), pour trois situations. Affiche exactement :\nBudget d'erreur: 216 minutes sur 30 jours\nTout va bien: consommé 80 min (restant 63%)\n  Promotion: GO - tous les services sont sains, budget restant 63%\nService dégradé: consommé 80 min (restant 63%)\n  Promotion: STOP - billing à traiter\nBudget faible: consommé 180 min (restant 17%)\n  Promotion: STOP - budget restant 17% sous 25%",
+      "starterCode": "SLO = 0.995\nDAYS = 30\nMIN_REMAINING = 0.25\nSITUATIONS = [\n    (\"Tout va bien\", {\"gateway\": \"healthy\", \"orders\": \"healthy\", \"billing\": \"healthy\"}, 80),\n    (\"Service dégradé\", {\"gateway\": \"healthy\", \"orders\": \"healthy\", \"billing\": \"degraded\"}, 80),\n    (\"Budget faible\", {\"gateway\": \"healthy\", \"orders\": \"healthy\", \"billing\": \"healthy\"}, 180),\n]\n\n\ndef budget_minutes() -> float:\n    # TODO 1 : minutes dans la période x (1 - SLO)   (DAYS x 24 x 60)\n    return 0.0\n\n\ndef decide(services: dict, consumed: float) -> tuple[str, str]:\n    # TODO 2 : retourne (\"STOP\", \"<services non sains séparés par ', '> à traiter\") s'il y a au moins un service non \"healthy\" ;\n    #          sinon (\"STOP\", \"budget restant <pourcentage>% sous <25>%\") si budget restant / budget < MIN_REMAINING ;\n    #          sinon (\"GO\", \"tous les services sont sains, budget restant <pourcentage>%\")   (pourcentage arrondi)\n    return \"\", \"\"\n\n\ntotal = budget_minutes()\nprint(f\"Budget d'erreur: {total:.0f} minutes sur {DAYS} jours\")\nfor label, services, consumed in SITUATIONS:\n    # TODO 3 : affiche \"<label>: consommé <consumed> min (restant <pourcentage restant arrondi>%)\" puis\n    #          \"  Promotion: <GO/STOP> - <raison>\"\n    pass\n",
+      "expectedOutput": "Budget d'erreur: 216 minutes sur 30 jours\nTout va bien: consommé 80 min (restant 63%)\n  Promotion: GO - tous les services sont sains, budget restant 63%\nService dégradé: consommé 80 min (restant 63%)\n  Promotion: STOP - billing à traiter\nBudget faible: consommé 180 min (restant 17%)\n  Promotion: STOP - budget restant 17% sous 25%"
     }
   ],
   "quiz": [
     {
       "code": "ARCHITECTURE-23-Q1",
       "type": "SINGLE_CHOICE",
-      "prompt": "Quelle démarche produit la décision la plus robuste ?",
+      "prompt": "Quel est le budget d'erreur d'un SLO de 99,5 % sur 30 jours (43 200 minutes) ?",
       "choices": [
-        "Relier contraintes, responsabilités, preuve et observabilité",
-        "Choisir la technologie la plus populaire",
-        "Ajouter des services avant de mesurer"
+        "43 minutes",
+        "216 minutes : 0,5 % de 43 200",
+        "2 160 minutes",
+        "0 minute"
       ],
-      "correctChoice": 0,
-      "expectedKeywords": []
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "100 % - 99,5 % = 0,5 % de la période. C'est la durée d'indisponibilité tolérée avant de manquer l'objectif."
     },
     {
       "code": "ARCHITECTURE-23-Q2",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Que doit faire une équipe dont le budget d'erreur de la période est épuisé ?",
+      "choices": [
+        "Continuer à déployer comme d'habitude",
+        "Geler les déploiements risqués et investir dans la fiabilité jusqu'au retour du budget",
+        "Supprimer l'objectif",
+        "Changer d'outil d'alerte"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Le budget d'erreur arbitre entre vitesse et fiabilité : épuisé, la priorité est de stabiliser."
+    },
+    {
+      "code": "ARCHITECTURE-23-Q3",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Prédis la décision : tous les services sont sains, budget consommé 180 minutes sur 216 (restant 17 %), seuil 25 % :",
+      "choices": [
+        "GO",
+        "STOP : le budget restant est sous le seuil",
+        "GO avec avertissement",
+        "Impossible à dire"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Même avec une plateforme saine, la marge pour absorber un incident lié à la release est trop faible. On attend le renouvellement du budget ou on réduit le risque."
+    },
+    {
+      "code": "ARCHITECTURE-23-Q4",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Trouve le défaut :\n« Notre SLO est de 100 % de disponibilité. »",
+      "choices": [
+        "Aucun",
+        "100 % est inatteignable et sans budget d'erreur : tout incident dépasse l'objectif, ce qui paralyse les déploiements et décourage la mesure honnête",
+        "100 % est trop facile",
+        "Il faut un SLO par minute"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Un bon SLO est ambitieux mais atteignable et laisse un budget d'erreur qu'on peut gérer."
+    },
+    {
+      "code": "ARCHITECTURE-23-Q5",
       "type": "FREE_TEXT",
-      "prompt": "Nomme un compromis et le signal qui permettrait de le réévaluer.",
+      "prompt": "Sans relire le cours, explique avec tes mots pourquoi on alerte sur la consommation du budget d'erreur plutôt que sur chaque pic d'erreurs.",
       "choices": [],
       "correctChoice": null,
       "expectedKeywords": [
-        "compromis",
-        "mesure",
-        "risque"
-      ]
+        "budget",
+        "consommation",
+        "impact",
+        "bruit",
+        "utilisateur"
+      ],
+      "modelAnswer": "Une alerte sur chaque pic produit beaucoup de bruit pour des événements sans conséquence sur l'objectif, et l'équipe finit par les ignorer. Une alerte sur la vitesse de consommation du budget (burn rate) se déclenche quand l'objectif est réellement menacé, c'est-à-dire quand l'impact sur les utilisateurs est assez fort ou durable pour épuiser le budget avant la fin de la période. Elle est donc rare, actionnable et liée à l'expérience utilisateur.",
+      "explanation": "Une bonne réponse oppose le bruit des seuils instantanés et l'alerte sur la vitesse de consommation du budget liée à l'impact utilisateur."
     }
   ],
   "checklist": [
-    "Je peux dessiner la circulation de la donnée",
-    "Je sais nommer les responsabilités de chaque couche",
-    "Je justifie une alternative rejetée",
-    "Je définis une mesure et une condition de réévaluation"
+    "Mes SLO reposent sur des parcours utilisateur et un budget d'erreur",
+    "Ma promotion de release dépend de la santé des services et du budget restant",
+    "Mes alertes suivent la consommation du budget",
+    "Ma documentation présente décisions chiffrées et incidents avec actions"
   ]
 }

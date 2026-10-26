@@ -11,21 +11,30 @@
     "PYTHON-17"
   ],
   "objectives": [
-    "Expliquer profilage, mémoire et optimisation mesurée",
-    "Construire une preuve exécutable et déterministe",
-    "Relier le concept à une décision professionnelle"
+    "Appliquer la démarche mesurer, trouver le goulot, corriger, remesurer.",
+    "Utiliser timeit, cProfile et tracemalloc pour chronométrer, profiler et mesurer la mémoire.",
+    "Comparer liste et générateur en consommation mémoire à résultat identique.",
+    "Repérer une optimisation prématurée, une mesure unique ou une micro-optimisation sans effet."
   ],
   "sections": [
     {
-      "title": "Concept et usage professionnel",
-      "content": "Profilage, mémoire et optimisation mesurée répond à un besoin concret de maintenabilité, de sûreté ou de performance. Le laboratoire demande de rendre la décision observable et vérifiable.",
-      "conceptCodes": [
-        "PYTHON-PERFORMANCE"
-      ]
+      "title": "Ne jamais optimiser sans mesure",
+      "content": "Optimiser sans mesurer, c'est deviner. La démarche :\n1. Fixer un objectif mesurable (traiter 1 million de lignes en moins de 5 s, rester sous 200 Mo).\n2. Mesurer l'état actuel.\n3. Trouver le goulot avec un profileur : une petite partie du code concentre l'essentiel du temps.\n4. Corriger un seul point à la fois.\n5. Mesurer de nouveau et garder le changement seulement s'il apporte un gain réel.\n\nLa loi d'Amdahl rappelle qu'accélérer 5 % du temps total ne donnera jamais plus de 5 % de gain. Le gain vient presque toujours d'un meilleur algorithme ou d'une structure de données adaptée, rarement d'une astuce syntaxique."
     },
     {
-      "title": "Mise en pratique",
-      "content": "La preuve minimale est locale, déterministe et peut être enrichie sans changer le contrat attendu."
+      "title": "Exemple résolu : liste ou générateur, qui consomme quoi ?",
+      "conceptCodes": [
+        "PYTHON-PERFORMANCE"
+      ],
+      "content": "Problème : calculer la somme des carrés de 0 à n. Une version construit la liste des carrés, l'autre utilise une expression génératrice. Comparer les résultats et la mémoire.\n\nRaisonnement, étape par étape :\n1. Version liste : sum([x * x for x in range(n)]) construit d'abord n entiers en mémoire.\n2. Version générateur : sum(x * x for x in range(n)) produit un carré à la fois ; la mémoire reste constante.\n3. Vérifier que les résultats sont identiques : sans cela, on compare deux calculs différents.\n4. Mesurer le pic mémoire avec tracemalloc : start(), exécuter, get_traced_memory() renvoie (courant, pic), stop().\n5. Comparer à un seuil large (pic liste supérieur à 500 Ko, pic générateur inférieur à 10 Ko) plutôt qu'à une valeur exacte, qui varierait selon la version de Python.\n```python\nimport tracemalloc\n\ndef pic_memoire(fonction, n):\n    tracemalloc.start()\n    resultat = fonction(n)\n    _, pic = tracemalloc.get_traced_memory()\n    tracemalloc.stop()\n    return resultat, pic\n```\nPour 100 000 éléments, la liste occupe plusieurs centaines de Ko à quelques Mo, le générateur quelques centaines d'octets."
+    },
+    {
+      "title": "Les outils et leurs usages",
+      "content": "- timeit : chronomètre un petit extrait en le répétant (python -m timeit \"sum(range(1000))\") ; prend la meilleure de plusieurs séries pour limiter le bruit.\n- cProfile : profil d'exécution, fonction par fonction (python -m cProfile -s cumtime script.py). Montre où va le temps ; ne devine rien.\n- tracemalloc : mémoire allouée par ligne de code, avec pics.\n- line_profiler, py-spy (profilage d'un processus qui tourne), memray : outils plus fins quand le goulot est trouvé.\n\nPièges de mesure : une seule exécution est trompeuse (cache, ramasse-miettes, machine occupée) ; mesure sur des données de taille réaliste ; mesure dans les mêmes conditions que la production ; ne chronomètre pas l'affichage ; compare la même opération. Ordres de gain à connaître : un meilleur algorithme (×100 à ×10000), la bonne structure de données (×10 à ×1000), un cache sur une fonction pure (variable), un langage compilé ou NumPy pour les calculs vectoriels (×10 à ×100), les astuces syntaxiques (quelques pourcents)."
+    },
+    {
+      "title": "Erreurs fréquentes à reconnaître",
+      "content": "1. Optimiser avant d'avoir mesuré.\n2. Se fier à une seule exécution.\n3. Charger un énorme jeu de données en liste quand un générateur suffit.\n4. Micro-optimiser une ligne qui pèse 1 % du temps.\n5. Conserver une optimisation sans vérifier que les résultats restent identiques.\n6. Mettre en cache une fonction non pure : résultats périmés.\n\nRetrouve ces erreurs de mémoire avant l'exercice, puis vérifie-toi avec le quiz : c'est la récupération, pas la relecture, qui fixe la notion."
     }
   ],
   "keyConcepts": [
@@ -39,8 +48,8 @@
       "professionalExample": "Une équipe soupçonnait qu'une fonction de transformation de données était le goulot d'étranglement d'un job nocturne, et l'a réécrite entièrement avant de mesurer quoi que ce soit ; le job est resté tout aussi lent. En profilant le code avec cProfile, l'équipe a découvert que la majorité du temps venait en réalité d'une conversion de type répétée dans une autre fonction, et a corrigé le vrai goulot d'étranglement au lieu de deviner.",
       "codeExample": "import cProfile\nimport pstats\n\ndef transform_batch(rows: list[dict]) -> list[dict]:\n    return [{\"id\": r[\"id\"], \"amount\": float(r[\"amount\"])} for r in rows]\n\nprofiler = cProfile.Profile()\nprofiler.enable()\ntransform_batch(large_dataset)\nprofiler.disable()\n\nstats = pstats.Stats(profiler).sort_stats(\"cumulative\")\nstats.print_stats(5)  # affiche les 5 fonctions les plus coûteuses, mesurées, pas devinées",
       "commonMistake": "Appliquer la technique sans mesurer son effet ni documenter sa frontière.",
-      "masteryQuestion": "Quelle contrainte de profilage, mémoire et optimisation mesurée doit rester vraie lorsque le système évolue ?",
-      "masteryProof": "Exécuter la preuve, expliquer son invariant et proposer un cas d’échec."
+      "masteryQuestion": "Pourquoi profiler avant d'optimiser, et pourquoi comparer les mémoires de la liste et du générateur à résultat identique ?",
+      "masteryProof": "Mesurer avec tracemalloc le pic mémoire d'une liste et d'un générateur, et vérifier que les résultats sont identiques."
     }
   ],
   "exercises": [
@@ -56,32 +65,80 @@
     {
       "code": "PYTHON-18-Q1",
       "type": "SINGLE_CHOICE",
-      "prompt": "Quelle preuve est la plus utile en revue ?",
+      "prompt": "Ton programme est lent. Quelle est la première étape ?",
       "choices": [
-        "Une exécution déterministe avec invariant explicite",
-        "Une sortie aléatoire",
-        "Une capture sans code"
+        "Réécrire en C",
+        "Mesurer et profiler pour trouver le vrai goulot",
+        "Remplacer toutes les boucles par des compréhensions",
+        "Ajouter des threads"
       ],
-      "correctChoice": 0,
-      "expectedKeywords": []
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Sans mesure, on optimise souvent la mauvaise partie. Un profileur montre quelle fonction concentre le temps : c'est elle qu'il faut améliorer, en général par un meilleur algorithme."
     },
     {
       "code": "PYTHON-18-Q2",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Prédis laquelle consomme le plus de mémoire pour n = 10 millions :\n```python\na = sum([x * x for x in range(n)])\nb = sum(x * x for x in range(n))\n```\n",
+      "choices": [
+        "Les deux autant",
+        "a : elle construit d'abord toute la liste en mémoire",
+        "b : le générateur",
+        "Impossible à dire"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "a crée une liste de 10 millions d'entiers (plusieurs centaines de Mo) avant de sommer. b produit un carré à la fois : mémoire constante. Les résultats sont identiques."
+    },
+    {
+      "code": "PYTHON-18-Q3",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Trouve le défaut de méthode : « J'ai chronométré mon optimisation une fois : 0,8 s contre 1,0 s avant, donc c'est 20 % plus rapide. »",
+      "choices": [
+        "Aucun",
+        "Une seule mesure est peu fiable (cache, ramasse-miettes, charge) : il faut répéter et comparer des séries",
+        "0,8 est toujours inférieur à 1,0",
+        "Les secondes ne suffisent pas"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Le bruit de mesure peut dépasser 20 %. On répète plusieurs fois, on prend le minimum ou la médiane (timeit.repeat) et on compare dans les mêmes conditions."
+    },
+    {
+      "code": "PYTHON-18-Q4",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Quelle optimisation a généralement le plus grand effet ?",
+      "choices": [
+        "Renommer les variables en une lettre",
+        "Remplacer un algorithme O(n²) par un algorithme O(n log n) ou O(n)",
+        "Supprimer les commentaires",
+        "Remplacer for par while"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Le changement de complexité domine les constantes dès que les données grossissent. Les astuces syntaxiques ne gagnent que quelques pourcents."
+    },
+    {
+      "code": "PYTHON-18-Q5",
       "type": "FREE_TEXT",
-      "prompt": "Explique une décision liée à profilage, mémoire et optimisation mesurée.",
+      "prompt": "Sans relire le cours, explique avec tes mots pourquoi on compare des seuils (pic liste > 500 Ko, pic générateur < 10 Ko) plutôt qu'une valeur mémoire exacte dans un test.",
       "choices": [],
       "correctChoice": null,
       "expectedKeywords": [
-        "contrat",
-        "preuve",
-        "test"
-      ]
+        "version",
+        "machine",
+        "seuil",
+        "exact",
+        "stable"
+      ],
+      "modelAnswer": "La consommation mémoire exacte dépend de la version de Python, de l'architecture et de détails d'implémentation : un test qui exige une valeur précise casserait sans raison. Un seuil large exprime la propriété qui compte (la liste est bien plus lourde que le générateur) et reste stable d'un environnement à l'autre.",
+      "explanation": "Une bonne réponse dit que la valeur exacte varie avec la version et la machine, et que le seuil teste la propriété utile de façon stable."
     }
   ],
   "checklist": [
-    "Je peux expliquer le concept sans réciter une définition",
-    "Je sais exécuter et modifier la preuve",
-    "Je peux nommer un risque et son contrôle",
-    "Je relie cette étape à la suivante"
+    "Je mesure avant d'optimiser et je répète mes mesures",
+    "Je sais utiliser timeit, cProfile et tracemalloc",
+    "J'utilise un générateur pour les flux volumineux",
+    "Je vérifie que l'optimisation conserve le même résultat"
   ]
 }

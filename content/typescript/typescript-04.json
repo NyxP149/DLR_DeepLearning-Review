@@ -11,21 +11,30 @@
     "TYPESCRIPT-03"
   ],
   "objectives": [
-    "Expliquer objets, interfaces et compatibilité structurelle",
-    "Construire une preuve exécutable et déterministe",
-    "Relier le concept à une décision professionnelle"
+    "Décrire un objet par une interface (propriétés optionnelles, readonly) et distinguer interface et type.",
+    "Prédire si une valeur est compatible avec une interface (compatibilité structurelle, propriétés excédentaires).",
+    "Éviter la confusion entre types de même forme avec un type « brandé ».",
+    "Repérer un contrôle de propriétés excédentaires contourné ou un objet partagé muté."
   ],
   "sections": [
     {
-      "title": "Concept et usage professionnel",
-      "content": "Objets, interfaces et compatibilité structurelle répond à un besoin concret de maintenabilité, de sûreté ou de performance. Le laboratoire demande de rendre la décision observable et vérifiable.",
-      "conceptCodes": [
-        "TYPESCRIPT-INTERFACES"
-      ]
+      "title": "Une interface décrit une forme",
+      "content": "Une interface décrit les propriétés qu'un objet doit avoir. Elle n'a pas de code et disparaît à la compilation.\n```ts\ninterface Contact {\n  readonly id: number;        // lecture seule (au niveau du type)\n  name: string;\n  email?: string;             // optionnelle : string | undefined\n}\n\nfunction label(contact: Contact): string {\n  return `${contact.name} <${contact.email ?? 'inconnu'}>`;\n}\n```\nUne propriété optionnelle vaut undefined si elle est absente ; l'utiliser demande de traiter ce cas (?? ou test). readonly interdit l'affectation dans le code TypeScript, mais n'existe pas à l'exécution. interface et type permettent presque les mêmes descriptions d'objets ; interface peut être étendue (extends) et fusionnée entre déclarations, type exprime aussi unions, tuples et types calculés. Choisis-en un et reste cohérent dans le projet."
     },
     {
-      "title": "Mise en pratique",
-      "content": "La preuve minimale est locale, déterministe et peut être enrichie sans changer le contrat attendu."
+      "title": "Exemple résolu : accepter tout ce qui a la bonne forme",
+      "conceptCodes": [
+        "TYPESCRIPT-INTERFACES"
+      ],
+      "content": "Problème : une fonction label accepte un Contact. Un objet littéral avec e-mail, un objet sans e-mail et une instance de classe Robot (sans e-mail) doivent tous passer.\n\nRaisonnement, étape par étape :\n1. Contact exige name: string ; email est optionnel.\n2. { name: 'Ada', email: '...' } a les deux propriétés : compatible.\n3. { name: 'Linus' } n'a pas d'e-mail : compatible, car email est optionnel.\n4. Une instance de Robot (name et model) a name: string : compatible, même si elle ne déclare pas implémenter Contact.\n5. Dans label, email vaut undefined pour les deux derniers : on le remplace par « inconnu » avec ??.\n6. Vérification : un objet sans name est refusé à la compilation.\n```ts\nconst ada = { name: 'Ada', email: 'ada@dlr.dev' };\nconst robot = new Robot('R2', 'astromech');\nlabel(ada);     // OK\nlabel(robot);   // OK : Robot a name: string\n```\nLe contrôle des propriétés excédentaires ne s'applique qu'à un littéral passé directement : label({ name: 'x', model: 'y' }) échoue, alors que label(robot) passe, car robot est une variable."
+    },
+    {
+      "title": "Pièges de la compatibilité structurelle",
+      "content": "- Propriétés excédentaires : un littéral direct est vérifié strictement (pour attraper les fautes de frappe), une variable ne l'est pas.\n- Identité confondue : UserId et OrderId, tous deux string, sont interchangeables. On les distingue par un type brandé : type UserId = string & { readonly __brand: 'UserId' }, créé par une fonction de construction qui valide.\n- Partage et mutation : un objet passé à plusieurs fonctions est une référence ; readonly n'empêche pas une autre référence de le modifier. Pour une vraie immuabilité, copie ou gèle.\n- Index signatures : { [clé: string]: number } accepte n'importe quelle clé ; avec noUncheckedIndexedAccess, la lecture donne number | undefined, ce qui est plus honnête.\n- Une interface décrit la forme, pas la validité : { age: number } accepte -5 ; la validité se vérifie à l'exécution.\n```ts\ntype UserId = string & { readonly __brand: 'UserId' };\nconst toUserId = (value: string): UserId => value as UserId;   // seul point de conversion, à valider\n```"
+    },
+    {
+      "title": "Erreurs fréquentes à reconnaître",
+      "content": "1. Croire qu'une interface vérifie les données à l'exécution.\n2. Contourner une erreur de propriété excédentaire en passant par une variable ou un cast.\n3. Mélanger deux identifiants de même type primitif.\n4. Rendre tout optionnel « pour que ça compile » : des états invalides deviennent possibles.\n5. Utiliser {} ou Object comme type : presque tout y est accepté.\n6. Modifier un objet reçu en paramètre alors que l'appelant le réutilise.\n\nRetrouve ces erreurs de mémoire avant l'exercice, puis vérifie-toi avec le quiz : c'est la récupération, pas la relecture, qui fixe la notion."
     }
   ],
   "keyConcepts": [
@@ -39,8 +48,8 @@
       "professionalExample": "Une équipe backend expose une interface OrderSummary consommée par deux couches indépendantes : le service de facturation et le service d'export analytique, écrits par des équipes différentes sans dépendance directe entre elles. Grâce à la compatibilité structurelle, chaque service peut construire son propre objet respectant la forme attendue sans implémenter explicitement l'interface, ce qui évite un couplage fort entre modules tout en gardant un contrat vérifié à la compilation.",
       "codeExample": "interface OrderSummary {\n  orderId: string;\n  totalCents: number;\n  currency: string;\n}\n\nfunction exportToAnalytics(order: OrderSummary): void {\n  console.log(`export: ${order.orderId} -> ${order.totalCents} ${order.currency}`);\n}\n\n// Aucun 'implements' nécessaire : la forme suffit.\nconst invoiceRow = {\n  orderId: 'ORD-2044',\n  totalCents: 15900,\n  currency: 'EUR',\n  internalNote: 'facturé le 12/03', // propriété en plus, toujours compatible\n};\n\nexportToAnalytics(invoiceRow);",
       "commonMistake": "Appliquer la technique sans mesurer son effet ni documenter sa frontière.",
-      "masteryQuestion": "Quelle contrainte de objets, interfaces et compatibilité structurelle doit rester vraie lorsque le système évolue ?",
-      "masteryProof": "Exécuter la preuve, expliquer son invariant et proposer un cas d’échec."
+      "masteryQuestion": "Pourquoi un objet sans déclaration d'implémentation peut-il satisfaire une interface, et que vérifie le contrôle des propriétés excédentaires ?",
+      "masteryProof": "Compléter une interface Contact avec un e-mail optionnel et une fonction label, puis l'appliquer à un littéral, un objet incomplet et une instance de classe."
     }
   ],
   "exercises": [
@@ -56,32 +65,80 @@
     {
       "code": "TYPESCRIPT-04-Q1",
       "type": "SINGLE_CHOICE",
-      "prompt": "Quelle preuve est la plus utile en revue ?",
+      "prompt": "Cet appel compile-t-il ?\n```ts\ninterface Contact { name: string; email?: string }\nfunction label(c: Contact) { return c.name; }\nlabel({ name: 'Ada', age: 36 });\n```\n",
       "choices": [
-        "Une exécution déterministe avec invariant explicite",
-        "Une sortie aléatoire",
-        "Une capture sans code"
+        "Oui",
+        "Non : le littéral passé directement a une propriété excédentaire (age) que Contact ne connaît pas",
+        "Oui, avec un avertissement",
+        "Non : email est obligatoire"
       ],
-      "correctChoice": 0,
-      "expectedKeywords": []
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "TypeScript vérifie strictement les littéraux d'objet passés directement, pour attraper les fautes de frappe. Si l'objet était d'abord stocké dans une variable, l'appel passerait."
     },
     {
       "code": "TYPESCRIPT-04-Q2",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Prédis la sortie :\n```ts\ninterface Contact { name: string; email?: string }\nconst linus: Contact = { name: 'Linus' };\nconsole.log(linus.email?.toUpperCase() ?? 'inconnu');\n```\n",
+      "choices": [
+        "undefined",
+        "inconnu",
+        "Une erreur d'exécution",
+        "LINUS"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "email est absent (undefined). ?. court-circuite sans erreur et renvoie undefined, puis ?? fournit la valeur par défaut « inconnu »."
+    },
+    {
+      "code": "TYPESCRIPT-04-Q3",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Trouve le risque :\n```ts\ntype UserId = string;\ntype OrderId = string;\nfunction cancel(order: OrderId) { ... }\ncancel(userId);\n```\n",
+      "choices": [
+        "Aucun, c'est valide",
+        "Les deux alias sont le même type string : le compilateur ne détecte pas qu'on passe un identifiant d'utilisateur à la place d'une commande",
+        "OrderId est un mot réservé",
+        "string ne peut pas être un alias"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Un alias n'est pas un nouveau type. Pour éviter la confusion, on utilise un type brandé (string & { __brand }) construit par une fonction de validation."
+    },
+    {
+      "code": "TYPESCRIPT-04-Q4",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Que garantit readonly sur une propriété d'interface ?",
+      "choices": [
+        "Que la propriété est gelée à l'exécution",
+        "Que le code TypeScript ne peut pas l'affecter ; rien n'est imposé à l'exécution",
+        "Que la propriété est privée",
+        "Que la propriété est optionnelle"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "readonly est une contrainte de compilation. Une autre référence typée sans readonly, ou du JavaScript, peut modifier la valeur. Pour geler vraiment, utilise Object.freeze (superficiel) ou copie."
+    },
+    {
+      "code": "TYPESCRIPT-04-Q5",
       "type": "FREE_TEXT",
-      "prompt": "Explique une décision liée à objets, interfaces et compatibilité structurelle.",
+      "prompt": "Sans relire le cours, explique avec tes mots pourquoi une classe peut satisfaire une interface sans la déclarer, et quel risque cela comporte.",
       "choices": [],
       "correctChoice": null,
       "expectedKeywords": [
-        "contrat",
-        "preuve",
-        "test"
-      ]
+        "forme",
+        "structurel",
+        "propriete",
+        "declar",
+        "confusion"
+      ],
+      "modelAnswer": "TypeScript compare les formes : une classe qui possède les propriétés et méthodes requises avec les bons types est compatible, sans mot-clé implements. Le risque est de confondre deux types de même forme mais de sens différent (deux identifiants string par exemple), ce qu'un typage nominal empêcherait ; on le compense par un type brandé.",
+      "explanation": "Une bonne réponse explique la compatibilité par la forme et cite la confusion possible de types de même forme."
     }
   ],
   "checklist": [
-    "Je peux expliquer le concept sans réciter une définition",
-    "Je sais exécuter et modifier la preuve",
-    "Je peux nommer un risque et son contrôle",
-    "Je relie cette étape à la suivante"
+    "Je décris une forme avec interface, propriétés optionnelles et readonly",
+    "Je sais pourquoi un littéral direct est contrôlé plus strictement qu'une variable",
+    "Je distingue des identifiants de même type primitif par un type brandé",
+    "Je sais que ces types ne valident rien à l'exécution"
   ]
 }

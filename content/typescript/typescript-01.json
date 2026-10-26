@@ -1,17 +1,142 @@
 {
-  "code": "TYPESCRIPT-01", "language": "TYPESCRIPT", "number": 1, "slug": "typescript-depuis-java",
-  "title": "TypeScript depuis Java : types et compilation", "difficulty": "BASE", "threshold": 70,
-  "activityType": "LAB", "prerequisites": [],
-  "objectives": ["Compiler TypeScript en JavaScript", "Comparer les types structurels aux types nominaux Java", "Écrire une fonction strictement typée"],
+  "code": "TYPESCRIPT-01",
+  "language": "TYPESCRIPT",
+  "number": 1,
+  "slug": "typescript-depuis-java",
+  "title": "TypeScript depuis Java : types et compilation",
+  "difficulty": "BASE",
+  "threshold": 70,
+  "activityType": "LAB",
+  "prerequisites": [],
+  "objectives": [
+    "Expliquer ce que fait tsc et pourquoi les types disparaissent après compilation.",
+    "Comparer typage structurel (TypeScript) et typage nominal (Java) et prédire si un objet est accepté.",
+    "Utiliser unknown plutôt que any et le réduire avec typeof.",
+    "Activer et lire les erreurs du mode strict."
+  ],
   "sections": [
-    {"title":"TypeScript avant JavaScript","content":"TypeScript vérifie le programme puis produit du JavaScript. Les types sont effacés : le navigateur ou Node.js exécute le JavaScript généré.","conceptCodes":["TYPESCRIPT-STRUCTURAL-TYPING"]},
-    {"title":"Comparer avec Java","content":"Java identifie principalement les types par leurs déclarations. TypeScript accepte souvent une valeur dès que sa structure contient les propriétés attendues."}
+    {
+      "title": "TypeScript vu depuis Java : un compilateur au-dessus de JavaScript",
+      "content": "TypeScript est du JavaScript auquel on ajoute des annotations de types. Le compilateur tsc vérifie les types, puis produit du JavaScript ordinaire : les annotations sont effacées. À l'exécution, il n'existe plus ni interface, ni type, ni generic : Node.js ou le navigateur n'exécutent que du JavaScript.\n```ts\nfunction double(value: number): number {   // number disparaît après compilation\n  return value * 2;\n}\n// JavaScript produit :  function double(value) { return value * 2; }\n```\nConséquence essentielle : un type TypeScript ne protège pas contre une donnée reçue au moment de l'exécution (JSON d'une API, saisie). La vérification a lieu à la compilation, pas à l'exécution. En Java, au contraire, le typage statique est aussi présent dans le bytecode et la JVM vérifie les casts."
+    },
+    {
+      "title": "Exemple résolu : une forme plutôt qu'un nom",
+      "conceptCodes": [
+        "TYPESCRIPT-STRUCTURAL-TYPING"
+      ],
+      "content": "Problème : une fonction doit saluer « n'importe quoi qui a un nom », qu'il vienne d'une classe, d'un robot ou d'un objet littéral.\n\nRaisonnement, étape par étape :\n1. Java demanderait une interface commune que chaque classe déclare implémenter (typage nominal).\n2. TypeScript regarde la forme : si l'objet possède une propriété name de type string, il convient à l'interface Named, sans déclaration (typage structurel).\n3. On écrit donc interface Named { name: string } et greet(entity: Named).\n4. Person, Robot et { name: 'Linus' } sont tous acceptés.\n5. Vérification : un objet sans name est refusé à la compilation.\n```ts\ninterface Named { name: string }\n\nclass Person { constructor(public name: string, public age: number) {} }\nclass Robot { name = 'R2'; model = 'astromech'; }\n\nfunction greet(entity: Named): string { return `Bonjour ${entity.name}`; }\n\ngreet(new Person('Ada', 36));   // OK\ngreet(new Robot());             // OK : même forme\ngreet({ name: 'Linus' });       // OK\n// greet({ nom: 'Linus' });     // erreur de compilation : name manque\n```\nLe typage structurel rend le code souple mais n'empêche pas de confondre deux types de même forme (un UserId et un OrderId qui sont tous deux des string)."
+    },
+    {
+      "title": "any, unknown et le mode strict",
+      "content": "any désactive la vérification : on peut tout faire, donc le compilateur n'aide plus. unknown dit « je ne sais pas encore ce que c'est » : il faut le réduire (narrowing) avant de l'utiliser.\n```ts\nfunction classify(value: unknown): string {\n  if (typeof value === 'number') return 'nombre';   // ici value est un number\n  if (typeof value === 'string') return 'texte';     // ici value est un string\n  return 'autre';\n}\n```\nActive toujours le mode strict (« strict »: true dans tsconfig.json), qui regroupe notamment strictNullChecks (null et undefined ne sont plus acceptés partout), noImplicitAny (pas de any implicite) et strictFunctionTypes. Sans lui, TypeScript laisse passer beaucoup d'erreurs.\n\nRappels JavaScript utiles pour un développeur Java : un seul type number (pas d'int), === compare sans conversion (== convertit), typeof null vaut \"object\" (bug historique), les chaînes se comparent avec === (pas equals), les objets sont des tables de propriétés."
+    },
+    {
+      "title": "Erreurs fréquentes à reconnaître",
+      "content": "1. Croire qu'un type TypeScript existe à l'exécution (instanceof sur une interface ne compile pas).\n2. Typer une réponse JSON avec as User : le compilateur se tait, rien n'est vérifié.\n3. Utiliser any pour « faire taire » le compilateur.\n4. Travailler sans le mode strict.\n5. Utiliser == au lieu de ===.\n6. Penser qu'une interface équivaut à une classe Java : elle n'a pas de code et disparaît à la compilation.\n\nRetrouve ces erreurs de mémoire avant l'exercice, puis vérifie-toi avec le quiz : c'est la récupération, pas la relecture, qui fixe la notion."
+    }
   ],
-  "keyConcepts": [{"code":"TYPESCRIPT-STRUCTURAL-TYPING","name":"Typage structurel","definition":"La compatibilité dépend de la forme d'une valeur plutôt que seulement du nom déclaré de son type.","whyExists":"Il s'adapte naturellement aux objets JavaScript et aux API web existantes.","whyImportant":"Il explique pourquoi deux interfaces distinctes peuvent être compatibles sans héritage explicite.","minimalExample":"type Named = { name: string }; const value = { name: 'DLR', version: 2 };","professionalExample":"Un service de paiement définit une interface PaymentMethod attendant { token: string; amount: number }. Un développeur réutilise par erreur un objet RefundRequest qui possède exactement ces deux champs (plus d'autres) : TypeScript l'accepte sans erreur car les types sont structurels, alors que le remboursement n'a jamais été validé métier comme un paiement. Ce genre de compatibilité involontaire est fréquent quand plusieurs DTO partagent une forme proche, et pousse les équipes à ajouter des propriétés discriminantes (comme un champ kind littéral) pour forcer une vérification plus stricte.","codeExample":"interface PaymentMethod {\n  token: string;\n  amount: number;\n}\n\ninterface RefundRequest {\n  token: string;\n  amount: number;\n}\n\nfunction charge(payment: PaymentMethod): void {\n  console.log(`Charging ${payment.amount} with token ${payment.token}`);\n}\n\nconst refund: RefundRequest = { token: 'tok_123', amount: 42 };\n\n// Compile sans erreur : les deux types ont la même forme,\n// mais un remboursement n'est pas un paiement.\ncharge(refund);\n\n// Fix : ajouter un discriminant littéral pour empêcher la confusion.\ninterface SafePaymentMethod {\n  kind: 'payment';\n  token: string;\n  amount: number;\n}","commonMistake":"Supposer que les types TypeScript existent encore pendant l'exécution JavaScript.","masteryQuestion":"Pourquoi un objet avec des propriétés supplémentaires peut-il satisfaire une interface TypeScript ?","masteryProof":"Compiler puis exécuter un exemple et identifier ce qui reste dans le JavaScript."}],
-  "exercises": [{"code":"TYPESCRIPT-01-E1","title":"Présenter TypeScript","statement":"Produis exactement : TypeScript: typage statique progressif","starterCode":"function describeLanguage(name: string): string {\n  // TODO : retourne la phrase \"<name>: typage statique progressif\"\n  return '';\n}\n\nconsole.log(describeLanguage('TypeScript'));\n","expectedOutput":"TypeScript: typage statique progressif"}],
+  "keyConcepts": [
+    {
+      "code": "TYPESCRIPT-STRUCTURAL-TYPING",
+      "name": "Typage structurel",
+      "definition": "La compatibilité dépend de la forme d'une valeur plutôt que seulement du nom déclaré de son type.",
+      "whyExists": "Il s'adapte naturellement aux objets JavaScript et aux API web existantes.",
+      "whyImportant": "Il explique pourquoi deux interfaces distinctes peuvent être compatibles sans héritage explicite.",
+      "minimalExample": "type Named = { name: string }; const value = { name: 'DLR', version: 2 };",
+      "professionalExample": "Un service de paiement définit une interface PaymentMethod attendant { token: string; amount: number }. Un développeur réutilise par erreur un objet RefundRequest qui possède exactement ces deux champs (plus d'autres) : TypeScript l'accepte sans erreur car les types sont structurels, alors que le remboursement n'a jamais été validé métier comme un paiement. Ce genre de compatibilité involontaire est fréquent quand plusieurs DTO partagent une forme proche, et pousse les équipes à ajouter des propriétés discriminantes (comme un champ kind littéral) pour forcer une vérification plus stricte.",
+      "codeExample": "interface PaymentMethod {\n  token: string;\n  amount: number;\n}\n\ninterface RefundRequest {\n  token: string;\n  amount: number;\n}\n\nfunction charge(payment: PaymentMethod): void {\n  console.log(`Charging ${payment.amount} with token ${payment.token}`);\n}\n\nconst refund: RefundRequest = { token: 'tok_123', amount: 42 };\n\n// Compile sans erreur : les deux types ont la même forme,\n// mais un remboursement n'est pas un paiement.\ncharge(refund);\n\n// Fix : ajouter un discriminant littéral pour empêcher la confusion.\ninterface SafePaymentMethod {\n  kind: 'payment';\n  token: string;\n  amount: number;\n}",
+      "commonMistake": "Supposer que les types TypeScript existent encore pendant l'exécution JavaScript.",
+      "masteryQuestion": "Que reste-t-il d'un type TypeScript à l'exécution, et pourquoi préférer unknown à any ?",
+      "masteryProof": "Écrire une fonction acceptant n'importe quelle forme avec un nom, et réduire un unknown par typeof."
+    }
+  ],
+  "exercises": [
+    {
+      "code": "TYPESCRIPT-01-E1",
+      "title": "Trois idées clés de TypeScript",
+      "statement": "Complète : describeLanguage, greet (typage structurel : classe, autre classe et objet littéral), et classify qui réduit un unknown avec typeof. Montre aussi qu'une annotation disparaît à l'exécution. Affiche exactement :\nTypeScript: typage statique progressif\nBonjour Ada | Bonjour R2 | Bonjour Linus\nType a l'execution: string\nunknown: nombre, texte, autre",
+      "starterCode": "interface Named {\n  name: string;\n}\n\nclass Person {\n  constructor(public name: string, public age: number) {}\n}\n\nclass Robot {\n  name = 'R2';\n  model = 'astromech';\n}\n\nfunction describeLanguage(name: string): string {\n  // TODO 1 : retourne \"<name>: typage statique progressif\"\n  return '';\n}\n\nfunction greet(entity: Named): string {\n  // TODO 2 : retourne \"Bonjour <nom>\"\n  return '';\n}\n\nfunction classify(value: unknown): string {\n  // TODO 3 : \"nombre\" si typeof est 'number', \"texte\" si 'string', sinon \"autre\" (réduction de unknown)\n  return '';\n}\n\nconsole.log(describeLanguage('TypeScript'));\nconsole.log([new Person('Ada', 36), new Robot(), { name: 'Linus' }].map(greet).join(' | '));\nconst typed: string = 'x';\n// TODO 4 : affiche \"Type a l'execution: \" suivi de typeof typed (l'annotation string a disparu, seule la valeur existe)\n// TODO 5 : affiche \"unknown: \" suivi de classify(42), classify('x'), classify(true) séparés par \", \"\n",
+      "expectedOutput": "TypeScript: typage statique progressif\nBonjour Ada | Bonjour R2 | Bonjour Linus\nType a l'execution: string\nunknown: nombre, texte, autre"
+    }
+  ],
   "quiz": [
-    {"code":"TYPESCRIPT-01-Q1","type":"SINGLE_CHOICE","prompt":"Que devient généralement une annotation TypeScript après compilation ?","choices":["Elle est effacée du JavaScript produit","Elle devient une classe Java","Elle est stockée dans PostgreSQL"],"correctChoice":0,"expectedKeywords":[]},
-    {"code":"TYPESCRIPT-01-Q2","type":"FREE_TEXT","prompt":"Explique la différence entre typage structurel TypeScript et typage Java.","choices":[],"correctChoice":null,"expectedKeywords":["structure","propriétés","déclaration"]}
+    {
+      "code": "TYPESCRIPT-01-Q1",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Que devient généralement une annotation de type TypeScript après compilation ?",
+      "choices": [
+        "Elle est conservée et vérifiée à l'exécution",
+        "Elle est effacée : le JavaScript produit ne contient plus aucun type",
+        "Elle est convertie en commentaire exécutable",
+        "Elle devient un contrôle instanceof"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "tsc vérifie puis supprime les annotations. À l'exécution, seules les valeurs existent. C'est pourquoi une réponse d'API doit être validée à l'exécution, et pas seulement typée."
+    },
+    {
+      "code": "TYPESCRIPT-01-Q2",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Prédis si cet appel compile :\n```ts\ninterface Named { name: string }\nclass Robot { name = 'R2'; model = 'astromech'; }\nfunction greet(e: Named) { return e.name; }\ngreet(new Robot());\n```\n",
+      "choices": [
+        "Non : Robot n'implémente pas Named",
+        "Oui : Robot possède une propriété name de type string, la forme est compatible",
+        "Non : Robot a une propriété en trop",
+        "Oui, mais seulement avec un cast"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "TypeScript compare les formes. Robot a au moins la propriété name: string, donc il est compatible avec Named sans déclaration. La propriété model en plus n'est pas gênante pour une variable (seul un objet littéral direct subit le contrôle des propriétés excédentaires)."
+    },
+    {
+      "code": "TYPESCRIPT-01-Q3",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Trouve le défaut :\n```ts\nconst user = JSON.parse(text) as User;\nconsole.log(user.name.toUpperCase());\n```\n",
+      "choices": [
+        "JSON.parse n'accepte pas de texte",
+        "as User ne vérifie rien à l'exécution : si le JSON n'a pas la bonne forme, l'erreur apparaîtra plus loin",
+        "toUpperCase n'existe pas",
+        "Il faut utiliser var"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "as est une affirmation faite au compilateur, pas une conversion ni une validation. Il faut valider la forme à l'exécution (type guard, schéma) avant d'utiliser la donnée."
+    },
+    {
+      "code": "TYPESCRIPT-01-Q4",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Pourquoi préférer unknown à any pour une valeur dont on ne connaît pas le type ?",
+      "choices": [
+        "unknown est plus rapide",
+        "unknown force à réduire le type (typeof, type guard) avant usage, alors que any désactive toute vérification",
+        "any est interdit par le langage",
+        "unknown accepte seulement les chaînes"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "any laisse tout passer sans contrôle. unknown garde la sécurité : on ne peut rien faire de la valeur tant qu'on n'a pas prouvé son type."
+    },
+    {
+      "code": "TYPESCRIPT-01-Q5",
+      "type": "FREE_TEXT",
+      "prompt": "Sans relire le cours, explique avec tes mots la différence entre typage structurel et typage nominal, avec un exemple.",
+      "choices": [],
+      "correctChoice": null,
+      "expectedKeywords": [
+        "forme",
+        "nom",
+        "interface",
+        "propriete",
+        "declar"
+      ],
+      "modelAnswer": "Avec le typage nominal (Java), un objet n'est accepté que si sa classe déclare implémenter l'interface. Avec le typage structurel (TypeScript), un objet est accepté dès que sa forme correspond, c'est-à-dire qu'il possède les propriétés et méthodes requises avec les bons types. Une classe Robot qui a une propriété name: string convient donc à une fonction qui attend une interface Named, sans déclaration.",
+      "explanation": "Une bonne réponse oppose déclaration explicite et forme, et donne un exemple de classe compatible sans l'avoir déclaré."
+    }
   ],
-  "checklist": ["Je sais compiler puis exécuter TypeScript", "Je comprends l'effacement des types", "Je peux expliquer la compatibilité structurelle"]
+  "checklist": [
+    "Je sais que les types sont effacés à l'exécution",
+    "Je prédis si une forme est compatible avec une interface",
+    "J'utilise unknown plutôt que any et je le réduis avant usage",
+    "J'ai activé le mode strict"
+  ]
 }

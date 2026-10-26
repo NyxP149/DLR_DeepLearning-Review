@@ -11,21 +11,30 @@
     "DEVOPS-03"
   ],
   "objectives": [
-    "Expliquer pipeline ci, cache et parallélisation",
-    "Construire une preuve exécutable et déterministe",
-    "Relier le concept à une décision professionnelle"
+    "Modéliser un pipeline CI comme un graphe de jobs et calculer son chemin critique.",
+    "Distinguer durée séquentielle et durée parallèle et identifier ce qui limite la durée totale.",
+    "Mesurer le gain d'un cache de dépendances et d'une parallélisation.",
+    "Repérer un cache mal clé, des jobs inutilement séquentiels ou un pipeline qui teste ce qu'il ne déploie pas."
   ],
   "sections": [
     {
-      "title": "Concept et usage professionnel",
-      "content": "Pipeline CI, cache et parallélisation répond à un besoin concret de maintenabilité, de sûreté ou de performance. Le laboratoire demande de rendre la décision observable et vérifiable.",
-      "conceptCodes": [
-        "DEVOPS-CI"
-      ]
+      "title": "Un pipeline est un graphe de dépendances",
+      "content": "Un pipeline d'intégration continue exécute des jobs (installer, compiler, tester, analyser, empaqueter). Certains dépendent d'autres (on ne teste pas avant d'avoir installé) ; ceux qui ne dépendent pas l'un de l'autre peuvent s'exécuter en parallèle. Ce graphe orienté sans cycle (DAG) détermine la durée totale.\n```yaml\njobs:\n  install: { ... }\n  lint:    { needs: install }\n  test:    { needs: install }\n  build:   { needs: install }\n  package: { needs: [build, test] }\n```\nDurée séquentielle : la somme de toutes les durées. Durée en parallèle : la longueur du chemin critique, c'est-à-dire du chemin de dépendances le plus long en temps. Accélérer un job qui n'est pas sur le chemin critique ne change pas la durée totale."
     },
     {
-      "title": "Mise en pratique",
-      "content": "La preuve minimale est locale, déterministe et peut être enrichie sans changer le contrat attendu."
+      "title": "Exemple résolu : le chemin critique et le cache",
+      "conceptCodes": [
+        "DEVOPS-CI"
+      ],
+      "content": "Problème : un pipeline a install (3 min), lint (2 min, après install), test (6 min, après install), build (4 min, après install) et package (3 min, après build et test). Calculer les durées et mesurer le gain d'un cache.\n\nRaisonnement, étape par étape :\n1. Séquentiel : on additionne toutes les durées : 3 + 2 + 6 + 4 + 3 = 18 minutes.\n2. Parallèle : pour chaque job, fin = durée du job + max(fin de ses dépendances) (0 s'il n'en a pas). install finit à 3, lint à 5, test à 9, build à 7, package à 3 + max(7, 9) = 12. La durée totale est la plus grande fin : 12 minutes.\n3. Chemin critique : on remonte depuis le job qui finit le dernier en suivant, à chaque étape, la dépendance qui finit le plus tard. package attend test (9) plutôt que build (7), d'où install → test → package.\n4. Accélérer lint ou build (hors chemin critique) ne change rien ; accélérer install, test ou package raccourcit tout.\n5. Cache des dépendances : si l'installation passe de 3 à 1 minute, le chemin critique perd 2 minutes : 12 → 10 minutes.\n6. Vérification : 18 min en séquence, 12 min en parallèle, 10 min avec cache.\n```python\ndef finish(job, jobs, memo):\n    if job not in memo:\n        duree, deps = jobs[job]\n        memo[job] = duree + max((finish(d, jobs, memo) for d in deps), default=0)\n    return memo[job]\n\nduree_parallele = max(finish(j, jobs, {}) for j in jobs)\n```"
+    },
+    {
+      "title": "Cache, parallélisme et fiabilité",
+      "content": "Cache des dépendances : la clé de cache doit refléter ce qui détermine le contenu, par exemple le hachage du fichier de verrou (hashFiles('package-lock.json')). Une clé trop large sert un cache périmé ; trop étroite ne sert jamais. Prévois une clé de repli et une invalidation. Cache aussi les artefacts de build (Docker layers, Gradle, Maven).\n\nParallélisation : sépare les jobs indépendants ; découpe une longue suite de tests en lots (sharding) ; une matrice teste plusieurs versions du runtime en parallèle ; mais chaque job paie son démarrage et son installation : trop de petits jobs peuvent coûter plus qu'ils ne font gagner.\n\nÉchouer vite : place les contrôles rapides et fréquents en premier (format, lint, compilation, tests unitaires) ; les tests lents (intégration, bout en bout) après. Annule les exécutions obsolètes d'une même branche (concurrency).\n\nFiabilité : un test instable (flaky) détruit la confiance : mets-le en quarantaine puis corrige-le. Construis l'artefact une fois et promeus le même artefact vers les environnements (ne reconstruis pas pour la production). Épingle les actions et images utilisées par le pipeline. Les secrets de la CI sont limités aux jobs qui en ont besoin et jamais exposés aux pull requests de forks.\n\nMesure : suis la durée du pipeline et sa variabilité ; un pipeline de plus de 10 minutes finit par être contourné."
+    },
+    {
+      "title": "Erreurs fréquentes à reconnaître",
+      "content": "1. Optimiser un job hors du chemin critique.\n2. Une clé de cache fixe qui ne change jamais : cache périmé.\n3. Tout en séquence alors que les jobs sont indépendants.\n4. Reconstruire l'artefact pour chaque environnement : on déploie autre chose que ce qu'on a testé.\n5. Un test instable ignoré en relançant jusqu'au vert.\n6. Exposer les secrets de la CI à des pull requests venant de forks.\n\nRetrouve ces erreurs de mémoire avant l'exercice, puis vérifie-toi avec le quiz : c'est la récupération, pas la relecture, qui fixe la notion."
     }
   ],
   "keyConcepts": [
@@ -39,8 +48,8 @@
       "professionalExample": "Le pipeline CI d'une équipe met 14 minutes à s'exécuter car chaque job réinstalle les dépendances et les étapes de lint, tests unitaires et build de l'image tournent l'une après l'autre. En mettant en cache le dossier de dépendances entre les runs et en exécutant lint et tests en parallèle plutôt qu'en séquence, le temps de retour tombe à 4 minutes, ce qui change concrètement la vitesse à laquelle l'équipe peut itérer sur une pull request. La contrainte à respecter est que la clé de cache dépende du fichier de verrouillage des dépendances, sinon un cache périmé masque une dépendance réellement modifiée.",
       "codeExample": "jobs:\n  lint:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v4\n      - uses: actions/cache@v4\n        with:\n          path: ~/.cache/pip\n          key: pip-${{ hashFiles('requirements.txt') }}\n      - run: pip install -r requirements.txt && flake8 .\n\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v4\n      - uses: actions/cache@v4\n        with:\n          path: ~/.cache/pip\n          key: pip-${{ hashFiles('requirements.txt') }}\n      - run: pip install -r requirements.txt && pytest -q\n\n  build:\n    needs: [lint, test]\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v4\n      - run: docker build -t myapp:${{ github.sha }} .",
       "commonMistake": "Appliquer la technique sans mesurer son effet ni documenter sa frontière.",
-      "masteryQuestion": "Quelle contrainte de pipeline ci, cache et parallélisation doit rester vraie lorsque le système évolue ?",
-      "masteryProof": "Exécuter la preuve, expliquer son invariant et proposer un cas d’échec."
+      "masteryQuestion": "Qu'est-ce que le chemin critique d'un pipeline, et pourquoi accélérer un job hors de ce chemin est-il sans effet sur la durée totale ?",
+      "masteryProof": "Calculer la durée séquentielle, la durée parallèle, le chemin critique d'un pipeline et le gain d'un cache de dépendances."
     }
   ],
   "exercises": [
@@ -56,32 +65,80 @@
     {
       "code": "DEVOPS-04-Q1",
       "type": "SINGLE_CHOICE",
-      "prompt": "Quelle preuve est la plus utile en revue ?",
+      "prompt": "Un pipeline : install (3 min) puis lint (2) et test (5) en parallèle, puis package (4) après les deux. Quelle est la durée en parallèle ?",
       "choices": [
-        "Une exécution déterministe avec invariant explicite",
-        "Une sortie aléatoire",
-        "Une capture sans code"
+        "14 min",
+        "12 min : install 3 + test 5 + package 4",
+        "9 min",
+        "5 min"
       ],
-      "correctChoice": 0,
-      "expectedKeywords": []
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Chemin critique : install (3) puis test (5, plus long que lint) puis package (4) = 12 minutes. En séquence : 3 + 2 + 5 + 4 = 14 minutes."
     },
     {
       "code": "DEVOPS-04-Q2",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Dans le pipeline précédent, accélérer lint de 2 à 1 minute change-t-il la durée totale ?",
+      "choices": [
+        "Oui, de 1 minute",
+        "Non : lint n'est pas sur le chemin critique, test reste plus long",
+        "Oui, de 2 minutes",
+        "Cela l'augmente"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "package attend que lint ET test soient finis. test (5 min) finit après lint (2 min) : gagner du temps sur lint ne raccourcit pas l'attente."
+    },
+    {
+      "code": "DEVOPS-04-Q3",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Trouve le défaut :\n```yaml\n- uses: actions/cache@v4\n  with:\n    path: ~/.npm\n    key: npm-cache\n```\n",
+      "choices": [
+        "path est faux",
+        "La clé est fixe : le cache n'est jamais mis à jour quand les dépendances changent ; elle doit inclure le hachage du fichier de verrou",
+        "actions/cache est interdit",
+        "Il manque restore-keys"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Une clé de cache doit changer quand le contenu à mettre en cache change : npm-${{ hashFiles('package-lock.json') }}. Sinon on réutilise des dépendances périmées."
+    },
+    {
+      "code": "DEVOPS-04-Q4",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Pourquoi construire l'artefact une seule fois et le promouvoir d'un environnement à l'autre ?",
+      "choices": [
+        "Pour économiser de l'espace",
+        "Pour déployer exactement ce qui a été testé : une reconstruction peut produire un résultat différent",
+        "Parce que la CI le force",
+        "Pour accélérer les tests"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Reconstruire pour la production introduit des différences possibles (dépendances, variables). Promouvoir le même artefact assure que la production exécute ce qui a passé les tests."
+    },
+    {
+      "code": "DEVOPS-04-Q5",
       "type": "FREE_TEXT",
-      "prompt": "Explique une décision liée à pipeline ci, cache et parallélisation.",
+      "prompt": "Sans relire le cours, explique avec tes mots comment tu raccourcis un pipeline CI lent, dans quel ordre tu agis et ce que tu vérifies.",
       "choices": [],
       "correctChoice": null,
       "expectedKeywords": [
-        "contrat",
-        "preuve",
-        "test"
-      ]
+        "mesure",
+        "chemin critique",
+        "cache",
+        "parallel",
+        "echouer vite"
+      ],
+      "modelAnswer": "Je mesure d'abord la durée de chaque job pour trouver le chemin critique, puisque seul ce qui s'y trouve raccourcit la durée totale. J'agis ensuite sur ces jobs : cache des dépendances avec une clé fondée sur le fichier de verrou, parallélisation des jobs indépendants, découpage des tests lents, contrôles rapides en premier pour échouer vite. Je vérifie la durée avant et après et que les résultats restent fiables (pas de test instable ni de cache périmé).",
+      "explanation": "Une bonne réponse commence par mesurer, vise le chemin critique, cite cache et parallélisation, et vérifie le gain et la fiabilité."
     }
   ],
   "checklist": [
-    "Je peux expliquer le concept sans réciter une définition",
-    "Je sais exécuter et modifier la preuve",
-    "Je peux nommer un risque et son contrôle",
-    "Je relie cette étape à la suivante"
+    "Je connais le chemin critique de mon pipeline",
+    "Ma clé de cache dépend du fichier de verrou",
+    "Mes contrôles rapides passent en premier pour échouer vite",
+    "Je déploie l'artefact qui a été testé"
   ]
 }

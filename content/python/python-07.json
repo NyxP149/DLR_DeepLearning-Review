@@ -11,21 +11,30 @@
     "PYTHON-06"
   ],
   "objectives": [
-    "Expliquer modules, imports et organisation en paquets",
-    "Construire une preuve exécutable et déterministe",
-    "Relier le concept à une décision professionnelle"
+    "Distinguer module, paquet et espace de noms et organiser un projet en paquets cohérents.",
+    "Choisir entre import absolu et import relatif et définir l'API publique avec __all__.",
+    "Expliquer if __name__ == \"__main__\" et pourquoi un import ne doit pas avoir d'effet de bord.",
+    "Repérer un import circulaire, un import étoile ou un conflit de nom."
   ],
   "sections": [
     {
-      "title": "Concept et usage professionnel",
-      "content": "Modules, imports et organisation en paquets répond à un besoin concret de maintenabilité, de sûreté ou de performance. Le laboratoire demande de rendre la décision observable et vérifiable.",
-      "conceptCodes": [
-        "PYTHON-MODULES"
-      ]
+      "title": "Un fichier est un module, un dossier est un paquet",
+      "content": "Un module est un fichier .py ; un paquet est un dossier qui contient des modules (traditionnellement avec un fichier __init__.py). import shop.text charge le module shop/text.py ; Python le range dans sys.modules et ne le réexécute plus : un module est un singleton par processus.\n\nLe code au niveau du module s'exécute une seule fois, à la première importation. Un import ne doit donc pas lire un fichier, ouvrir une connexion ou démarrer un serveur : ces effets de bord surprennent les tests et les outils. Mets la logique dans des fonctions et appelle-la explicitement.\n```python\n# shop/__init__.py\nfrom .text import slugify\n__all__ = [\"slugify\"]          # l'API publique du paquet\n\n# main.py\nif __name__ == \"__main__\":     # vrai seulement quand on lance ce fichier directement\n    main()\n```"
     },
     {
-      "title": "Mise en pratique",
-      "content": "La preuve minimale est locale, déterministe et peut être enrichie sans changer le contrat attendu."
+      "title": "Exemple résolu : un petit paquet avec une API publique",
+      "conceptCodes": [
+        "PYTHON-MODULES"
+      ],
+      "content": "Problème : créer un paquet shop avec une fonction slugify, importable simplement par ses utilisateurs.\n\nRaisonnement, étape par étape :\n1. Créer le dossier shop/ et le module shop/text.py qui contient slugify.\n2. Dans shop/__init__.py, ré-exporter avec un import relatif : from .text import slugify.\n3. Déclarer __all__ = [\"slugify\"] : c'est le contrat public, ce que from shop import * exposerait.\n4. Les utilisateurs écrivent from shop import slugify, sans connaître l'organisation interne.\n5. Vérification : slugify.__module__ vaut \"shop.text\" (le module d'origine) alors que le nom est accessible depuis \"shop\".\n```python\n# shop/text.py\ndef slugify(value: str) -> str:\n    return value.strip().lower().replace(\" \", \"-\")\n\n# shop/__init__.py\nfrom .text import slugify\n__all__ = [\"slugify\"]\n```\nImporter par le paquet plutôt que par le fichier interne permet de réorganiser les modules plus tard sans casser les utilisateurs. importlib.import_module(\"shop\") importe un module à partir de son nom, utile pour des extensions chargées dynamiquement."
+    },
+    {
+      "title": "Imports absolus, relatifs et circulaires",
+      "content": "Import absolu (from shop.text import slugify) : explicite, indépendant de l'emplacement du fichier, recommandé par défaut. Import relatif (from .text import slugify, from ..core import x) : pratique à l'intérieur d'un paquet, mais ne fonctionne pas dans un script lancé directement.\n\nImport circulaire : a.py importe b.py qui importe a.py. Selon l'ordre, l'un des deux trouve un module à moitié initialisé et lève ImportError ou AttributeError. Remèdes : extraire ce qui est commun dans un troisième module, importer dans la fonction qui en a besoin (dernier recours), ou revoir la dépendance (un seul sens).\n\nAutres règles : évite from module import * (pollue l'espace de noms et masque l'origine des noms) ; ne nomme pas un fichier comme un module standard (json.py, random.py) : il masquerait le vrai ; structure un projet en layout src/ pour que les tests importent le paquet installé et pas le dossier courant."
+    },
+    {
+      "title": "Erreurs fréquentes à reconnaître",
+      "content": "1. Un import qui exécute du travail (connexion, lecture de fichier, appel réseau).\n2. from module import * dans du code de production.\n3. Deux modules qui s'importent mutuellement.\n4. Un fichier json.py ou random.py local qui masque la bibliothèque standard.\n5. Un import relatif dans un script lancé avec python script.py.\n6. Pas de __all__ ni de convention : n'importe quel nom interne devient une API que d'autres utilisent.\n\nRetrouve ces erreurs de mémoire avant l'exercice, puis vérifie-toi avec le quiz : c'est la récupération, pas la relecture, qui fixe la notion."
     }
   ],
   "keyConcepts": [
@@ -39,8 +48,8 @@
       "professionalExample": "Une équipe a découvert qu'un module utils.py fourre-tout contenait à la fois des fonctions de validation, d'accès réseau et de formatage, si bien que tester une simple fonction de formatage importait indirectement une bibliothèque HTTP lourde et ralentissait toute la suite de tests. En réorganisant le code en paquets (validation/, http_client/, formatting/) avec des imports explicites, chaque module a pu être testé isolément et les imports circulaires révélés par cette découpe ont été corrigés avant qu'ils ne cassent le déploiement.",
       "codeExample": "# billing/__init__.py\nfrom .invoices import build_invoice\nfrom .payments import charge_customer\n\n__all__ = [\"build_invoice\", \"charge_customer\"]\n\n# billing/invoices.py\nfrom .payments import PaymentError  # import relatif explicite au sein du paquet\n\ndef build_invoice(order_id: str, amount: float) -> dict:\n    if amount <= 0:\n        raise PaymentError(f\"Montant invalide pour la commande {order_id}\")\n    return {\"order_id\": order_id, \"amount\": amount}\n\n# ailleurs dans le service\nfrom billing import build_invoice",
       "commonMistake": "Appliquer la technique sans mesurer son effet ni documenter sa frontière.",
-      "masteryQuestion": "Quelle contrainte de modules, imports et organisation en paquets doit rester vraie lorsque le système évolue ?",
-      "masteryProof": "Exécuter la preuve, expliquer son invariant et proposer un cas d’échec."
+      "masteryQuestion": "Pourquoi un import ne doit-il pas avoir d'effet de bord, et à quoi sert __all__ ?",
+      "masteryProof": "Créer un paquet sur disque, l'importer avec importlib et prouver son nom, ses exports et le module d'origine de la fonction."
     }
   ],
   "exercises": [
@@ -56,32 +65,80 @@
     {
       "code": "PYTHON-07-Q1",
       "type": "SINGLE_CHOICE",
-      "prompt": "Quelle preuve est la plus utile en revue ?",
+      "prompt": "Que se passe-t-il si un module est importé deux fois dans le même processus ?",
       "choices": [
-        "Une exécution déterministe avec invariant explicite",
-        "Une sortie aléatoire",
-        "Une capture sans code"
+        "Il est exécuté deux fois",
+        "Il n'est exécuté qu'une fois ; l'import suivant récupère l'objet module déjà présent dans sys.modules",
+        "Une erreur est levée",
+        "Le second import est ignoré avec un avertissement"
       ],
-      "correctChoice": 0,
-      "expectedKeywords": []
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Python met en cache les modules dans sys.modules : le code de niveau module n'est exécuté qu'à la première importation. C'est aussi pourquoi les effets de bord à l'import sont dangereux : ils ne se produisent qu'une fois, au moment imprévisible du premier import."
     },
     {
       "code": "PYTHON-07-Q2",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Prédis le résultat de la dernière ligne :\n```python\n# shop/text.py : def slugify(v): ...\n# shop/__init__.py :\nfrom .text import slugify\n__all__ = [\"slugify\"]\n# ailleurs :\nfrom shop import slugify\nprint(slugify.__module__)\n```\n",
+      "choices": [
+        "shop",
+        "shop.text",
+        "__main__",
+        "text"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "__module__ indique le module où la fonction a été définie, pas celui par lequel on l'importe. La fonction a été écrite dans shop/text.py, donc shop.text, même si le paquet la ré-exporte."
+    },
+    {
+      "code": "PYTHON-07-Q3",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Trouve le défaut : un fichier du projet s'appelle json.py et contient des fonctions utilitaires. Qu'arrive-t-il à import json dans le même dossier ?",
+      "choices": [
+        "Rien de spécial",
+        "Il peut importer ton json.py à la place de la bibliothèque standard, et casser le code qui en dépend",
+        "Python refuse de démarrer",
+        "Les deux modules sont fusionnés"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Le répertoire courant précède la bibliothèque standard dans sys.path : ton fichier masque le vrai module. Évite de nommer un fichier comme un module standard."
+    },
+    {
+      "code": "PYTHON-07-Q4",
+      "type": "SINGLE_CHOICE",
+      "prompt": "a.py fait « from b import f » et b.py fait « from a import g » au niveau module. Quel est le risque ?",
+      "choices": [
+        "Aucun",
+        "Un import circulaire : l'un des modules est vu à moitié initialisé, d'où ImportError ou AttributeError selon l'ordre",
+        "Les fonctions f et g sont fusionnées",
+        "Les deux fichiers sont supprimés"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Chaque module a besoin que l'autre soit complètement exécuté. La solution propre est d'extraire le code commun dans un troisième module afin que la dépendance n'aille que dans un sens."
+    },
+    {
+      "code": "PYTHON-07-Q5",
       "type": "FREE_TEXT",
-      "prompt": "Explique une décision liée à modules, imports et organisation en paquets.",
+      "prompt": "Sans relire le cours, explique avec tes mots la différence entre module et paquet, et le rôle de __all__.",
       "choices": [],
       "correctChoice": null,
       "expectedKeywords": [
-        "contrat",
-        "preuve",
-        "test"
-      ]
+        "module",
+        "paquet",
+        "fichier",
+        "dossier",
+        "__all__"
+      ],
+      "modelAnswer": "Un module est un fichier .py ; un paquet est un dossier qui regroupe des modules (avec un __init__.py). __all__ liste les noms qui constituent l'API publique d'un module ou d'un paquet : c'est ce qu'expose un import étoile et ce que les utilisateurs peuvent considérer comme stable, le reste étant interne.",
+      "explanation": "Une bonne réponse distingue fichier et dossier de modules et décrit __all__ comme le contrat public."
     }
   ],
   "checklist": [
-    "Je peux expliquer le concept sans réciter une définition",
-    "Je sais exécuter et modifier la preuve",
-    "Je peux nommer un risque et son contrôle",
-    "Je relie cette étape à la suivante"
+    "Je sais organiser un projet en paquets avec une API publique",
+    "Mes imports n'ont aucun effet de bord",
+    "Je repère un import circulaire et je sais le casser",
+    "Je n'utilise pas d'import étoile en production"
   ]
 }

@@ -11,25 +11,30 @@
     "ARCHITECTURE-03"
   ],
   "objectives": [
-    "Comparer des stacks selon les contraintes plutôt que selon les préférences",
-    "Justifier les compromis et nommer un risque opérationnel",
-    "Produire une preuve reproductible avant d’élargir la solution"
+    "Choisir une technologie avec une matrice de décision : critères, poids, contraintes éliminatoires, score.",
+    "Tester la sensibilité du choix aux poids et aux notes.",
+    "Séparer contraintes dures (filtres) et préférences (score).",
+    "Documenter la décision et ses conditions de réévaluation."
   ],
   "sections": [
     {
-      "title": "Concept clé et décision",
+      "title": "Décider de façon explicite",
+      "content": "Choisir une stack (langage, framework, base) sur le seul goût de l'équipe ou la dernière tendance est risqué. Une matrice de décision rend le raisonnement visible : critères pertinents (maîtrise de l'équipe, vitesse de développement, coût d'exploitation, écosystème, performance, sécurité), poids selon les priorités du projet, note de chaque option par critère.\n```\nscore(option) = somme(note(option, critère) × poids(critère))\n```\nLa matrice ne décide pas à ta place : elle expose les hypothèses. Le plus utile est la discussion sur les poids et les notes."
+    },
+    {
+      "title": "Exemple résolu : deux stacks, trois critères, une contrainte",
       "conceptCodes": [
         "STACK-DECISION"
       ],
-      "content": "Choisir une stack verticale avec une matrice de décision relie les besoins, le logiciel, les données et l’exploitation. Commence par les contraintes observables, trace les responsabilités, puis choisis la solution la plus simple qui respecte les invariants."
+      "content": "Problème : choisir entre Spring-Angular et FastAPI-TypeScript selon la maîtrise de l'équipe, la vitesse de développement et la facilité d'exploitation, avec une contrainte éliminatoire.\n\nRaisonnement, étape par étape :\n1. Contrainte dure : l'équipe doit avoir au moins 3/5 de maîtrise sinon l'option est écartée (on ne parie pas une livraison sur une techno inconnue). Elle filtre avant le score.\n2. Poids : maîtrise 2, vitesse 1, exploitation 2.\n3. Spring-Angular : 5×2 + 3×1 + 4×2 = 21. FastAPI-TypeScript : 3×2 + 5×1 + 3×2 = 17.\n4. Classement : Spring-Angular (21) puis FastAPI-TypeScript (17).\n5. Sensibilité : que faut-il changer pour inverser le résultat ? Si la vitesse pesait 5 au lieu de 1 : Spring 5×2+3×5+4×2 = 33, FastAPI 3×2+5×5+3×2 = 37 : le choix s'inverse. Le résultat dépend donc des priorités.\n6. Décision documentée : option retenue, scores, poids, hypothèses et conditions de réévaluation.\n```python\ndef score(notes, weights):\n    return sum(notes[c] * w for c, w in weights.items())\n\ndef eligible(notes, minimums):\n    return all(notes[c] >= m for c, m in minimums.items())\n```"
     },
     {
-      "title": "Construction verticale",
-      "content": "La preuve ARCHITECTURE-04 modélise une décision réelle sous forme déterministe. Elle ne remplace pas un déploiement complet : elle rend l’hypothèse testable avant l’intégration Spring Boot, Angular, PostgreSQL et Docker."
+      "title": "Pièges de la décision multicritère",
+      "content": "- Poids choisis après coup pour justifier un favori. Fixe les poids avant de noter les options.\n- Critères redondants qui comptent deux fois la même chose (rapidité de développement et productivité).\n- Notes subjectives sans preuve : appuie-les sur des faits (prototype, benchmark, retours d'équipe, coûts).\n- Écart de score faible interprété comme une victoire nette : de petits écarts sont dans l'incertitude ; examine les critères décisifs.\n- Oublier le coût de sortie (verrouillage) et le coût caché : recrutement, formation, support, évolution des licences.\n- Ne pas considérer l'option « ne rien changer » ni l'option hybride.\n- Une matrice unique pour des décisions réversibles et irréversibles : dépense plus d'effort pour ce qui est difficile à défaire.\n- Absence de trace : un registre des décisions d'architecture (ADR) garde contexte, options, décision, conséquences.\n\nRéévaluer : une décision est valable sous des hypothèses (taille d'équipe, charge, budget). Note les conditions qui la remettent en cause."
     },
     {
-      "title": "Revue professionnelle",
-      "content": "Documente le contexte, la décision, une option rejetée, les conséquences, le signal à surveiller et la condition qui imposerait de revoir le choix."
+      "title": "Erreurs fréquentes à reconnaître",
+      "content": "1. Choisir une technologie par mode ou habitude sans critères écrits.\n2. Mélanger contrainte dure et préférence dans un même score.\n3. Régler les poids pour obtenir le gagnant souhaité.\n4. Ne pas tester la sensibilité du résultat.\n5. Documenter le choix sans ses hypothèses ni sa condition de réévaluation.\n6. Ignorer le coût d'exploitation et de sortie.\n\nRetrouve ces erreurs de mémoire avant l'exercice, puis vérifie-toi avec le quiz : c'est la récupération, pas la relecture, qui fixe la notion."
     }
   ],
   "keyConcepts": [
@@ -43,49 +48,97 @@
       "professionalExample": "Une startup de cinq développeurs hésite entre Spring Boot/Angular, déjà maîtrisé par l’équipe, et une stack FastAPI/React plus à la mode mais inconnue de tous. Plutôt que de trancher sur préférence, l’architecte construit une matrice pondérée sur la compétence de l’équipe, la vitesse de livraison et la charge opérationnelle, et documente le score obtenu par chaque option. Un concurrent ayant choisi la stack tendance sans évaluer la compétence de son équipe a vu son delivery ralentir de moitié pendant les trois premiers mois.",
       "codeExample": "stacks = {\n    \"Spring-Angular\": {\"equipe\": 5, \"vitesse\": 3, \"ops\": 4},\n    \"FastAPI-React\": {\"equipe\": 2, \"vitesse\": 4, \"ops\": 3},\n}\nweights = {\"equipe\": 3, \"vitesse\": 1, \"ops\": 2}\n# Spring-Angular gagne car l'équipe maîtrise déjà la stack",
       "commonMistake": "Choisir un outil avant d’identifier le besoin, la charge, le risque et le propriétaire de la donnée.",
-      "masteryQuestion": "Quel compromis, quel signal et quelle condition de réévaluation associes-tu à « Choisir une stack verticale avec une matrice de décision » ?",
-      "masteryProof": "Exécuter la preuve, modifier une contrainte, expliquer le résultat et dessiner la place du composant dans la stack complète."
+      "masteryQuestion": "Pourquoi traiter une contrainte dure comme un filtre plutôt que comme un poids, et pourquoi tester la sensibilité du résultat ?",
+      "masteryProof": "Filtrer des options avec une contrainte dure, calculer des scores pondérés et tester un changement de poids."
     }
   ],
   "exercises": [
     {
       "code": "ARCHITECTURE-04-E1",
-      "title": "Comparer des stacks selon les contraintes plutôt que selon les préférences",
-      "statement": "Complète la preuve pour produire exactement la sortie attendue, puis explique la décision, une alternative et le signal de production qui validerait ton choix.",
-      "starterCode": "stacks = {\n    \"Spring-Angular\": {\"team\": 5, \"speed\": 3, \"ops\": 4},\n    \"FastAPI-TypeScript\": {\"team\": 3, \"speed\": 5, \"ops\": 3},\n}\nweights = {\"team\": 2, \"speed\": 1, \"ops\": 2}\n# TODO 1 : calcule le score pondéré de chaque stack (somme valeur x poids)\n# TODO 2 : retiens la stack au meilleur score\n# TODO 3 : affiche \"Choix: <stack>\" puis \"Score: <score>\"\n",
-      "expectedOutput": "Choix: Spring-Angular\nScore: 21"
+      "title": "Matrice de décision avec contrainte dure et sensibilité",
+      "statement": "Complète : le filtre de maîtrise minimale, le score pondéré, le classement et le test de sensibilité (que devient le résultat si la vitesse pèse 5 ?). Affiche exactement :\nÉcartées: Rust-WebAssembly\n1. Spring-Angular: 21\n2. FastAPI-TypeScript: 17\nChoix: Spring-Angular\nSensibilité: le choix devient FastAPI-TypeScript\nDécision robuste: False",
+      "starterCode": "STACKS = {\n    \"Spring-Angular\": {\"team\": 5, \"speed\": 3, \"ops\": 4},\n    \"FastAPI-TypeScript\": {\"team\": 3, \"speed\": 5, \"ops\": 3},\n    \"Rust-WebAssembly\": {\"team\": 1, \"speed\": 2, \"ops\": 2},\n}\nWEIGHTS = {\"team\": 2, \"speed\": 1, \"ops\": 2}\nMIN_TEAM = 3\n\n\ndef score(notes: dict, weights: dict) -> int:\n    # TODO 1 : somme des notes x poids pour chaque critère de weights\n    return 0\n\n\ndef ranking(weights: dict) -> list[tuple[str, int]]:\n    # TODO 2 : couples (nom, score) des stacks éligibles (team >= MIN_TEAM), triés par score décroissant puis par nom\n    return []\n\n\n# TODO 3 : affiche \"Écartées: \" suivi des stacks sous MIN_TEAM (séparées par \", \") ou \"aucune\"\n# TODO 4 : affiche chaque ligne \"<rang>. <nom>: <score>\" du classement avec les poids WEIGHTS\n# TODO 5 : affiche \"Choix: <nom>\" (premier du classement)\n# TODO 6 : avec les poids {\"team\": 2, \"speed\": 5, \"ops\": 2}, affiche \"Sensibilité: le choix devient <nom>\" et\n#          \"Décision robuste: <True/False>\" (True si le gagnant ne change pas)\n",
+      "expectedOutput": "Écartées: Rust-WebAssembly\n1. Spring-Angular: 21\n2. FastAPI-TypeScript: 17\nChoix: Spring-Angular\nSensibilité: le choix devient FastAPI-TypeScript\nDécision robuste: False"
     }
   ],
   "quiz": [
     {
       "code": "ARCHITECTURE-04-Q1",
       "type": "SINGLE_CHOICE",
-      "prompt": "Quelle démarche produit la décision la plus robuste ?",
+      "prompt": "Pourquoi une contrainte éliminatoire doit-elle être un filtre et non un poids ?",
       "choices": [
-        "Relier contraintes, responsabilités, preuve et observabilité",
-        "Choisir la technologie la plus populaire",
-        "Ajouter des services avant de mesurer"
+        "Pour simplifier le code",
+        "Un poids peut être compensé par d'autres critères ; une contrainte dure doit exclure l'option quoi qu'il arrive",
+        "Les filtres sont plus rapides",
+        "Les poids sont interdits"
       ],
-      "correctChoice": 0,
-      "expectedKeywords": []
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Si l'équipe ne maîtrise pas la technologie, aucun bonus de vitesse ne rattrape le risque. Le filtre exprime ce qui n'est pas négociable."
     },
     {
       "code": "ARCHITECTURE-04-Q2",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Prédis le score de FastAPI-TypeScript : team 3, speed 5, ops 3 avec les poids team 2, speed 1, ops 2 :",
+      "choices": [
+        "11",
+        "17 : 3×2 + 5×1 + 3×2",
+        "13",
+        "21"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "6 + 5 + 6 = 17. Spring-Angular obtient 10 + 3 + 8 = 21."
+    },
+    {
+      "code": "ARCHITECTURE-04-Q3",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Trouve le défaut de méthode : « J'ai ajusté les poids jusqu'à ce que ma stack préférée gagne. »",
+      "choices": [
+        "Aucun",
+        "Les poids doivent être fixés avant de noter les options : sinon la matrice justifie un choix déjà fait au lieu d'éclairer la décision",
+        "Il fallait moins de critères",
+        "Les poids sont toujours égaux"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Une matrice honnête fixe d'abord les priorités du projet. Les ajustements a posteriori ne sont pas une décision, c'est une rationalisation."
+    },
+    {
+      "code": "ARCHITECTURE-04-Q4",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Un écart de score de 2 points sur 40 entre deux options signifie :",
+      "choices": [
+        "Une victoire nette",
+        "Une différence probablement dans l'incertitude des notes : examiner les critères décisifs et la sensibilité avant de conclure",
+        "Une erreur de calcul",
+        "Que la deuxième option est mauvaise"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Les notes sont des estimations. De petits écarts ne départagent pas de façon fiable ; la décision se justifie par les critères qui comptent le plus, avec prototype ou mesure si nécessaire."
+    },
+    {
+      "code": "ARCHITECTURE-04-Q5",
       "type": "FREE_TEXT",
-      "prompt": "Nomme un compromis et le signal qui permettrait de le réévaluer.",
+      "prompt": "Sans relire le cours, explique avec tes mots pourquoi on documente une décision d'architecture avec ses hypothèses et ses conditions de réévaluation.",
       "choices": [],
       "correctChoice": null,
       "expectedKeywords": [
-        "compromis",
-        "mesure",
-        "risque"
-      ]
+        "hypothese",
+        "reevalu",
+        "contexte",
+        "adr",
+        "equipe"
+      ],
+      "modelAnswer": "Une décision n'est valable que dans un contexte (taille d'équipe, charge, budget, contraintes réglementaires). En notant les hypothèses et les conditions qui la remettraient en cause, on permet à ceux qui viendront plus tard de comprendre pourquoi le choix a été fait et de savoir quand le revoir au lieu de le subir ou de le répéter par habitude. Un registre des décisions (ADR) conserve ce contexte.",
+      "explanation": "Une bonne réponse relie la décision à un contexte daté, aux hypothèses et à un déclencheur de réévaluation, avec la mémoire d'un ADR."
     }
   ],
   "checklist": [
-    "Je peux dessiner la circulation de la donnée",
-    "Je sais nommer les responsabilités de chaque couche",
-    "Je justifie une alternative rejetée",
-    "Je définis une mesure et une condition de réévaluation"
+    "Mes contraintes dures sont des filtres, mes préférences des poids",
+    "Je fixe les poids avant de noter",
+    "Je teste la sensibilité du résultat à un changement de poids",
+    "Ma décision consigne hypothèses et conditions de réévaluation"
   ]
 }

@@ -11,25 +11,30 @@
     "ARCHITECTURE-10"
   ],
   "objectives": [
-    "Définir services, réseaux, volumes, santé et ordre de disponibilité",
-    "Justifier les compromis et nommer un risque opérationnel",
-    "Produire une preuve reproductible avant d’élargir la solution"
+    "Décrire une pile conteneurisée : services, dépendances, réseaux, ports, santé.",
+    "Calculer l'ordre de démarrage par vagues et détecter un cycle.",
+    "Auditer l'exposition des ports et les healthchecks manquants.",
+    "Expliquer ce qu'un conteneur isole et ce qu'il n'isole pas."
   ],
   "sections": [
     {
-      "title": "Concept clé et décision",
+      "title": "Une pile, des dépendances, un ordre",
+      "content": "Conteneuriser une application, c'est empaqueter chaque service avec ses dépendances d'exécution dans une image reproductible. Une pile (stack) assemble plusieurs services : web, API, base de données, cache. Compose décrit leurs dépendances (depends_on), leurs réseaux, leurs volumes et leurs vérifications de santé.\n\nL'ordre de démarrage découle des dépendances : la base avant l'API, l'API avant le web. Plusieurs services indépendants peuvent démarrer en parallèle (par vagues). Un cycle de dépendances rend le démarrage impossible."
+    },
+    {
+      "title": "Exemple résolu : des vagues de démarrage et un audit",
       "conceptCodes": [
         "CONTAINER-TOPOLOGY"
       ],
-      "content": "Conteneuriser la stack et ses dépendances relie les besoins, le logiciel, les données et l’exploitation. Commence par les contraintes observables, trace les responsabilités, puis choisis la solution la plus simple qui respecte les invariants."
+      "content": "Problème : à partir de web → api → db et cache indépendant, calculer l'ordre par vagues, détecter un cycle, vérifier que la base n'est pas publiée et que les services attendus ont un healthcheck.\n\nRaisonnement, étape par étape :\n1. Vague 1 : services sans dépendance (db, cache). Vague 2 : services dont toutes les dépendances sont déjà démarrées (api). Vague 3 : web.\n2. À chaque tour, on démarre tous les services prêts. Si aucun n'est prêt alors qu'il en reste, il y a un cycle : on le signale.\n3. Exposition : seuls les services destinés à l'extérieur publient un port (web). La base ne doit pas l'être : un port publié est joignable depuis l'hôte, voire tout le réseau.\n4. Santé : un service attendu avec condition service_healthy doit avoir un healthcheck, sinon l'attente est impossible.\n5. Vérification : trois vagues, aucun cycle, un avertissement si db publie le port 5432.\n```python\ndef waves(deps):\n    started, result = set(), []\n    pending = set(deps)\n    while pending:\n        ready = sorted(s for s in pending if set(deps[s]) <= started)\n        if not ready:\n            raise ValueError(\"cycle\")\n        result.append(ready)\n        started |= set(ready)\n        pending -= set(ready)\n    return result\n```"
     },
     {
-      "title": "Construction verticale",
-      "content": "La preuve ARCHITECTURE-11 modélise une décision réelle sous forme déterministe. Elle ne remplace pas un déploiement complet : elle rend l’hypothèse testable avant l’intégration Spring Boot, Angular, PostgreSQL et Docker."
+      "title": "Ce que le conteneur fait et ne fait pas",
+      "content": "Un conteneur isole des processus avec les espaces de noms (processus, réseau, système de fichiers) et limite les ressources (cgroups). Il partage le noyau de l'hôte : ce n'est pas une machine virtuelle. Conséquences : une faille du noyau touche tous les conteneurs ; un conteneur privilégié ou avec le socket Docker monté n'est plus isolé.\n\nBonnes pratiques d'exploitation :\n- Un processus principal par conteneur ; journaux sur la sortie standard.\n- Images minimales, épinglées, scannées ; utilisateur non root ; système de fichiers en lecture seule quand possible.\n- Réseaux internes pour les communications entre services ; ports publiés seulement pour les points d'entrée.\n- Données persistantes dans des volumes nommés ; rien d'important dans le système de fichiers du conteneur.\n- Configuration par variables d'environnement ; secrets injectés à l'exécution.\n- Healthchecks (liveness : le processus vit ; readiness : prêt à servir) et arrêt propre (signal SIGTERM géré).\n- Limites de mémoire et de CPU, redémarrage automatique contrôlé.\n- Même image du développement à la production : seule la configuration change.\nLimites de Compose : un hôte unique, pas de haute disponibilité ; pour plusieurs machines et la montée en charge, on passe à un orchestrateur (Kubernetes) qui reprend les mêmes notions (dépendances, santé, secrets, réseaux)."
     },
     {
-      "title": "Revue professionnelle",
-      "content": "Documente le contexte, la décision, une option rejetée, les conséquences, le signal à surveiller et la condition qui imposerait de revoir le choix."
+      "title": "Erreurs fréquentes à reconnaître",
+      "content": "1. Publier le port de la base sur l'hôte.\n2. Une dépendance circulaire entre services.\n3. Attendre « service_healthy » sur un service sans healthcheck.\n4. Des données dans le conteneur sans volume.\n5. Un conteneur privilégié ou avec le socket Docker monté.\n6. Une image différente en production et en développement.\n\nRetrouve ces erreurs de mémoire avant l'exercice, puis vérifie-toi avec le quiz : c'est la récupération, pas la relecture, qui fixe la notion."
     }
   ],
   "keyConcepts": [
@@ -43,49 +48,97 @@
       "professionalExample": "Au premier déploiement conteneurisé, le conteneur API démarre avant que PostgreSQL ne soit prêt à accepter des connexions, provoque une exception de connexion refusée et Docker le redémarre en boucle. L’équipe ajoute un healthcheck sur la base et une condition service_healthy sur l’API pour que l’orchestrateur attende que la dépendance soit réellement disponible, pas seulement démarrée. Définir explicitement l’ordre de disponibilité évite ces crash loops observés en intégration continue.",
       "codeExample": "services:\n  db:\n    image: postgres:16\n    healthcheck:\n      test: [\"CMD-SHELL\", \"pg_isready -U app\"]\n      interval: 5s\n      retries: 5\n  api:\n    build: .\n    depends_on:\n      db:\n        condition: service_healthy",
       "commonMistake": "Choisir un outil avant d’identifier le besoin, la charge, le risque et le propriétaire de la donnée.",
-      "masteryQuestion": "Quel compromis, quel signal et quelle condition de réévaluation associes-tu à « Conteneuriser la stack et ses dépendances » ?",
-      "masteryProof": "Exécuter la preuve, modifier une contrainte, expliquer le résultat et dessiner la place du composant dans la stack complète."
+      "masteryQuestion": "Comment calcule-t-on l'ordre de démarrage par vagues, et pourquoi la base ne doit-elle pas publier de port ?",
+      "masteryProof": "Calculer les vagues de démarrage, détecter un cycle et auditer ports exposés et healthchecks."
     }
   ],
   "exercises": [
     {
       "code": "ARCHITECTURE-11-E1",
-      "title": "Définir services, réseaux, volumes, santé et ordre de disponibilité",
-      "statement": "Complète la preuve pour produire exactement la sortie attendue, puis explique la décision, une alternative et le signal de production qui validerait ton choix.",
-      "starterCode": "services = {\"web\": [\"api\"], \"api\": [\"db\"], \"db\": []}\nhealthy = {\"db\"}\n# TODO : parcours les services dans l'ordre db, api, web ; un service devient sain\n#        quand toutes ses dépendances le sont déjà ; affiche \"<nom> HEALTHY\" à ce moment-là\n",
-      "expectedOutput": "db HEALTHY\napi HEALTHY\nweb HEALTHY"
+      "title": "Vagues de démarrage et audit d'une pile",
+      "statement": "Complète : les vagues de démarrage (tous les services prêts ensemble, triés par nom), la détection d'un cycle, l'audit des ports publiés (un service qui n'est pas un point d'entrée ne doit pas publier de port) et des healthchecks manquants pour les services attendus. Affiche exactement :\nVague 1: cache, db\nVague 2: api\nVague 3: web\nErreur: cycle\nALERTE port publié: db [5432]\nALERTE healthcheck manquant: cache",
+      "starterCode": "STACK = {\n    \"web\": {\"depends_on\": [\"api\"], \"ports\": [8080], \"healthcheck\": True, \"entrypoint\": True},\n    \"api\": {\"depends_on\": [\"db\", \"cache\"], \"ports\": [], \"healthcheck\": True, \"entrypoint\": False},\n    \"db\": {\"depends_on\": [], \"ports\": [5432], \"healthcheck\": True, \"entrypoint\": False},\n    \"cache\": {\"depends_on\": [], \"ports\": [], \"healthcheck\": False, \"entrypoint\": False},\n}\nCYCLE = {\"a\": {\"depends_on\": [\"b\"]}, \"b\": {\"depends_on\": [\"a\"]}}\n\n\ndef waves(stack: dict) -> list[list[str]]:\n    # TODO 1 : vagues de démarrage : à chaque tour, tous les services dont les dépendances sont démarrées (triés par nom) ;\n    #          si aucun n'est prêt alors qu'il en reste, lève ValueError(\"cycle\")\n    return []\n\n\n# TODO 2 : affiche \"Vague <n>: <services séparés par ', '>\" pour chaque vague de STACK\n# TODO 3 : essaie waves(CYCLE) ; affiche \"Erreur: <message>\" si ValueError\n# TODO 4 : pour chaque service (dans l'ordre du dictionnaire) qui publie des ports sans être un point d'entrée,\n#          affiche \"ALERTE port publié: <service> <ports>\"\n# TODO 5 : un service attendu = présent dans la depends_on d'un autre service ; pour chaque service attendu sans healthcheck,\n#          affiche \"ALERTE healthcheck manquant: <service>\" (dans l'ordre du dictionnaire)\n",
+      "expectedOutput": "Vague 1: cache, db\nVague 2: api\nVague 3: web\nErreur: cycle\nALERTE port publié: db [5432]\nALERTE healthcheck manquant: cache"
     }
   ],
   "quiz": [
     {
       "code": "ARCHITECTURE-11-Q1",
       "type": "SINGLE_CHOICE",
-      "prompt": "Quelle démarche produit la décision la plus robuste ?",
+      "prompt": "Prédis les vagues de démarrage : web dépend de api, api dépend de db et cache (indépendants).",
       "choices": [
-        "Relier contraintes, responsabilités, preuve et observabilité",
-        "Choisir la technologie la plus populaire",
-        "Ajouter des services avant de mesurer"
+        "web, api, db, cache",
+        "(cache, db), puis api, puis web",
+        "(web), (api), (db, cache)",
+        "Tout en même temps"
       ],
-      "correctChoice": 0,
-      "expectedKeywords": []
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Première vague : les services sans dépendance (cache et db). Deuxième : api (dépendances démarrées). Troisième : web."
     },
     {
       "code": "ARCHITECTURE-11-Q2",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Pourquoi la base de données ne doit-elle pas publier son port sur l'hôte ?",
+      "choices": [
+        "Pour économiser des ports",
+        "Un port publié est joignable depuis l'hôte voire le réseau : la base doit rester accessible seulement par les services qui en ont besoin, sur un réseau interne",
+        "Docker l'interdit",
+        "Pour accélérer la base"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Moins une surface est exposée, moins elle peut être attaquée. Entre services d'un même réseau, aucun port publié n'est nécessaire."
+    },
+    {
+      "code": "ARCHITECTURE-11-Q3",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Trouve le défaut :\n```yaml\napi:\n  depends_on:\n    cache: { condition: service_healthy }\ncache:\n  image: redis:7   # aucun healthcheck\n```\n",
+      "choices": [
+        "redis est interdit",
+        "L'attente de santé est impossible : sans healthcheck, cache n'atteint jamais l'état healthy et api ne démarre pas",
+        "depends_on est déprécié",
+        "Il manque un volume"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "service_healthy exige un healthcheck défini sur le service attendu. Il faut ajouter la vérification (par exemple redis-cli ping)."
+    },
+    {
+      "code": "ARCHITECTURE-11-Q4",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Qu'est-ce qu'un conteneur n'isole pas, contrairement à une machine virtuelle ?",
+      "choices": [
+        "Le système de fichiers",
+        "Le noyau : il est partagé avec l'hôte, donc une faille du noyau concerne tous les conteneurs",
+        "Les processus",
+        "Le réseau"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Un conteneur est un processus isolé par le noyau de l'hôte, pas un système complet. D'où l'importance du moindre privilège et des mises à jour."
+    },
+    {
+      "code": "ARCHITECTURE-11-Q5",
       "type": "FREE_TEXT",
-      "prompt": "Nomme un compromis et le signal qui permettrait de le réévaluer.",
+      "prompt": "Sans relire le cours, explique avec tes mots pourquoi un cycle de dépendances empêche de démarrer une pile et comment le corriger.",
       "choices": [],
       "correctChoice": null,
       "expectedKeywords": [
-        "compromis",
-        "mesure",
-        "risque"
-      ]
+        "cycle",
+        "attend",
+        "premier",
+        "troisieme",
+        "inverse"
+      ],
+      "modelAnswer": "Dans un cycle, chaque service attend un autre qui l'attend : aucun ne peut démarrer en premier, donc le calcul de l'ordre ne trouve jamais de service prêt. On le corrige en cassant la dépendance : extraire la logique commune dans un troisième service, ou rendre un des deux tolérant à l'absence temporaire de l'autre (réessais de connexion), ou inverser une dépendance par un événement.",
+      "explanation": "Une bonne réponse explique l'attente mutuelle et propose un troisième composant, un service tolérant aux absences ou une inversion par événement."
     }
   ],
   "checklist": [
-    "Je peux dessiner la circulation de la donnée",
-    "Je sais nommer les responsabilités de chaque couche",
-    "Je justifie une alternative rejetée",
-    "Je définis une mesure et une condition de réévaluation"
+    "Je calcule l'ordre de démarrage par vagues et je repère les cycles",
+    "Seuls mes points d'entrée publient des ports",
+    "Les services attendus ont un healthcheck",
+    "Mes données persistantes sont dans des volumes"
   ]
 }

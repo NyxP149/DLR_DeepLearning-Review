@@ -11,21 +11,30 @@
     "PYTHON-13"
   ],
   "objectives": [
-    "Expliquer configuration, journalisation et diagnostic",
-    "Construire une preuve exécutable et déterministe",
-    "Relier le concept à une décision professionnelle"
+    "Charger la configuration depuis l'environnement avec valeurs par défaut et conversion de types.",
+    "Configurer le module logging (niveau, format, handler) et choisir le bon niveau pour un message.",
+    "Expliquer pourquoi bool(\"false\") vaut True et comment convertir correctement une variable d'environnement.",
+    "Journaliser pour diagnostiquer sans exposer de secret ni polluer la sortie."
   ],
   "sections": [
     {
-      "title": "Concept et usage professionnel",
-      "content": "Configuration, journalisation et diagnostic répond à un besoin concret de maintenabilité, de sûreté ou de performance. Le laboratoire demande de rendre la décision observable et vérifiable.",
-      "conceptCodes": [
-        "PYTHON-LOGGING"
-      ]
+      "title": "La configuration vient de l'environnement",
+      "content": "Une application se déploie dans plusieurs environnements (poste, test, production) avec le même code : ce qui change est externalisé. La règle des applications 12 facteurs : la configuration vit dans des variables d'environnement, pas dans le code ni dans des fichiers versionnés. Les secrets (mots de passe, jetons) n'ont jamais leur place dans le dépôt.\n\nPiège central : os.environ ne contient que des chaînes. int(\"8080\") convient, mais bool(\"false\") vaut True, car toute chaîne non vide est « vraie ». Il faut convertir explicitement :\n```python\ndef parse_bool(valeur: str | None, defaut: bool = False) -> bool:\n    if valeur is None:\n        return defaut\n    return valeur.strip().lower() in {\"1\", \"true\", \"yes\", \"on\"}\n\nport = int(env.get(\"PORT\", \"8000\"))\ndebug = parse_bool(env.get(\"DEBUG\"))\n```\nValide au démarrage (port entier entre 1 et 65535) : une configuration invalide doit empêcher de démarrer, pas échouer à la première requête."
     },
     {
-      "title": "Mise en pratique",
-      "content": "La preuve minimale est locale, déterministe et peut être enrichie sans changer le contrat attendu."
+      "title": "Exemple résolu : une configuration et des logs à niveau variable",
+      "conceptCodes": [
+        "PYTHON-LOGGING"
+      ],
+      "content": "Problème : lire PORT et DEBUG avec des défauts, et n'activer le niveau DEBUG des logs qu'en mode debug.\n\nRaisonnement, étape par étape :\n1. load_config(env) prend un dict d'environnement en paramètre (et pas os.environ en dur) : on peut le tester avec n'importe quel dict.\n2. PORT : valeur par défaut \"8000\" convertie en int.\n3. DEBUG : parse_bool, faux par défaut.\n4. Niveau : logging.DEBUG si debug sinon logging.INFO.\n5. Format « NIVEAU nom: message » : \"%(levelname)s %(name)s: %(message)s\".\n6. Un handler sur la sortie standard, pas de duplication si on appelle setup_logging plusieurs fois.\n7. Vérification : en mode normal, un message debug n'apparaît pas ; en mode debug, il apparaît.\n```python\nimport logging, sys\n\ndef setup_logging(debug: bool) -> None:\n    racine = logging.getLogger()\n    racine.handlers.clear()\n    handler = logging.StreamHandler(sys.stdout)\n    handler.setFormatter(logging.Formatter(\"%(levelname)s %(name)s: %(message)s\"))\n    racine.addHandler(handler)\n    racine.setLevel(logging.DEBUG if debug else logging.INFO)\n\njournal = logging.getLogger(\"app\")\njournal.debug(\"diagnostic\")          # visible seulement en mode debug\njournal.info(\"démarrage\")\n```"
+    },
+    {
+      "title": "Bien journaliser",
+      "content": "Niveaux : DEBUG (détail pour le développeur), INFO (événement normal important), WARNING (anomalie tolérée), ERROR (opération échouée), CRITICAL (le service ne peut plus fonctionner). Choisis le niveau d'après l'action attendue : un WARNING devrait mériter d'être lu, un ERROR d'être traité.\n\nBonnes pratiques :\n- Un logger par module : logging.getLogger(__name__), configuré une seule fois au démarrage, jamais dans une bibliothèque.\n- Pas de print en production : pas de niveau, pas de format, pas de destination.\n- Formatage paresseux : journal.info(\"commande %s créée\", order_id) évite de construire la chaîne si le niveau est désactivé.\n- journal.exception(\"échec\") dans un except ajoute automatiquement la trace de pile.\n- Jamais de secret, de jeton ni de donnée personnelle superflue dans un message.\n- Pour l'exploitation, des logs structurés (JSON, clé=valeur) avec identifiant de corrélation se filtrent et s'agrègent bien mieux que du texte libre."
+    },
+    {
+      "title": "Erreurs fréquentes à reconnaître",
+      "content": "1. bool(os.environ[\"DEBUG\"]) : toute chaîne non vide, même \"false\", donne True.\n2. Lire os.environ en profondeur dans le code : non testable ; passe un dict ou un objet de configuration.\n3. Un secret dans le code ou le dépôt.\n4. print à la place de logging.\n5. Logger un mot de passe, un jeton ou le corps complet d'une requête.\n6. Configurer logging dans chaque module : handlers dupliqués et messages en double.\n\nRetrouve ces erreurs de mémoire avant l'exercice, puis vérifie-toi avec le quiz : c'est la récupération, pas la relecture, qui fixe la notion."
     }
   ],
   "keyConcepts": [
@@ -39,8 +48,8 @@
       "professionalExample": "Lors d'un incident de production, une équipe n'a trouvé dans les logs qu'un message print('erreur') sans identifiant de requête ni horodatage, rendant impossible la corrélation entre l'erreur et les milliers d'autres requêtes traitées à la même seconde. En configurant le module logging avec un formatteur structuré incluant un request_id et un niveau adapté (WARNING pour les cas récupérables, ERROR pour les échecs bloquants), l'équipe suivante a pu retrouver l'incident en quelques secondes dans l'outil d'observabilité.",
       "codeExample": "import logging\n\nlogger = logging.getLogger(\"billing.service\")\nlogging.basicConfig(\n    level=logging.INFO,\n    format=\"%(asctime)s %(levelname)s request_id=%(request_id)s %(message)s\",\n)\n\ndef process_payment(order_id: str, request_id: str) -> None:\n    extra = {\"request_id\": request_id}\n    logger.info(\"Traitement du paiement pour %s\", order_id, extra=extra)\n    try:\n        gateway.charge(order_id)\n    except ConnectionError:\n        logger.error(\"Passerelle injoignable pour %s\", order_id, extra=extra)\n        raise",
       "commonMistake": "Appliquer la technique sans mesurer son effet ni documenter sa frontière.",
-      "masteryQuestion": "Quelle contrainte de configuration, journalisation et diagnostic doit rester vraie lorsque le système évolue ?",
-      "masteryProof": "Exécuter la preuve, expliquer son invariant et proposer un cas d’échec."
+      "masteryQuestion": "Pourquoi bool(\"false\") vaut-il True, et pourquoi load_config reçoit-elle un dict plutôt que de lire os.environ directement ?",
+      "masteryProof": "Lire PORT et DEBUG avec conversions, configurer logging selon le mode et montrer la différence de sortie entre les deux modes."
     }
   ],
   "exercises": [
@@ -56,32 +65,80 @@
     {
       "code": "PYTHON-14-Q1",
       "type": "SINGLE_CHOICE",
-      "prompt": "Quelle preuve est la plus utile en revue ?",
+      "prompt": "Prédis le résultat :\n```python\nimport os\nos.environ[\"DEBUG\"] = \"false\"\nprint(bool(os.environ[\"DEBUG\"]))\n```\n",
       "choices": [
-        "Une exécution déterministe avec invariant explicite",
-        "Une sortie aléatoire",
-        "Une capture sans code"
+        "False",
+        "True : toute chaîne non vide est vraie",
+        "Une erreur",
+        "None"
       ],
-      "correctChoice": 0,
-      "expectedKeywords": []
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "bool() sur une chaîne teste seulement si elle est vide. \"false\" est non vide, donc True. Il faut comparer à un ensemble de valeurs vraies connues (1, true, yes, on) après normalisation."
     },
     {
       "code": "PYTHON-14-Q2",
+      "type": "SINGLE_CHOICE",
+      "prompt": "En mode normal (niveau INFO), que s'affiche-t-il ?\n```python\njournal.debug(\"diagnostic\")\njournal.info(\"démarrage\")\njournal.warning(\"attention\")\n```\n",
+      "choices": [
+        "Les trois messages",
+        "démarrage et attention seulement",
+        "attention seulement",
+        "Aucun"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Un logger configuré au niveau INFO ignore DEBUG. INFO et WARNING (niveaux égaux ou supérieurs) passent. En mode debug, les trois seraient visibles."
+    },
+    {
+      "code": "PYTHON-14-Q3",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Trouve le défaut :\n```python\nlogger.info(\"Connexion avec le jeton \" + token)\n```\n",
+      "choices": [
+        "Le niveau INFO est trop bas",
+        "Le jeton est écrit en clair dans les logs, que beaucoup de personnes et d'outils peuvent lire",
+        "logger.info n'accepte pas de chaîne",
+        "La concaténation est interdite"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Un secret journalisé est un secret divulgué : il se retrouve dans les fichiers, les agrégateurs et les sauvegardes. On journalise un identifiant non sensible, ou le jeton masqué."
+    },
+    {
+      "code": "PYTHON-14-Q4",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Pourquoi écrire logger.info(\"commande %s\", order_id) plutôt qu'une f-string ?",
+      "choices": [
+        "Pour éviter de construire la chaîne quand le niveau est désactivé et permettre l'agrégation par gabarit",
+        "Parce que les f-strings sont interdites",
+        "Parce que %s est plus lisible",
+        "Pour changer le niveau"
+      ],
+      "correctChoice": 0,
+      "expectedKeywords": [],
+      "explanation": "Le formatage est différé : si INFO est désactivé, la chaîne n'est jamais construite. Les outils peuvent aussi regrouper les messages par gabarit au lieu de traiter chaque variante comme un message distinct."
+    },
+    {
+      "code": "PYTHON-14-Q5",
       "type": "FREE_TEXT",
-      "prompt": "Explique une décision liée à configuration, journalisation et diagnostic.",
+      "prompt": "Sans relire le cours, explique avec tes mots pourquoi on externalise la configuration dans l'environnement et pourquoi on valide au démarrage.",
       "choices": [],
       "correctChoice": null,
       "expectedKeywords": [
-        "contrat",
-        "preuve",
-        "test"
-      ]
+        "environnement",
+        "code",
+        "secret",
+        "demarrage",
+        "valide"
+      ],
+      "modelAnswer": "Le même code doit tourner partout : ce qui change entre postes, tests et production (URL, ports, secrets) vit dans l'environnement, hors du dépôt, ce qui évite aussi de commiter des secrets. On valide au démarrage pour qu'une configuration invalide empêche de démarrer immédiatement avec un message clair, au lieu d'échouer plus tard à la première requête concernée.",
+      "explanation": "Une bonne réponse relie l'environnement à la portabilité et à l'absence de secret dans le dépôt, et la validation au démarrage à l'échec rapide."
     }
   ],
   "checklist": [
-    "Je peux expliquer le concept sans réciter une définition",
-    "Je sais exécuter et modifier la preuve",
-    "Je peux nommer un risque et son contrôle",
-    "Je relie cette étape à la suivante"
+    "Je convertis explicitement les variables d'environnement (int, bool)",
+    "Ma configuration est validée au démarrage",
+    "J'utilise logging avec le bon niveau, jamais print en production",
+    "Aucun secret n'apparaît dans mes logs"
   ]
 }

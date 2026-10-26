@@ -11,21 +11,30 @@
     "PYTHON-18"
   ],
   "objectives": [
-    "Expliquer sécurité, secrets et validation des entrées",
-    "Construire une preuve exécutable et déterministe",
-    "Relier le concept à une décision professionnelle"
+    "Empêcher une traversée de chemin (path traversal) en résolvant et en confinant un chemin.",
+    "Prévenir l'injection SQL avec des requêtes paramétrées et expliquer la différence avec la concaténation.",
+    "Gérer les secrets : environnement ou coffre, masquage dans les logs, jamais dans le dépôt.",
+    "Repérer les usages dangereux : pickle, subprocess avec shell=True, eval, hachage faible."
   ],
   "sections": [
     {
-      "title": "Concept et usage professionnel",
-      "content": "Sécurité, secrets et validation des entrées répond à un besoin concret de maintenabilité, de sûreté ou de performance. Le laboratoire demande de rendre la décision observable et vérifiable.",
-      "conceptCodes": [
-        "PYTHON-SECURITY"
-      ]
+      "title": "Toute entrée est hostile jusqu'à preuve du contraire",
+      "content": "La validation des entrées suit une règle : liste blanche plutôt que liste noire (autoriser ce qui est attendu, refuser le reste). Trois familles d'attaques reviennent sans cesse :\n- Traversée de chemin : un nom de fichier comme ../../etc/passwd sort du dossier prévu.\n- Injection : du texte utilisateur interprété comme du code (SQL, commande système, HTML).\n- Fuite de secrets : mot de passe ou jeton dans le code, un log ou un message d'erreur.\n\nDéfense en profondeur : valider à l'entrée, limiter les droits (moindre privilège), échapper ou paramétrer à la sortie, journaliser sans divulguer."
     },
     {
-      "title": "Mise en pratique",
-      "content": "La preuve minimale est locale, déterministe et peut être enrichie sans changer le contrat attendu."
+      "title": "Exemple résolu : confiner un chemin, paramétrer, masquer",
+      "conceptCodes": [
+        "PYTHON-SECURITY"
+      ],
+      "content": "Problème : servir des fichiers du dossier reports, rechercher en base et journaliser un secret sans le divulguer.\n\nRaisonnement, étape par étape :\n1. Chemin : construire (base / saisie).resolve() ; resolve() suit les .. et les liens symboliques.\n2. Vérifier que le chemin résolu reste sous la base résolue : chemin.is_relative_to(base). Sinon refuser. Ne te contente jamais de chercher « .. » dans le texte : des variantes (encodées, absolues) y échappent.\n3. Requête : une saisie comme ' OR '1'='1 concaténée donne une condition toujours vraie et ramène toutes les lignes ; paramétrée (WHERE name = ?), elle cherche littéralement ce texte et ne ramène rien.\n4. Secret : afficher ****cdef (les quatre derniers caractères) suffit à identifier une clé sans la divulguer.\n```python\nbase = Path(\"reports\").resolve()\ncible = (base / saisie).resolve()\nif not cible.is_relative_to(base):\n    raise PermissionError(\"sortie du dossier\")\n\nconnexion.execute(\"SELECT * FROM users WHERE name = ?\", (saisie,))\n\ndef masquer(secret: str) -> str:\n    return \"*\" * (len(secret) - 4) + secret[-4:]\n```"
+    },
+    {
+      "title": "Autres pièges classiques de sécurité en Python",
+      "content": "- pickle.loads sur des données non fiables exécute du code arbitraire : utilise JSON pour échanger des données.\n- eval et exec sur une saisie : exécution de code à distance ; utilise ast.literal_eval pour des littéraux.\n- subprocess.run(commande, shell=True) avec une saisie : injection de commande ; passe une liste d'arguments (subprocess.run([\"ls\", dossier]) sans shell).\n- Hachage de mots de passe : jamais en clair, ni MD5 ou SHA-1 ; utilise un algorithme lent et salé (hashlib.scrypt, bcrypt, argon2).\n- Nombres aléatoires de sécurité : le module secrets (secrets.token_urlsafe), pas random.\n- Secrets : variables d'environnement ou coffre (Vault, gestionnaire du cloud), jamais dans Git ; si un secret a été commité, il est compromis : révoque-le et renouvelle-le.\n- Messages d'erreur : ne renvoie pas de trace de pile ni de détail interne à l'utilisateur.\n- Dépendances : pip-audit pour les vulnérabilités connues ; épingle les versions."
+    },
+    {
+      "title": "Erreurs fréquentes à reconnaître",
+      "content": "1. Valider un chemin en cherchant la chaîne « .. ».\n2. Une f-string dans une requête SQL.\n3. shell=True avec une entrée utilisateur.\n4. pickle ou eval sur des données extérieures.\n5. Un secret dans le code, dans une URL ou dans un log.\n6. Une liste noire de caractères dangereux au lieu d'une liste blanche de valeurs attendues.\n\nRetrouve ces erreurs de mémoire avant l'exercice, puis vérifie-toi avec le quiz : c'est la récupération, pas la relecture, qui fixe la notion."
     }
   ],
   "keyConcepts": [
@@ -39,8 +48,8 @@
       "professionalExample": "Un script de déploiement contenait la clé d'API de production codée en dur dans le code source versionné, et cette clé s'est retrouvée exposée publiquement lorsque le dépôt est passé d'un espace privé à un espace open source. Après l'incident, l'équipe a migré les secrets vers des variables d'environnement injectées par le gestionnaire de secrets de la plateforme, et a ajouté une validation stricte des entrées utilisateur pour empêcher également l'injection SQL détectée dans le même audit.",
       "codeExample": "import os\nimport re\n\ndef get_api_key() -> str:\n    key = os.environ.get(\"PAYMENT_API_KEY\")\n    if not key:\n        raise RuntimeError(\"PAYMENT_API_KEY manquante dans l'environnement\")\n    return key  # jamais codée en dur, jamais commitée dans le dépôt\n\nCUSTOMER_ID_PATTERN = re.compile(r\"^[A-Z0-9]{8}$\")\n\ndef find_customer(conn, customer_id: str):\n    if not CUSTOMER_ID_PATTERN.match(customer_id):\n        raise ValueError(\"Identifiant client invalide\")\n    return conn.execute(\n        \"SELECT * FROM customers WHERE id = ?\", (customer_id,)  # requête paramétrée\n    ).fetchone()",
       "commonMistake": "Appliquer la technique sans mesurer son effet ni documenter sa frontière.",
-      "masteryQuestion": "Quelle contrainte de sécurité, secrets et validation des entrées doit rester vraie lorsque le système évolue ?",
-      "masteryProof": "Exécuter la preuve, expliquer son invariant et proposer un cas d’échec."
+      "masteryQuestion": "Pourquoi resolve() puis is_relative_to() est-il plus sûr que de chercher « .. » dans un chemin ?",
+      "masteryProof": "Bloquer ../../etc/passwd, accepter q1.csv, comparer concaténation et requête paramétrée et masquer un secret sauf ses quatre derniers caractères."
     }
   ],
   "exercises": [
@@ -56,32 +65,80 @@
     {
       "code": "PYTHON-19-Q1",
       "type": "SINGLE_CHOICE",
-      "prompt": "Quelle preuve est la plus utile en revue ?",
+      "prompt": "Quelle vérification confine correctement un chemin fourni par l'utilisateur ?",
       "choices": [
-        "Une exécution déterministe avec invariant explicite",
-        "Une sortie aléatoire",
-        "Une capture sans code"
+        "Refuser si la chaîne contient « .. »",
+        "Résoudre le chemin complet puis vérifier qu'il reste sous le dossier de base (is_relative_to)",
+        "Mettre le chemin en minuscules",
+        "Remplacer « / » par « _ »"
       ],
-      "correctChoice": 0,
-      "expectedKeywords": []
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Le chemin résolu tient compte de .., des liens symboliques et des chemins absolus. Rechercher une chaîne laisse passer des variantes (chemin absolu, encodage, lien symbolique)."
     },
     {
       "code": "PYTHON-19-Q2",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Prédis le résultat :\n```python\nsaisie = \"x' OR '1'='1\"\n# variante A (concaténation)\nconnexion.execute(f\"SELECT * FROM users WHERE name = '{saisie}'\")\n# variante B (paramétrée)\nconnexion.execute(\"SELECT * FROM users WHERE name = ?\", (saisie,))\n```\nsur une table de 3 utilisateurs.",
+      "choices": [
+        "A et B renvoient 3 lignes",
+        "A renvoie 3 lignes (condition toujours vraie), B renvoie 0 ligne",
+        "A renvoie 0 ligne, B renvoie 3 lignes",
+        "Les deux lèvent une erreur"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "En A, la saisie ferme la chaîne et ajoute OR '1'='1' : la condition est toujours vraie. En B, la saisie est cherchée telle quelle comme nom, et personne ne s'appelle ainsi."
+    },
+    {
+      "code": "PYTHON-19-Q3",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Trouve le défaut :\n```python\nsubprocess.run(f\"convert {fichier} sortie.png\", shell=True)\n```\navec un nom de fichier choisi par l'utilisateur.",
+      "choices": [
+        "convert est dangereux",
+        "shell=True interprète le texte : un nom comme « a; rm -rf ~ » exécute une seconde commande ; passer une liste sans shell",
+        "run est déprécié",
+        "sortie.png est un mauvais nom"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Avec une liste d'arguments et sans shell, le nom du fichier reste un seul argument et n'est jamais interprété par un interpréteur de commandes."
+    },
+    {
+      "code": "PYTHON-19-Q4",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Un mot de passe de base de données a été commité par erreur puis supprimé dans le commit suivant. Est-ce réglé ?",
+      "choices": [
+        "Oui, il n'est plus dans le code",
+        "Non : il reste dans l'historique Git ; il faut le révoquer et en générer un nouveau",
+        "Oui si le dépôt est privé",
+        "Oui après un git pull"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "L'historique conserve toutes les versions et d'autres copies peuvent exister. Un secret exposé est considéré compromis : on le révoque, on le renouvelle et on contrôle ses usages."
+    },
+    {
+      "code": "PYTHON-19-Q5",
       "type": "FREE_TEXT",
-      "prompt": "Explique une décision liée à sécurité, secrets et validation des entrées.",
+      "prompt": "Sans relire le cours, explique avec tes mots pourquoi une liste blanche est préférable à une liste noire pour valider une entrée.",
       "choices": [],
       "correctChoice": null,
       "expectedKeywords": [
-        "contrat",
-        "preuve",
-        "test"
-      ]
+        "blanche",
+        "noire",
+        "attendu",
+        "contourn",
+        "oubli"
+      ],
+      "modelAnswer": "Une liste blanche n'autorise que ce qui est explicitement attendu (formats, caractères, valeurs) et refuse tout le reste, y compris les variantes imprévues. Une liste noire interdit des motifs connus, mais un attaquant trouve toujours une forme qu'on n'a pas listée (encodage, casse, variante). Un oubli dans une liste blanche bloque un cas légitime (visible, facile à corriger) alors qu'un oubli dans une liste noire laisse passer une attaque.",
+      "explanation": "Une bonne réponse oppose refuser par défaut et interdire seulement le connu, et compare les conséquences d'un oubli."
     }
   ],
   "checklist": [
-    "Je peux expliquer le concept sans réciter une définition",
-    "Je sais exécuter et modifier la preuve",
-    "Je peux nommer un risque et son contrôle",
-    "Je relie cette étape à la suivante"
+    "Je confine les chemins avec resolve() et is_relative_to()",
+    "Je n'écris jamais de requête SQL par concaténation",
+    "Je ne mets aucun secret dans le code, les URL ou les logs",
+    "Je sais pourquoi éviter pickle, eval et shell=True sur des entrées extérieures"
   ]
 }

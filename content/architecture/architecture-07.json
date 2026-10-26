@@ -11,25 +11,30 @@
     "ARCHITECTURE-06"
   ],
   "objectives": [
-    "Assembler modèle, service, contrat HTTP et représentation UI dans une tranche livrable",
-    "Justifier les compromis et nommer un risque opérationnel",
-    "Produire une preuve reproductible avant d’élargir la solution"
+    "Construire une application CRUD verticale : handler, service, dépôt, avec validation et statuts HTTP cohérents.",
+    "Distinguer 201, 200, 204, 400, 404 et 409 dans un cycle de vie de ressource.",
+    "Garder une frontière nette entre validation d'entrée, règle métier et stockage.",
+    "Documenter le projet : contrat, tests, limites, prochaines étapes."
   ],
   "sections": [
     {
-      "title": "Concept clé et décision",
+      "title": "Une tranche verticale complète",
+      "content": "Une application CRUD (Create, Read, Update, Delete) est le plus petit projet qui traverse toutes les couches : interface, API, service, dépôt, base. Le construire « en tranche verticale » signifie livrer un cas d'usage de bout en bout avant d'élargir : créer et lire un élément fonctionne réellement, avec ses erreurs, avant d'ajouter la modification et la suppression.\n```\nPOST   /items        -> 201 Created  + Location        (création)\nGET    /items/{id}   -> 200 OK | 404 Not Found         (lecture)\nPUT    /items/{id}   -> 200 OK | 404 | 400             (remplacement)\nDELETE /items/{id}   -> 204 No Content | 404           (suppression)\nGET    /items?page=  -> 200 OK                          (liste paginée)\n```\nChaque route a un contrat clair : entrées, sorties, statuts de succès et d'erreur."
+    },
+    {
+      "title": "Exemple résolu : un CRUD en mémoire avec ses erreurs",
       "conceptCodes": [
         "VERTICAL-SLICE-PROJECT"
       ],
-      "content": "Projet 1 : application CRUD verticale relie les besoins, le logiciel, les données et l’exploitation. Commence par les contraintes observables, trace les responsabilités, puis choisis la solution la plus simple qui respecte les invariants."
+      "content": "Problème : réaliser les cinq opérations sur des éléments nommés, avec validation et réponses cohérentes.\n\nRaisonnement, étape par étape :\n1. Dépôt : une liste ou un dictionnaire en mémoire avec un compteur d'identifiants ; il ne connaît ni HTTP ni validation.\n2. Service : valide et nettoie l'entrée (nom sans espaces autour, non vide, longueur maximale), applique les règles (nom unique), appelle le dépôt.\n3. Handler : traduit le résultat du service en (statut, corps) : création 201, lecture 200, absent 404, entrée invalide 400, doublon 409, suppression 204.\n4. Création : l'identifiant est attribué par le serveur (jamais choisi par le client), la réponse contient l'élément créé.\n5. Suppression : idempotente par nature ; un second DELETE renvoie 404 (ou 204 selon le contrat choisi) : choisir et documenter.\n6. Vérification : un scénario scripté (création, lecture, lecture d'un inconnu, mise à jour, suppression, lecture après suppression, liste) donne les statuts attendus.\n```python\ndef post(name: str):\n    cleaned = name.strip()\n    if not cleaned:\n        return 400, {\"error\": \"nom vide\"}\n    item = {\"id\": len(rows) + 1, \"name\": cleaned}\n    rows.append(item)\n    return 201, item\n```\nL'identifiant len(rows) + 1 est acceptable pour une démonstration ; en production on utilise une séquence de base ou un UUID, car une suppression ferait réutiliser un identifiant."
     },
     {
-      "title": "Projet d’architecture",
-      "content": "La preuve ARCHITECTURE-07 modélise une décision réelle sous forme déterministe. Elle ne remplace pas un déploiement complet : elle rend l’hypothèse testable avant l’intégration Spring Boot, Angular, PostgreSQL et Docker."
+      "title": "De la démo au projet livrable",
+      "content": "Pour que ce CRUD soit un vrai projet de portfolio :\n- Validation : taille maximale, caractères autorisés, normalisation (strip, casse) ; erreurs détaillées par champ.\n- Unicité et concurrence : contrainte UNIQUE en base, gestion du 409.\n- Pagination et tri stables : page et taille bornées (taille maximale 100), tri total (par identifiant en dernier critère).\n- Sécurité : authentification, autorisation (propriété de la ressource), limitation de débit, pas d'identifiant séquentiel devinable quand la ressource est sensible.\n- Persistance : base relationnelle, migrations versionnées, transactions.\n- Tests : unitaires (service), API (statuts, corps), un parcours de bout en bout.\n- Contrat : OpenAPI généré ou écrit, exemples de requêtes.\n- Observabilité : journal structuré avec identifiant de requête, métriques (taux d'erreurs, latence).\n- Exploitation : conteneur, configuration par environnement, point de santé.\n- README : comment lancer, tester, décisions, limites (« pas de suppression logique, pas de multi-utilisateur »).\nTraite ensuite l'évolution : champs optionnels, versionnement de l'API, suppression logique si l'audit l'exige."
     },
     {
-      "title": "Revue professionnelle",
-      "content": "Documente le contexte, la décision, une option rejetée, les conséquences, le signal à surveiller et la condition qui imposerait de revoir le choix."
+      "title": "Erreurs fréquentes à reconnaître",
+      "content": "1. Laisser le client choisir l'identifiant.\n2. Réutiliser un identifiant après suppression.\n3. Mélanger validation, règles et stockage dans le handler.\n4. Renvoyer 200 pour une création ou une erreur.\n5. Une liste sans pagination ni tri stable.\n6. Aucun test d'erreur : seul le chemin heureux marche.\n\nRetrouve ces erreurs de mémoire avant l'exercice, puis vérifie-toi avec le quiz : c'est la récupération, pas la relecture, qui fixe la notion."
     }
   ],
   "keyConcepts": [
@@ -43,49 +48,97 @@
       "professionalExample": "Pour valider rapidement le concept d’une fonctionnalité de tâches partagées, l’équipe construit une tranche verticale complète — modèle, service, endpoint REST et écran Angular — sur un seul cas d’usage plutôt que de développer toutes les couches en largeur. Cette approche a permis de découvrir dès la première semaine que le contrat d’API prévu ne convenait pas à l’écran mobile, un problème qu’une équipe voisine n’a découvert qu’après avoir fini le backend complet sans jamais brancher d’interface. Livrer une tranche fine et fonctionnelle en premier réduit le risque d’intégration tardive.",
       "codeExample": "// Tranche verticale minimale : modèle -> service -> API -> vue\n@RestController\nclass TaskController {\n  @PostMapping(\"/tasks\")\n  ResponseEntity<Task> create(@RequestBody TaskRequest req) {\n    Task task = taskService.create(req.title());\n    return ResponseEntity.status(201).body(task);\n  }\n}\n// Angular: this.http.post('/tasks', { title }).subscribe(...)",
       "commonMistake": "Choisir un outil avant d’identifier le besoin, la charge, le risque et le propriétaire de la donnée.",
-      "masteryQuestion": "Quel compromis, quel signal et quelle condition de réévaluation associes-tu à « Projet 1 : application CRUD verticale » ?",
-      "masteryProof": "Exécuter la preuve, modifier une contrainte, expliquer le résultat et dessiner la place du composant dans la stack complète."
+      "masteryQuestion": "Pourquoi construire une tranche verticale complète, et quels statuts pour création, lecture absente, suppression et entrée invalide ?",
+      "masteryProof": "Réaliser create, read, update, delete et list avec validation, statuts cohérents et un scénario scripté."
     }
   ],
   "exercises": [
     {
       "code": "ARCHITECTURE-07-E1",
-      "title": "Assembler modèle, service, contrat HTTP et représentation UI dans une tranche livrable",
-      "statement": "Complète la preuve pour produire exactement la sortie attendue, puis explique la décision, une alternative et le signal de production qui validerait ton choix.",
-      "starterCode": "rows = []\n\ndef post(name: str) -> dict:\n    # TODO : crée un item avec un id incrémental (len(rows) + 1) et le nom nettoyé (strip),\n    #        ajoute-le à rows puis retourne-le\n    return {\"id\": 0, \"name\": \"\"}\n\ncreated = post(\"  Architecture DLR  \")\n# TODO : affiche \"POST /items -> 201 #<id>\" puis \"Vue: <nom de la première ligne>\"\n",
-      "expectedOutput": "POST /items -> 201 #1\nVue: Architecture DLR"
+      "title": "Un CRUD complet avec ses erreurs",
+      "statement": "Complète le CRUD en mémoire : post (nettoie le nom, 400 si vide, 409 si le nom existe déjà, 201 sinon), get (200 ou 404), put (renomme, 200/404/400), delete (204 ou 404) et la liste. Joue le scénario et affiche exactement :\nPOST '  Architecture DLR  ' -> 201 {'id': 1, 'name': 'Architecture DLR'}\nPOST '   ' -> 400 {'error': 'nom vide'}\nPOST 'architecture dlr' -> 409 {'error': 'doublon'}\nGET 1 -> 200 {'id': 1, 'name': 'Architecture DLR'}\nGET 9 -> 404 {'error': 'introuvable'}\nPUT 1 'Plateforme' -> 200 {'id': 1, 'name': 'Plateforme'}\nDELETE 1 -> 204 {}\nDELETE 1 -> 404 {'error': 'introuvable'}\nPOST 'Deuxième' -> 201 {'id': 2, 'name': 'Deuxième'}\nLIST -> 200 [{'id': 2, 'name': 'Deuxième'}]",
+      "starterCode": "rows: dict[int, dict] = {}\nnext_id = 1\n\n\ndef post(name: str) -> tuple[int, dict]:\n    # TODO 1 : nom nettoyé (strip) ; vide -> (400, {\"error\": \"nom vide\"}) ; déjà présent (insensible à la casse) -> (409, {\"error\": \"doublon\"}) ;\n    #          sinon crée {\"id\": next_id, \"name\": nom} avec un identifiant incrémental jamais réutilisé -> (201, élément)\n    return 0, {}\n\n\ndef get(item_id: int) -> tuple[int, dict]:\n    # TODO 2 : (200, élément) ou (404, {\"error\": \"introuvable\"})\n    return 0, {}\n\n\ndef put(item_id: int, name: str) -> tuple[int, dict]:\n    # TODO 3 : 404 si l'élément n'existe pas ; 400 si le nouveau nom nettoyé est vide ; sinon renomme et retourne (200, élément)\n    return 0, {}\n\n\ndef delete(item_id: int) -> tuple[int, dict]:\n    # TODO 4 : (204, {}) si l'élément existait (supprimé) ; sinon (404, {\"error\": \"introuvable\"})\n    return 0, {}\n\n\ndef list_items() -> tuple[int, list]:\n    # TODO 5 : (200, éléments triés par identifiant)\n    return 0, []\n\n\nsteps = [\n    (\"POST '  Architecture DLR  '\", lambda: post(\"  Architecture DLR  \")),\n    (\"POST '   '\", lambda: post(\"   \")),\n    (\"POST 'architecture dlr'\", lambda: post(\"architecture dlr\")),\n    (\"GET 1\", lambda: get(1)),\n    (\"GET 9\", lambda: get(9)),\n    (\"PUT 1 'Plateforme'\", lambda: put(1, \"Plateforme\")),\n    (\"DELETE 1\", lambda: delete(1)),\n    (\"DELETE 1\", lambda: delete(1)),\n    (\"POST 'Deuxième'\", lambda: post(\"Deuxième\")),\n    (\"LIST\", list_items),\n]\nfor label, action in steps:\n    # TODO 6 : affiche \"<label> -> <statut> <corps>\"\n    pass\n",
+      "expectedOutput": "POST '  Architecture DLR  ' -> 201 {'id': 1, 'name': 'Architecture DLR'}\nPOST '   ' -> 400 {'error': 'nom vide'}\nPOST 'architecture dlr' -> 409 {'error': 'doublon'}\nGET 1 -> 200 {'id': 1, 'name': 'Architecture DLR'}\nGET 9 -> 404 {'error': 'introuvable'}\nPUT 1 'Plateforme' -> 200 {'id': 1, 'name': 'Plateforme'}\nDELETE 1 -> 204 {}\nDELETE 1 -> 404 {'error': 'introuvable'}\nPOST 'Deuxième' -> 201 {'id': 2, 'name': 'Deuxième'}\nLIST -> 200 [{'id': 2, 'name': 'Deuxième'}]"
     }
   ],
   "quiz": [
     {
       "code": "ARCHITECTURE-07-Q1",
       "type": "SINGLE_CHOICE",
-      "prompt": "Quelle démarche produit la décision la plus robuste ?",
+      "prompt": "Quel statut renvoyer après la création réussie d'une ressource ?",
       "choices": [
-        "Relier contraintes, responsabilités, preuve et observabilité",
-        "Choisir la technologie la plus populaire",
-        "Ajouter des services avant de mesurer"
+        "200 OK",
+        "201 Created (avec l'emplacement de la ressource)",
+        "204 No Content",
+        "202 Accepted"
       ],
-      "correctChoice": 0,
-      "expectedKeywords": []
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "201 indique que la ressource a été créée ; la réponse contient l'élément ou l'en-tête Location. 204 convient à une suppression réussie sans corps."
     },
     {
       "code": "ARCHITECTURE-07-Q2",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Prédis l'identifiant de l'élément créé après la suppression de l'élément 1 si les identifiants viennent de len(rows) + 1 et qu'il reste 1 élément (id 2) :",
+      "choices": [
+        "3",
+        "2 : collision avec l'élément existant (id 2)",
+        "1",
+        "0"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "len(rows) + 1 vaut 2 alors que l'id 2 existe déjà : doublon d'identifiant. Il faut un compteur monotone ou une séquence de base, jamais réutilisé."
+    },
+    {
+      "code": "ARCHITECTURE-07-Q3",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Trouve le défaut :\n```python\n@post('/items')\ndef create(body):\n    item = {'id': body['id'], 'name': body['name']}\n```\n",
+      "choices": [
+        "body est un mauvais nom",
+        "Le client choisit l'identifiant : risque de collisions et d'écrasements, et d'accès à des ressources d'autrui ; l'identifiant doit être attribué par le serveur",
+        "name est interdit",
+        "Il faut un PUT"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "L'identifiant est une responsabilité du serveur. Un identifiant fourni par le client permet d'écraser ou de deviner des ressources."
+    },
+    {
+      "code": "ARCHITECTURE-07-Q4",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Un client rejoue un DELETE déjà exécuté. Quel comportement est cohérent ?",
+      "choices": [
+        "Une erreur 500",
+        "404 (ou 204 selon le contrat) : le résultat sur l'état est le même ; l'important est de choisir et de documenter",
+        "201",
+        "Recréer l'élément"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "DELETE est idempotent au sens de l'état final (l'élément est absent). Le statut du second appel est un choix de contrat."
+    },
+    {
+      "code": "ARCHITECTURE-07-Q5",
       "type": "FREE_TEXT",
-      "prompt": "Nomme un compromis et le signal qui permettrait de le réévaluer.",
+      "prompt": "Sans relire le cours, explique avec tes mots pourquoi on livre une tranche verticale avant d'élargir un projet.",
       "choices": [],
       "correctChoice": null,
       "expectedKeywords": [
-        "compromis",
-        "mesure",
-        "risque"
-      ]
+        "bout en bout",
+        "couche",
+        "risque",
+        "valid",
+        "tranche"
+      ],
+      "modelAnswer": "Une tranche verticale traverse toutes les couches (interface, API, service, base) pour un seul cas d'usage. Elle révèle tôt les problèmes d'intégration, de configuration et de contrat, prouve que l'architecture fonctionne réellement et donne un produit démontrable, au lieu de construire chaque couche entière avant de savoir si elles s'emboîtent. On élargit ensuite cas d'usage par cas d'usage.",
+      "explanation": "Une bonne réponse parle de traverser toutes les couches pour révéler tôt les risques d'intégration et démontrer un cas d'usage fonctionnel."
     }
   ],
   "checklist": [
-    "Je peux dessiner la circulation de la donnée",
-    "Je sais nommer les responsabilités de chaque couche",
-    "Je justifie une alternative rejetée",
-    "Je définis une mesure et une condition de réévaluation"
+    "Mon identifiant est attribué par le serveur et jamais réutilisé",
+    "Mes statuts sont cohérents : 201, 200, 204, 400, 404, 409",
+    "Validation, règles et stockage sont séparés",
+    "Mon CRUD a des tests d'erreur et un README avec ses limites"
   ]
 }

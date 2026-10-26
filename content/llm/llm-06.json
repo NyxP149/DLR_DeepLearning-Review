@@ -11,21 +11,30 @@
     "LLM-05"
   ],
   "objectives": [
-    "Calculer une similarité locale et expliquer ses limites",
-    "Produire une expérience hors réseau reproductible",
-    "Documenter une limite et une métrique de contrôle"
+    "Expliquer ce qu'est un embedding et ce que mesure la similarité cosinus.",
+    "Calculer une similarité cosinus à la main et classer des documents par proximité.",
+    "Montrer avec un exemple pourquoi un sac de mots ne capte pas les synonymes et ce qu'un embedding appris change.",
+    "Connaître les limites : dimension, modèle, normalisation, langue, seuil."
   ],
   "sections": [
     {
-      "title": "Concept et décision",
-      "content": "Embeddings et similarité vectorielle doit être évalué comme un composant logiciel : entrées explicites, sorties contrôlées, métriques et cas d’échec. Aucun appel à un service distant n’est nécessaire pour apprendre le mécanisme.",
-      "conceptCodes": [
-        "LLM-EMBEDDINGS"
-      ]
+      "title": "Des textes devenus des vecteurs",
+      "content": "Un embedding est un vecteur de nombres (plusieurs centaines à milliers de dimensions) produit par un modèle pour représenter le sens d'un texte. Deux textes de sens proche donnent des vecteurs proches. Cela permet de comparer des textes par calcul plutôt que par correspondance exacte de mots.\n\nLa similarité cosinus mesure l'angle entre deux vecteurs :\ncos(a, b) = (a · b) / (‖a‖ × ‖b‖)\nElle vaut 1 si les vecteurs pointent dans la même direction, 0 s'ils sont orthogonaux (sans rapport), -1 s'ils sont opposés. Comme elle ignore la longueur, deux textes de tailles différentes restent comparables. Si les vecteurs sont normalisés (norme 1), le cosinus est simplement le produit scalaire."
     },
     {
-      "title": "Expérience locale",
-      "content": "L’expérience isole le mécanisme LLM-EMBEDDINGS. Elle reste volontairement déterministe afin de distinguer un défaut de pipeline d’une variation propre aux modèles génératifs."
+      "title": "Exemple résolu : un sac de mots et ses limites",
+      "conceptCodes": [
+        "LLM-EMBEDDINGS"
+      ],
+      "content": "Problème : comparer une requête à trois documents avec des vecteurs simples (comptage de mots), puis constater ce qu'un tel modèle ne voit pas.\n\nRaisonnement, étape par étape :\n1. Vocabulaire : l'ensemble des mots rencontrés ; chaque texte devient un vecteur de comptages, une position par mot.\n2. Produit scalaire : somme des produits position par position. Seuls les mots communs contribuent.\n3. Normes : racine de la somme des carrés.\n4. Cosinus : produit scalaire divisé par le produit des normes. Pour la requête « jvm exécute bytecode » (3 mots) et un document qui contient ces trois mots plus trois autres : 3 / (√3 × √6) = 0,707.\n5. Un document sans mot commun obtient 0, même s'il parle du même sujet avec d'autres mots : « voiture » et « automobile » sont orthogonaux dans un sac de mots.\n6. Un embedding appris par un modèle place « voiture » et « automobile » très près l'un de l'autre, car ils apparaissent dans des contextes semblables : c'est ce que remplace le calcul local dans un vrai projet.\n```python\nfrom math import sqrt\n\ndef cosine(a: list[float], b: list[float]) -> float:\n    dot = sum(x * y for x, y in zip(a, b))\n    norm = sqrt(sum(x * x for x in a)) * sqrt(sum(y * y for y in b))\n    return dot / norm if norm else 0.0\n```\nLe garde-fou division par zéro compte : un vecteur nul (texte vide) n'a pas de direction."
+    },
+    {
+      "title": "Utiliser des embeddings avec lucidité",
+      "content": "- On ne compare que des vecteurs produits par le même modèle, de même dimension : changer de modèle d'embedding oblige à recalculer toute la base.\n- Normalise ou utilise le cosinus ; la distance euclidienne dépend de la norme.\n- Un score de 0,8 n'a pas de sens universel : la valeur dépend du modèle et du corpus. Choisis un seuil en mesurant sur des exemples pertinents et non pertinents.\n- Limites : ambiguïtés (« avocat »), négation (« je n'aime pas » proche de « j'aime »), nombres et identifiants, langues rares, textes longs dilués, nuances de domaine. Pour des codes exacts ou des noms propres, une recherche par mots-clés complète l'embedding.\n- Stockage et recherche : pour des millions de vecteurs, on utilise un index approximatif (HNSW, IVF) dans une base vectorielle (pgvector, FAISS, etc.), au prix d'un petit risque de rater un voisin.\n- Confidentialité : un vecteur peut permettre de retrouver une partie du texte ; traite-le comme la donnée d'origine.\n- Coût : chaque texte à indexer est un appel au modèle ; mets en cache et ne recalcule que ce qui change.\n- Utilisations : recherche sémantique, recommandation, déduplication, classification par plus proches voisins, regroupement."
+    },
+    {
+      "title": "Erreurs fréquentes à reconnaître",
+      "content": "1. Comparer des vecteurs de deux modèles ou de deux dimensions différentes.\n2. Diviser par une norme nulle sans garde.\n3. Fixer un seuil de similarité « au feeling » sans mesure.\n4. Croire que l'embedding comprend la négation ou les nombres.\n5. Ne pas mettre à jour l'index quand les documents changent.\n6. Utiliser uniquement les embeddings pour chercher un identifiant exact.\n\nRetrouve ces erreurs de mémoire avant l'exercice, puis vérifie-toi avec le quiz : c'est la récupération, pas la relecture, qui fixe la notion."
     }
   ],
   "keyConcepts": [
@@ -39,49 +48,97 @@
       "professionalExample": "Un moteur de recherche interne calcule la similarité cosinus entre la question d'un employé et des embeddings de documents RH pour retrouver la politique de télétravail. Un jour, la requête « combien de jours de congé » remonte un document sur les arrêts maladie, car les deux textes partagent un vocabulaire proche dans l'espace vectoriel : la similarité sémantique n'est pas la pertinence exacte. L'équipe ajoute alors un filtre par métadonnées (type de document) en complément du score de similarité pour réduire ces faux positifs.",
       "codeExample": "from math import sqrt\n\ndef cosine(a: list[float], b: list[float]) -> float:\n    dot = sum(x * y for x, y in zip(a, b))\n    return dot / (sqrt(sum(x*x for x in a)) * sqrt(sum(y*y for y in b)))\n\nquery = [0.8, 0.6, 0.1]          # \"jours de congé payé\"\ndoc_conges = [0.75, 0.65, 0.05]  # politique de congés\ndoc_maladie = [0.7, 0.55, 0.2]   # arrêt maladie\nprint(f\"Congés: {cosine(query, doc_conges):.3f}\")\nprint(f\"Maladie: {cosine(query, doc_maladie):.3f}\")\n# Les deux scores sont proches : la similarité seule ne suffit pas à trancher",
       "commonMistake": "Évaluer un seul exemple favorable ou confondre plausibilité et exactitude.",
-      "masteryQuestion": "Quelle métrique et quel cas d’échec utiliserais-tu pour embeddings et similarité vectorielle ?",
-      "masteryProof": "Exécuter la preuve, modifier une entrée et expliquer le résultat ainsi que la limite du modèle local."
+      "masteryQuestion": "Que mesure la similarité cosinus, et pourquoi un sac de mots ne voit-il pas les synonymes alors qu'un embedding appris les rapproche ?",
+      "masteryProof": "Calculer des similarités cosinus sur des sacs de mots, classer des documents et montrer la limite sur deux synonymes."
     }
   ],
   "exercises": [
     {
       "code": "LLM-06-E1",
-      "title": "Calculer une similarité locale et expliquer ses limites",
-      "statement": "Complète l’expérience pour produire exactement la sortie attendue. Explique ensuite quelle partie serait remplacée par un modèle réel.",
-      "starterCode": "from math import sqrt\n\ndef cosine(a: list[float], b: list[float]) -> float:\n    # TODO : retourne la similarité cosinus : produit scalaire / (norme de a x norme de b)\n    return 0.0\n\nprint(f\"Similarité: {cosine([1, 1, 0], [1, 0.5, 0]):.3f}\")\n",
-      "expectedOutput": "Similarité: 0.949"
+      "title": "Cosinus, classement et limite d'un sac de mots",
+      "statement": "Complète : le sac de mots d'un texte, la similarité cosinus (0 si une norme est nulle), le classement de trois documents pour une requête et la preuve que deux synonymes ont une similarité nulle. Affiche exactement :\nClassement: jvm=0.707 jdk=0.000 python=0.000\nVoiture vs automobile: 0.000\nUn modèle d'embedding réel remplacerait bag_of_words et rapprocherait les synonymes.",
+      "starterCode": "from math import sqrt\n\nDOCUMENTS = {\n    \"jvm\": \"la jvm exécute le bytecode java\",\n    \"jdk\": \"le jdk contient le compilateur javac\",\n    \"python\": \"python est interprété\",\n}\n\n\ndef bag_of_words(text: str, vocabulary: list[str]) -> list[float]:\n    # TODO 1 : pour chaque mot du vocabulaire, le nombre d'occurrences dans text.split()\n    return []\n\n\ndef cosine(a: list[float], b: list[float]) -> float:\n    # TODO 2 : produit scalaire / (norme de a x norme de b), 0.0 si une norme est nulle\n    return 0.0\n\n\nvocabulary = sorted({word for text in DOCUMENTS.values() for word in text.split()} | {\"voiture\", \"automobile\"})\nquery = \"jvm exécute bytecode\"\n# TODO 3 : calcule la similarité de la requête avec chaque document ; affiche\n#   \"Classement:\" suivi de \"<nom>=<similarité 3 décimales>\" pour chaque document, du plus proche au moins proche\n#   (tri par similarité décroissante, puis par nom)\n# TODO 4 : affiche \"Voiture vs automobile: <similarité 3 décimales>\" (deux textes d'un mot : \"voiture\" et \"automobile\")\n",
+      "expectedOutput": "Classement: jvm=0.707 jdk=0.000 python=0.000\nVoiture vs automobile: 0.000"
     }
   ],
   "quiz": [
     {
       "code": "LLM-06-Q1",
       "type": "SINGLE_CHOICE",
-      "prompt": "Quelle validation est la plus solide ?",
+      "prompt": "Que vaut la similarité cosinus de deux vecteurs orthogonaux ?",
       "choices": [
-        "Plusieurs cas reproductibles avec métriques et provenance",
-        "Une réponse qui semble correcte",
-        "Une démonstration sans jeu de test"
+        "1",
+        "0 : aucun rapport de direction",
+        "-1",
+        "Elle n'est pas définie"
       ],
-      "correctChoice": 0,
-      "expectedKeywords": []
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Un produit scalaire nul donne un cosinus nul. Dans un sac de mots, cela correspond à des textes sans mot commun."
     },
     {
       "code": "LLM-06-Q2",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Prédis la similarité entre « voiture » et « automobile » avec un sac de mots :",
+      "choices": [
+        "Proche de 1 : ce sont des synonymes",
+        "0 : aucun mot commun, le sac de mots ne voit pas le sens",
+        "-1",
+        "0,5"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Le sac de mots compte des mots identiques. Deux mots différents sont des dimensions orthogonales, même s'ils veulent dire la même chose. Un embedding appris les rapprocherait."
+    },
+    {
+      "code": "LLM-06-Q3",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Trouve le défaut :\n```python\ndef cosine(a, b):\n    return sum(x*y for x,y in zip(a,b)) / (norm(a) * norm(b))\n```\n",
+      "choices": [
+        "zip est interdit",
+        "Division par zéro si un des vecteurs est nul (texte vide) : il faut un garde",
+        "Le produit scalaire est faux",
+        "norm n'existe pas"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Un texte vide produit un vecteur nul, de norme 0. La division lèverait ZeroDivisionError. Retourne 0,0 (ou traite explicitement le cas)."
+    },
+    {
+      "code": "LLM-06-Q4",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Pourquoi ne peut-on pas comparer un vecteur produit par un modèle A avec un vecteur produit par un modèle B ?",
+      "choices": [
+        "Les vecteurs sont chiffrés",
+        "Chaque modèle définit son propre espace : les dimensions et leur sens diffèrent, les distances n'ont plus de signification commune",
+        "Un seul modèle est autorisé par projet",
+        "Les vecteurs de B sont toujours plus longs"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Les axes d'un espace d'embedding n'ont pas de sens universel. Il faut recalculer toute la base si on change de modèle."
+    },
+    {
+      "code": "LLM-06-Q5",
       "type": "FREE_TEXT",
-      "prompt": "Nomme une limite et le contrôle associé.",
+      "prompt": "Sans relire le cours, explique avec tes mots ce qu'un embedding apporte à une recherche par rapport à la recherche par mots exacts, et deux de ses limites.",
       "choices": [],
       "correctChoice": null,
       "expectedKeywords": [
-        "limite",
-        "test",
-        "mesure"
-      ]
+        "sens",
+        "synonym",
+        "vecteur",
+        "negation",
+        "seuil"
+      ],
+      "modelAnswer": "Un embedding place les textes de sens proche dans des régions voisines de l'espace, donc une requête peut retrouver un document qui dit la même chose avec d'autres mots (synonymes, reformulations), ce qu'une recherche par mots exacts manque. Limites : les négations, les nombres et les identifiants exacts sont mal gérés, un score n'a pas de sens universel (il faut calibrer un seuil), et on ne peut pas mélanger des vecteurs de modèles différents.",
+      "explanation": "Une bonne réponse cite la recherche par sens (synonymes, reformulations) et au moins deux limites : négation, identifiants, seuil à calibrer, modèle unique."
     }
   ],
   "checklist": [
-    "Je sais expliquer le mécanisme",
-    "Je peux reproduire la preuve hors réseau",
-    "Je distingue simulation locale et modèle réel",
-    "Je peux nommer une métrique et un risque"
+    "Je sais calculer une similarité cosinus et gérer un vecteur nul",
+    "Je sais pourquoi un sac de mots ne voit pas les synonymes",
+    "Je ne compare que des vecteurs du même modèle",
+    "Je calibre mon seuil de similarité par la mesure"
   ]
 }

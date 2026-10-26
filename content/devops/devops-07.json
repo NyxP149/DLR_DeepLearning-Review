@@ -11,21 +11,30 @@
     "DEVOPS-06"
   ],
   "objectives": [
-    "Expliquer projet professionnel : chaîne de livraison",
-    "Construire une preuve exécutable et déterministe",
-    "Relier le concept à une décision professionnelle"
+    "Modéliser une chaîne de livraison (build, test, scan, deploy) avec un contexte partagé.",
+    "Arrêter la chaîne au premier échec et marquer les étapes suivantes comme ignorées.",
+    "Réutiliser l'artefact construit dans les étapes suivantes (build once, deploy many).",
+    "Rendre la chaîne observable : une ligne par étape, un verdict, des raisons."
   ],
   "sections": [
     {
-      "title": "Concept et usage professionnel",
-      "content": "Projet professionnel : chaîne de livraison répond à un besoin concret de maintenabilité, de sûreté ou de performance. Le laboratoire demande de rendre la décision observable et vérifiable.",
-      "conceptCodes": [
-        "DEVOPS-PROJECT"
-      ]
+      "title": "Une chaîne de livraison, c'est un contrat entre étapes",
+      "content": "Une chaîne de livraison enchaîne des étapes qui transforment le code en logiciel en production : build (construire l'artefact), test (le vérifier), scan (rechercher des vulnérabilités), deploy (le publier). Chaque étape a une entrée (ce que la précédente a produit), une sortie et un verdict.\n\nPrincipes :\n- Build once : on construit l'artefact une seule fois ; les étapes suivantes utilisent ce même artefact (identifié par un nom unique, par exemple dlr-api:1.4.0).\n- Fail fast : à la première étape en échec, on arrête ; les suivantes sont marquées comme ignorées, jamais exécutées par accident.\n- Un contexte partagé transporte ce qui doit circuler : l'artefact construit, la version, le commit.\n- Chaque étape journalise un résultat clair."
     },
     {
-      "title": "Projet portfolio",
-      "content": "La preuve minimale est locale, déterministe et peut être enrichie sans changer le contrat attendu."
+      "title": "Exemple résolu : un orchestrateur qui s'arrête au premier échec",
+      "conceptCodes": [
+        "DEVOPS-PROJECT"
+      ],
+      "content": "Problème : écrire l'orchestrateur d'une chaîne de quatre étapes, la jouer sur un cas qui échoue au scan puis sur un cas sain.\n\nRaisonnement, étape par étape :\n1. Chaque étape est une fonction qui reçoit le contexte (un dictionnaire) et retourne (succès, message). build ajoute contexte['artefact'] = 'dlr-api:1.4.0'.\n2. L'orchestrateur parcourt les étapes dans l'ordre. Tant que tout va bien, il affiche « [étape] OK: message ».\n3. À la première étape en échec, il affiche « [étape] ÉCHEC: message », puis marque toutes les suivantes « [étape] IGNORÉ » sans les exécuter.\n4. La chaîne retourne un verdict : ÉCHEC avec le nombre d'étapes réellement exécutées sur le total (3/4), ou SUCCÈS.\n5. deploy lit l'artefact dans le contexte : il déploie exactement ce que build a construit (et testé). Si build ne l'avait pas fourni, deploy échouerait explicitement.\n6. Vérification : cas 1 : scan échoue (1 vulnérabilité critique) : deploy ignoré, 3/4 exécutées ; cas 2 : tout passe, deploy publie dlr-api:1.4.0.\n```python\ndef run(etapes, contexte):\n    executees = 0\n    for index, (nom, fonction) in enumerate(etapes):\n        ok, message = fonction(contexte)\n        executees += 1\n        print(f\"[{nom}] {'OK' if ok else 'ÉCHEC'}: {message}\")\n        if not ok:\n            for nom_suivant, _ in etapes[index + 1:]:\n                print(f\"[{nom_suivant}] IGNORÉ\")\n            return f\"Livraison: ÉCHEC ({executees}/{len(etapes)} étapes exécutées)\"\n    return f\"Livraison: SUCCÈS ({executees}/{len(etapes)} étapes exécutées)\"\n```"
+    },
+    {
+      "title": "Chaîne fiable : bonnes pratiques",
+      "content": "- Idempotence : relancer une étape ou la chaîne entière ne doit pas produire d'effet dupliqué (déploiement de la même version deux fois = aucun changement).\n- Environnements : mêmes étapes, mêmes artefacts, configuration différente (dev, recette, production) ; promotion explicite, éventuellement avec approbation manuelle avant la production.\n- Scan : dépendances (SCA), code (SAST), image conteneur, secrets ; bloquer sur le critique.\n- Tests : pyramide (beaucoup d'unitaires, quelques intégrations, peu de bout en bout) ; un test de fumée (smoke test) après le déploiement vérifie que l'application répond.\n- Observabilité : durée de chaque étape, taux de réussite, délai entre commit et production (lead time), fréquence de déploiement, taux d'échec des changements, temps de restauration (indicateurs DORA).\n- Gestion des échecs : message exploitable (quelle étape, pourquoi), liens vers les journaux, notification de l'auteur du commit.\n- Secrets limités aux étapes qui en ont besoin.\n- Le pipeline lui-même est du code versionné, revu et testé (pipeline as code).\n- Rollback automatique si le smoke test ou les alertes post-déploiement échouent."
+    },
+    {
+      "title": "Erreurs fréquentes à reconnaître",
+      "content": "1. Continuer la chaîne après un échec (déployer malgré un scan rouge).\n2. Reconstruire l'artefact dans chaque étape : on teste autre chose que ce qu'on déploie.\n3. Un déploiement sans smoke test.\n4. Un pipeline modifié à la main dans l'interface, hors de Git.\n5. Une chaîne qui n'est pas rejouable sans effet de bord.\n6. Des échecs sans message : « étape 3 : erreur ».\n\nRetrouve ces erreurs de mémoire avant l'exercice, puis vérifie-toi avec le quiz : c'est la récupération, pas la relecture, qui fixe la notion."
     }
   ],
   "keyConcepts": [
@@ -39,8 +48,8 @@
       "professionalExample": "Pour son projet de portfolio, un candidat assemble une chaîne de livraison complète : le push sur main déclenche le build d'une image Docker reproductible, l'exécution des tests et d'un quality gate, puis le déploiement automatique avec rollback si le healthcheck échoue. Ce projet démontre en entretien technique qu'il comprend la chaîne de bout en bout, pas seulement une étape isolée : c'est la cohérence entre le Dockerfile, le pipeline CI et la stratégie de déploiement qui prouve la maîtrise, plus que chaque brique prise séparément. La contrainte centrale est que chaque étape reste indépendamment vérifiable : un recruteur ou un collègue doit pouvoir rejouer le pipeline sans connaître les détails d'implémentation des étapes précédentes.",
       "codeExample": "jobs:\n  build-test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v4\n      - run: docker build -t myapp:${{ github.sha }} .\n      - run: docker run --rm myapp:${{ github.sha }} pytest -q\n\n  deploy:\n    needs: build-test\n    if: github.ref == 'refs/heads/main'\n    runs-on: ubuntu-latest\n    steps:\n      - run: docker push myapp:${{ github.sha }}\n      - run: docker service update --image myapp:${{ github.sha }} myapp_web\n      - name: Verify and rollback on failure\n        run: |\n          curl -sf https://api.internal/health || \\\n          (docker service rollback myapp_web && exit 1)",
       "commonMistake": "Appliquer la technique sans mesurer son effet ni documenter sa frontière.",
-      "masteryQuestion": "Quelle contrainte de projet professionnel : chaîne de livraison doit rester vraie lorsque le système évolue ?",
-      "masteryProof": "Exécuter la preuve, expliquer son invariant et proposer un cas d’échec."
+      "masteryQuestion": "Pourquoi construire l'artefact une seule fois, et pourquoi marquer IGNORÉ les étapes qui suivent un échec plutôt que les omettre de l'affichage ?",
+      "masteryProof": "Écrire l'orchestrateur d'une chaîne build, test, scan, deploy avec contexte partagé et arrêt au premier échec, puis jouer un cas qui échoue et un cas sain."
     }
   ],
   "exercises": [
@@ -56,32 +65,80 @@
     {
       "code": "DEVOPS-07-Q1",
       "type": "SINGLE_CHOICE",
-      "prompt": "Quelle preuve est la plus utile en revue ?",
+      "prompt": "La chaîne échoue au scan (3e étape sur 4). Quel est l'état de deploy ?",
       "choices": [
-        "Une exécution déterministe avec invariant explicite",
-        "Une sortie aléatoire",
-        "Une capture sans code"
+        "Exécuté",
+        "IGNORÉ : la chaîne s'arrête au premier échec",
+        "ÉCHEC aussi",
+        "En attente"
       ],
-      "correctChoice": 0,
-      "expectedKeywords": []
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Une étape qui suit un échec n'est jamais exécutée. L'afficher IGNORÉ rend explicite qu'elle n'a pas tourné (et pas qu'elle a réussi ou été oubliée)."
     },
     {
       "code": "DEVOPS-07-Q2",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Prédis le verdict : build OK, test OK, scan ÉCHEC, deploy ignoré.",
+      "choices": [
+        "Livraison: SUCCÈS",
+        "Livraison: ÉCHEC (3/4 étapes exécutées)",
+        "Livraison: ÉCHEC (4/4 étapes exécutées)",
+        "Livraison: ÉCHEC (1/4 étapes exécutées)"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Trois étapes ont tourné (build, test, scan) ; la quatrième n'a pas été exécutée. Le verdict indique le nombre d'étapes exécutées sur le total."
+    },
+    {
+      "code": "DEVOPS-07-Q3",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Trouve le défaut :\n```\nbuild : construit l'image app:1.4.0\ndeploy : reconstruit l'image depuis le code puis la publie\n```\n",
+      "choices": [
+        "deploy est trop long",
+        "L'image déployée n'est pas celle qui a été testée : une reconstruction peut différer (dépendances, date) ; il faut réutiliser l'artefact du build",
+        "Il manque une étape lint",
+        "L'image est trop grosse"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Build once, deploy many : l'artefact testé est celui qui part en production, identifié par un nom ou un digest unique."
+    },
+    {
+      "code": "DEVOPS-07-Q4",
+      "type": "SINGLE_CHOICE",
+      "prompt": "À quoi sert un smoke test après un déploiement ?",
+      "choices": [
+        "À tester toutes les fonctions",
+        "À vérifier rapidement que l'application déployée répond et que ses fonctions vitales marchent, avant de la déclarer saine",
+        "À mesurer la couverture",
+        "À remplacer les tests unitaires"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Un test de fumée (page de santé, une requête métier minimale) détecte immédiatement un déploiement cassé et peut déclencher le retour arrière."
+    },
+    {
+      "code": "DEVOPS-07-Q5",
       "type": "FREE_TEXT",
-      "prompt": "Explique une décision liée à projet professionnel : chaîne de livraison.",
+      "prompt": "Sans relire le cours, explique avec tes mots pourquoi le pipeline doit être versionné comme du code et quelles mesures aident à juger la santé d'une chaîne de livraison.",
       "choices": [],
       "correctChoice": null,
       "expectedKeywords": [
-        "contrat",
-        "preuve",
-        "test"
-      ]
+        "version",
+        "revue",
+        "dora",
+        "frequence",
+        "restauration"
+      ],
+      "modelAnswer": "Un pipeline versionné se relit en revue, s'historise, se rejoue et se retrouve identique d'un projet à l'autre, au lieu d'être modifié à la main dans une interface sans trace. Pour juger sa santé, on suit les indicateurs DORA : fréquence de déploiement, délai entre commit et production, taux d'échec des changements et temps de restauration après incident.",
+      "explanation": "Une bonne réponse justifie le pipeline as code (revue, historique, reproductibilité) et cite les indicateurs DORA."
     }
   ],
   "checklist": [
-    "Je peux expliquer le concept sans réciter une définition",
-    "Je sais exécuter et modifier la preuve",
-    "Je peux nommer un risque et son contrôle",
-    "Je peux présenter cette preuve dans mon portfolio"
+    "Ma chaîne s'arrête au premier échec et marque les étapes suivantes ignorées",
+    "Je construis l'artefact une fois et je le réutilise",
+    "J'ai un smoke test après déploiement",
+    "Mon pipeline est du code versionné et revu"
   ]
 }

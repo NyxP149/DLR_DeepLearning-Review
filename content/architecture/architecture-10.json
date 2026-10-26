@@ -11,25 +11,30 @@
     "ARCHITECTURE-09"
   ],
   "objectives": [
-    "Répartir les preuves entre tests unitaires, intégration, contrat et end-to-end",
-    "Justifier les compromis et nommer un risque opérationnel",
-    "Produire une preuve reproductible avant d’élargir la solution"
+    "Décrire la pyramide de tests (unitaires, intégration, contrats, bout en bout) et le risque que couvre chaque niveau.",
+    "Calculer la répartition et la durée d'une suite et repérer une pyramide inversée.",
+    "Choisir quels risques tester à quel niveau, et traiter les tests instables.",
+    "Fixer des seuils de qualité de suite (répartition, durée, taux d'instabilité)."
   ],
   "sections": [
     {
-      "title": "Concept clé et décision",
+      "title": "Chaque niveau de test couvre un risque",
+      "content": "Les tests ne se valent pas : ils diffèrent par ce qu'ils attrapent, leur vitesse et leur coût de maintenance.\n- Unitaires : une règle ou une fonction isolée. Millisecondes, nombreux, précis.\n- Intégration : plusieurs composants réels ensemble (service et base, dépôt et schéma). Secondes, moins nombreux.\n- Contrats : le client et le fournisseur d'une API s'accordent sur le format (tests de contrat orientés consommateur). Évite de lancer tout le système pour vérifier une compatibilité.\n- Bout en bout (E2E) : un parcours utilisateur complet à travers l'interface. Lent, fragile, peu nombreux, réservé aux parcours critiques.\nLa pyramide recommande beaucoup de tests rapides en bas et peu de tests lents en haut ; la pyramide inversée (« cornet de glace »), avec surtout des E2E, donne une suite lente, instable et chère."
+    },
+    {
+      "title": "Exemple résolu : lire une suite de tests",
       "conceptCodes": [
         "TEST-STRATEGY"
       ],
-      "content": "Valider toute la pyramide de tests relie les besoins, le logiciel, les données et l’exploitation. Commence par les contraintes observables, trace les responsabilités, puis choisis la solution la plus simple qui respecte les invariants."
+      "content": "Problème : une suite compte 42 tests unitaires (0,05 s chacun), 12 d'intégration (1,5 s), 6 de contrat (0,5 s) et 3 E2E (20 s). Est-elle saine ?\n\nRaisonnement, étape par étape :\n1. Total : 42 + 12 + 6 + 3 = 63 tests.\n2. Répartition : unitaires 66,7 %, intégration 19,0 %, contrats 9,5 %, E2E 4,8 %. Les tests rapides dominent.\n3. Durée : unitaires 2,1 s, intégration 18 s, contrats 3 s, E2E 60 s : 83,1 s au total. Les E2E, 4,8 % des tests, pèsent 72 % du temps.\n4. Seuils de santé : unitaires au moins 60 %, E2E au plus 10 % des tests, durée totale sous un budget (par exemple 120 s pour un retour rapide).\n5. Verdict : pyramide saine.\n6. Instabilité : un test qui échoue de façon intermittente (flaky) est mis en quarantaine et corrigé ; sinon l'équipe prend l'habitude de relancer jusqu'au vert, et la suite perd sa valeur.\n```python\ntotal = sum(count for count, _ in suite.values())\nshare = {level: 100 * count / total for level, (count, _) in suite.items()}\nduration = {level: count * seconds for level, (count, seconds) in suite.items()}\nhealthy = share[\"unitaires\"] >= 60 and share[\"e2e\"] <= 10\n```"
     },
     {
-      "title": "Construction verticale",
-      "content": "La preuve ARCHITECTURE-10 modélise une décision réelle sous forme déterministe. Elle ne remplace pas un déploiement complet : elle rend l’hypothèse testable avant l’intégration Spring Boot, Angular, PostgreSQL et Docker."
+      "title": "Que tester où",
+      "content": "- Règles métier, calculs, validations, cas limites : unitaires.\n- Requêtes SQL, mapping, migrations, contraintes : intégration avec une vraie base (conteneur jetable), pas une base simulée qui masque les différences.\n- Format des échanges entre services : tests de contrat (Pact, schémas OpenAPI vérifiés).\n- Sécurité (authentification, autorisation) : unitaires pour les règles, intégration pour la chaîne de filtres.\n- Parcours critiques (commander, payer) : quelques E2E robustes, sur des données maîtrisées.\n- Performances, charge : tests dédiés hors de la suite de chaque commit.\n- Résilience : tests de panne (dépendance indisponible, délai dépassé).\n\nQualité de la suite : déterministe (pas d'heure, de hasard, de réseau externe), indépendante (ordre libre), rapide (retour en quelques minutes), diagnostic clair (un test échoué dit quoi et où). Mesures utiles : durée totale, durée du plus lent, taux de tests instables, temps de correction d'un test rouge. La couverture de code indique des zones jamais exécutées ; elle ne prouve pas la qualité des assertions. Les tests de mutation vérifient que les tests détectent réellement des changements du code.\nAnti-patterns : tester les détails d'implémentation (mocks partout), dupliquer à trois niveaux le même risque, laisser un test rouge ignoré."
     },
     {
-      "title": "Revue professionnelle",
-      "content": "Documente le contexte, la décision, une option rejetée, les conséquences, le signal à surveiller et la condition qui imposerait de revoir le choix."
+      "title": "Erreurs fréquentes à reconnaître",
+      "content": "1. Une pyramide inversée : peu d'unitaires, beaucoup d'E2E.\n2. Relancer les tests instables jusqu'au vert.\n3. Tester les mêmes règles à tous les niveaux.\n4. Une base simulée qui masque les différences avec la vraie.\n5. Un test dont l'échec ne dit pas ce qui ne va pas.\n6. Se fier à la couverture sans regarder les assertions.\n\nRetrouve ces erreurs de mémoire avant l'exercice, puis vérifie-toi avec le quiz : c'est la récupération, pas la relecture, qui fixe la notion."
     }
   ],
   "keyConcepts": [
@@ -43,49 +48,97 @@
       "professionalExample": "Une équipe ne dispose que de tests end-to-end lents (45 minutes) exécutés sur navigateur ; un changement de schéma JSON entre le service commandes et le service facturation n’est détecté qu’en préproduction, trois jours après le commit fautif. Un test de contrat entre les deux services, exécuté en quelques secondes à chaque build, aurait détecté la rupture immédiatement. Répartir les preuves entre unitaires, intégration, contrat et end-to-end donne un signal rapide sans sacrifier la couverture globale.",
       "codeExample": "# Pyramide de tests par vitesse de signal\nunit_tests: 200       # ~10s, logique métier isolée\nintegration_tests: 40  # ~2min, repository + base réelle\ncontract_tests: 8       # ~15s, schéma API commandes <-> facturation\ne2e_tests: 5            # ~45min, parcours utilisateur complet",
       "commonMistake": "Choisir un outil avant d’identifier le besoin, la charge, le risque et le propriétaire de la donnée.",
-      "masteryQuestion": "Quel compromis, quel signal et quelle condition de réévaluation associes-tu à « Valider toute la pyramide de tests » ?",
-      "masteryProof": "Exécuter la preuve, modifier une contrainte, expliquer le résultat et dessiner la place du composant dans la stack complète."
+      "masteryQuestion": "Pourquoi viser une pyramide plutôt qu'un cornet de glace, et comment traiter un test instable ?",
+      "masteryProof": "Calculer répartition et durée d'une suite par niveau, vérifier des seuils de santé et diagnostiquer une pyramide inversée."
     }
   ],
   "exercises": [
     {
       "code": "ARCHITECTURE-10-E1",
-      "title": "Répartir les preuves entre tests unitaires, intégration, contrat et end-to-end",
-      "statement": "Complète la preuve pour produire exactement la sortie attendue, puis explique la décision, une alternative et le signal de production qui validerait ton choix.",
-      "starterCode": "suite = {\"unitaires\": 42, \"intégration\": 12, \"contrats\": 6, \"e2e\": 3}\n# TODO 1 : affiche \"Tests: \" suivi du nombre total de tests\n# TODO 2 : affiche \"Couverture: \" suivi des niveaux de la pyramide séparés par \" -> \"\n",
-      "expectedOutput": "Tests: 63\nCouverture: unitaires -> intégration -> contrats -> e2e"
+      "title": "Diagnostiquer la forme d'une suite de tests",
+      "statement": "Complète : le total de tests, la répartition en pourcentage par niveau (une décimale), la durée par niveau et totale, et le verdict de santé (unitaires au moins 60 % des tests, E2E au plus 10 %, durée totale sous 120 s), pour deux suites. Affiche exactement :\nSuite A: 63 tests, durée 83.1 s\n  unitaires: 66.7% (2.1 s)\n  intégration: 19.0% (18.0 s)\n  contrats: 9.5% (3.0 s)\n  e2e: 4.8% (60.0 s)\n  Verdict: SAINE\nSuite B: 30 tests, durée 308.0 s\n  unitaires: 33.3% (0.5 s)\n  intégration: 16.7% (7.5 s)\n  contrats: 0.0% (0.0 s)\n  e2e: 50.0% (300.0 s)\n  Verdict: À REVOIR (unitaires sous 60%; e2e au-dessus de 10%; durée au-dessus de 120 s)",
+      "starterCode": "# niveau -> (nombre de tests, durée d'un test en secondes)\nHEALTHY = {\"unitaires\": (42, 0.05), \"intégration\": (12, 1.5), \"contrats\": (6, 0.5), \"e2e\": (3, 20.0)}\nINVERTED = {\"unitaires\": (10, 0.05), \"intégration\": (5, 1.5), \"contrats\": (0, 0.5), \"e2e\": (15, 20.0)}\nMIN_UNIT_SHARE, MAX_E2E_SHARE, MAX_SECONDS = 60.0, 10.0, 120.0\n\n\ndef report(name: str, suite: dict) -> None:\n    # TODO 1 : total de tests ; part en % de chaque niveau ; durée de chaque niveau (nombre x durée) et durée totale\n    # TODO 2 : affiche \"<name>: <total> tests, durée <durée totale 1 décimale> s\"\n    # TODO 3 : affiche une ligne \"  <niveau>: <part 1 décimale>% (<durée 1 décimale> s)\" par niveau, dans l'ordre du dictionnaire\n    # TODO 4 : problèmes = liste de messages : \"unitaires sous 60%\" si la part des unitaires < MIN_UNIT_SHARE ;\n    #          \"e2e au-dessus de 10%\" si la part des e2e > MAX_E2E_SHARE ; \"durée au-dessus de 120 s\" si durée totale > MAX_SECONDS\n    #          affiche \"  Verdict: SAINE\" s'il n'y en a pas, sinon \"  Verdict: À REVOIR (<problèmes séparés par '; '>)\"\n    pass\n\n\nreport(\"Suite A\", HEALTHY)\nreport(\"Suite B\", INVERTED)\n",
+      "expectedOutput": "Suite A: 63 tests, durée 83.1 s\n  unitaires: 66.7% (2.1 s)\n  intégration: 19.0% (18.0 s)\n  contrats: 9.5% (3.0 s)\n  e2e: 4.8% (60.0 s)\n  Verdict: SAINE\nSuite B: 30 tests, durée 308.0 s\n  unitaires: 33.3% (0.5 s)\n  intégration: 16.7% (7.5 s)\n  contrats: 0.0% (0.0 s)\n  e2e: 50.0% (300.0 s)\n  Verdict: À REVOIR (unitaires sous 60%; e2e au-dessus de 10%; durée au-dessus de 120 s)"
     }
   ],
   "quiz": [
     {
       "code": "ARCHITECTURE-10-Q1",
       "type": "SINGLE_CHOICE",
-      "prompt": "Quelle démarche produit la décision la plus robuste ?",
+      "prompt": "Quel niveau de test faut-il privilégier en nombre ?",
       "choices": [
-        "Relier contraintes, responsabilités, preuve et observabilité",
-        "Choisir la technologie la plus populaire",
-        "Ajouter des services avant de mesurer"
+        "Les tests de bout en bout",
+        "Les tests unitaires : rapides, précis, peu fragiles",
+        "Les tests manuels",
+        "Les tests de charge"
       ],
-      "correctChoice": 0,
-      "expectedKeywords": []
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Ils donnent un retour en millisecondes et localisent précisément le défaut. Les niveaux supérieurs, plus lents et fragiles, sont réservés à ce que les unitaires ne couvrent pas."
     },
     {
       "code": "ARCHITECTURE-10-Q2",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Prédis la part des E2E dans une suite de 10 unitaires, 5 intégration, 0 contrat et 15 E2E :",
+      "choices": [
+        "5 %",
+        "50 % : 15 sur 30",
+        "15 %",
+        "33 %"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Total 30 tests, 15 E2E : 50 %. C'est une pyramide inversée (cornet de glace), lente et fragile."
+    },
+    {
+      "code": "ARCHITECTURE-10-Q3",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Trouve le défaut de pratique : « Ce test échoue de temps en temps, on relance la CI jusqu'à ce qu'elle passe. »",
+      "choices": [
+        "Aucun",
+        "Un test instable détruit la confiance : l'équipe prend l'habitude d'ignorer les rouges, y compris les vrais ; il faut le mettre en quarantaine et le corriger",
+        "La CI est trop lente",
+        "Il faut plus de tests"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Un échec doit signifier quelque chose. Les tests instables apprennent à ignorer les échecs et masquent de vraies régressions."
+    },
+    {
+      "code": "ARCHITECTURE-10-Q4",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Pourquoi tester les requêtes SQL contre une vraie base (conteneur jetable) plutôt qu'une base simulée en mémoire ?",
+      "choices": [
+        "Pour la vitesse",
+        "Parce que les différences de dialecte, de types et de contraintes entre la base simulée et la vraie masquent des défauts qui n'apparaissent qu'en production",
+        "Parce que c'est obligatoire",
+        "Pour économiser de la mémoire"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Une base simulée ne se comporte pas comme PostgreSQL pour les contraintes, les types, les index et les transactions. Un conteneur jetable est fidèle et reste rapide à lancer."
+    },
+    {
+      "code": "ARCHITECTURE-10-Q5",
       "type": "FREE_TEXT",
-      "prompt": "Nomme un compromis et le signal qui permettrait de le réévaluer.",
+      "prompt": "Sans relire le cours, explique avec tes mots pourquoi une suite dominée par des tests de bout en bout est un problème et comment la rééquilibrer.",
       "choices": [],
       "correctChoice": null,
       "expectedKeywords": [
-        "compromis",
-        "mesure",
-        "risque"
-      ]
+        "lent",
+        "fragile",
+        "pyramide",
+        "unitaire",
+        "diagnostic"
+      ],
+      "modelAnswer": "Les tests de bout en bout sont lents, instables et difficiles à diagnostiquer : une suite qui en repose sur beaucoup donne un retour tardif, des échecs intermittents et un coût de maintenance élevé. On la rééquilibre en poussant la vérification des règles vers des tests unitaires et d'intégration rapides, en gardant seulement quelques parcours critiques en bout en bout, et en ajoutant des tests de contrat pour les échanges entre services.",
+      "explanation": "Une bonne réponse cite lenteur, fragilité et diagnostic difficile, puis le déplacement vers unitaires/intégration/contrats, avec peu d'E2E."
     }
   ],
   "checklist": [
-    "Je peux dessiner la circulation de la donnée",
-    "Je sais nommer les responsabilités de chaque couche",
-    "Je justifie une alternative rejetée",
-    "Je définis une mesure et une condition de réévaluation"
+    "Je sais quel risque couvre chaque niveau de test",
+    "Ma suite a plus d'unitaires que d'E2E et un retour rapide",
+    "Je mets en quarantaine puis corrige les tests instables",
+    "Je teste les requêtes sur une vraie base jetable"
   ]
 }

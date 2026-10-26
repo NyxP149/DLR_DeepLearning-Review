@@ -11,21 +11,30 @@
     "SQL-09"
   ],
   "objectives": [
-    "Expliquer défi final : optimiser une charge réelle",
-    "Construire une preuve exécutable et déterministe",
-    "Relier le concept à une décision professionnelle"
+    "Reconnaître et supprimer un problème N+1 en remplaçant des requêtes en boucle par une jointure agrégée.",
+    "Vérifier l'équivalence des résultats avant et après optimisation.",
+    "Choisir l'index qui supporte la jointure et lire le plan avant/après.",
+    "Défendre l'optimisation avec des mesures (requêtes, plan, temps)."
   ],
   "sections": [
     {
-      "title": "Concept et usage professionnel",
-      "content": "Défi final : optimiser une charge réelle répond à un besoin concret de maintenabilité, de sûreté ou de performance. Le laboratoire demande de rendre la décision observable et vérifiable.",
-      "conceptCodes": [
-        "SQL-CHALLENGE"
-      ]
+      "title": "Le N+1 : mille requêtes quand une suffit",
+      "content": "Le problème N+1 survient quand le code lance une requête pour obtenir une liste (1) puis une requête supplémentaire pour chaque élément (N). Avec 100 clients : 101 requêtes. Chacune coûte un aller-retour réseau, une analyse, une exécution ; la latence s'additionne.\n```python\n# N+1 : une requête par client\nfor client_id in ids:\n    total = db.execute(\"SELECT SUM(total_cents) FROM orders WHERE customer_id = ?\", (client_id,)).fetchone()[0]\n\n# 1 requête : jointure + agrégation\ndb.execute(\n    \"SELECT c.id, COALESCE(SUM(o.total_cents), 0) \"\n    \"FROM customer c LEFT JOIN orders o ON o.customer_id = c.id \"\n    \"GROUP BY c.id\")\n```\nIl apparaît souvent à cause d'un ORM : une boucle sur les clients qui accède à client.commandes déclenche une requête par client (chargement paresseux). Il passe inaperçu en développement avec 5 lignes et explose en production."
     },
     {
-      "title": "Défi de synthèse",
-      "content": "La requête est exécutée sur SQLite en mémoire pour rester locale et reproductible ; les différences PostgreSQL et l'analyse EXPLAIN sont signalées dans le cours."
+      "title": "Exemple résolu : compter les requêtes et indexer la jointure",
+      "conceptCodes": [
+        "SQL-CHALLENGE"
+      ],
+      "content": "Problème : le code calcule le total de commandes de 100 clients avec une requête par client. Remplacer par une jointure, prouver l'équivalence, puis indexer.\n\nRaisonnement, étape par étape :\n1. Mesurer d'abord : un compteur de requêtes (ou le journal) montre 1 + 100 = 101 requêtes pour 100 clients.\n2. Réécrire en une jointure avec agrégation. LEFT JOIN pour garder les clients sans commande, COALESCE(SUM(...), 0) pour afficher 0 au lieu de NULL.\n3. Prouver l'équivalence : comparer les deux résultats trié par client : identiques (True). Une optimisation qui change les résultats est un bug.\n4. Plan : sans index sur orders.customer_id, la jointure parcourt toute la table orders (SCAN) pour chaque client ; avec CREATE INDEX idx_orders_customer ON orders(customer_id), le plan passe à une recherche par index.\n5. Mesurer après : 1 requête, plan par index, résultats identiques.\n6. Vérification : on affiche avant et après avec des nombres, pas des impressions.\n```python\ncompteur = 0\ndef execute(sql, params=()):\n    global compteur\n    compteur += 1\n    return connexion.execute(sql, params)\n```\nVariante intermédiaire quand une jointure n'est pas possible (ORM, services distincts) : charger par lot avec WHERE customer_id IN (...) : 2 requêtes au lieu de N+1."
+    },
+    {
+      "title": "Une démarche d'optimisation défendable",
+      "content": "1. Observer : journaux de requêtes lentes (log_min_duration_statement, pg_stat_statements), outils d'APM, compteurs de requêtes par requête HTTP.\n2. Isoler la requête ou le motif coupable (mesure, pas intuition).\n3. Comprendre : lire le plan (EXPLAIN ANALYZE), repérer parcours complets, tris coûteux, jointures imbriquées.\n4. Corriger le plus rentable d'abord : supprimer des requêtes (N+1), puis indexer, puis réécrire la requête, puis seulement augmenter les ressources.\n5. Vérifier : mêmes résultats, nombre de requêtes réduit, plan amélioré, temps mesuré sur des volumes réalistes.\n6. Verrouiller : un test qui compte les requêtes d'un parcours important empêche le retour du N+1 ; un budget de requêtes par endpoint.\n\nQuelques leviers : sélectionner seulement les colonnes utiles ; pagination ; agrégations côté base plutôt qu'en application ; index couvrants ; cache pour les données peu changeantes ; vues matérialisées ; dénormalisation mesurée ; pool de connexions dimensionné.\n\nDéfendre : « avant, 101 requêtes et 340 ms ; après, 1 requête et 12 ms sur 100 clients ; l'index évite un parcours complet de 50 000 commandes ; résultats identiques vérifiés ; test de non-régression ajouté ; non traité : pagination de la liste (à faire si > 10 000 clients). »"
+    },
+    {
+      "title": "Erreurs fréquentes à reconnaître",
+      "content": "1. Boucler sur des identifiants en lançant une requête par élément.\n2. Un chargement paresseux d'ORM dans une boucle.\n3. Optimiser sans vérifier que les résultats sont identiques.\n4. Indexer sans lire le plan, ou mesurer sur une table de 10 lignes.\n5. Remplacer un LEFT JOIN par un INNER JOIN en oubliant les clients sans commande.\n6. Rapporter « c'est plus rapide » sans nombre.\n\nRetrouve ces erreurs de mémoire avant l'exercice, puis vérifie-toi avec le quiz : c'est la récupération, pas la relecture, qui fixe la notion."
     }
   ],
   "keyConcepts": [
@@ -39,8 +48,8 @@
       "professionalExample": "Une requête de reporting qui joint orders, order_items et products puis filtre sur une plage de dates fonctionnait en 200 ms il y a six mois ; elle prend maintenant 6 secondes et déclenche des alertes de timeout côté API. Le diagnostic combine tout ce qui précède : EXPLAIN ANALYZE révèle un scan séquentiel sur orders faute d'index sur created_at, une sous-requête corrélée réécrite en jointure avec une CTE, et un index composite couvrant à la fois le filtre et le tri pour éviter un tri en mémoire coûteux. Chaque changement est mesuré isolément avant/après pour vérifier qu'il apporte un gain réel plutôt que d'empiler des optimisations non vérifiées.",
       "codeExample": "-- Avant : sous-requête corrélée + tri sans index dédié\nEXPLAIN ANALYZE\nSELECT o.id, o.created_at,\n  (SELECT SUM(oi.quantity * oi.unit_price_cents)\n   FROM order_items oi WHERE oi.order_id = o.id) AS total_cents\nFROM orders o\nWHERE o.created_at >= '2026-09-01'\nORDER BY o.created_at DESC;\n\n-- Après : index composite + jointure agrégée via CTE\nCREATE INDEX idx_orders_created_at ON orders(created_at DESC);\n\nWITH order_totals AS (\n  SELECT order_id, SUM(quantity * unit_price_cents) AS total_cents\n  FROM order_items\n  GROUP BY order_id\n)\nEXPLAIN ANALYZE\nSELECT o.id, o.created_at, t.total_cents\nFROM orders o\nJOIN order_totals t ON t.order_id = o.id\nWHERE o.created_at >= '2026-09-01'\nORDER BY o.created_at DESC;",
       "commonMistake": "Appliquer la technique sans mesurer son effet ni documenter sa frontière.",
-      "masteryQuestion": "Quelle contrainte de défi final : optimiser une charge réelle doit rester vraie lorsque le système évolue ?",
-      "masteryProof": "Exécuter la preuve, expliquer son invariant et proposer un cas d’échec."
+      "masteryQuestion": "Pourquoi un N+1 passe-t-il inaperçu en développement, et comment prouver qu'une optimisation conserve les résultats ?",
+      "masteryProof": "Remplacer 101 requêtes par une jointure agrégée, vérifier que les résultats sont identiques et comparer les plans avec et sans index."
     }
   ],
   "exercises": [
@@ -56,32 +65,80 @@
     {
       "code": "SQL-10-Q1",
       "type": "SINGLE_CHOICE",
-      "prompt": "Quelle preuve est la plus utile en revue ?",
+      "prompt": "Une page affiche 100 clients et leurs totaux avec une requête par client. Combien de requêtes au total, et par quoi les remplacer ?",
       "choices": [
-        "Une exécution déterministe avec invariant explicite",
-        "Une sortie aléatoire",
-        "Une capture sans code"
+        "100 ; par un cache",
+        "101 ; par une jointure avec agrégation (ou un chargement par lot avec IN)",
+        "1 ; rien à faire",
+        "200 ; par des threads"
       ],
-      "correctChoice": 0,
-      "expectedKeywords": []
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "1 requête pour la liste plus 100 pour les totaux. Une jointure agrégée fait tout en une requête ; un IN sur tous les identifiants en ferait deux."
     },
     {
       "code": "SQL-10-Q2",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Quelle précaution prouve qu'une réécriture de requête est correcte ?",
+      "choices": [
+        "Elle s'exécute plus vite",
+        "Comparer les résultats de l'ancienne et de la nouvelle version sur le même jeu de données (tri identique)",
+        "Elle contient moins de lignes",
+        "Elle utilise un LEFT JOIN"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Un gain de vitesse n'a de valeur que si le résultat est le même. On compare les ensembles de lignes triés, y compris les cas limites (clients sans commande)."
+    },
+    {
+      "code": "SQL-10-Q3",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Trouve le défaut de la réécriture :\n```sql\nSELECT c.id, SUM(o.total_cents) FROM customer c JOIN orders o ON o.customer_id = c.id GROUP BY c.id;\n```\nqui remplace la boucle et devait donner 0 pour les clients sans commande.",
+      "choices": [
+        "SUM est lent",
+        "INNER JOIN supprime les clients sans commande ; il faut LEFT JOIN et COALESCE(SUM(...), 0)",
+        "GROUP BY est faux",
+        "Il manque ORDER BY"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Les clients sans commande disparaissent du résultat, qui n'est donc plus équivalent à la version en boucle. LEFT JOIN conserve toutes les lignes de gauche."
+    },
+    {
+      "code": "SQL-10-Q4",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Que montre un plan « SCAN orders » pour la jointure sur orders.customer_id ?",
+      "choices": [
+        "Une recherche par index",
+        "Un parcours complet de orders : un index sur customer_id éviterait de lire toute la table",
+        "Une erreur",
+        "Un tri"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "SCAN signifie lecture de toutes les lignes. Après CREATE INDEX sur la clé de jointure, le plan devient une recherche par index."
+    },
+    {
+      "code": "SQL-10-Q5",
       "type": "FREE_TEXT",
-      "prompt": "Explique une décision liée à défi final : optimiser une charge réelle.",
+      "prompt": "Sans relire le cours, défends une optimisation SQL en donnant la mesure avant, le changement, la mesure après, la vérification d'équivalence et une limite.",
       "choices": [],
       "correctChoice": null,
       "expectedKeywords": [
-        "contrat",
-        "preuve",
-        "test"
-      ]
+        "avant",
+        "apres",
+        "requete",
+        "identique",
+        "limite"
+      ],
+      "modelAnswer": "Avant : 101 requêtes et un parcours complet de la table orders. Changement : une requête avec jointure et agrégation, plus un index sur la clé de jointure. Après : 1 requête et un plan par index, avec des résultats comparés identiques à l'ancienne version, y compris pour les clients sans commande. Un test compte les requêtes pour éviter le retour du problème. Limite : la pagination de la liste n'est pas traitée et deviendrait nécessaire avec beaucoup plus de clients.",
+      "explanation": "Une bonne réponse donne mesure avant/après, changement précis, preuve d'équivalence, garde-fou et limite assumée."
     }
   ],
   "checklist": [
-    "Je peux expliquer le concept sans réciter une définition",
-    "Je sais exécuter et modifier la preuve",
-    "Je peux nommer un risque et son contrôle",
-    "Je peux présenter cette preuve dans mon portfolio"
+    "Je repère un N+1 en comptant les requêtes",
+    "Je prouve l'équivalence des résultats avant de livrer une optimisation",
+    "J'indexe la clé de jointure après avoir lu le plan",
+    "Je verrouille le gain avec un test et je nomme les limites"
   ]
 }

@@ -11,21 +11,30 @@
     "JAVA-24"
   ],
   "objectives": [
-    "Expliquer démarrage, auto-configuration et configuration typée",
-    "Construire une preuve exécutable et déterministe",
-    "Relier le concept à une décision professionnelle"
+    "Expliquer ce que fait @SpringBootApplication au démarrage et comment une auto-configuration est choisie ou écartée.",
+    "Lier la configuration à un objet typé validé (@ConfigurationProperties) plutôt que de disperser des @Value.",
+    "Prédire quelle source de configuration l'emporte (arguments, variables d'environnement, profil, fichier).",
+    "Expliquer pourquoi un démarrage qui échoue vite vaut mieux qu'un échec à la première requête."
   ],
   "sections": [
     {
-      "title": "Concept et usage professionnel",
-      "content": "Démarrage, auto-configuration et configuration typée répond à un besoin concret de maintenabilité, de sûreté ou de performance. Le laboratoire demande de rendre la décision observable et vérifiable.",
-      "conceptCodes": [
-        "SPRING-BOOTSTRAP"
-      ]
+      "title": "Ce qui se passe quand une application Spring Boot démarre",
+      "content": "@SpringBootApplication combine trois choses : @Configuration (la classe déclare des beans), @ComponentScan (Spring cherche les composants sous son paquet) et @EnableAutoConfiguration (Spring Boot ajoute des beans selon ce qu'il trouve sur le classpath).\n\nAu démarrage, Boot crée le contexte, lit la configuration, instancie les beans, démarre le serveur web embarqué (Tomcat par défaut) puis publie un événement « application prête ». Si un bean obligatoire manque ou si une valeur est invalide, le contexte ne démarre pas.\n\nUne auto-configuration est conditionnelle : @ConditionalOnClass (si une bibliothèque est présente), @ConditionalOnProperty, et surtout @ConditionalOnMissingBean. Ce dernier signifie « fournis ce bean par défaut, sauf si le développeur en a déjà défini un » : ton bean explicite gagne toujours. Pour voir ce qui a été retenu ou écarté, lance avec --debug : le rapport de conditions s'affiche."
     },
     {
-      "title": "Mise en pratique",
-      "content": "La preuve unifichier valide ici la frontière d'architecture hors réseau ; le laboratoire explique ensuite son branchement aux annotations et dépendances Spring Boot réelles."
+      "title": "Exemple résolu : une configuration typée qui échoue vite",
+      "conceptCodes": [
+        "SPRING-BOOTSTRAP"
+      ],
+      "content": "Problème : l'application a besoin d'une URL de base, d'un timeout et d'une taille de pool. Une faute de frappe dans le fichier ne doit pas passer inaperçue.\n\nRaisonnement, étape par étape :\n1. Regrouper les propriétés sous un préfixe dans un record : @ConfigurationProperties(\"db\") record DbProperties(...).\n2. Marquer ce qui est obligatoire et ses bornes avec Bean Validation : @NotBlank url, @Min(1) timeout.\n3. Donner un défaut raisonnable au reste (maxPoolSize = 10).\n4. Au démarrage, Boot lie les propriétés au record puis valide ; en cas d'erreur, il refuse de démarrer avec un message qui nomme la propriété.\n5. Conséquence d'une faute de frappe (dbTimeout au lieu de timeout) : la propriété attendue est absente, donc la validation échoue immédiatement, pas à la première requête.\n```java\n@ConfigurationProperties(\"db\")\n@Validated\nrecord DbProperties(@NotBlank String url, @Min(1) int timeout, @DefaultValue(\"10\") int maxPoolSize) {}\n```\nUn @Value(\"${db.timeout}\") éparpillé dans dix classes dit la même chose sans regroupement, sans validation centralisée et sans documentation. Le type est un contrat : les erreurs de configuration deviennent des erreurs de démarrage."
+    },
+    {
+      "title": "D'où vient une valeur de configuration ?",
+      "content": "Spring Boot fusionne plusieurs sources avec une priorité. Du plus fort au plus faible, retiens : arguments de ligne de commande, variables d'environnement, application-{profil}.yml, application.yml, valeurs par défaut du code.\n```\njava -jar app.jar --db.timeout=3          # l'emporte sur tout\nDB_TIMEOUT=4                               # variable d'environnement (liaison relâchée : DB_TIMEOUT = db.timeout)\napplication-prod.yml  ->  db.timeout: 5    # profil actif\napplication.yml       ->  db.timeout: 8    # base\n```\nRègles utiles : les secrets (mot de passe, clé) viennent de l'environnement ou d'un coffre, jamais du dépôt Git ; un profil sert à changer des valeurs, pas à changer la logique ; une propriété inconnue est ignorée silencieusement par défaut, ce qui explique les fautes de frappe invisibles sans validation obligatoire."
+    },
+    {
+      "title": "Erreurs fréquentes à reconnaître",
+      "content": "1. Des @Value(\"${...}\") répartis partout, sans validation.\n2. Mettre un mot de passe dans application.yml versionné.\n3. Une valeur par défaut qui masque un oubli de configuration en production.\n4. Redéfinir un bean d'auto-configuration en croyant que Boot l'ignore ou l'écrase.\n5. Un profil dev qui active des fonctions dangereuses et qui est actif en production.\n6. Deviner pourquoi une auto-configuration n'est pas appliquée au lieu de lire le rapport --debug.\n\nRetrouve ces erreurs de mémoire avant l'exercice, puis vérifie-toi avec le quiz : c'est la récupération, pas la relecture, qui fixe la notion."
     }
   ],
   "keyConcepts": [
@@ -39,8 +48,8 @@
       "professionalExample": "Sur une API de gestion des commandes, l'équipe migre un paramètre de délai de connexion base de données d'un @Value(\"${db.timeout}\") isolé vers une classe @ConfigurationProperties(prefix = \"db\") validée au démarrage. Résultat concret : une faute de frappe dans application-prod.yml (dbTimeout au lieu de timeout) qui aurait auparavant laissé Spring injecter silencieusement une valeur par défaut de 0 fait maintenant échouer le démarrage du conteneur avec un message explicite, avant que le service ne soit exposé au trafic. L'auto-configuration Spring Boot est aussi explicitement exclue pour DataSourceAutoConfiguration dans les tests, pour éviter qu'une base H2 embarquée ne masque un problème de configuration réel.",
       "codeExample": "@ConfigurationProperties(prefix = \"db\")\n@Validated\npublic record DbProperties(\n        @NotBlank String url,\n        @Min(1) int timeout,\n        @Min(1) int maxPoolSize) {\n}\n\n@SpringBootApplication\n@EnableConfigurationProperties(DbProperties.class)\npublic class OrderServiceApplication {\n    public static void main(String[] args) {\n        SpringApplication.run(OrderServiceApplication.class, args);\n    }\n}\n\n# application-prod.yml\ndb:\n  url: jdbc:postgresql://prod-db:5432/orders\n  timeout: 5\n  maxPoolSize: 20",
       "commonMistake": "Appliquer la technique sans mesurer son effet ni documenter sa frontière.",
-      "masteryQuestion": "Quelle contrainte de démarrage, auto-configuration et configuration typée doit rester vraie lorsque le système évolue ?",
-      "masteryProof": "Exécuter la preuve, expliquer son invariant et proposer un cas d’échec."
+      "masteryQuestion": "Pourquoi lier la configuration à un type validé plutôt que lire des @Value dispersés, et quelle source l'emporte entre variable d'environnement et application.yml ?",
+      "masteryProof": "Lier une map de propriétés à un record, refuser le démarrage sur une propriété manquante ou invalide et montrer l'effet d'une faute de frappe."
     }
   ],
   "exercises": [
@@ -56,32 +65,80 @@
     {
       "code": "SPRING_BOOT-01-Q1",
       "type": "SINGLE_CHOICE",
-      "prompt": "Quelle preuve est la plus utile en revue ?",
+      "prompt": "Une propriété db.timeout vaut 8 dans application.yml et la variable d'environnement DB_TIMEOUT vaut 4. Quelle valeur est utilisée ?",
       "choices": [
-        "Une exécution déterministe avec invariant explicite",
-        "Une sortie aléatoire",
-        "Une capture sans code"
+        "8, le fichier est toujours prioritaire",
+        "4, la variable d'environnement l'emporte sur le fichier",
+        "La plus grande des deux",
+        "Le démarrage échoue"
       ],
-      "correctChoice": 0,
-      "expectedKeywords": []
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Boot applique un ordre de priorité : les arguments de ligne de commande et les variables d'environnement surchargent les fichiers application.yml. C'est ce qui permet de configurer un même artefact différemment selon l'environnement."
     },
     {
       "code": "SPRING_BOOT-01-Q2",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Prédis ce qui se passe : le fichier contient dbTimeout: 5 mais le record attend timeout (annoté @Min(1), @Validated).\n```java\n@ConfigurationProperties(\"db\") @Validated\nrecord DbProperties(@NotBlank String url, @Min(1) int timeout) {}\n```\n",
+      "choices": [
+        "Boot utilise dbTimeout automatiquement",
+        "Le démarrage échoue : timeout vaut 0 et viole @Min(1)",
+        "L'application démarre avec timeout = 0 sans rien dire",
+        "L'application démarre puis échoue à la première requête"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "dbTimeout est ignoré (propriété inconnue), donc timeout garde sa valeur par défaut 0, qui viole @Min(1). Grâce à @Validated, l'erreur apparaît au démarrage et nomme la propriété. Sans validation, l'application démarrerait avec une valeur absurde."
+    },
+    {
+      "code": "SPRING_BOOT-01-Q3",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Trouve le défaut :\n```java\n@Service class PaymentClient {\n    @Value(\"${payment.url}\") String url;\n    @Value(\"${payment.timeout}\") int timeout;\n}\n// et la même lecture répétée dans 6 autres classes\n```\n",
+      "choices": [
+        "Les @Value sont dépréciés",
+        "La configuration est dispersée : pas de validation centrale, pas de type, chaque faute n'apparaît qu'à l'usage",
+        "Il manque un getter",
+        "Les champs devraient être static"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Regrouper dans un @ConfigurationProperties fournit un type, des valeurs par défaut, une validation unique et une documentation. Les @Value fonctionnent mais fragmentent le contrat."
+    },
+    {
+      "code": "SPRING_BOOT-01-Q4",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Tu déclares ton propre bean DataSource alors que Boot en fournit un par auto-configuration (@ConditionalOnMissingBean). Qui gagne ?",
+      "choices": [
+        "L'auto-configuration, toujours",
+        "Ton bean : l'auto-configuration se retire quand un bean du même type existe",
+        "Les deux sont créés et Spring échoue",
+        "Le premier trouvé par ordre alphabétique"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "@ConditionalOnMissingBean signifie « fournis ceci seulement si l'utilisateur n'a rien défini ». C'est le mécanisme qui rend Boot personnalisable sans le désactiver."
+    },
+    {
+      "code": "SPRING_BOOT-01-Q5",
       "type": "FREE_TEXT",
-      "prompt": "Explique une décision liée à démarrage, auto-configuration et configuration typée.",
+      "prompt": "Sans relire le cours, explique avec tes mots pourquoi on veut qu'une configuration invalide empêche le démarrage, et ce que cela change pour l'exploitation.",
       "choices": [],
       "correctChoice": null,
       "expectedKeywords": [
-        "contrat",
-        "preuve",
-        "test"
-      ]
+        "demarrage",
+        "valid",
+        "echoue",
+        "production",
+        "requete"
+      ],
+      "modelAnswer": "Une erreur de configuration détectée au démarrage bloque le déploiement : l'orchestrateur voit l'instance échouer et garde l'ancienne version en service. Sans validation, l'application démarre avec une mauvaise valeur et l'erreur n'apparaît qu'à la première requête concernée, parfois en production devant des utilisateurs. Échouer vite rend le problème visible, localisé (la propriété est nommée) et sans impact utilisateur.",
+      "explanation": "Une bonne réponse oppose l'échec précoce (visible, localisé, sans impact) à l'échec tardif (à l'usage, en production)."
     }
   ],
   "checklist": [
-    "Je peux expliquer le concept sans réciter une définition",
-    "Je sais exécuter et modifier la preuve",
-    "Je peux nommer un risque et son contrôle",
-    "Je relie cette étape à la suivante"
+    "Je sais quelle source de configuration l'emporte",
+    "Je regroupe la configuration dans un type validé",
+    "Je comprends pourquoi un démarrage qui échoue vite est un avantage",
+    "J'ai prédit les résultats avant de lire les corrections"
   ]
 }

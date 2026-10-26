@@ -11,21 +11,30 @@
     "ANGULAR-05"
   ],
   "objectives": [
-    "Expliquer rxjs, annulation et états asynchrones",
-    "Construire une preuve exécutable et déterministe",
-    "Relier le concept à une décision professionnelle"
+    "Modéliser un état asynchrone (chargement, succès, erreur) par une union plutôt que par des booléens.",
+    "Ignorer les réponses périmées avec la logique de switchMap.",
+    "Placer catchError au bon endroit pour que le flux principal survive à une erreur.",
+    "Se désabonner proprement et éviter la double requête."
   ],
   "sections": [
     {
-      "title": "Concept et usage professionnel",
-      "content": "RxJS, annulation et états asynchrones répond à un besoin concret de maintenabilité, de sûreté ou de performance. Le laboratoire demande de rendre la décision observable et vérifiable.",
-      "conceptCodes": [
-        "ANGULAR-RXJS"
-      ]
+      "title": "L'asynchrone a plusieurs états",
+      "content": "Une requête passe par « pas encore lancée », « en cours », « réussie » ou « en erreur ». Plusieurs booléens (loading, error, data) permettent des combinaisons impossibles (loading et error vrais en même temps). Une union discriminée n'autorise que les états valides :\n```ts\ntype State<T> =\n  | { status: 'idle' }\n  | { status: 'loading' }\n  | { status: 'success'; data: T }\n  | { status: 'error'; message: string };\n```\nLe template ne peut alors afficher que ce qui existe dans chaque état. En RxJS, on produit ces états avec startWith({ status: 'loading' }) et catchError. Afficher « chargement » est une information utile à l'utilisateur et à l'accessibilité (aria-busy, zone live)."
     },
     {
-      "title": "Mise en pratique",
-      "content": "La preuve TypeScript isole le contrat réactif ; son intégration dans un composant Angular est décrite sans rendre le runner dépendant d'un navigateur."
+      "title": "Exemple résolu : la recherche à la frappe",
+      "conceptCodes": [
+        "ANGULAR-RXJS"
+      ],
+      "content": "Problème : l'utilisateur tape « a », « ab » ; deux requêtes partent. La réponse à « a » arrive après celle à « ab » : on ne doit afficher que le résultat de « ab ».\n\nRaisonnement, étape par étape :\n1. Chaque appel de search(terme) reçoit un numéro de séquence croissant (le plus récent a le plus grand).\n2. Quand une réponse arrive, on compare son numéro au dernier numéro émis : s'il est plus ancien, la réponse est périmée et ignorée.\n3. C'est la logique de switchMap : à chaque nouvelle valeur, on abandonne (et, avec un vrai Observable HTTP, on annule) la requête précédente.\n4. L'état passe de loading à done quand la réponse la plus récente est affichée.\n5. Vérification : « ab » affiché avec ses résultats, « a » ignoré, état final done.\n```ts\nsearch(term: string) {\n  const sequence = ++this.latest;\n  this.state = 'loading';\n  this.fetch(term).then(results => {\n    if (sequence !== this.latest) { this.log(`ignoré: ${term}`); return; }   // réponse périmée\n    this.show(term, results);\n    this.state = 'done';\n  });\n}\n```\nEn RxJS : term$.pipe(debounceTime(300), distinctUntilChanged(), switchMap(t => this.http.get(url, { params: { q: t } })))."
+    },
+    {
+      "title": "RxJS, erreurs et abonnements",
+      "content": "- catchError au bon endroit : placé à l'extérieur, une erreur de requête termine tout le flux principal (la recherche ne répond plus jamais). Placé à l'intérieur du switchMap, il ne termine que la requête interne : switchMap(t => this.http.get(...).pipe(catchError(() => of([])))).\n- Quatre opérateurs d'aplatissement : switchMap (abandonne le précédent : recherche), mergeMap (en parallèle), concatMap (dans l'ordre : sauvegardes), exhaustMap (ignore pendant qu'un traitement est en cours : bouton de soumission).\n- debounceTime attend une pause de saisie ; distinctUntilChanged ignore une valeur identique à la précédente.\n- Désabonnement : pipe async dans le template (le plus sûr), takeUntilDestroyed() dans le composant, ou toSignal(). Un abonnement oublié sur un flux infini fuit.\n- Double requête : un Observable HTTP est froid ; deux abonnements (deux async dans le template) envoient deux requêtes. Partage avec shareReplay({ bufferSize: 1, refCount: true }) ou convertis en signal une seule fois.\n- Gère la requête annulée : ne signale pas comme une erreur utilisateur ce qui est une annulation volontaire."
+    },
+    {
+      "title": "Erreurs fréquentes à reconnaître",
+      "content": "1. Des booléens loading/error qui peuvent se contredire.\n2. Un subscribe imbriqué dans un subscribe.\n3. catchError au sommet du flux : la recherche meurt à la première erreur.\n4. Afficher une réponse périmée par-dessus une plus récente.\n5. Oublier le désabonnement d'un flux qui ne se termine pas.\n6. Deux async sur le même Observable HTTP : deux requêtes.\n\nRetrouve ces erreurs de mémoire avant l'exercice, puis vérifie-toi avec le quiz : c'est la récupération, pas la relecture, qui fixe la notion."
     }
   ],
   "keyConcepts": [
@@ -39,8 +48,8 @@
       "professionalExample": "Sur un champ de recherche de clients, chaque frappe déclenche potentiellement un appel HTTP ; sans annulation, une réponse lente pour « jea » peut arriver après celle pour « jean » et afficher un résultat obsolète. debounceTime limite la fréquence des appels, et switchMap annule automatiquement la requête précédente dès qu'une nouvelle frappe arrive, garantissant que seule la dernière réponse est affichée. takeUntilDestroyed désabonne le flux quand le composant est détruit, évitant une fuite mémoire si l'utilisateur change d'écran pendant une recherche en cours.",
       "codeExample": "readonly results = toSignal(\n  this.searchControl.valueChanges.pipe(\n    debounceTime(300),\n    distinctUntilChanged(),\n    switchMap(query => this.customers.search(query).pipe(\n      catchError(() => of<Customer[]>([]))\n    )),\n    takeUntilDestroyed(),\n  ),\n  { initialValue: [] as Customer[] },\n);",
       "commonMistake": "Appliquer la technique sans mesurer son effet ni documenter sa frontière.",
-      "masteryQuestion": "Quelle contrainte de rxjs, annulation et états asynchrones doit rester vraie lorsque le système évolue ?",
-      "masteryProof": "Exécuter la preuve, expliquer son invariant et proposer un cas d’échec."
+      "masteryQuestion": "Pourquoi switchMap évite-t-il d'afficher une réponse périmée, et où placer catchError pour que la recherche survive à une erreur ?",
+      "masteryProof": "Écrire SearchBox.search : seule la requête la plus récente est affichée, les réponses périmées sont ignorées et l'état passe de loading à done."
     }
   ],
   "exercises": [
@@ -56,32 +65,80 @@
     {
       "code": "ANGULAR-06-Q1",
       "type": "SINGLE_CHOICE",
-      "prompt": "Quelle preuve est la plus utile en revue ?",
+      "prompt": "Que fait switchMap quand une nouvelle valeur arrive alors que la requête précédente n'est pas terminée ?",
       "choices": [
-        "Une exécution déterministe avec invariant explicite",
-        "Une sortie aléatoire",
-        "Une capture sans code"
+        "Il attend que la précédente se termine",
+        "Il abandonne (annule) la précédente et traite la nouvelle",
+        "Il lance les deux en parallèle et affiche la plus rapide",
+        "Il ignore la nouvelle valeur"
       ],
-      "correctChoice": 0,
-      "expectedKeywords": []
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "switchMap « bascule » vers le nouvel Observable interne et se désabonne du précédent. C'est l'opérateur de la recherche à la frappe."
     },
     {
       "code": "ANGULAR-06-Q2",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Prédis ce qui est affiché : les requêtes « a » (lente, 80 ms) puis « ab » (rapide, 20 ms) sont lancées à 5 ms d'intervalle ; la logique ignore les réponses périmées.",
+      "choices": [
+        "a puis ab",
+        "ab seulement : la réponse à « a » arrive en dernier mais elle est périmée",
+        "a seulement",
+        "Rien"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "La réponse à « ab » arrive la première et est affichée. Celle à « a », plus tardive, correspond à une requête dépassée : elle est ignorée."
+    },
+    {
+      "code": "ANGULAR-06-Q3",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Trouve le défaut :\n```ts\nthis.term$.pipe(\n  switchMap(t => this.http.get(url, { params: { q: t } })),\n  catchError(() => of([]))\n).subscribe(r => this.results = r);\n```\n",
+      "choices": [
+        "of est interdit",
+        "catchError est à l'extérieur : à la première erreur HTTP, le flux principal se termine et la recherche ne répond plus ; il faut le placer dans le switchMap",
+        "switchMap est déprécié",
+        "Il manque debounceTime"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Une erreur non gérée à l'intérieur termine le flux externe. catchError doit être dans le pipe de l'Observable interne pour que seule cette requête échoue."
+    },
+    {
+      "code": "ANGULAR-06-Q4",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Pourquoi un état { status: 'loading' | 'success' | 'error' } est-il préférable à trois booléens ?",
+      "choices": [
+        "Il est plus court",
+        "Il rend impossibles les combinaisons contradictoires (chargement et erreur à la fois)",
+        "Il est plus rapide",
+        "Les booléens sont interdits"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Avec trois booléens, 8 combinaisons dont plusieurs absurdes. Une union discriminée n'exprime que les états qui existent, et le compilateur force à les traiter."
+    },
+    {
+      "code": "ANGULAR-06-Q5",
       "type": "FREE_TEXT",
-      "prompt": "Explique une décision liée à rxjs, annulation et états asynchrones.",
+      "prompt": "Sans relire le cours, explique avec tes mots la différence entre switchMap, mergeMap, concatMap et exhaustMap et un cas d'usage de chacun.",
       "choices": [],
       "correctChoice": null,
       "expectedKeywords": [
-        "contrat",
-        "preuve",
-        "test"
-      ]
+        "switchmap",
+        "mergemap",
+        "concatmap",
+        "exhaustmap",
+        "annule"
+      ],
+      "modelAnswer": "switchMap abandonne l'opération précédente quand une nouvelle valeur arrive (recherche à la frappe). mergeMap lance toutes les opérations en parallèle (envoyer plusieurs fichiers indépendants). concatMap les exécute l'une après l'autre dans l'ordre (sauvegardes successives). exhaustMap ignore les nouvelles valeurs tant qu'une opération est en cours (bouton de soumission qui ne doit pas être déclenché deux fois).",
+      "explanation": "Une bonne réponse donne le comportement de chacun et un cas d'usage : recherche, parallèle, ordre, anti double-clic."
     }
   ],
   "checklist": [
-    "Je peux expliquer le concept sans réciter une définition",
-    "Je sais exécuter et modifier la preuve",
-    "Je peux nommer un risque et son contrôle",
-    "Je relie cette étape à la suivante"
+    "Je modélise les états asynchrones par une union, pas par des booléens",
+    "Je place catchError dans l'Observable interne",
+    "Je choisis switchMap, mergeMap, concatMap ou exhaustMap selon le besoin",
+    "Je me désabonne avec async, takeUntilDestroyed ou toSignal"
   ]
 }

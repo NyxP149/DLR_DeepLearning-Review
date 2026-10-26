@@ -1,9 +1,144 @@
 {
-  "code":"JAVA-11","language":"JAVA","number":11,"slug":"generiques-reutilisabilite","title":"Génériques et programmation réutilisable","difficulty":"INTERMEDIAIRE","threshold":70,"activityType":"LAB","prerequisites":["JAVA-10"],
-  "objectives":["Créer un type générique sûr","Comprendre les bornes","Éviter les conversions fragiles"],
-  "sections":[{"title":"Type paramétré","content":"Un générique décrit un algorithme ou un conteneur indépendant d'un type concret tout en conservant la vérification du compilateur.","conceptCodes":["JAVA-GENERICS"]},{"title":"Variance et bornes","content":"Les bornes extends et super expriment respectivement une source et une destination compatibles dans une API générique."}],
-  "keyConcepts":[{"code":"JAVA-GENERICS","name":"Génériques","definition":"Un paramètre de type rend un composant réutilisable sans perdre la sûreté statique.","whyExists":"Il évite de dupliquer l'algorithme et de convertir depuis Object.","whyImportant":"Les collections et API professionnelles reposent massivement sur les génériques.","minimalExample":"class Box<T> { T value; }","professionalExample":"Une équipe maintenait un Repository non générique renvoyant Object, obligeant chaque appelant à caster le résultat vers Product, Order ou Customer selon le cas : un cast oublié a provoqué une ClassCastException en production, plusieurs semaines après la mise en service. En introduisant Repository<T, ID>, chaque repository concret comme ProductRepository implements Repository<Product, Long> retrouve la sûreté de type dès la compilation, sans dupliquer le code CRUD.","codeExample":"interface Repository<T, ID> {\n    Optional<T> findById(ID id);\n    T save(T entity);\n}\n\nclass ProductRepository implements Repository<Product, Long> {\n    public Optional<Product> findById(Long id) { /* requête SQL */ return Optional.empty(); }\n    public Product save(Product entity) { return entity; }\n}","commonMistake":"Utiliser un type brut et reporter l'erreur à l'exécution.","masteryQuestion":"Que garantit List<String> que List brut ne garantit pas ?","masteryProof":"Écrire une fonction générique sans cast."}],
-  "exercises":[{"code":"JAVA-11-E1","title":"Créer une boîte typée","statement":"Utilise Box<String> et affiche exactement : Premier: Java","starterCode":"// TODO 1 : définis un record générique Box<T> qui contient un champ value\n\npublic class Main {\n    public static void main(String[] args) {\n        // TODO 2 : crée un Box<String> contenant \"Java\"\n        // TODO 3 : affiche \"Premier: \" suivi de la valeur de la boîte\n    }\n}\n","expectedOutput":"Premier: Java"}],
-  "quiz":[{"code":"JAVA-11-Q1","type":"SINGLE_CHOICE","prompt":"Quel bénéfice principal apporte T ?","choices":["La sûreté de type réutilisable","La suppression du compilateur","Le réseau automatique"],"correctChoice":0,"expectedKeywords":[]},{"code":"JAVA-11-Q2","type":"FREE_TEXT","prompt":"Explique le problème des types bruts.","choices":[],"correctChoice":null,"expectedKeywords":["type","cast","compilation","exécution"]}],
-  "checklist":["Je paramètre les collections","J'évite les types bruts","Je comprends les bornes de base"]
+  "code": "JAVA-11",
+  "language": "JAVA",
+  "number": 11,
+  "slug": "generiques-reutilisabilite",
+  "title": "Génériques et programmation réutilisable",
+  "difficulty": "INTERMEDIAIRE",
+  "threshold": 70,
+  "activityType": "LAB",
+  "prerequisites": [
+    "JAVA-10"
+  ],
+  "objectives": [
+    "Expliquer pourquoi un type paramétré déplace une erreur de cast de l'exécution vers la compilation.",
+    "Écrire une méthode ou un record générique et borner son paramètre avec extends.",
+    "Choisir entre ? extends et ? super selon que la collection produit ou consomme des valeurs (PECS).",
+    "Repérer un type brut, une borne manquante ou une tentative de new T() et les corriger."
+  ],
+  "sections": [
+    {
+      "title": "Le problème : sans générique, le cast se fait à tes risques",
+      "content": "Une collection non typée stocke des Object. Tout ce que tu en sors doit être converti à la main, et le compilateur ne peut rien vérifier :\n```java\nList brute = new ArrayList();\nbrute.add(\"Java\");\nbrute.add(42);\nString premier = (String) brute.get(1); // compile, puis ClassCastException à l'exécution\n```\nAvec List<String>, la même erreur est refusée dès la compilation : le type paramétré est un contrat vérifié par le compilateur, sans cast. Un générique sert donc à écrire un algorithme ou un conteneur une seule fois pour plusieurs types, tout en gardant la vérification statique."
+    },
+    {
+      "title": "Exemple résolu : un maximum réutilisable",
+      "conceptCodes": [
+        "JAVA-GENERICS"
+      ],
+      "content": "Problème : trouver le plus grand élément d'une liste, que ce soit des entiers, des chaînes ou des dates.\n\nRaisonnement, étape par étape :\n1. L'algorithme ne dépend pas du type, on introduit donc un paramètre de type T : static <T> T maximum(List<T> items).\n2. Pour comparer deux T, il faut que T sache se comparer : on le borne avec T extends Comparable<T>.\n3. On parcourt la liste en gardant le meilleur candidat.\n4. Vérification : Integer, String et LocalDate implémentent Comparable, donc le même code marche pour les trois.\n```java\nstatic <T extends Comparable<T>> T maximum(List<T> items) {\n    T best = items.get(0);\n    for (T item : items) {\n        if (item.compareTo(best) > 0) best = item;\n    }\n    return best;\n}\n\nint age = maximum(List.of(31, 18, 45));       // 45, sans cast\nString nom = maximum(List.of(\"Nyx\", \"Ada\"));  // \"Nyx\"\n```\nSans la borne, item.compareTo(best) ne compile pas : le compilateur ne sait rien de T, sauf qu'il est un Object. Le paramètre de type est inféré à l'appel, on ne l'écrit presque jamais."
+    },
+    {
+      "title": "Bornes et jokers : extends produit, super consomme",
+      "content": "List<Integer> n'est pas un List<Number>, même si Integer est un Number : sinon on pourrait ajouter un Double dans une liste d'entiers. Pour accepter « une liste de n'importe quelle sorte de nombre », on utilise un joker :\n```java\nstatic double total(List<? extends Number> numbers) {   // on LIT des Number\n    double sum = 0;\n    for (Number n : numbers) sum += n.doubleValue();\n    return sum;\n}\n\nstatic void fill(List<? super Integer> target) {         // on ÉCRIT des Integer\n    target.add(1);\n    target.add(2);\n}\n```\nRègle PECS (Producer Extends, Consumer Super) : si la collection te donne des valeurs, ? extends ; si elle en reçoit, ? super. Avec ? extends Number tu ne peux rien ajouter (sauf null), car tu ne sais pas quel sous-type exact la liste contient."
+    },
+    {
+      "title": "Erreurs fréquentes à reconnaître",
+      "content": "1. Utiliser un type brut (List au lieu de List<String>) : le compilateur se tait et l'erreur apparaît en production.\n2. Oublier la borne : appeler compareTo ou doubleValue sur un T sans extends ne compile pas.\n3. Écrire new T() ou T[] : à l'exécution le type est effacé (type erasure), le compilateur refuse ; on passe un Supplier<T> ou une fabrique.\n4. Écrire List<int> : les paramètres de type sont des classes, on utilise Integer.\n5. Tester instanceof List<String> : le type paramétré n'existe plus à l'exécution, seul List est testable.\n\nAvant l'exercice, retrouve ces cinq erreurs de mémoire, puis confronte-toi au quiz : te rappeler vaut mieux que relire."
+    }
+  ],
+  "keyConcepts": [
+    {
+      "code": "JAVA-GENERICS",
+      "name": "Génériques",
+      "definition": "Un paramètre de type rend un composant réutilisable sans perdre la sûreté statique.",
+      "whyExists": "Il évite de dupliquer l'algorithme et de convertir depuis Object.",
+      "whyImportant": "Les collections et API professionnelles reposent massivement sur les génériques.",
+      "minimalExample": "class Box<T> { T value; }",
+      "professionalExample": "Une équipe maintenait un Repository non générique renvoyant Object, obligeant chaque appelant à caster le résultat vers Product, Order ou Customer selon le cas : un cast oublié a provoqué une ClassCastException en production, plusieurs semaines après la mise en service. En introduisant Repository<T, ID>, chaque repository concret comme ProductRepository implements Repository<Product, Long> retrouve la sûreté de type dès la compilation, sans dupliquer le code CRUD.",
+      "codeExample": "interface Repository<T, ID> {\n    Optional<T> findById(ID id);\n    T save(T entity);\n}\n\nclass ProductRepository implements Repository<Product, Long> {\n    public Optional<Product> findById(Long id) { /* requête SQL */ return Optional.empty(); }\n    public Product save(Product entity) { return entity; }\n}",
+      "commonMistake": "Utiliser un type brut et reporter l'erreur à l'exécution.",
+      "masteryQuestion": "Pourquoi borner un paramètre de type avec extends, et quand utiliser ? extends plutôt que ? super ?",
+      "masteryProof": "Écrire une méthode générique bornée, un total sur List<? extends Number> et un record Pair<A, B>."
+    }
+  ],
+  "exercises": [
+    {
+      "code": "JAVA-11-E1",
+      "title": "Un petit kit générique : maximum, total et paire",
+      "statement": "Complète Main avec trois outils génériques : maximum(List<T>) borné par Comparable, total(List<? extends Number>) et un record Pair<A, B>. Puis affiche exactement :\nPlus grand age : 45\nDernier nom : Nyx\nTotal prix : 49.3\nPaire : Pair[first=Nyx, second=45]",
+      "starterCode": "import java.util.*;\n\npublic class Main {\n    // TODO 1 : écris static <T extends Comparable<T>> T maximum(List<T> items)\n    // TODO 2 : écris static double total(List<? extends Number> numbers)\n    // TODO 3 : définis un record générique Pair<A, B>(A first, B second)\n\n    public static void main(String[] args) {\n        List<Integer> ages = List.of(31, 18, 45, 27);\n        List<String> names = List.of(\"Nyx\", \"Ada\", \"Linus\");\n        List<Double> prices = List.of(19.9, 4.5, 24.9);\n        // TODO 4 : affiche \"Plus grand age : \" + le maximum des âges\n        // TODO 5 : affiche \"Dernier nom : \" + le maximum des noms\n        // TODO 6 : affiche \"Total prix : \" + le total des prix avec une décimale (String.format(Locale.ROOT, \"%.1f\", ...))\n        // TODO 7 : crée une Pair<String, Integer> (maximum des noms, maximum des âges) et affiche-la\n    }\n}\n",
+      "expectedOutput": "Plus grand age : 45\nDernier nom : Nyx\nTotal prix : 49.3\nPaire : Pair[first=Nyx, second=45]"
+    }
+  ],
+  "quiz": [
+    {
+      "code": "JAVA-11-Q1",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Pourquoi List<Integer> n'est-il pas un sous-type de List<Number> ?",
+      "choices": [
+        "Parce qu'Integer n'hérite pas de Number",
+        "Parce qu'on pourrait alors ajouter un Double dans une liste censée ne contenir que des entiers",
+        "Parce que les génériques n'acceptent pas les classes enveloppes",
+        "Parce que List est une interface"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Si List<Integer> était un List<Number>, on pourrait écrire liste.add(3.5) via la référence Number et casser la liste d'entiers. Integer hérite bien de Number ; c'est l'invariance des génériques qui protège la collection. Pour lire « n'importe quels nombres », on écrit List<? extends Number>."
+    },
+    {
+      "code": "JAVA-11-Q2",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Prédis le résultat avant de répondre :\n```java\nList brute = new ArrayList();\nbrute.add(42);\nString s = (String) brute.get(0);\nSystem.out.println(s);\n```\n",
+      "choices": [
+        "Il affiche 42",
+        "Il ne compile pas",
+        "Il compile puis lève une ClassCastException",
+        "Il affiche null"
+      ],
+      "correctChoice": 2,
+      "expectedKeywords": [],
+      "explanation": "Le type brut désactive la vérification : le compilateur accepte le cast, mais à l'exécution un Integer ne peut pas devenir String, d'où ClassCastException. Avec List<String>, add(42) aurait été refusé dès la compilation."
+    },
+    {
+      "code": "JAVA-11-Q3",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Trouve le bug : pourquoi cette méthode ne compile-t-elle pas ?\n```java\nstatic <T> T plusGrand(T a, T b) {\n    return a.compareTo(b) > 0 ? a : b;\n}\n```\n",
+      "choices": [
+        "Il manque le mot-clé final",
+        "Le paramètre T n'est pas borné : le compilateur ne sait pas que T possède compareTo",
+        "Une méthode générique ne peut pas être static",
+        "compareTo n'existe pas en Java"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Sans borne, T est vu comme un Object. Il faut déclarer <T extends Comparable<T>> pour garantir que compareTo existe. Une méthode générique peut très bien être static."
+    },
+    {
+      "code": "JAVA-11-Q4",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Une méthode copie les éléments d'une liste source vers une liste destination. Quelle signature respecte PECS ?",
+      "choices": [
+        "static <T> void copy(List<? super T> src, List<? extends T> dst)",
+        "static <T> void copy(List<? extends T> src, List<? super T> dst)",
+        "static <T> void copy(List<T> src, List<? extends T> dst)",
+        "static <T> void copy(List<?> src, List<?> dst)"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "La source produit des T : ? extends T. La destination consomme des T : ? super T. Le premier choix inverse les deux rôles ; le troisième empêche d'ajouter dans la destination ; le dernier ne permet plus de lire ni d'écrire de façon typée."
+    },
+    {
+      "code": "JAVA-11-Q5",
+      "type": "FREE_TEXT",
+      "prompt": "Sans relire le cours, explique avec tes mots ce qu'apporte un type générique par rapport à un type brut, et pourquoi new T() est interdit.",
+      "choices": [],
+      "correctChoice": null,
+      "expectedKeywords": [
+        "compil",
+        "cast",
+        "execution",
+        "type",
+        "efface"
+      ],
+      "modelAnswer": "Un générique fait vérifier les types par le compilateur : une erreur de type est détectée à la compilation, sans cast manuel ni ClassCastException surprise à l'exécution. new T() est interdit parce que le type est effacé à l'exécution (type erasure) : la JVM ne connaît plus T, il faut passer un Supplier<T> ou une fabrique.",
+      "explanation": "Une bonne réponse oppose le moment de détection (compilation contre exécution), cite la disparition du cast et mentionne l'effacement de type pour justifier l'interdiction de new T()."
+    }
+  ],
+  "checklist": [
+    "Je sais dire pourquoi List<Integer> n'est pas un List<Number>",
+    "J'ai écrit une méthode générique bornée sans copier-coller",
+    "Je choisis ? extends ou ? super avec la règle PECS",
+    "J'ai prédit la sortie des extraits avant de lire les corrections"
+  ]
 }

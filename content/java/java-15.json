@@ -1,9 +1,144 @@
 {
-  "code":"JAVA-15","language":"JAVA","number":15,"slug":"tests-junit-mockito-strategie","title":"Tests avec JUnit, Mockito et stratégie de test","difficulty":"AVANCE","threshold":75,"activityType":"LAB","prerequisites":["JAVA-14"],
-  "objectives":["Distinguer les niveaux de test","Écrire une assertion utile","Employer un double de test avec parcimonie"],
-  "sections":[{"title":"Preuve automatisée","content":"Un test décrit un comportement observable, prépare un scénario, agit puis vérifie un résultat précis.","conceptCodes":["JAVA-TEST-PYRAMID"]},{"title":"Doubles ciblés","content":"Mockito isole une frontière lente ou non déterministe. Simuler les détails internes rend au contraire les tests fragiles."}],
-  "keyConcepts":[{"code":"JAVA-TEST-PYRAMID","name":"Stratégie de test","definition":"Une combinaison de tests unitaires, d'intégration et de parcours couvre des risques différents.","whyExists":"Un seul niveau ne peut prouver à la fois logique locale et câblage réel.","whyImportant":"Une suite rapide et représentative sécurise les changements professionnels.","minimalExample":"assertEquals(expected, service.compute(input));","professionalExample":"Une suite de tests appelait directement une méthode privée calculateInternalDiscount via la réflexion pour vérifier un détail d'implémentation : chaque refactoring interne du service, même sans changement de comportement observable, faisait échouer des dizaines de tests et ralentissait toutes les mises en production. En réécrivant les tests pour n'appeler que la méthode publique compute() et vérifier son résultat, l'équipe a pu refactorer librement sans casser la suite.","codeExample":"@Test\nvoid appliesTenPercentDiscountAboveThreshold() {\n    PricingService service = new PricingService();\n    int result = service.compute(200); // comportement public uniquement\n    assertEquals(180, result);\n}\n\n@Test\nvoid rejectsNegativeAmount() {\n    PricingService service = new PricingService();\n    assertThrows(IllegalArgumentException.class, () -> service.compute(-10));\n}","commonMistake":"Tester l'implémentation au lieu du comportement public.","masteryQuestion":"Quand préférer un test d'intégration à un mock ?","masteryProof":"Écrire trois cas couvrant nominal, limite et erreur."}],
-  "exercises":[{"code":"JAVA-15-E1","title":"Construire un mini harnais","statement":"Vérifie trois comportements et affiche exactement : Tests: 3/3","starterCode":"public class Main {\n    static int square(int value) {\n        // TODO 1 : retourne le carré de value\n        return 0;\n    }\n    public static void main(String[] args) {\n        int passed = 0;\n        // TODO 2 : vérifie trois comportements (2 donne 4, 0 donne 0, -3 donne 9)\n        //          et incrémente passed pour chaque vérification réussie\n        System.out.println(\"Tests: \" + passed + \"/3\");\n    }\n}\n","expectedOutput":"Tests: 3/3"}],
-  "quiz":[{"code":"JAVA-15-Q1","type":"SINGLE_CHOICE","prompt":"Que doit vérifier un bon test ?","choices":["Un comportement observable","Le nombre de lignes privées","La couleur de l'IDE"],"correctChoice":0,"expectedKeywords":[]},{"code":"JAVA-15-Q2","type":"FREE_TEXT","prompt":"Explique quand utiliser un mock.","choices":[],"correctChoice":null,"expectedKeywords":["frontière","dépendance","lent","déterministe"]}],
-  "checklist":["Je nomme le comportement testé","Je couvre les limites","Je ne simule pas le domaine inutilement"]
+  "code": "JAVA-15",
+  "language": "JAVA",
+  "number": 15,
+  "slug": "tests-junit-mockito-strategie",
+  "title": "Tests avec JUnit, Mockito et stratégie de test",
+  "difficulty": "AVANCE",
+  "threshold": 75,
+  "activityType": "LAB",
+  "prerequisites": [
+    "JAVA-14"
+  ],
+  "objectives": [
+    "Distinguer test unitaire, test d'intégration et test de bout en bout et dire quel risque chacun couvre.",
+    "Écrire un test Arrange / Act / Assert qui vérifie un comportement, y compris une valeur limite et une erreur.",
+    "Utiliser un faux (fake) ou un mock pour isoler une dépendance, sans tester le mock lui-même.",
+    "Repérer un test fragile, redondant ou qui ne prouve rien."
+  ],
+  "sections": [
+    {
+      "title": "Un test est une promesse exécutable",
+      "content": "Un test vérifie un comportement observable et échoue quand ce comportement casse. On en distingue trois niveaux, qui couvrent des risques différents :\n- le test unitaire exerce une classe isolée, vite (millisecondes) et sans réseau ;\n- le test d'intégration vérifie que plusieurs briques coopèrent (service et base de données, par exemple) ;\n- le test de bout en bout parcourt l'application comme un utilisateur, lent mais proche du réel.\n\nLa pyramide recommande beaucoup de tests unitaires, moins d'intégration, peu de bout en bout. Un bon test suit le schéma Arrange / Act / Assert : préparer les données, exécuter une seule action, vérifier un résultat précis. Son nom dit le comportement (montant_nul_est_refuse), pas la méthode."
+    },
+    {
+      "title": "Exemple résolu : tester un service avec un faux",
+      "conceptCodes": [
+        "JAVA-TEST-PYRAMID"
+      ],
+      "content": "Problème : OrderService.place(amount) refuse un montant nul et notifie le client quand le montant atteint 100. Comment le tester sans envoyer de vrai message ?\n\nRaisonnement, étape par étape :\n1. La dépendance (Notifier) est une interface : on injecte une implémentation de test, un faux qui note les messages reçus au lieu de les envoyer.\n2. Arrange : créer le faux et le service qui l'utilise.\n3. Act : appeler place(150).\n4. Assert : vérifier la valeur de retour et que le faux a reçu exactement un message.\n5. Cas limites : 100 (la frontière), 99 (juste en dessous) et 0 (l'erreur).\n```java\nclass FakeNotifier implements Notifier {\n    final List<String> sent = new ArrayList<>();\n    public void send(String message) { sent.add(message); }\n}\n\nFakeNotifier fake = new FakeNotifier();                 // Arrange\nOrderService service = new OrderService(fake);\nString result = service.place(150);                     // Act\nassert result.equals(\"OK\") && fake.sent.size() == 1;    // Assert\n```\nUn mock (Mockito) génère un tel faux et vérifie les appels reçus ; un faux écrit à la main suffit souvent et reste lisible. Teste le résultat et l'effet visible, pas l'ordre interne des appels : sinon le test casse à chaque refactoring."
+    },
+    {
+      "title": "Ce qui rend un test utile (ou inutile)",
+      "content": "Un test utile échoue pour une bonne raison. Quelques repères :\n- Une assertion précise (assertEquals(4, carre(2))) vaut mieux qu'un simple « pas d'exception ».\n- Les valeurs limites attrapent la plupart des bugs : 0, 1, la frontière, un de moins, un de plus.\n- Un test dépend d'un seul comportement ; plusieurs assertions sur le même objet sont acceptables.\n- Un test ne dépend pas de l'ordre, de l'heure ou du hasard : injecte une Clock ou une graine fixe.\n- Un mock sur tout (même les objets simples) lie le test à l'implémentation ; réserve-le aux frontières lentes ou externes : réseau, base, horloge, e-mail.\n```java\n// JUnit 5\n@Test\nvoid montantNulEstRefuse() {\n    assertThrows(IllegalArgumentException.class, () -> service.place(0));\n}\n```\nLa couverture mesure les lignes exécutées, pas la qualité des assertions : une couverture de 100 % peut cacher des tests qui n'affirment rien."
+    },
+    {
+      "title": "Erreurs fréquentes à reconnaître",
+      "content": "1. Un test sans assertion : il passe toujours.\n2. Tester l'implémentation (appels internes) plutôt que le comportement.\n3. Oublier la valeur limite : le bug est presque toujours à la frontière (>= contre >).\n4. Un test qui dépend d'un autre ou de l'heure : intermittent, donc ignoré.\n5. Mocker la classe qu'on veut tester.\n6. Courir derrière un pourcentage de couverture sans relire ce que les assertions vérifient.\n\nAvant l'exercice, retrouve ces six erreurs de mémoire et prépare la liste de tes valeurs limites."
+    }
+  ],
+  "keyConcepts": [
+    {
+      "code": "JAVA-TEST-PYRAMID",
+      "name": "Stratégie de test",
+      "definition": "Une combinaison de tests unitaires, d'intégration et de parcours couvre des risques différents.",
+      "whyExists": "Un seul niveau ne peut prouver à la fois logique locale et câblage réel.",
+      "whyImportant": "Une suite rapide et représentative sécurise les changements professionnels.",
+      "minimalExample": "assertEquals(expected, service.compute(input));",
+      "professionalExample": "Une suite de tests appelait directement une méthode privée calculateInternalDiscount via la réflexion pour vérifier un détail d'implémentation : chaque refactoring interne du service, même sans changement de comportement observable, faisait échouer des dizaines de tests et ralentissait toutes les mises en production. En réécrivant les tests pour n'appeler que la méthode publique compute() et vérifier son résultat, l'équipe a pu refactorer librement sans casser la suite.",
+      "codeExample": "@Test\nvoid appliesTenPercentDiscountAboveThreshold() {\n    PricingService service = new PricingService();\n    int result = service.compute(200); // comportement public uniquement\n    assertEquals(180, result);\n}\n\n@Test\nvoid rejectsNegativeAmount() {\n    PricingService service = new PricingService();\n    assertThrows(IllegalArgumentException.class, () -> service.compute(-10));\n}",
+      "commonMistake": "Tester l'implémentation au lieu du comportement public.",
+      "masteryQuestion": "Pourquoi tester les valeurs limites et injecter une dépendance plutôt que l'instancier dans la classe testée ?",
+      "masteryProof": "Écrire un mini harnais qui teste un service avec un faux, y compris la frontière et l'erreur."
+    }
+  ],
+  "exercises": [
+    {
+      "code": "JAVA-15-E1",
+      "title": "Mini harnais de test avec un faux",
+      "statement": "Implémente OrderService et un FakeNotifier, puis écris quatre tests avec la méthode check fournie (gros montant, petit montant, montant nul refusé, frontière 100). Affiche exactement :\nPASS gros montant notifie\nPASS petit montant silencieux\nPASS montant nul refuse\nPASS limite 100 notifie\nResultat : 4/4",
+      "starterCode": "import java.util.*;\n\npublic class Main {\n    interface Notifier { void send(String message); }\n\n    // TODO 1 : classe FakeNotifier implements Notifier — mémorise les messages dans une List<String> sent\n    // TODO 2 : classe OrderService(Notifier notifier) avec String place(int amount) :\n    //          - amount <= 0 -> lève IllegalArgumentException\n    //          - amount >= 100 -> notifier.send(\"gros montant \" + amount)\n    //          - retourne \"OK\"\n\n    static int passed = 0;\n    static int total = 0;\n\n    static void check(String name, boolean ok) {\n        total++;\n        if (ok) passed++;\n        System.out.println((ok ? \"PASS \" : \"FAIL \") + name);\n    }\n\n    public static void main(String[] args) {\n        // TODO 3 : test \"gros montant notifie\" : place(150) renvoie \"OK\" et le faux a reçu 1 message\n        // TODO 4 : test \"petit montant silencieux\" : place(50) renvoie \"OK\" et le faux n'a rien reçu\n        // TODO 5 : test \"montant nul refuse\" : place(0) lève IllegalArgumentException (try/catch)\n        // TODO 6 : test \"limite 100 notifie\" : place(100) notifie, place(99) non\n        // Un nouveau FakeNotifier et un nouveau service par test (pas d'état partagé).\n        // TODO 7 : affiche \"Resultat : \" + passed + \"/\" + total\n    }\n}\n",
+      "expectedOutput": "PASS gros montant notifie\nPASS petit montant silencieux\nPASS montant nul refuse\nPASS limite 100 notifie\nResultat : 4/4"
+    }
+  ],
+  "quiz": [
+    {
+      "code": "JAVA-15-Q1",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Quel test donne le retour le plus rapide pour vérifier une règle de calcul de remise ?",
+      "choices": [
+        "Un test de bout en bout qui ouvre le navigateur",
+        "Un test unitaire sur la classe de calcul, sans réseau ni base",
+        "Un test d'intégration avec une vraie base de données",
+        "Un test manuel après chaque déploiement"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "La règle de calcul est isolable : un test unitaire s'exécute en millisecondes et localise immédiatement le défaut. Les tests d'intégration et de bout en bout sont utiles pour d'autres risques mais plus lents et moins précis."
+    },
+    {
+      "code": "JAVA-15-Q2",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Trouve le défaut de ce test :\n```java\n@Test\nvoid calculeLaRemise() {\n    double r = service.remise(150);\n    System.out.println(r);\n}\n```\n",
+      "choices": [
+        "Il utilise un double",
+        "Il n'a aucune assertion : il passera même si la remise est fausse",
+        "Il est trop court",
+        "Il devrait être static"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Sans assertion, le test passe tant qu'aucune exception n'est levée. Il ne protège rien. Il faut affirmer une valeur attendue : assertEquals(15.0, r, 0.001)."
+    },
+    {
+      "code": "JAVA-15-Q3",
+      "type": "SINGLE_CHOICE",
+      "prompt": "La règle est « gratuit à partir de 100 ». Quelles valeurs testes-tu en priorité ?",
+      "choices": [
+        "50 et 150 seulement",
+        "99, 100 et 101",
+        "Uniquement 100",
+        "Des montants au hasard"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Les bugs se logent à la frontière (> contre >=). 99 est juste sous le seuil, 100 le seuil, 101 juste au-dessus. 50 et 150 passeraient même avec un mauvais opérateur."
+    },
+    {
+      "code": "JAVA-15-Q4",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Dans quel cas un mock ou un faux est-il justifié ?",
+      "choices": [
+        "Pour remplacer un objet simple comme une String",
+        "Pour isoler un envoi d'e-mail ou un appel réseau lent ou externe",
+        "Pour tester la classe qui est elle-même mockée",
+        "Pour augmenter le pourcentage de couverture"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "On remplace les frontières lentes, aléatoires ou à effet externe (réseau, base, horloge, e-mail). Mocker un objet simple ou la classe testée ne prouve rien et lie le test à l'implémentation."
+    },
+    {
+      "code": "JAVA-15-Q5",
+      "type": "FREE_TEXT",
+      "prompt": "Sans relire le cours, explique avec tes mots pourquoi une couverture de 100 % ne garantit pas un code correct, et ce qu'est un bon test.",
+      "choices": [],
+      "correctChoice": null,
+      "expectedKeywords": [
+        "assertion",
+        "comportement",
+        "limite",
+        "couverture",
+        "execut"
+      ],
+      "modelAnswer": "La couverture mesure les lignes exécutées, pas ce que les tests vérifient : un test sans assertion couvre du code sans rien prouver. Un bon test vérifie un comportement observable avec une assertion précise, couvre les valeurs limites et les erreurs, et reste indépendant de l'ordre et de l'heure.",
+      "explanation": "Une bonne réponse oppose lignes exécutées et assertions, et décrit un test utile : comportement, valeurs limites, indépendance."
+    }
+  ],
+  "checklist": [
+    "Je cite le risque couvert par un test unitaire, d'intégration et de bout en bout",
+    "Mes tests suivent Arrange / Act / Assert avec une assertion précise",
+    "Je teste la valeur limite et le cas d'erreur, pas seulement le cas heureux",
+    "Je réserve les mocks aux frontières lentes ou externes"
+  ]
 }

@@ -11,21 +11,30 @@
     "TYPESCRIPT-09"
   ],
   "objectives": [
-    "Expliquer types conditionnels et littéraux de gabarit",
-    "Construire une preuve exécutable et déterministe",
-    "Relier le concept à une décision professionnelle"
+    "Lire et écrire un type conditionnel (T extends U ? X : Y) et un type avec infer.",
+    "Construire un type littéral de gabarit (`${T}:created`) et l'utiliser pour typer des noms d'événements.",
+    "Prévoir le type obtenu pour une entrée précise.",
+    "Savoir quand renoncer à un type trop sophistiqué."
   ],
   "sections": [
     {
-      "title": "Concept et usage professionnel",
-      "content": "Types conditionnels et littéraux de gabarit répond à un besoin concret de maintenabilité, de sûreté ou de performance. Le laboratoire demande de rendre la décision observable et vérifiable.",
-      "conceptCodes": [
-        "TYPESCRIPT-CONDITIONAL-TYPES"
-      ]
+      "title": "Des types qui calculent",
+      "content": "Un type conditionnel choisit un type selon une relation, avec la même forme qu'un ternaire :\n```ts\ntype IsString<T> = T extends string ? 'oui' : 'non';\ntype A = IsString<'x'>;      // 'oui'\ntype B = IsString<42>;       // 'non'\n```\nAppliqué à une union, il est distributif : IsString<string | number> donne 'oui' | 'non' (la condition s'applique à chaque membre). infer déclare une variable de type à déduire :\n```ts\ntype ElementOf<T> = T extends (infer U)[] ? U : T;\ntype X = ElementOf<number[]>;      // number\ntype Y = ElementOf<string>;        // string (inchangé)\n```\nLire : « si T est un tableau d'un type U (que tu déduis), alors U, sinon T ». Les types utilitaires Extract, Exclude, ReturnType, Awaited sont écrits ainsi."
     },
     {
-      "title": "Mise en pratique",
-      "content": "La preuve minimale est locale, déterministe et peut être enrichie sans changer le contrat attendu."
+      "title": "Exemple résolu : des noms d'événements typés et first()",
+      "conceptCodes": [
+        "TYPESCRIPT-CONDITIONAL-TYPES"
+      ],
+      "content": "Problème : une fonction eventName('user') doit retourner exactement le littéral 'user:created', et first doit renvoyer l'élément d'un tableau ou la valeur elle-même pour un non-tableau.\n\nRaisonnement, étape par étape :\n1. Type littéral de gabarit : type EventName<T extends string> = `${T}:created`. Le compilateur concatène les littéraux au niveau des types.\n2. eventName<T extends string>(entity: T): EventName<T> retourne `${entity}:created` ; le cast nécessaire est cantonné à une seule ligne.\n3. Pour 'user', le type est 'user:created' (pas string) : une faute de frappe dans un abonné est détectée.\n4. ElementOf<T> avec infer extrait le type des éléments d'un tableau.\n5. first(x) retourne le premier élément d'un tableau ou x lui-même : le type de retour est ElementOf<T>.\n6. Vérification : first([1, 2]) vaut 1, first('x') vaut 'x'.\n```ts\ntype EventName<T extends string> = `${T}:created`;\n\nfunction eventName<T extends string>(entity: T): EventName<T> {\n  return `${entity}:created` as EventName<T>;\n}\nconst e = eventName('user');       // type : 'user:created'\n\ntype ElementOf<T> = T extends (infer U)[] ? U : T;\nfunction first<T>(value: T): ElementOf<T> {\n  return (Array.isArray(value) ? value[0] : value) as ElementOf<T>;\n}\n```"
+    },
+    {
+      "title": "Quand ces types servent, quand s'arrêter",
+      "content": "Usages utiles : typer des noms d'événements (`${Entity}:${Action}`), des routes (`/users/${number}`), des classes CSS ou des clés d'API d'après des unions ; extraire le type de retour ou des paramètres d'une fonction ; construire des bibliothèques dont les types suivent les données (clients d'API, ORM, formulaires).\n```ts\ntype Entity = 'user' | 'order';\ntype Action = 'created' | 'deleted';\ntype EventKey = `${Entity}:${Action}`;       // 'user:created' | 'user:deleted' | 'order:created' | 'order:deleted'\n```\nLes unions se multiplient (2 × 2 = 4 ici) : le produit cartésien peut exploser.\n\nLimites : ces types s'évaluent à la compilation seulement, donc ils n'apportent rien à la sécurité à l'exécution ; ils ralentissent la compilation et rendent les messages d'erreur obscurs s'ils sont trop profonds ; les implémentations utilisent souvent un cast (as) que le compilateur ne vérifie pas. Règle : si un collègue ne comprend pas le type en deux minutes, simplifie ou documente. Dans une application, des types simples (unions, interfaces) suffisent presque toujours ; réserve ces outils aux bibliothèques et aux utilitaires partagés."
+    },
+    {
+      "title": "Erreurs fréquentes à reconnaître",
+      "content": "1. Utiliser un type conditionnel quand une simple union ou une surcharge suffit.\n2. Oublier la distributivité : IsString<string | number> ne donne pas un seul résultat.\n3. Se fier à un cast interne comme si le compilateur l'avait vérifié.\n4. Générer des unions gigantesques par produit cartésien.\n5. Des types récursifs profonds qui ralentissent tout l'éditeur.\n6. Croire qu'un type littéral de gabarit contrôle la valeur à l'exécution.\n\nRetrouve ces erreurs de mémoire avant l'exercice, puis vérifie-toi avec le quiz : c'est la récupération, pas la relecture, qui fixe la notion."
     }
   ],
   "keyConcepts": [
@@ -39,8 +48,8 @@
       "professionalExample": "Le routeur interne d'une API type ses routes avec des littéraux de gabarit : la route '/users/:id/orders/:orderId' produit automatiquement un type de paramètres { id: string; orderId: string } via un type conditionnel qui extrait les segments préfixés par ':'. Cela a supprimé une classe entière de bugs où un handler lisait req.params.orderId alors que la route ne définissait que req.params.id, une faute de frappe qui passait inaperçue avec un typage any classique.",
       "codeExample": "type ExtractParams<Path extends string> =\n  Path extends `${infer _Start}:${infer Param}/${infer Rest}`\n    ? { [K in Param | keyof ExtractParams<`/${Rest}`>]: string }\n    : Path extends `${infer _Start}:${infer Param}`\n      ? { [K in Param]: string }\n      : {};\n\ntype OrderRouteParams = ExtractParams<'/users/:id/orders/:orderId'>;\n// équivalent à { id: string; orderId: string }\n\nfunction handleRoute(params: OrderRouteParams): void {\n  console.log(params.id, params.orderId);\n}",
       "commonMistake": "Appliquer la technique sans mesurer son effet ni documenter sa frontière.",
-      "masteryQuestion": "Quelle contrainte de types conditionnels et littéraux de gabarit doit rester vraie lorsque le système évolue ?",
-      "masteryProof": "Exécuter la preuve, expliquer son invariant et proposer un cas d’échec."
+      "masteryQuestion": "Que signifie T extends (infer U)[] ? U : T, et pourquoi ces types n'offrent-ils aucune garantie à l'exécution ?",
+      "masteryProof": "Définir EventName<T> par un type littéral de gabarit et ElementOf<T> avec infer, puis écrire eventName et first qui les utilisent."
     }
   ],
   "exercises": [
@@ -56,32 +65,80 @@
     {
       "code": "TYPESCRIPT-10-Q1",
       "type": "SINGLE_CHOICE",
-      "prompt": "Quelle preuve est la plus utile en revue ?",
+      "prompt": "Quel est le type de X ?\n```ts\ntype ElementOf<T> = T extends (infer U)[] ? U : T;\ntype X = ElementOf<string[]>;\n```\n",
       "choices": [
-        "Une exécution déterministe avec invariant explicite",
-        "Une sortie aléatoire",
-        "Une capture sans code"
+        "string[]",
+        "string",
+        "unknown",
+        "never"
       ],
-      "correctChoice": 0,
-      "expectedKeywords": []
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "string[] correspond à (infer U)[] avec U = string, donc le résultat est U = string. Pour un type qui n'est pas un tableau, le résultat serait T lui-même."
     },
     {
       "code": "TYPESCRIPT-10-Q2",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Quel est le type de e ?\n```ts\ntype EventName<T extends string> = `${T}:created`;\nfunction eventName<T extends string>(e: T): EventName<T> { return `${e}:created` as EventName<T>; }\nconst e = eventName('user');\n```\n",
+      "choices": [
+        "string",
+        "'user:created'",
+        "'user'",
+        "unknown"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "T est inféré comme le littéral 'user', et le gabarit produit le littéral 'user:created'. Ce type précis permet de détecter une faute de frappe dans un abonnement."
+    },
+    {
+      "code": "TYPESCRIPT-10-Q3",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Trouve le défaut :\n```ts\nfunction first<T>(v: T): ElementOf<T> {\n  return (Array.isArray(v) ? v[0] : v) as ElementOf<T>;\n}\n```\nQue vérifie le compilateur ici ?",
+      "choices": [
+        "Tout, y compris le comportement à l'exécution",
+        "Rien sur le corps : le as ElementOf<T> affirme le résultat sans le vérifier, seule la signature est contrôlée chez l'appelant",
+        "Que v est un tableau",
+        "Que T est un string"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Les implémentations de types conditionnels exigent souvent un cast car le compilateur ne relie pas le test à l'exécution au type calculé. Il faut donc tester la fonction par des cas concrets."
+    },
+    {
+      "code": "TYPESCRIPT-10-Q4",
+      "type": "SINGLE_CHOICE",
+      "prompt": "type K = `${'a' | 'b'}-${1 | 2 | 3}` produit combien de littéraux ?",
+      "choices": [
+        "2",
+        "3",
+        "5",
+        "6"
+      ],
+      "correctChoice": 3,
+      "expectedKeywords": [],
+      "explanation": "Un type littéral de gabarit se distribue sur chaque union : 2 × 3 = 6 combinaisons ('a-1', 'a-2', 'a-3', 'b-1', 'b-2', 'b-3'). Les produits cartésiens peuvent devenir très grands."
+    },
+    {
+      "code": "TYPESCRIPT-10-Q5",
       "type": "FREE_TEXT",
-      "prompt": "Explique une décision liée à types conditionnels et littéraux de gabarit.",
+      "prompt": "Sans relire le cours, explique avec tes mots ce que sont un type conditionnel et infer, avec un exemple d'usage.",
       "choices": [],
       "correctChoice": null,
       "expectedKeywords": [
-        "contrat",
-        "preuve",
-        "test"
-      ]
+        "condition",
+        "infer",
+        "extends",
+        "deduit",
+        "type"
+      ],
+      "modelAnswer": "Un type conditionnel (T extends U ? X : Y) choisit un type selon que T est assignable à U, comme un ternaire au niveau des types. infer permet de déduire un morceau de type pendant la comparaison : T extends (infer U)[] ? U : T extrait le type des éléments d'un tableau et laisse inchangé tout autre type. ReturnType et Awaited sont écrits ainsi.",
+      "explanation": "Une bonne réponse décrit la forme conditionnelle, le rôle de infer pour déduire un sous-type et donne l'exemple du type des éléments d'un tableau."
     }
   ],
   "checklist": [
-    "Je peux expliquer le concept sans réciter une définition",
-    "Je sais exécuter et modifier la preuve",
-    "Je peux nommer un risque et son contrôle",
-    "Je relie cette étape à la suivante"
+    "Je sais lire un type conditionnel avec infer",
+    "Je peux construire un type littéral de gabarit",
+    "Je sais que ces types ne vérifient rien à l'exécution",
+    "Je renonce à un type trop sophistiqué quand une union suffit"
   ]
 }

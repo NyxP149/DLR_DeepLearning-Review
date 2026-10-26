@@ -11,21 +11,30 @@
     "LLM-03"
   ],
   "objectives": [
-    "Valider une réponse JSON avant de la transmettre au métier",
-    "Produire une expérience hors réseau reproductible",
-    "Documenter une limite et une métrique de contrôle"
+    "Demander une sortie structurée et la valider (clés exactes, types, bornes) avant de la transmettre au métier.",
+    "Tolérer des variantes courantes (balises de code) sans accepter une réponse invalide.",
+    "Traiter une réponse invalide : refus motivé, réessai borné, valeur de repli.",
+    "Distinguer JSON valide syntaxiquement et JSON conforme au contrat."
   ],
   "sections": [
     {
-      "title": "Concept et décision",
-      "content": "Sorties structurées et validation de schéma doit être évalué comme un composant logiciel : entrées explicites, sorties contrôlées, métriques et cas d’échec. Aucun appel à un service distant n’est nécessaire pour apprendre le mécanisme.",
-      "conceptCodes": [
-        "LLM-STRUCTURED-OUTPUT"
-      ]
+      "title": "Une sortie de modèle est une entrée non fiable",
+      "content": "Un modèle qui promet du JSON peut renvoyer du texte autour, des balises de code, une clé manquante, un nombre sous forme de chaîne, ou une valeur hors bornes. Le code qui consomme la sortie doit donc la traiter comme n'importe quelle donnée extérieure : parser, valider, et seulement ensuite utiliser.\n\nDeux niveaux de contrôle :\n- Syntaxe : le texte est-il du JSON ? (json.loads lève JSONDecodeError sinon).\n- Contrat : le JSON a-t-il la forme attendue ? clés exactes, types, bornes. Un JSON syntaxiquement valide peut être inutilisable.\nLes API modernes proposent des modes de sortie structurée (JSON mode, schéma JSON contraint, appel de fonction) qui réduisent les écarts de format, sans les supprimer : la validation côté application reste obligatoire."
     },
     {
-      "title": "Expérience locale",
-      "content": "L’expérience isole le mécanisme LLM-STRUCTURED-OUTPUT. Elle reste volontairement déterministe afin de distinguer un défaut de pipeline d’une variation propre aux modèles génératifs."
+      "title": "Exemple résolu : un validateur strict mais tolérant sur le format",
+      "conceptCodes": [
+        "LLM-STRUCTURED-OUTPUT"
+      ],
+      "content": "Problème : accepter une réponse {\"answer\": texte, \"confidence\": nombre entre 0 et 1}, rejeter le reste avec une raison précise.\n\nRaisonnement, étape par étape :\n1. Nettoyage minimal : si la réponse est entourée de balises ```json ... ```, on les retire. C'est une tolérance de format, pas de contenu.\n2. Parsing : json.loads ; en cas d'échec, raison « JSON invalide ».\n3. Clés : exactement answer et confidence. Une clé en trop ou manquante est rejetée (« clés inattendues »), car une clé inconnue peut porter des instructions ou des données non prévues.\n4. Types : answer est une chaîne non vide ; confidence est un nombre (pas un booléen : True vaut 1 en Python) entre 0 et 1.\n5. Résultat : le dictionnaire validé, ou une ValueError avec la raison, que l'appelant peut journaliser ou utiliser pour réessayer.\n6. Vérification : cinq réponses types : valide, valide avec balises, texte autour du JSON, confiance hors bornes, clé supplémentaire.\n```python\ndef validate(raw: str) -> dict:\n    text = raw.strip()\n    if text.startswith(\"```\"):\n        text = text.strip(\"`\").removeprefix(\"json\").strip()\n    try:\n        data = json.loads(text)\n    except json.JSONDecodeError:\n        raise ValueError(\"JSON invalide\") from None\n    if not isinstance(data, dict) or set(data) != {\"answer\", \"confidence\"}:\n        raise ValueError(\"clés inattendues\")\n    confidence = data[\"confidence\"]\n    if isinstance(confidence, bool) or not isinstance(confidence, (int, float)) or not 0 <= confidence <= 1:\n        raise ValueError(\"confidence hors de [0, 1]\")\n    return data\n```"
+    },
+    {
+      "title": "Réessayer, réparer, se replier",
+      "content": "- Réessai borné : si la réponse est invalide, on peut redemander au modèle en lui donnant l'erreur précise (« la clé confidence manque »). Une ou deux tentatives, pas plus : sinon la boucle coûte cher et ne converge pas.\n- Valeur de repli : après échec, retourner une réponse sûre (« inconnu », file de relecture humaine) plutôt qu'une donnée douteuse.\n- Réparation automatique : à n'utiliser que pour des écarts de forme sans ambiguïté (balises, virgule finale). Ne « devine » jamais une valeur manquante.\n- Schéma formel : JSON Schema ou un modèle pydantic décrit le contrat ; il sert à la fois à demander la sortie (format contraint) et à la valider. Ce schéma est versionné.\n- Journaliser les rejets (raison, version du prompt) : leur taux est une métrique de qualité.\n- Valider aussi le sens : une confiance de 0,99 sur une réponse fausse reste fausse. La « confiance » déclarée par un modèle n'est pas une probabilité calibrée.\n- Taille : limite la longueur acceptée et la profondeur du JSON.\n- Sécurité : la sortie validée en forme peut encore contenir du texte dangereux (HTML, commande) ; échappe-le avant affichage ou exécution."
+    },
+    {
+      "title": "Erreurs fréquentes à reconnaître",
+      "content": "1. json.loads sans traiter l'exception, ou sans valider les clés et les types.\n2. Accepter des clés supplémentaires ou un type approximatif (la chaîne \"0.9\").\n3. Accepter un booléen comme nombre.\n4. Réessayer en boucle sans limite.\n5. Réparer en inventant une valeur manquante.\n6. Faire confiance à la « confiance » déclarée par le modèle.\n\nRetrouve ces erreurs de mémoire avant l'exercice, puis vérifie-toi avec le quiz : c'est la récupération, pas la relecture, qui fixe la notion."
     }
   ],
   "keyConcepts": [
@@ -39,49 +48,97 @@
       "professionalExample": "Un pipeline de classification de tickets attend une réponse JSON {\"category\":..., \"confidence\":...} pour router automatiquement vers la bonne équipe. Un jour le modèle renvoie confidence: \"élevée\" (une chaîne au lieu d'un nombre entre 0 et 1), et le service de routage plante en production faute de validation, bloquant le traitement des tickets pendant une heure. Après l'incident, l'équipe ajoute une validation de schéma stricte avant tout usage métier de la sortie du modèle, avec un chemin de repli vers une file d'erreurs.",
       "codeExample": "from pydantic import BaseModel, ValidationError\n\nclass Classification(BaseModel):\n    category: str\n    confidence: float\n\nraw = '{\"category\": \"facturation\", \"confidence\": \"élevée\"}'\ntry:\n    result = Classification.model_validate_json(raw)\nexcept ValidationError as exc:\n    print(\"Rejeté avant le métier:\", exc.errors()[0][\"msg\"])",
       "commonMistake": "Évaluer un seul exemple favorable ou confondre plausibilité et exactitude.",
-      "masteryQuestion": "Quelle métrique et quel cas d’échec utiliserais-tu pour sorties structurées et validation de schéma ?",
-      "masteryProof": "Exécuter la preuve, modifier une entrée et expliquer le résultat ainsi que la limite du modèle local."
+      "masteryQuestion": "Pourquoi valider une sortie JSON même en mode de sortie structurée, et que faire d'une réponse invalide ?",
+      "masteryProof": "Écrire un validateur qui contrôle syntaxe, clés et bornes, tolère des balises de code et rapporte des raisons précises."
     }
   ],
   "exercises": [
     {
       "code": "LLM-04-E1",
-      "title": "Valider une réponse JSON avant de la transmettre au métier",
-      "statement": "Complète l’expérience pour produire exactement la sortie attendue. Explique ensuite quelle partie serait remplacée par un modèle réel.",
-      "starterCode": "import json\n\ndef validate(raw: str) -> dict:\n    # TODO 1 : décode le JSON\n    # TODO 2 : lève ValueError(\"réponse invalide\") si les clés ne sont pas exactement\n    #          \"answer\" et \"confidence\", ou si confidence n'est pas comprise entre 0 et 1\n    return {}\n\nresult = validate('{\"answer\":\"JVM\",\"confidence\":0.92}')\n# TODO 3 : affiche la réponse suivie de la confiance en pourcentage, par exemple \"JVM (92%)\"\n",
-      "expectedOutput": "JVM (92%)"
+      "title": "Valider une sortie structurée avec des raisons précises",
+      "statement": "Écris validate : retire d'éventuelles balises de code, décode le JSON, exige exactement les clés answer et confidence, answer non vide et confidence entre 0 et 1 (un booléen n'est pas un nombre). Teste cinq réponses. Affiche exactement :\n1. accepté: JVM (92%)\n2. accepté: JDK (50%)\n3. rejeté: JSON invalide\n4. rejeté: confidence hors de [0, 1]\n5. rejeté: clés inattendues",
+      "starterCode": "import json\n\nSAMPLES = [\n    '{\"answer\":\"JVM\",\"confidence\":0.92}',\n    '```json\\n{\"answer\":\"JDK\",\"confidence\":0.5}\\n```',\n    'Voici la réponse : {\"answer\":\"JVM\"}',\n    '{\"answer\":\"JVM\",\"confidence\":1.7}',\n    '{\"answer\":\"JVM\",\"confidence\":0.9,\"extra\":1}',\n]\n\n\ndef validate(raw: str) -> dict:\n    # TODO 1 : retire les balises ``` (et le mot json) si présentes, puis json.loads ;\n    #          en cas d'erreur de syntaxe : ValueError(\"JSON invalide\")\n    # TODO 2 : exige un dict avec exactement les clés {\"answer\", \"confidence\"} sinon ValueError(\"clés inattendues\")\n    # TODO 3 : answer doit être une chaîne non vide ; confidence un nombre (pas un booléen) dans [0, 1]\n    #          sinon ValueError(\"confidence hors de [0, 1]\")\n    return {}\n\n\nfor raw in SAMPLES:\n    # TODO 4 : affiche \"<n>. accepté: <answer> (<confidence en pourcent>%)\" ou \"<n>. rejeté: <raison>\" (n commence à 1)\n    pass\n",
+      "expectedOutput": "1. accepté: JVM (92%)\n2. accepté: JDK (50%)\n3. rejeté: JSON invalide\n4. rejeté: confidence hors de [0, 1]\n5. rejeté: clés inattendues"
     }
   ],
   "quiz": [
     {
       "code": "LLM-04-Q1",
       "type": "SINGLE_CHOICE",
-      "prompt": "Quelle validation est la plus solide ?",
+      "prompt": "Une réponse est du JSON syntaxiquement valide : {\"answer\": \"JVM\", \"confidence\": \"élevée\"}. Que faire ?",
       "choices": [
-        "Plusieurs cas reproductibles avec métriques et provenance",
-        "Une réponse qui semble correcte",
-        "Une démonstration sans jeu de test"
+        "L'accepter : c'est du JSON",
+        "La rejeter : le contrat exige un nombre entre 0 et 1",
+        "La convertir en 1",
+        "Ignorer la clé confidence"
       ],
-      "correctChoice": 0,
-      "expectedKeywords": []
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "La validité syntaxique ne suffit pas. Le contrat précise un nombre dans [0, 1] ; une chaîne viole ce contrat et ne doit pas atteindre le métier."
     },
     {
       "code": "LLM-04-Q2",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Prédis le résultat de isinstance(True, (int, float)) et ses conséquences pour un contrôle de type :",
+      "choices": [
+        "False : un booléen n'est jamais un nombre",
+        "True : en Python bool hérite de int, il faut l'exclure explicitement",
+        "Une exception",
+        "None"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "True passerait pour 1. Une réponse {\"confidence\": true} serait donc acceptée par un contrôle naïf. Ajoute isinstance(valeur, bool) pour la rejeter."
+    },
+    {
+      "code": "LLM-04-Q3",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Trouve le défaut :\n```python\ndata = json.loads(reponse)\nscore = data.get('confidence', 1.0)\n```\n",
+      "choices": [
+        "get est interdit",
+        "Une clé manquante est remplacée par 1,0 : la réponse incomplète passe pour une réponse très sûre",
+        "json.loads est trop lent",
+        "Il manque un try uniquement"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Inventer une valeur par défaut flatteuse masque un défaut de la sortie. Une clé obligatoire manquante doit provoquer un rejet motivé (ou un repli explicite sûr)."
+    },
+    {
+      "code": "LLM-04-Q4",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Quelle stratégie face à une réponse invalide est la plus saine ?",
+      "choices": [
+        "Réessayer indéfiniment",
+        "Un ou deux réessais bornés en donnant l'erreur au modèle, puis un repli sûr (inconnu ou relecture humaine)",
+        "Deviner la valeur manquante",
+        "Transmettre quand même la réponse au métier"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Les réessais coûtent de l'argent et du temps ; ils doivent être limités. Après l'échec, une valeur de repli sûre protège le métier d'une donnée douteuse."
+    },
+    {
+      "code": "LLM-04-Q5",
       "type": "FREE_TEXT",
-      "prompt": "Nomme une limite et le contrôle associé.",
+      "prompt": "Sans relire le cours, explique avec tes mots pourquoi on valide la sortie d'un LLM même quand l'API garantit un format JSON.",
       "choices": [],
       "correctChoice": null,
       "expectedKeywords": [
-        "limite",
-        "test",
-        "mesure"
-      ]
+        "format",
+        "contrat",
+        "valide",
+        "metier",
+        "confiance"
+      ],
+      "modelAnswer": "Un mode de sortie structurée réduit les erreurs de forme mais ne garantit ni la cohérence des valeurs, ni leur sens, ni l'absence de cas limites (valeurs hors bornes, champs vides, injection dans le contenu). La sortie d'un modèle reste une entrée non fiable : on la valide (clés, types, bornes) avant de la transmettre au métier, et on mesure le taux de rejets.",
+      "explanation": "Une bonne réponse dit que le mode structuré ne couvre pas le contenu et que la sortie est une entrée non fiable à valider, avec suivi du taux de rejets."
     }
   ],
   "checklist": [
-    "Je sais expliquer le mécanisme",
-    "Je peux reproduire la preuve hors réseau",
-    "Je distingue simulation locale et modèle réel",
-    "Je peux nommer une métrique et un risque"
+    "Je valide syntaxe, clés, types et bornes de toute sortie de modèle",
+    "Je rejette avec une raison précise et je mesure le taux de rejets",
+    "Mes réessais sont bornés et suivis d'un repli sûr",
+    "Je n'invente jamais une valeur manquante"
   ]
 }

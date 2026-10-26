@@ -11,21 +11,30 @@
     "PYTHON-23"
   ],
   "objectives": [
-    "Expliquer défi final python adaptatif",
-    "Construire une preuve exécutable et déterministe",
-    "Relier le concept à une décision professionnelle"
+    "Résoudre un problème inédit en le décomposant en états, règles et cas limites, avec peu de guidage.",
+    "Concevoir un limiteur de débit à seau de jetons avec une horloge injectée.",
+    "Rendre le comportement testable sans attendre (temps passé en paramètre).",
+    "Défendre un compromis : simplicité, précision, mémoire, concurrence."
   ],
   "sections": [
     {
-      "title": "Concept et usage professionnel",
-      "content": "Défi final Python adaptatif répond à un besoin concret de maintenabilité, de sûreté ou de performance. Le laboratoire demande de rendre la décision observable et vérifiable.",
-      "conceptCodes": [
-        "PYTHON-CHALLENGE"
-      ]
+      "title": "Face à un problème inédit : état, règles, cas limites",
+      "content": "Un limiteur de débit protège un service : il refuse les requêtes qui dépassent une cadence. Face à un énoncé nouveau, la méthode reste la même :\n1. Reformuler : quelles entrées (le temps de la requête), quelle sortie (autorisée ou refusée), quel état à conserver (jetons restants, dernier instant).\n2. Écrire les règles en français : capacité 3, un jeton regagné par seconde, une requête consomme un jeton, jamais plus que la capacité.\n3. Lister les cas limites : ne pas dépasser la capacité après une longue pause, requêtes simultanées, temps qui recule, fraction de jeton.\n4. Coder le cas normal, le tester, puis ajouter les cas limites un à un."
     },
     {
-      "title": "Défi de synthèse",
-      "content": "La preuve minimale est locale, déterministe et peut être enrichie sans changer le contrat attendu."
+      "title": "Exemple résolu : le seau de jetons",
+      "conceptCodes": [
+        "PYTHON-CHALLENGE"
+      ],
+      "content": "Problème : accepter au plus 3 requêtes en rafale, puis une par seconde en régime établi.\n\nRaisonnement, étape par étape :\n1. État : jetons (nombre, possiblement fractionnaire) et last (dernier instant connu).\n2. À chaque appel allow(now) : calculer le temps écoulé depuis last, ajouter écoulé × débit (1 jeton par seconde), plafonner à la capacité.\n3. Mettre à jour last = now.\n4. Si jetons >= 1, retirer 1 et répondre « autorisée » ; sinon répondre « refusée » sans rien retirer.\n5. Horloge injectée : allow reçoit l'instant en paramètre. Le test passe t=0.0, 1.0, 1.5 sans jamais dormir ; il est déterministe.\n6. Vérification : t=0 autorise trois fois (seau plein) puis refuse ; à t=1.0 un jeton est revenu ; à t=1.5 il n'y en a que 0,5 donc refus ; à t=2.5 il y en a 1,5 donc accepté.\n```python\nclass TokenBucket:\n    def __init__(self, capacite=3, debit=1.0):\n        self.capacite, self.debit = capacite, debit\n        self.jetons, self.dernier = float(capacite), 0.0\n\n    def allow(self, maintenant: float) -> bool:\n        ecoule = max(0.0, maintenant - self.dernier)        # temps qui recule : ignoré\n        self.jetons = min(self.capacite, self.jetons + ecoule * self.debit)\n        self.dernier = maintenant\n        if self.jetons >= 1:\n            self.jetons -= 1\n            return True\n        return False\n```"
+    },
+    {
+      "title": "Comparer les approches et défendre un choix",
+      "content": "- Fenêtre fixe (compteur par minute) : très simple, mais autorise une double rafale à cheval sur deux fenêtres (2× la limite en une seconde).\n- Fenêtre glissante (journal des horodatages) : précise, mais mémoire proportionnelle au nombre de requêtes.\n- Seau de jetons : autorise des rafales jusqu'à la capacité, puis impose un débit moyen ; état minuscule (deux nombres), calcul O(1).\n- Seau percé (leaky bucket) : lisse la sortie à débit constant.\n\nCompromis : le seau de jetons est simple et efficace, mais en environnement distribué (plusieurs serveurs), l'état doit être partagé (Redis avec opération atomique) ou réparti par serveur. En concurrence, un verrou protège la mise à jour de l'état. Dans les deux cas, l'horloge injectée garde le test déterministe.\n\nPour défendre une solution : nomme le problème, l'alternative écartée et la raison, puis la condition qui te ferait changer d'avis (charge, distribution, besoin de précision)."
+    },
+    {
+      "title": "Erreurs fréquentes à reconnaître",
+      "content": "1. Appeler time.time() dans la logique : tests lents ou instables.\n2. Oublier de plafonner à la capacité : après une longue pause, on autorise une rafale gigantesque.\n3. Retirer un jeton même quand la requête est refusée.\n4. Arrondir les fractions de jeton à l'entier : le débit réel devient faux.\n5. Ne pas gérer un temps qui recule (horloge ajustée).\n6. Pas de verrou sur l'état partagé entre threads.\n\nPour ce dernier défi, écris le code de mémoire et vérifie-le avec tes propres cas limites avant de lancer l'exercice."
     }
   ],
   "keyConcepts": [
@@ -39,8 +48,8 @@
       "professionalExample": "Ce défi final combine typage progressif, tests, gestion d'erreurs et architecture propre sans indiquer explicitement quelle technique appliquer où, à l'image d'un audit de code réel où un développeur senior doit choisir lui-même les bons outils pour chaque problème. La difficulté s'adapte à la maîtrise démontrée sur les modules précédents, ce qui reproduit la façon dont un tech lead ajuste la complexité d'une revue de code selon l'expérience de la personne qui la présente.",
       "codeExample": "from dataclasses import dataclass\nfrom typing import Protocol\n\nclass Notifier(Protocol):\n    def send(self, message: str) -> bool: ...\n\n@dataclass(frozen=True, slots=True)\nclass Alert:\n    severity: str\n    message: str\n\n    def __post_init__(self) -> None:\n        if self.severity not in {\"INFO\", \"WARNING\", \"CRITICAL\"}:\n            raise ValueError(f\"Sévérité inconnue: {self.severity}\")\n\ndef dispatch(alert: Alert, notifier: Notifier) -> bool:\n    if alert.severity == \"CRITICAL\" and not notifier.send(alert.message):\n        raise RuntimeError(\"Échec d'envoi d'une alerte critique\")\n    return True",
       "commonMistake": "Appliquer la technique sans mesurer son effet ni documenter sa frontière.",
-      "masteryQuestion": "Quelle contrainte de défi final python adaptatif doit rester vraie lorsque le système évolue ?",
-      "masteryProof": "Exécuter la preuve, expliquer son invariant et proposer un cas d’échec."
+      "masteryQuestion": "Pourquoi injecter l'horloge, et pourquoi plafonner les jetons à la capacité ?",
+      "masteryProof": "Implémenter un seau de jetons (capacité 3, un jeton par seconde) avec horloge injectée et le faire passer sur une séquence d'instants."
     }
   ],
   "exercises": [
@@ -56,32 +65,80 @@
     {
       "code": "PYTHON-24-Q1",
       "type": "SINGLE_CHOICE",
-      "prompt": "Quelle preuve est la plus utile en revue ?",
+      "prompt": "Pourquoi allow reçoit-elle l'instant en paramètre plutôt que d'appeler time.time() ?",
       "choices": [
-        "Une exécution déterministe avec invariant explicite",
-        "Une sortie aléatoire",
-        "Une capture sans code"
+        "Pour économiser un appel système",
+        "Pour que les tests soient déterministes et instantanés, sans dormir ni dépendre de l'heure réelle",
+        "Parce que time.time() est interdit",
+        "Pour permettre le multithreading"
       ],
-      "correctChoice": 0,
-      "expectedKeywords": []
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Une horloge injectée permet de simuler t=0, 1.0, 1.5 sans attendre. Le même test donne le même résultat à chaque exécution."
     },
     {
       "code": "PYTHON-24-Q2",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Prédis le résultat : seau de capacité 3, débit 1/s, plein à t=0. Séquence de requêtes à t = 0, 0, 0, 0, 1.0 (une requête chacune).",
+      "choices": [
+        "autorisée ×4 puis autorisée",
+        "autorisée ×3, refusée, autorisée",
+        "autorisée ×3, refusée, refusée",
+        "autorisée, refusée ×3, autorisée"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Les trois premières requêtes vident le seau, la quatrième à t=0 est refusée (aucun temps écoulé). À t=1.0, un jeton est revenu : la cinquième est autorisée."
+    },
+    {
+      "code": "PYTHON-24-Q3",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Trouve le défaut :\n```python\nself.jetons = self.jetons + ecoule * self.debit   # pas de plafond\n```\n",
+      "choices": [
+        "Il manque un return",
+        "Après une longue pause, le seau accumule plus de jetons que la capacité et autorise une rafale démesurée",
+        "ecoule est négatif",
+        "debit devrait être entier"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Il faut min(capacite, ...). Sans plafond, une heure d'inactivité donnerait 3 600 jetons et laisserait passer 3 600 requêtes d'un coup."
+    },
+    {
+      "code": "PYTHON-24-Q4",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Quel défaut a un limiteur à fenêtre fixe d'une minute par rapport à un seau de jetons ?",
+      "choices": [
+        "Il est trop précis",
+        "Il autorise deux rafales complètes à cheval sur deux fenêtres, soit jusqu'à deux fois la limite en quelques secondes",
+        "Il ne compte pas les requêtes",
+        "Il nécessite Redis"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Un client peut envoyer toute sa limite juste avant la fin de la fenêtre, puis toute la limite juste après le début de la suivante. Le seau de jetons lisse ce comportement."
+    },
+    {
+      "code": "PYTHON-24-Q5",
       "type": "FREE_TEXT",
-      "prompt": "Explique une décision liée à défi final python adaptatif.",
+      "prompt": "Sans relire le cours, défends à l'oral le choix d'un seau de jetons plutôt que d'une fenêtre glissante, et dis quand tu changerais d'avis.",
       "choices": [],
       "correctChoice": null,
       "expectedKeywords": [
-        "contrat",
-        "preuve",
-        "test"
-      ]
+        "rafale",
+        "debit",
+        "memoire",
+        "etat",
+        "distribu"
+      ],
+      "modelAnswer": "Le seau de jetons autorise des rafales jusqu'à la capacité puis impose un débit moyen, avec un état minuscule (jetons et dernier instant) et un calcul en temps constant ; la fenêtre glissante est plus précise mais garde un horodatage par requête, donc de la mémoire proportionnelle au trafic. Je changerais d'avis si le besoin de précision stricte primait, ou en environnement distribué où l'état doit être partagé de façon atomique (par exemple Redis).",
+      "explanation": "Une bonne réponse compare mémoire et précision, cite la rafale autorisée et nomme la condition de remise en cause (distribution, précision)."
     }
   ],
   "checklist": [
-    "Je peux expliquer le concept sans réciter une définition",
-    "Je sais exécuter et modifier la preuve",
-    "Je peux nommer un risque et son contrôle",
-    "Je peux présenter cette preuve dans mon portfolio"
+    "Je décompose un problème inédit en état, règles et cas limites",
+    "J'injecte l'horloge pour tester sans attendre",
+    "Je plafonne les jetons à la capacité et je traite le temps qui recule",
+    "Je sais comparer fenêtre fixe, fenêtre glissante et seau de jetons"
   ]
 }

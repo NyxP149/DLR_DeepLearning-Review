@@ -11,21 +11,30 @@
     "LLM-04"
   ],
   "objectives": [
-    "Mesurer une stratégie sur plusieurs cas plutôt que sur une démonstration",
-    "Produire une expérience hors réseau reproductible",
-    "Documenter une limite et une métrique de contrôle"
+    "Construire un jeu d'évaluation (cas, réponses attendues) et calculer exactitude et taux.",
+    "Comparer deux stratégies cas par cas (corrigés, dégradés, gain net).",
+    "Reconnaître un échantillon trop petit pour conclure et les biais d'évaluation.",
+    "Distinguer métrique automatique, juge LLM et revue humaine et leurs limites."
   ],
   "sections": [
     {
-      "title": "Concept et décision",
-      "content": "Jeux d’évaluation et métriques utiles doit être évalué comme un composant logiciel : entrées explicites, sorties contrôlées, métriques et cas d’échec. Aucun appel à un service distant n’est nécessaire pour apprendre le mécanisme.",
-      "conceptCodes": [
-        "LLM-EVALUATION"
-      ]
+      "title": "Mesurer, pas impressionner",
+      "content": "Une démonstration qui marche sur un exemple ne prouve rien : un modèle peut réussir un cas et échouer sur dix. Un jeu d'évaluation (« golden set ») est une liste de cas représentatifs avec la réponse attendue, qu'on rejoue à chaque changement de prompt, de modèle ou de stratégie.\n```python\ncases = [(\"JVM\", \"JVM\"), (\"bytecode\", \"bytecode\"), (\"JDK\", \"JRE\")]    # (attendu, obtenu)\ncorrect = sum(1 for expected, got in cases if expected == got)\nprint(f\"Exactitude: {correct}/{len(cases)}\")\n```\nLes cas doivent couvrir le nominal, les cas limites, les entrées piégeuses et les refus attendus (la bonne réponse peut être « je ne sais pas »). Écris-les avant de régler le système, sinon on règle pour réussir les exemples connus (surapprentissage au jeu de test)."
     },
     {
-      "title": "Expérience locale",
-      "content": "L’expérience isole le mécanisme LLM-EVALUATION. Elle reste volontairement déterministe afin de distinguer un défaut de pipeline d’une variation propre aux modèles génératifs."
+      "title": "Exemple résolu : comparer deux stratégies sur les mêmes cas",
+      "conceptCodes": [
+        "LLM-EVALUATION"
+      ],
+      "content": "Problème : deux versions A et B d'un système répondent à six questions. Laquelle est meilleure, et est-ce concluant ?\n\nRaisonnement, étape par étape :\n1. Exactitude de chaque stratégie : A a 4 bonnes réponses sur 6 (67 %), B en a 5 sur 6 (83 %).\n2. Comparaison appariée, cas par cas : B corrige les cas où A se trompait (2) et en dégrade où A avait raison (1) : gain net +1.\n3. Lister les cas dégradés : c'est là qu'on apprend ce qui régresse. Une moyenne qui monte peut cacher une régression grave sur un cas important.\n4. Taille d'échantillon : 6 cas ne permettent pas de conclure (un seul cas change 17 points). On vise des dizaines à des centaines de cas, selon l'enjeu, et on rapporte l'incertitude.\n5. Décision : B semble meilleur mais l'échantillon est trop petit ; on agrandit le jeu avant de décider.\n```python\na_ok = {q for q, (exp, got) in a.items() if exp == got}\nb_ok = {q for q, (exp, got) in b.items() if exp == got}\nfixed = sorted(b_ok - a_ok)      # B réussit, A échoue\nbroken = sorted(a_ok - b_ok)     # A réussit, B échoue\n```"
+    },
+    {
+      "title": "Métriques, juges et pièges d'évaluation",
+      "content": "- Exactitude : part de réponses correctes. Convient quand une réponse unique est attendue (classification, extraction). Pour des textes libres, on utilise des critères (présence d'éléments obligatoires, absence d'éléments interdits, citations valides) ou un juge.\n- Précision, rappel, F1 : pour détecter quelque chose de rare ; une exactitude de 95 % avec 5 % de cas positifs peut cacher un système qui ne détecte rien.\n- Juge LLM : un modèle note les réponses selon une grille. Pratique pour du texte libre, mais biaisé (préférence pour les réponses longues, pour son propre style) et variable ; calibre-le sur un échantillon noté par des humains.\n- Revue humaine : référence, coûteuse ; la réserver aux cas ambigus et à la calibration.\n- Biais : jeu de test trop facile, fuite (le jeu figure dans les exemples du prompt), cas non représentatifs, changement simultané de plusieurs paramètres.\n- Reproductibilité : fixe les réglages (température), répète plusieurs fois les mesures si la sortie varie, versionne le jeu de cas et les résultats.\n- Garde-fou : un seuil d'acceptation (par exemple exactitude >= 90 % et aucune régression sur les cas critiques) bloque la publication d'un changement.\n- Surveille en production : les données réelles dérivent ; les mesures d'hier ne valent pas pour aujourd'hui."
+    },
+    {
+      "title": "Erreurs fréquentes à reconnaître",
+      "content": "1. Conclure d'une démonstration réussie.\n2. Comparer deux stratégies sur des jeux de cas différents.\n3. Ne regarder que la moyenne, pas les cas dégradés.\n4. Un jeu de test trop petit ou trop facile.\n5. Régler le prompt sur les exemples du jeu de test.\n6. Faire confiance à un juge LLM non calibré.\n\nRetrouve ces erreurs de mémoire avant l'exercice, puis vérifie-toi avec le quiz : c'est la récupération, pas la relecture, qui fixe la notion."
     }
   ],
   "keyConcepts": [
@@ -39,49 +48,97 @@
       "professionalExample": "Un product manager valide un nouveau prompt de résumé juridique en testant trois exemples convaincants puis le met en production. Un mois plus tard, des utilisateurs signalent des résumés qui inversent des clauses contractuelles sur des documents plus longs, un cas jamais couvert par la démonstration initiale. L'équipe construit ensuite un jeu d'évaluation de cinquante documents représentatifs avec une métrique d'exactitude automatisée, exécuté à chaque changement de prompt ou de modèle avant tout déploiement.",
       "codeExample": "eval_set = [\n    (\"Quel tribunal est compétent ?\", \"Tribunal de commerce de Paris\"),\n    (\"Durée du contrat ?\", \"12 mois\"),\n    (\"Clause de résiliation ?\", \"30 jours de préavis\"),\n]\n\ndef run_model(question: str) -> str:\n    ...  # appel réel au LLM en production\n\nscores = [run_model(q) == expected for q, expected in eval_set]\nprint(f\"Exactitude: {sum(scores)}/{len(scores)} ({sum(scores)/len(scores):.0%})\")\n# Un déploiement n'est validé que si ce taux dépasse le seuil fixé",
       "commonMistake": "Évaluer un seul exemple favorable ou confondre plausibilité et exactitude.",
-      "masteryQuestion": "Quelle métrique et quel cas d’échec utiliserais-tu pour jeux d’évaluation et métriques utiles ?",
-      "masteryProof": "Exécuter la preuve, modifier une entrée et expliquer le résultat ainsi que la limite du modèle local."
+      "masteryQuestion": "Pourquoi comparer deux stratégies cas par cas, et pourquoi six cas ne permettent-ils pas de conclure ?",
+      "masteryProof": "Calculer l'exactitude de deux stratégies, les cas corrigés et dégradés, et signaler un échantillon trop petit."
     }
   ],
   "exercises": [
     {
       "code": "LLM-05-E1",
-      "title": "Mesurer une stratégie sur plusieurs cas plutôt que sur une démonstration",
-      "statement": "Complète l’expérience pour produire exactement la sortie attendue. Explique ensuite quelle partie serait remplacée par un modèle réel.",
-      "starterCode": "cases = [(\"JVM\", \"JVM\"), (\"bytecode\", \"bytecode\"), (\"JDK\", \"JRE\")]\n# TODO 1 : compte les cas où la valeur attendue est égale à la valeur obtenue\n# TODO 2 : affiche \"Exactitude: <corrects>/<total>\"\n# TODO 3 : affiche \"Taux: \" suivi du pourcentage arrondi à l'entier\n",
-      "expectedOutput": "Exactitude: 2/3\nTaux: 67%"
+      "title": "Comparer deux stratégies sur un jeu d'évaluation",
+      "statement": "Complète l'évaluation : l'exactitude de chaque stratégie (pourcentage arrondi), les cas corrigés et dégradés par B par rapport à A, le gain net et un avertissement quand le jeu compte moins de 30 cas. Affiche exactement :\nStratégie A: 4/6 (67%)\nStratégie B: 5/6 (83%)\nB corrige 2 cas et en dégrade 1 -> gain net: +1\nCas dégradés: q4\nÉchantillon trop petit pour conclure: True (n=6 < 30)\nAvec un modèle réel, les réponses « obtenues » viendraient de l'appel au modèle.",
+      "starterCode": "EXPECTED = {\"q1\": \"JVM\", \"q2\": \"bytecode\", \"q3\": \"JDK\", \"q4\": \"JRE\", \"q5\": \"heap\", \"q6\": \"GC\"}\nSTRATEGY_A = {\"q1\": \"JVM\", \"q2\": \"bytecode\", \"q3\": \"JRE\", \"q4\": \"JRE\", \"q5\": \"stack\", \"q6\": \"GC\"}\nSTRATEGY_B = {\"q1\": \"JVM\", \"q2\": \"bytecode\", \"q3\": \"JDK\", \"q4\": \"JDK\", \"q5\": \"heap\", \"q6\": \"GC\"}\nMIN_CASES = 30\n\n\ndef correct_cases(answers: dict) -> set:\n    # TODO 1 : ensemble des identifiants de cas dont la réponse est égale à la réponse attendue\n    return set()\n\n\na_ok = correct_cases(STRATEGY_A)\nb_ok = correct_cases(STRATEGY_B)\ntotal = len(EXPECTED)\n# TODO 2 : affiche \"Stratégie A: <corrects>/<total> (<pourcentage arrondi>%)\" puis la même ligne pour B\n# TODO 3 : fixed = cas réussis par B mais pas par A ; broken = cas réussis par A mais pas par B ;\n#          affiche \"B corrige <n> cas et en dégrade <m> -> gain net: <+n-m>\" (avec le signe + ou -)\n# TODO 4 : affiche \"Cas dégradés: \" suivi des identifiants triés séparés par \", \" (\"aucun\" s'il n'y en a pas)\n# TODO 5 : affiche \"Échantillon trop petit pour conclure: <True/False> (n=<total> < <MIN_CASES>)\"\n",
+      "expectedOutput": "Stratégie A: 4/6 (67%)\nStratégie B: 5/6 (83%)\nB corrige 2 cas et en dégrade 1 -> gain net: +1\nCas dégradés: q4\nÉchantillon trop petit pour conclure: True (n=6 < 30)"
     }
   ],
   "quiz": [
     {
       "code": "LLM-05-Q1",
       "type": "SINGLE_CHOICE",
-      "prompt": "Quelle validation est la plus solide ?",
+      "prompt": "Une stratégie réussit 2 cas sur 3. Quelle conclusion est la plus honnête ?",
       "choices": [
-        "Plusieurs cas reproductibles avec métriques et provenance",
-        "Une réponse qui semble correcte",
-        "Une démonstration sans jeu de test"
+        "Elle est bonne à 67 %, c'est établi",
+        "Trois cas sont trop peu pour conclure : un seul cas change le résultat de 33 points",
+        "Elle est mauvaise",
+        "Elle est meilleure qu'un humain"
       ],
-      "correctChoice": 0,
-      "expectedKeywords": []
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Un échantillon minuscule donne une estimation très incertaine. Il faut davantage de cas (des dizaines à des centaines) et, idéalement, un intervalle de confiance."
     },
     {
       "code": "LLM-05-Q2",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Prédis le gain net : A réussit q1, q2, q4, q6 ; B réussit q1, q2, q3, q5, q6.",
+      "choices": [
+        "+1 : B corrige q3 et q5 et dégrade q4",
+        "+2",
+        "0",
+        "-1"
+      ],
+      "correctChoice": 0,
+      "expectedKeywords": [],
+      "explanation": "B réussit en plus q3 et q5 (2 cas corrigés) mais échoue sur q4 qu'A réussissait (1 cas dégradé) : gain net +2 - 1 = +1. Le cas dégradé est à examiner en priorité."
+    },
+    {
+      "code": "LLM-05-Q3",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Trouve le défaut de méthode : « J'ai réglé mon prompt en regardant les cinq exemples du jeu de test jusqu'à ce qu'ils passent tous. »",
+      "choices": [
+        "Aucun",
+        "Le jeu de test est devenu un jeu d'entraînement : le résultat ne dit rien de la généralisation sur des cas nouveaux",
+        "Cinq exemples est trop beaucoup",
+        "Il faut utiliser plus de tokens"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Il faut séparer les cas utilisés pour régler et les cas de validation gardés à l'écart. Sinon on mesure la mémoire de l'ajustement, pas la qualité réelle."
+    },
+    {
+      "code": "LLM-05-Q4",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Un système détecte une anomalie rare (5 % des cas). Il répond toujours « pas d'anomalie ». Quelle exactitude obtient-il ?",
+      "choices": [
+        "5 %",
+        "95 %, tout en n'apportant aucune valeur : il faut aussi mesurer rappel et précision",
+        "50 %",
+        "0 %"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "L'exactitude est trompeuse avec des classes déséquilibrées. Le rappel (part des anomalies détectées) vaudrait 0 %. Choisis la métrique selon l'enjeu métier."
+    },
+    {
+      "code": "LLM-05-Q5",
       "type": "FREE_TEXT",
-      "prompt": "Nomme une limite et le contrôle associé.",
+      "prompt": "Sans relire le cours, explique avec tes mots pourquoi on compare deux versions cas par cas plutôt que sur la seule moyenne.",
       "choices": [],
       "correctChoice": null,
       "expectedKeywords": [
-        "limite",
-        "test",
-        "mesure"
-      ]
+        "moyenne",
+        "regress",
+        "cas",
+        "critique",
+        "degrad"
+      ],
+      "modelAnswer": "Une moyenne qui monte peut cacher des régressions : une nouvelle version peut corriger beaucoup de cas faciles et en dégrader quelques-uns importants. La comparaison appariée liste les cas corrigés et les cas dégradés, ce qui permet d'examiner les régressions, notamment sur les cas critiques, et de décider avec un garde-fou (aucune régression sur les cas critiques) plutôt qu'avec une moyenne seule.",
+      "explanation": "Une bonne réponse dit que la moyenne masque des régressions et que le détail par cas, surtout les dégradations sur les cas critiques, guide la décision."
     }
   ],
   "checklist": [
-    "Je sais expliquer le mécanisme",
-    "Je peux reproduire la preuve hors réseau",
-    "Je distingue simulation locale et modèle réel",
-    "Je peux nommer une métrique et un risque"
+    "J'évalue sur un jeu de cas représentatifs écrit avant de régler",
+    "Je compare les versions cas par cas et j'examine les cas dégradés",
+    "Je signale un échantillon trop petit pour conclure",
+    "Je choisis la métrique selon l'enjeu (exactitude, rappel, précision)"
   ]
 }

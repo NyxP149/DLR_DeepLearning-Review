@@ -11,21 +11,30 @@
     "PYTHON-22"
   ],
   "objectives": [
-    "Expliquer projet professionnel : service de données python",
-    "Construire une preuve exécutable et déterministe",
-    "Relier le concept à une décision professionnelle"
+    "Concevoir un service de données : lire un CSV, valider ligne par ligne, rejeter avec numéro et raison, agréger.",
+    "Utiliser le module csv et Decimal pour des montants exacts.",
+    "Rendre le résultat déterministe (tri, format) et le prouver par un jeu de données fixe.",
+    "Documenter décisions, limites et preuve de fonctionnement pour un portfolio."
   ],
   "sections": [
     {
-      "title": "Concept et usage professionnel",
-      "content": "Projet professionnel : service de données Python répond à un besoin concret de maintenabilité, de sûreté ou de performance. Le laboratoire demande de rendre la décision observable et vérifiable.",
-      "conceptCodes": [
-        "PYTHON-PROJECT"
-      ]
+      "title": "Un service de données est un pipeline avec des garanties",
+      "content": "Un service de données lit une source imparfaite (un CSV exporté à la main), en extrait ce qui est exploitable, rejette le reste de façon traçable et produit un résultat fiable. Les étapes : lire, valider, agréger, restituer. Les garanties qui font la valeur du service : aucune ligne perdue en silence, montants exacts, résultat reproductible.\n\nLecture : csv.DictReader lit les lignes en dictionnaires par nom de colonne et gère les guillemets et les virgules internes (ne découpe pas avec split(\",\")). Ouvre le fichier avec newline=\"\" et encoding=\"utf-8\". La numérotation commence à la ligne de données : garde le numéro de la ligne dans le fichier pour que l'utilisateur retrouve l'erreur."
     },
     {
-      "title": "Projet portfolio",
-      "content": "La preuve minimale est locale, déterministe et peut être enrichie sans changer le contrat attendu."
+      "title": "Exemple résolu : nettoyer un CSV et totaliser par pays",
+      "conceptCodes": [
+        "PYTHON-PROJECT"
+      ],
+      "content": "Problème : lire un CSV pays,montant, rejeter les lignes invalides avec leur numéro et la raison, puis calculer le total par pays, trié par nom.\n\nRaisonnement, étape par étape :\n1. Lire avec csv.DictReader ; la ligne 1 est l'en-tête, les données commencent à la ligne 2 : enumerate(lecteur, start=2).\n2. Valider chaque ligne : pays vide (« pays manquant »), montant illisible (Decimal lève InvalidOperation : « montant invalide »), montant négatif (« montant négatif »).\n3. Garder les lignes valides avec un Decimal ; les rejetées gardent leur numéro et leur raison.\n4. Agréger avec un dictionnaire pays → somme Decimal.\n5. Restituer trié par pays, avec deux décimales : f\"{montant:.2f}\".\n6. Vérification : lues = valides + rejetées, et la somme des totaux égale la somme des montants valides.\n```python\nimport csv, io\nfrom decimal import Decimal, InvalidOperation\n\nfor numero, ligne in enumerate(csv.DictReader(io.StringIO(texte)), start=2):\n    pays = (ligne.get(\"pays\") or \"\").strip()\n    if not pays:\n        rejets.append(f\"ligne {numero}: pays manquant\"); continue\n    try:\n        montant = Decimal(ligne[\"montant\"])\n    except (InvalidOperation, TypeError):\n        rejets.append(f\"ligne {numero}: montant invalide\"); continue\n    if montant < 0:\n        rejets.append(f\"ligne {numero}: montant négatif\"); continue\n    totaux[pays] = totaux.get(pays, Decimal(\"0\")) + montant\n```"
+    },
+    {
+      "title": "Du script au service défendable",
+      "content": "Pour un projet de portfolio, ce qui compte est la rigueur autour du code :\n- Séparer lecture, validation et agrégation en fonctions testables.\n- Un jeu de données de test avec un cas de chaque rejet et des valeurs limites (0, négatif, texte, vide).\n- Un test qui vérifie le rapport exact et l'invariant « lues = valides + rejetées ».\n- Un README : problème, comment lancer, format d'entrée, règles de rejet, ce qui n'est pas géré (encodages exotiques, fichiers de plusieurs Go, formats de date).\n- Sécurité : ne fais pas confiance au nom de colonne ni à la taille du fichier ; limite la taille lue ; ne journalise pas de données personnelles.\n- Performance : un fichier volumineux se lit en flux (ligne à ligne) sans tout charger.\n- Idempotence : traiter deux fois le même fichier doit donner le même résultat et ne pas dupliquer d'effet.\n\nDecimal : construis à partir de chaînes, quantize pour arrondir explicitement (Decimal(\"0.01\")), choisis un mode d'arrondi documenté."
+    },
+    {
+      "title": "Erreurs fréquentes à reconnaître",
+      "content": "1. Découper un CSV avec split(\",\") : les champs entre guillemets cassent.\n2. float pour des montants.\n3. Ignorer en silence les lignes invalides : totaux faux et inexplicables.\n4. Un numéro de ligne décalé (oublier l'en-tête) : l'utilisateur ne retrouve pas l'erreur.\n5. Un résultat qui dépend de l'ordre d'un dict ou d'un set.\n6. Un jeu de test qui ne contient que des lignes valides.\n\nRetrouve ces erreurs de mémoire avant l'exercice, puis vérifie-toi avec le quiz : c'est la récupération, pas la relecture, qui fixe la notion."
     }
   ],
   "keyConcepts": [
@@ -39,8 +48,8 @@
       "professionalExample": "Ce projet de synthèse assemble un service de données complet — validation d'entrée, persistance, API, journalisation et tests — pour reproduire les contraintes d'un vrai service en production plutôt qu'un exercice isolé. Un recruteur qui clone ce dépôt doit pouvoir lancer les tests, démarrer le service localement et observer un comportement déterministe et documenté, exactement comme il le ferait pour évaluer un projet professionnel.",
       "codeExample": "from fastapi import FastAPI, HTTPException\nfrom pydantic import BaseModel\n\napp = FastAPI(title=\"Data Service\")\n_store: dict[str, dict] = {}\n\nclass RecordIn(BaseModel):\n    key: str\n    value: float\n\n@app.post(\"/records\", status_code=201)\ndef create_record(record: RecordIn) -> dict:\n    if record.key in _store:\n        raise HTTPException(status_code=409, detail=\"Clé déjà existante\")\n    _store[record.key] = record.model_dump()\n    return _store[record.key]\n\n@app.get(\"/records/{key}\")\ndef get_record(key: str) -> dict:\n    if key not in _store:\n        raise HTTPException(status_code=404, detail=\"Introuvable\")\n    return _store[key]",
       "commonMistake": "Appliquer la technique sans mesurer son effet ni documenter sa frontière.",
-      "masteryQuestion": "Quelle contrainte de projet professionnel : service de données python doit rester vraie lorsque le système évolue ?",
-      "masteryProof": "Exécuter la preuve, expliquer son invariant et proposer un cas d’échec."
+      "masteryQuestion": "Pourquoi conserver numéro de ligne et raison de chaque rejet, et pourquoi Decimal plutôt que float pour les montants ?",
+      "masteryProof": "Lire un CSV, rejeter les lignes invalides avec leur numéro et leur raison, et totaliser par pays trié."
     }
   ],
   "exercises": [
@@ -56,32 +65,80 @@
     {
       "code": "PYTHON-23-Q1",
       "type": "SINGLE_CHOICE",
-      "prompt": "Quelle preuve est la plus utile en revue ?",
+      "prompt": "Pourquoi utiliser csv.DictReader plutôt que ligne.split(\",\") ?",
       "choices": [
-        "Une exécution déterministe avec invariant explicite",
-        "Une sortie aléatoire",
-        "Une capture sans code"
+        "C'est plus court",
+        "Il gère les champs entre guillemets, les virgules internes et les en-têtes ; split casse sur ces cas",
+        "Il est plus rapide à écrire seulement",
+        "split n'existe pas pour les chaînes"
       ],
-      "correctChoice": 0,
-      "expectedKeywords": []
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Une ligne comme « \"Dupont, Jean\",12 » contient une virgule dans un champ. split la découpe mal ; le module csv applique correctement les règles du format."
     },
     {
       "code": "PYTHON-23-Q2",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Prédis le numéro rapporté : le fichier a l'en-tête sur la ligne 1 et une donnée invalide sur la 4e ligne de données. Que doit afficher le rapport ?",
+      "choices": [
+        "ligne 4",
+        "ligne 5",
+        "ligne 3",
+        "ligne 0"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Les données commencent à la ligne 2 du fichier (l'en-tête est la ligne 1). La 4e ligne de données est donc la ligne 5 du fichier. enumerate(..., start=2) donne le bon décalage."
+    },
+    {
+      "code": "PYTHON-23-Q3",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Trouve le défaut :\n```python\ntry:\n    montant = float(ligne[\"montant\"])\nexcept ValueError:\n    continue\n```\ndans un import de factures.",
+      "choices": [
+        "Le continue est interdit",
+        "La ligne invalide disparaît sans trace, et float introduit des erreurs d'arrondi sur les montants",
+        "float est trop lent",
+        "Il manque un else"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Un import fiable rapporte les rejets (numéro, raison) et utilise Decimal pour l'argent. Ignorer silencieusement fausse les totaux sans que personne ne puisse expliquer l'écart."
+    },
+    {
+      "code": "PYTHON-23-Q4",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Quel invariant permet de vérifier qu'aucune ligne n'a été perdue ?",
+      "choices": [
+        "Le fichier est plus petit après traitement",
+        "lignes lues = lignes valides + lignes rejetées",
+        "Le total est un entier",
+        "Le nombre de pays est pair"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Chaque ligne lue doit finir soit valide, soit rejetée avec une raison. Cette égalité est facile à tester et détecte tout oubli de traitement."
+    },
+    {
+      "code": "PYTHON-23-Q5",
       "type": "FREE_TEXT",
-      "prompt": "Explique une décision liée à projet professionnel : service de données python.",
+      "prompt": "Sans relire le cours, explique avec tes mots ce que doit contenir le README d'un projet de service de données pour qu'il soit défendable.",
       "choices": [],
       "correctChoice": null,
       "expectedKeywords": [
-        "contrat",
-        "preuve",
-        "test"
-      ]
+        "format",
+        "regle",
+        "rejet",
+        "limite",
+        "lancer"
+      ],
+      "modelAnswer": "Il décrit le problème résolu, le format d'entrée attendu, les règles de validation et de rejet, comment lancer le programme et les tests, et surtout les limites assumées (ce qui n'est pas géré : très gros fichiers, encodages exotiques, formats de date). Il montre la preuve de fonctionnement : jeu de données de référence et sortie attendue exacte.",
+      "explanation": "Une bonne réponse cite format d'entrée, règles de rejet, mode d'emploi, limites assumées et preuve reproductible."
     }
   ],
   "checklist": [
-    "Je peux expliquer le concept sans réciter une définition",
-    "Je sais exécuter et modifier la preuve",
-    "Je peux nommer un risque et son contrôle",
-    "Je peux présenter cette preuve dans mon portfolio"
+    "Je lis le CSV avec le module csv et je garde les numéros de ligne",
+    "Chaque rejet a une raison, aucune ligne n'est perdue en silence",
+    "J'utilise Decimal pour les montants",
+    "Mon résultat est déterministe et mon README énonce les limites"
   ]
 }

@@ -11,21 +11,30 @@
     "TYPESCRIPT-12"
   ],
   "objectives": [
-    "Expliquer promises, async/await et concurrence",
-    "Construire une preuve exécutable et déterministe",
-    "Relier le concept à une décision professionnelle"
+    "Expliquer la boucle d'événements et ce que fait await.",
+    "Choisir entre exécution séquentielle, Promise.all et concurrence limitée.",
+    "Écrire mapWithLimit : au plus N tâches simultanées, résultats dans l'ordre d'origine.",
+    "Repérer un await oublié, un forEach async ou une promesse rejetée non gérée."
   ],
   "sections": [
     {
-      "title": "Concept et usage professionnel",
-      "content": "Promises, async/await et concurrence répond à un besoin concret de maintenabilité, de sûreté ou de performance. Le laboratoire demande de rendre la décision observable et vérifiable.",
-      "conceptCodes": [
-        "TYPESCRIPT-ASYNC"
-      ]
+      "title": "Une seule file, des attentes non bloquantes",
+      "content": "JavaScript exécute le code sur un seul thread. Les opérations lentes (réseau, disque, minuteurs) sont déléguées au système ; quand elles se terminent, leur suite est replacée dans une file d'attente et exécutée par la boucle d'événements. Une Promise représente une valeur future ; async/await écrit ce code comme s'il était séquentiel.\n```ts\nasync function charger(id: number): Promise<string> {\n  const reponse = await fetch(`/api/items/${id}`);    // la fonction se suspend, le thread reste libre\n  return reponse.text();\n}\n```\nUne fonction async retourne toujours une Promise. await ne bloque pas le thread : il suspend la fonction et laisse les autres tâches s'exécuter. Mais un calcul long sans await (boucle de 10 secondes) bloque tout, car il n'y a qu'un thread."
     },
     {
-      "title": "Mise en pratique",
-      "content": "La preuve minimale est locale, déterministe et peut être enrichie sans changer le contrat attendu."
+      "title": "Exemple résolu : limiter la concurrence",
+      "conceptCodes": [
+        "TYPESCRIPT-ASYNC"
+      ],
+      "content": "Problème : appliquer un worker asynchrone à 5 éléments, avec au plus 2 tâches en même temps, en rendant les résultats dans l'ordre d'origine.\n\nRaisonnement, étape par étape :\n1. En séquence (for + await) : 5 tâches de 20 ms durent 100 ms. Avec Promise.all sur tout : 20 ms mais 5 tâches simultanées, ce qui sature un serveur distant.\n2. On crée limit « travailleurs ». Chacun prend à son tour le prochain indice libre (un compteur partagé), exécute le worker, range le résultat à l'indice d'origine et recommence jusqu'à épuisement.\n3. Comme JavaScript n'a qu'un thread, incrémenter le compteur entre deux await est sûr : pas de course de données au sens des threads.\n4. Promise.all attend les limit travailleurs ; le tableau de résultats est dans l'ordre d'origine, pas dans l'ordre de fin.\n5. Mesure : on compte les tâches en cours (inc. avant, déc. après) et on conserve le maximum atteint.\n6. Vérification : la concurrence maximale mesurée vaut 2.\n```ts\nasync function mapWithLimit<T, R>(items: T[], limit: number, worker: (item: T) => Promise<R>): Promise<R[]> {\n  const results: R[] = new Array(items.length);\n  let next = 0;\n  async function run(): Promise<void> {\n    while (next < items.length) {\n      const index = next++;\n      results[index] = await worker(items[index]);\n    }\n  }\n  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, run));\n  return results;\n}\n```"
+    },
+    {
+      "title": "Combinateurs et pièges",
+      "content": "- Promise.all([...]) : attend tout, échoue dès la première erreur (les autres continuent mais leur résultat est perdu).\n- Promise.allSettled : attend tout et rend l'état de chacune (fulfilled ou rejected) : adapté quand les échecs sont tolérés.\n- Promise.race : la première terminée gagne (utile pour un délai maximal).\n- Promise.any : la première réussie.\n- AbortController permet d'annuler un fetch ou une opération longue.\n\nPièges :\n- await oublié : on manipule une Promise au lieu de sa valeur ; le test if (promesse) est toujours vrai.\n- items.forEach(async x => await f(x)) ne attend pas : forEach ignore les promesses retournées. Utilise for...of avec await (séquentiel) ou Promise.all(items.map(f)) (parallèle).\n- await dans une boucle rend le traitement séquentiel : correct si l'ordre compte, lent sinon.\n- Une promesse rejetée sans catch provoque un unhandledRejection et peut terminer le processus Node.\n- Ne mélange pas callbacks et promesses sans promisify.\n```ts\nawait Promise.all(ids.map(charger));        // parallèle, mais sans limite : 10 000 ids = 10 000 requêtes d'un coup\n```"
+    },
+    {
+      "title": "Erreurs fréquentes à reconnaître",
+      "content": "1. forEach(async ...) en croyant attendre la fin.\n2. Un await dans une boucle quand les appels sont indépendants.\n3. Promise.all sur des milliers d'éléments sans limite.\n4. Oublier de gérer les rejets (catch, try/await).\n5. Un calcul synchrone long qui bloque la boucle d'événements.\n6. Compter sur l'ordre de fin au lieu de l'ordre des résultats.\n\nRetrouve ces erreurs de mémoire avant l'exercice, puis vérifie-toi avec le quiz : c'est la récupération, pas la relecture, qui fixe la notion."
     }
   ],
   "keyConcepts": [
@@ -39,8 +48,8 @@
       "professionalExample": "Un endpoint de tableau de bord chargeait initialement les commandes, les paiements et les avis clients d'un utilisateur avec trois await séquentiels, ajoutant environ 600 ms de latence inutile car les trois appels sont indépendants. En remplaçant la séquence par Promise.all, le temps de réponse est tombé au temps du plus lent des trois appels ; l'équipe est ensuite passée à Promise.allSettled pour que l'échec d'un seul appel non critique (les avis) n'empêche pas d'afficher les commandes et paiements déjà récupérés.",
       "codeExample": "interface DashboardData {\n  orders: unknown[];\n  payments: unknown[];\n  reviews: unknown[];\n}\n\nasync function loadDashboard(userId: string): Promise<DashboardData> {\n  const [orders, payments, reviews] = await Promise.all([\n    fetchOrders(userId),\n    fetchPayments(userId),\n    fetchReviews(userId).catch(() => []), // non critique\n  ]);\n  return { orders, payments, reviews };\n}\n\ndeclare function fetchOrders(userId: string): Promise<unknown[]>;\ndeclare function fetchPayments(userId: string): Promise<unknown[]>;\ndeclare function fetchReviews(userId: string): Promise<unknown[]>;",
       "commonMistake": "Appliquer la technique sans mesurer son effet ni documenter sa frontière.",
-      "masteryQuestion": "Quelle contrainte de promises, async/await et concurrence doit rester vraie lorsque le système évolue ?",
-      "masteryProof": "Exécuter la preuve, expliquer son invariant et proposer un cas d’échec."
+      "masteryQuestion": "Pourquoi forEach(async ...) n'attend-il pas les tâches, et pourquoi limiter la concurrence plutôt que lancer toutes les tâches ?",
+      "masteryProof": "Écrire mapWithLimit qui n'exécute jamais plus de limit tâches simultanément, rend les résultats dans l'ordre d'origine et mesure la concurrence atteinte."
     }
   ],
   "exercises": [
@@ -56,32 +65,80 @@
     {
       "code": "TYPESCRIPT-13-Q1",
       "type": "SINGLE_CHOICE",
-      "prompt": "Quelle preuve est la plus utile en revue ?",
+      "prompt": "Que fait await dans une fonction async ?",
       "choices": [
-        "Une exécution déterministe avec invariant explicite",
-        "Une sortie aléatoire",
-        "Une capture sans code"
+        "Il bloque le thread jusqu'à la fin de l'opération",
+        "Il suspend la fonction jusqu'à ce que la promesse soit résolue, en laissant le thread libre pour d'autres tâches",
+        "Il convertit la promesse en callback",
+        "Il lance une exécution parallèle sur un autre thread"
       ],
-      "correctChoice": 0,
-      "expectedKeywords": []
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "await ne bloque pas le thread JavaScript : il cède la main à la boucle d'événements, qui exécute d'autres tâches en attendant. Il n'y a pas de second thread."
     },
     {
       "code": "TYPESCRIPT-13-Q2",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Prédis l'ordre d'affichage :\n```ts\nconsole.log('A');\nsetTimeout(() => console.log('B'), 0);\nPromise.resolve().then(() => console.log('C'));\nconsole.log('D');\n```\n",
+      "choices": [
+        "A B C D",
+        "A D C B",
+        "A C D B",
+        "A D B C"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Le code synchrone s'exécute d'abord (A, D). Puis les microtâches (le then de la promesse : C) passent avant les macrotâches (le setTimeout : B)."
+    },
+    {
+      "code": "TYPESCRIPT-13-Q3",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Trouve le défaut :\n```ts\nitems.forEach(async (item) => {\n  await save(item);\n});\nconsole.log('terminé');\n```\n",
+      "choices": [
+        "Rien",
+        "forEach ne tient pas compte des promesses retournées : « terminé » s'affiche avant la fin des sauvegardes et les erreurs ne remontent pas",
+        "save doit être synchrone",
+        "items doit être un Set"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Utilise for (const item of items) { await save(item); } pour l'ordre séquentiel, ou await Promise.all(items.map(save)) pour le parallèle, qu'on attend réellement."
+    },
+    {
+      "code": "TYPESCRIPT-13-Q4",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Cinq tâches de 20 ms, limite de concurrence 2, tâches indépendantes. Durée totale approximative ?",
+      "choices": [
+        "20 ms",
+        "60 ms : 3 vagues (2, 2, 1)",
+        "100 ms",
+        "40 ms"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Avec 2 travailleurs : la première vague traite 2 tâches (20 ms), la deuxième 2 autres (20 ms), la dernière 1 tâche (20 ms) : environ 60 ms. Sans limite 20 ms, en séquence 100 ms."
+    },
+    {
+      "code": "TYPESCRIPT-13-Q5",
       "type": "FREE_TEXT",
-      "prompt": "Explique une décision liée à promises, async/await et concurrence.",
+      "prompt": "Sans relire le cours, explique avec tes mots pourquoi Promise.all sur 10 000 éléments peut être une mauvaise idée et comment l'éviter.",
       "choices": [],
       "correctChoice": null,
       "expectedKeywords": [
-        "contrat",
-        "preuve",
-        "test"
-      ]
+        "limite",
+        "simultan",
+        "serveur",
+        "memoire",
+        "travailleur"
+      ],
+      "modelAnswer": "Promise.all lance toutes les tâches en même temps : 10 000 requêtes simultanées peuvent saturer le serveur distant, épuiser la mémoire, les connexions ou les limites de débit, et provoquer des échecs en cascade. On limite la concurrence avec un petit nombre de travailleurs qui tirent à tour de rôle les éléments à traiter, ou avec un traitement par lots, tout en rendant les résultats dans l'ordre d'origine.",
+      "explanation": "Une bonne réponse cite la saturation du serveur, de la mémoire ou des connexions et propose une concurrence limitée par travailleurs ou lots."
     }
   ],
   "checklist": [
-    "Je peux expliquer le concept sans réciter une définition",
-    "Je sais exécuter et modifier la preuve",
-    "Je peux nommer un risque et son contrôle",
-    "Je relie cette étape à la suivante"
+    "Je sais prédire l'ordre : synchrone, microtâches, minuteurs",
+    "Je n'utilise pas forEach avec async",
+    "Je limite la concurrence plutôt que de tout lancer d'un coup",
+    "Je gère les rejets de promesses"
   ]
 }

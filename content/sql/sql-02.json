@@ -11,21 +11,30 @@
     "SQL-01"
   ],
   "objectives": [
-    "Expliquer select, filtres, tri et pagination",
-    "Construire une preuve exécutable et déterministe",
-    "Relier le concept à une décision professionnelle"
+    "Écrire un SELECT avec WHERE, ORDER BY, LIMIT et OFFSET, dans le bon ordre logique.",
+    "Utiliser des paramètres plutôt que de concaténer des valeurs.",
+    "Rendre un tri total pour que la pagination soit stable.",
+    "Comprendre le coût de OFFSET sur de grandes tables et la pagination par clé."
   ],
   "sections": [
     {
-      "title": "Concept et usage professionnel",
-      "content": "SELECT, filtres, tri et pagination répond à un besoin concret de maintenabilité, de sûreté ou de performance. Le laboratoire demande de rendre la décision observable et vérifiable.",
-      "conceptCodes": [
-        "SQL-SELECT"
-      ]
+      "title": "Interroger : filtrer, trier, limiter",
+      "content": "SELECT lit des lignes. Les clauses s'écrivent dans un ordre, mais le moteur les évalue dans un autre :\n```sql\nSELECT name, price          -- 5. quelles colonnes\nFROM product                -- 1. quelle table\nWHERE category = ? AND price >= ?     -- 2. quelles lignes\nORDER BY price DESC, name ASC          -- 3. dans quel ordre\nLIMIT ? OFFSET ?;                      -- 4. quelle tranche\n```\nWHERE filtre les lignes avant tout regroupement ; ORDER BY trie ; LIMIT limite le nombre de lignes rendues et OFFSET en saute un certain nombre. Sans ORDER BY, l'ordre des lignes n'est pas garanti : la base peut les rendre dans n'importe quel ordre, et il peut changer d'une exécution à l'autre."
     },
     {
-      "title": "Mise en pratique",
-      "content": "La requête est exécutée sur SQLite en mémoire pour rester locale et reproductible ; les différences PostgreSQL et l'analyse EXPLAIN sont signalées dans le cours."
+      "title": "Exemple résolu : une page de catalogue",
+      "conceptCodes": [
+        "SQL-SELECT"
+      ],
+      "content": "Problème : afficher les produits de la catégorie « peripherique » à 20 € ou plus, du plus cher au moins cher, deux par page.\n\nRaisonnement, étape par étape :\n1. Filtre : category = ? AND price >= ? avec des paramètres (jamais de concaténation de la saisie).\n2. Tri : price DESC, puis name ASC pour départager deux produits au même prix (tri total).\n3. Page : LIMIT :taille OFFSET :numéro × taille. La page 0 saute 0 ligne, la page 1 en saute 2, la page 2 en saute 4.\n4. Une page au-delà de la dernière renvoie un résultat vide, pas une erreur.\n5. Vérification : en concaténant toutes les pages, on retrouve exactement les lignes filtrées, sans doublon ni trou.\n```python\ndef page(connexion, numero, taille=2):\n    return connexion.execute(\n        \"SELECT name FROM product WHERE category = ? AND price >= ? \"\n        \"ORDER BY price DESC, name ASC LIMIT ? OFFSET ?\",\n        (\"peripherique\", 20, taille, numero * taille),\n    ).fetchall()\n```\nSans le critère de départage name, deux produits à 50 € pourraient apparaître dans un ordre différent d'une page à l'autre : l'un pourrait être vu deux fois, l'autre jamais."
+    },
+    {
+      "title": "OFFSET, pagination par clé et pièges",
+      "content": "OFFSET n force la base à produire puis jeter n lignes : la page 10 000 est lente. Pour de grandes tables, on pagine par clé (keyset pagination) : on retient la dernière valeur vue et on demande la suite.\n```sql\nSELECT id, name FROM product\nWHERE (price, id) < (?, ?)          -- après le dernier élément vu (tri price DESC, id DESC)\nORDER BY price DESC, id DESC\nLIMIT 20;\n```\nCette forme utilise un index et reste rapide à toute profondeur ; elle ne permet pas de sauter à la page 500, mais convient au défilement infini.\n\nAutres repères :\n- SELECT * dans le code applicatif : fragile (une colonne ajoutée change le résultat) et coûteux ; nomme les colonnes.\n- LIKE '%mot%' ne peut pas utiliser un index classique ; LIKE 'mot%' le peut.\n- COUNT(*) sur une grande table est coûteux : évite de le recalculer à chaque page.\n- DISTINCT supprime les doublons mais coûte un tri ou un hachage ; si tu en as besoin pour « réparer » une jointure, la jointure est probablement fausse.\n- Les valeurs viennent toujours de paramètres liés (?, :nom, $1) : c'est la défense contre l'injection SQL.\n- NULL se trie en premier ou en dernier selon le moteur (NULLS FIRST / LAST en PostgreSQL)."
+    },
+    {
+      "title": "Erreurs fréquentes à reconnaître",
+      "content": "1. LIMIT sans ORDER BY : les lignes rendues sont arbitraires.\n2. Un tri non total : des lignes apparaissent deux fois ou jamais d'une page à l'autre.\n3. Construire la requête avec une f-string (injection SQL).\n4. OFFSET très grand sur une grosse table.\n5. SELECT * partout.\n6. Filtrer en Python après avoir tout chargé au lieu d'utiliser WHERE.\n\nRetrouve ces erreurs de mémoire avant l'exercice, puis vérifie-toi avec le quiz : c'est la récupération, pas la relecture, qui fixe la notion."
     }
   ],
   "keyConcepts": [
@@ -39,8 +48,8 @@
       "professionalExample": "Un endpoint d'API qui liste les commandes d'un client utilise LIMIT/OFFSET pour paginer les résultats affichés dans un tableau de bord. Une erreur fréquente est d'omettre ORDER BY : sans tri explicite, deux appels successifs peuvent renvoyer les lignes dans un ordre différent, ce qui fait apparaître des doublons ou des trous entre deux pages côté client. Sur une table à forte volumétrie, l'équipe finit par remplacer OFFSET par une pagination par clé (keyset pagination sur id) car OFFSET devient lent et instable quand des lignes sont insérées entre deux requêtes.",
       "codeExample": "-- Pagination par OFFSET (simple mais coûteuse sur grosse table)\nSELECT id, status, total_cents\nFROM orders\nWHERE customer_id = 42\nORDER BY created_at DESC, id DESC\nLIMIT 20 OFFSET 40;\n\n-- Pagination par clé (keyset), stable et performante\nSELECT id, status, total_cents\nFROM orders\nWHERE customer_id = 42\n  AND (created_at, id) < ('2026-09-10 12:00:00', 1032)\nORDER BY created_at DESC, id DESC\nLIMIT 20;",
       "commonMistake": "Appliquer la technique sans mesurer son effet ni documenter sa frontière.",
-      "masteryQuestion": "Quelle contrainte de select, filtres, tri et pagination doit rester vraie lorsque le système évolue ?",
-      "masteryProof": "Exécuter la preuve, expliquer son invariant et proposer un cas d’échec."
+      "masteryQuestion": "Pourquoi un tri non total casse-t-il la pagination, et pourquoi OFFSET devient-il lent sur de grandes tables ?",
+      "masteryProof": "Écrire la requête paginée d'un catalogue filtré par catégorie et prix minimal, triée du plus cher au moins cher puis par nom, avec LIMIT et OFFSET paramétrés."
     }
   ],
   "exercises": [
@@ -56,32 +65,80 @@
     {
       "code": "SQL-02-Q1",
       "type": "SINGLE_CHOICE",
-      "prompt": "Quelle preuve est la plus utile en revue ?",
+      "prompt": "Dans quel ordre logique le moteur évalue-t-il ces clauses ?",
       "choices": [
-        "Une exécution déterministe avec invariant explicite",
-        "Une sortie aléatoire",
-        "Une capture sans code"
+        "SELECT, FROM, WHERE, ORDER BY",
+        "FROM, WHERE, SELECT, ORDER BY, LIMIT",
+        "WHERE, FROM, LIMIT, SELECT",
+        "ORDER BY, WHERE, FROM, SELECT"
       ],
-      "correctChoice": 0,
-      "expectedKeywords": []
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "On choisit d'abord la table (FROM), on filtre les lignes (WHERE), on calcule les colonnes (SELECT), on trie (ORDER BY) puis on limite (LIMIT/OFFSET). C'est pourquoi un alias défini dans SELECT n'est pas utilisable dans WHERE."
     },
     {
       "code": "SQL-02-Q2",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Prédis le nombre de lignes renvoyées par LIMIT 2 OFFSET 4 quand la requête filtrée contient 5 produits :",
+      "choices": [
+        "2",
+        "1 : il reste un seul produit après avoir sauté 4 lignes",
+        "0",
+        "5"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "5 lignes - 4 sautées = 1 ligne restante. La page suivante (OFFSET 6) serait vide, sans erreur."
+    },
+    {
+      "code": "SQL-02-Q3",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Trouve le défaut :\n```sql\nSELECT name FROM product ORDER BY price DESC LIMIT 2 OFFSET 2;\n```\nsi plusieurs produits ont le même prix.",
+      "choices": [
+        "OFFSET est interdit",
+        "Le tri n'est pas total : les produits au même prix peuvent changer d'ordre entre les pages, donc être vus deux fois ou jamais ; ajoute un critère unique (name, id)",
+        "LIMIT doit venir avant ORDER BY",
+        "DESC est déprécié"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Le départage entre ex æquo n'est pas défini. Ajoute ORDER BY price DESC, id ASC pour que chaque ligne ait une position unique."
+    },
+    {
+      "code": "SQL-02-Q4",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Quelle méthode évite d'insérer une saisie dans une requête ?",
+      "choices": [
+        "f\"... WHERE name = '{saisie}'\"",
+        "Un paramètre lié : WHERE name = ? avec (saisie,)",
+        "Remplacer les apostrophes à la main",
+        "Mettre la saisie en minuscules"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Le paramètre voyage séparément du texte SQL et n'est jamais interprété comme du SQL. Les autres approches sont fragiles ou fausses."
+    },
+    {
+      "code": "SQL-02-Q5",
       "type": "FREE_TEXT",
-      "prompt": "Explique une décision liée à select, filtres, tri et pagination.",
+      "prompt": "Sans relire le cours, explique avec tes mots pourquoi OFFSET devient lent sur une grande table et ce qu'est la pagination par clé.",
       "choices": [],
       "correctChoice": null,
       "expectedKeywords": [
-        "contrat",
-        "preuve",
-        "test"
-      ]
+        "offset",
+        "lignes",
+        "jeter",
+        "cle",
+        "index"
+      ],
+      "modelAnswer": "OFFSET n oblige la base à produire les n premières lignes puis à les écarter avant de rendre la page : plus la page est profonde, plus le travail inutile est grand. La pagination par clé retient la dernière valeur de la clé de tri vue et demande les lignes qui la suivent (WHERE clé < dernière valeur), ce qui permet d'utiliser un index et garde un coût constant quelle que soit la profondeur.",
+      "explanation": "Une bonne réponse explique que les lignes sautées sont quand même produites et que la pagination par clé exploite un index à partir de la dernière valeur."
     }
   ],
   "checklist": [
-    "Je peux expliquer le concept sans réciter une définition",
-    "Je sais exécuter et modifier la preuve",
-    "Je peux nommer un risque et son contrôle",
-    "Je relie cette étape à la suivante"
+    "J'écris toujours ORDER BY avec un tri total quand je pagine",
+    "J'utilise des paramètres liés, jamais de concaténation",
+    "Je nomme les colonnes plutôt que SELECT *",
+    "Je connais la pagination par clé pour les grandes tables"
   ]
 }

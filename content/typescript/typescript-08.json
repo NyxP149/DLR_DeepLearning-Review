@@ -11,21 +11,30 @@
     "TYPESCRIPT-07"
   ],
   "objectives": [
-    "Expliquer génériques, contraintes et réutilisabilité",
-    "Construire une preuve exécutable et déterministe",
-    "Relier le concept à une décision professionnelle"
+    "Écrire une fonction, une interface et une classe génériques sans perdre le typage.",
+    "Contraindre un paramètre de type avec extends et utiliser keyof.",
+    "Laisser TypeScript inférer le paramètre de type plutôt que le spécifier.",
+    "Repérer un any déguisé, une contrainte manquante ou un générique inutile."
   ],
   "sections": [
     {
-      "title": "Concept et usage professionnel",
-      "content": "Génériques, contraintes et réutilisabilité répond à un besoin concret de maintenabilité, de sûreté ou de performance. Le laboratoire demande de rendre la décision observable et vérifiable.",
-      "conceptCodes": [
-        "TYPESCRIPT-GENERICS"
-      ]
+      "title": "Un générique garde le type au lieu de l'effacer",
+      "content": "Un paramètre de type (T) permet d'écrire du code valable pour plusieurs types sans perdre l'information : une fonction qui reçoit un T renvoie un T. L'alternative any ferait perdre le type.\n```ts\nfunction first<T>(items: T[]): T | undefined {\n  return items[0];\n}\n\nconst n = first([1, 2, 3]);        // n : number | undefined (T inféré : number)\nconst s = first(['a', 'b']);       // s : string | undefined\n```\nOn n'écrit presque jamais first<number>(...) : TypeScript infère T d'après l'argument. Les génériques de TypeScript sont effacés à la compilation (comme en Java) : on ne peut pas faire new T() ni tester instanceof T."
     },
     {
-      "title": "Mise en pratique",
-      "content": "La preuve minimale est locale, déterministe et peut être enrichie sans changer le contrat attendu."
+      "title": "Exemple résolu : une pile, longest et groupBy",
+      "conceptCodes": [
+        "TYPESCRIPT-GENERICS"
+      ],
+      "content": "Problème : écrire trois utilitaires réutilisables et typés.\n\nRaisonnement, étape par étape :\n1. Pile Stack<T> : un tableau privé de T ; push(item: T), pop(): T | undefined, size. Une Stack<number> refuse l'ajout d'une chaîne.\n2. longest : compare deux valeurs qui ont une propriété length (chaîne ou tableau). On contraint : <T extends { length: number }>(a: T, b: T): T. Sans contrainte, a.length ne compile pas.\n3. groupBy : regroupe des éléments selon une clé calculée : <T, K extends string>(items: T[], key: (item: T) => K): Record<K, T[]>.\n4. Vérification : groupBy([1,2,3,4], n => n % 2 === 0 ? 'pair' : 'impair') produit {impair: [1,3], pair: [2,4]}.\n```ts\nclass Stack<T> {\n  private items: T[] = [];\n  push(item: T): void { this.items.push(item); }\n  pop(): T | undefined { return this.items.pop(); }\n  get size(): number { return this.items.length; }\n}\n\nfunction longest<T extends { length: number }>(a: T, b: T): T {\n  return a.length >= b.length ? a : b;\n}\n\nfunction groupBy<T, K extends string>(items: T[], key: (item: T) => K): Record<K, T[]> {\n  const groups = {} as Record<K, T[]>;\n  for (const item of items) (groups[key(item)] ??= []).push(item);\n  return groups;\n}\n```"
+    },
+    {
+      "title": "Contraintes, keyof et sobriété",
+      "content": "Contrainte : T extends X limite les types acceptés à ceux qui ont (au moins) la forme X. keyof T est l'union des noms de propriétés de T ; T[K] est le type de la propriété K.\n```ts\nfunction pluck<T, K extends keyof T>(obj: T, key: K): T[K] {\n  return obj[key];\n}\nconst user = { id: 1, name: 'Ada' };\npluck(user, 'name');       // type string\n// pluck(user, 'age');     // erreur : 'age' n'est pas une clé de user\n```\nValeur par défaut d'un paramètre de type : <T = string>. Plusieurs paramètres : <K, V>.\n\nSobriété : un générique se justifie quand le type d'une entrée se retrouve dans la sortie ou relie plusieurs paramètres. function log<T>(x: T): void n'apporte rien par rapport à x: unknown. Évite les génériques à rallonge (<A, B, C, D>) : ils trahissent une abstraction mal découpée. Quand tu es obligé d'écrire as dans l'implémentation (comme {} as Record<K, T[]>), cantonne-le à un seul endroit et teste-le."
+    },
+    {
+      "title": "Erreurs fréquentes à reconnaître",
+      "content": "1. Utiliser any pour « rester générique » : le type est perdu.\n2. Oublier la contrainte et se heurter à « la propriété n'existe pas sur T ».\n3. Spécifier le paramètre de type à la main alors que l'inférence suffit.\n4. Un générique qui n'apparaît qu'une fois dans la signature (inutile).\n5. Tenter new T() ou instanceof T : le type est effacé.\n6. Des assertions as dispersées dans l'implémentation.\n\nRetrouve ces erreurs de mémoire avant l'exercice, puis vérifie-toi avec le quiz : c'est la récupération, pas la relecture, qui fixe la notion."
     }
   ],
   "keyConcepts": [
@@ -39,8 +48,8 @@
       "professionalExample": "L'équipe backend factorise l'accès aux données avec un Repository<T> générique contraint par extends Identifiable, réutilisé pour les entités User, Order et Product sans dupliquer findById et save à chaque fois. La contrainte garantit à la compilation que toute entité stockée expose bien un champ id, évitant qu'un futur type sans identifiant casse silencieusement l'indexation en base.",
       "codeExample": "interface Identifiable {\n  id: string;\n}\n\nclass Repository<T extends Identifiable> {\n  private items = new Map<string, T>();\n\n  save(item: T): void {\n    this.items.set(item.id, item);\n  }\n\n  findById(id: string): T | undefined {\n    return this.items.get(id);\n  }\n}\n\ninterface Order extends Identifiable {\n  totalCents: number;\n}\n\nconst orders = new Repository<Order>();\norders.save({ id: 'ORD-1', totalCents: 4200 });\nconsole.log(orders.findById('ORD-1'));",
       "commonMistake": "Appliquer la technique sans mesurer son effet ni documenter sa frontière.",
-      "masteryQuestion": "Quelle contrainte de génériques, contraintes et réutilisabilité doit rester vraie lorsque le système évolue ?",
-      "masteryProof": "Exécuter la preuve, expliquer son invariant et proposer un cas d’échec."
+      "masteryQuestion": "Pourquoi un générique vaut-il mieux que any, et quand faut-il ajouter une contrainte extends ?",
+      "masteryProof": "Écrire une pile générique, une fonction longest contrainte par { length: number } et groupBy."
     }
   ],
   "exercises": [
@@ -56,32 +65,80 @@
     {
       "code": "TYPESCRIPT-08-Q1",
       "type": "SINGLE_CHOICE",
-      "prompt": "Quelle preuve est la plus utile en revue ?",
+      "prompt": "Que perd-on en écrivant function first(items: any[]): any plutôt que function first<T>(items: T[]): T | undefined ?",
       "choices": [
-        "Une exécution déterministe avec invariant explicite",
-        "Une sortie aléatoire",
-        "Une capture sans code"
+        "Rien",
+        "Le lien entre le type d'entrée et de sortie : le résultat n'est plus typé et le compilateur ne détecte plus d'erreur d'usage",
+        "La rapidité",
+        "La possibilité d'appeler la fonction"
       ],
-      "correctChoice": 0,
-      "expectedKeywords": []
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Avec any, first([1, 2]).toUpperCase() compile et casse à l'exécution. Avec le générique, le résultat est number | undefined et le compilateur refuse toUpperCase."
     },
     {
       "code": "TYPESCRIPT-08-Q2",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Pourquoi ce code ne compile-t-il pas ?\n```ts\nfunction longest<T>(a: T, b: T): T {\n  return a.length >= b.length ? a : b;\n}\n```\n",
+      "choices": [
+        "Un générique ne peut pas avoir deux paramètres",
+        "T n'est pas contraint : le compilateur ne sait pas que T possède une propriété length ; il faut T extends { length: number }",
+        "length n'existe pas en TypeScript",
+        "Il manque async"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Sans borne, T peut être n'importe quoi, y compris un nombre sans length. La contrainte extends décrit la forme minimale exigée."
+    },
+    {
+      "code": "TYPESCRIPT-08-Q3",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Prédis le type de r :\n```ts\nfunction pluck<T, K extends keyof T>(o: T, k: K): T[K] { return o[k]; }\nconst r = pluck({ id: 1, name: 'Ada' }, 'name');\n```\n",
+      "choices": [
+        "any",
+        "string",
+        "string | number",
+        "unknown"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "K est inféré comme le littéral 'name', et T[K] donne le type de la propriété name : string. Une clé inexistante serait une erreur de compilation."
+    },
+    {
+      "code": "TYPESCRIPT-08-Q4",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Pourquoi new T() est-il impossible dans une fonction générique ?",
+      "choices": [
+        "Parce que T est toujours une interface",
+        "Parce que les types sont effacés à l'exécution : le moteur JavaScript ne connaît plus T ; il faut passer une fabrique () => T",
+        "Parce que new est réservé",
+        "Parce que T est privé"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Le paramètre de type n'existe qu'à la compilation. Pour créer une instance, on reçoit un constructeur ou une fonction fabrique en paramètre."
+    },
+    {
+      "code": "TYPESCRIPT-08-Q5",
       "type": "FREE_TEXT",
-      "prompt": "Explique une décision liée à génériques, contraintes et réutilisabilité.",
+      "prompt": "Sans relire le cours, explique avec tes mots à quoi sert la contrainte extends sur un paramètre de type et donne un exemple.",
       "choices": [],
       "correctChoice": null,
       "expectedKeywords": [
-        "contrat",
-        "preuve",
-        "test"
-      ]
+        "contrainte",
+        "extends",
+        "forme",
+        "propriete",
+        "length"
+      ],
+      "modelAnswer": "Une contrainte limite les types acceptables pour T à ceux qui ont au moins une certaine forme, ce qui permet d'utiliser leurs propriétés dans la fonction. Par exemple T extends { length: number } autorise longest à comparer des chaînes et des tableaux et à lire leur length, tout en refusant un nombre.",
+      "explanation": "Une bonne réponse explique que la contrainte garantit une forme minimale utilisable dans le corps, avec un exemple comme length."
     }
   ],
   "checklist": [
-    "Je peux expliquer le concept sans réciter une définition",
-    "Je sais exécuter et modifier la preuve",
-    "Je peux nommer un risque et son contrôle",
-    "Je relie cette étape à la suivante"
+    "Je laisse TypeScript inférer mes paramètres de type",
+    "J'ajoute une contrainte extends quand j'utilise des propriétés de T",
+    "J'évite any et les assertions dans mes utilitaires génériques",
+    "Je sais pourquoi new T() n'existe pas"
   ]
 }

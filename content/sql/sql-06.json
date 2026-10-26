@@ -11,21 +11,30 @@
     "SQL-05"
   ],
   "objectives": [
-    "Expliquer index, explain et coût des requêtes",
-    "Construire une preuve exécutable et déterministe",
-    "Relier le concept à une décision professionnelle"
+    "Lire un plan d'exécution (EXPLAIN) et distinguer parcours complet et recherche par index.",
+    "Créer l'index adapté à un filtre ou une jointure et mesurer son effet.",
+    "Reconnaître ce qui empêche l'usage d'un index (fonction sur la colonne, LIKE '%x', type incompatible).",
+    "Évaluer le coût d'un index (écritures, espace) et éviter l'excès."
   ],
   "sections": [
     {
-      "title": "Concept et usage professionnel",
-      "content": "Index, EXPLAIN et coût des requêtes répond à un besoin concret de maintenabilité, de sûreté ou de performance. Le laboratoire demande de rendre la décision observable et vérifiable.",
-      "conceptCodes": [
-        "SQL-INDEXES"
-      ]
+      "title": "Un index est une table de recherche triée",
+      "content": "Sans index, rechercher WHERE email = 'ada@dlr.dev' oblige la base à lire toutes les lignes (parcours complet, « full scan », O(n)). Un index B-tree sur email garde les valeurs triées avec un pointeur vers la ligne : la recherche devient O(log n).\n```sql\nCREATE INDEX idx_user_email ON user_account(email);\n```\nLe plan d'exécution montre la stratégie choisie. SQLite : EXPLAIN QUERY PLAN SELECT ... renvoie « SCAN user_account » (parcours complet) ou « SEARCH user_account USING INDEX idx_user_email (email=?) » (recherche par index). PostgreSQL : EXPLAIN ou EXPLAIN ANALYZE (avec exécution réelle et temps) montre « Seq Scan » ou « Index Scan ». Mesurer le plan avant et après est la seule façon de savoir si un index sert."
     },
     {
-      "title": "Mise en pratique",
-      "content": "La requête est exécutée sur SQLite en mémoire pour rester locale et reproductible ; les différences PostgreSQL et l'analyse EXPLAIN sont signalées dans le cours."
+      "title": "Exemple résolu : avant, après, et la fonction qui casse l'index",
+      "conceptCodes": [
+        "SQL-INDEXES"
+      ],
+      "content": "Problème : sur 1 000 utilisateurs, une recherche par e-mail est lente. Créer l'index, vérifier le plan, puis constater qu'une fonction sur la colonne l'empêche de servir.\n\nRaisonnement, étape par étape :\n1. Plan avant l'index : « SCAN » (parcours complet de la table).\n2. CREATE INDEX idx_user_email ON user_account(email).\n3. Plan après : « SEARCH ... USING INDEX idx_user_email ». La requête ne touche plus que quelques pages au lieu de toute la table.\n4. Variante : WHERE lower(email) = ?. L'index est trié sur email, pas sur lower(email) : la base doit calculer lower() pour chaque ligne et revient au parcours complet.\n5. Remèdes : stocker l'e-mail déjà normalisé en minuscules, ou créer un index sur l'expression (CREATE INDEX ... ON user_account(lower(email))).\n6. Vérification : la requête avec lower(email) donne « SCAN » ; la requête directe donne « SEARCH ».\n```python\ndef plan(connexion, sql, params):\n    lignes = connexion.execute(\"EXPLAIN QUERY PLAN \" + sql, params).fetchall()\n    return lignes[0][3]            # ex. : 'SCAN user_account'  ou  'SEARCH user_account USING INDEX ...'\n```\nLe texte exact du plan varie d'un moteur et d'une version à l'autre : on teste la nature (SCAN contre SEARCH), pas la phrase complète."
+    },
+    {
+      "title": "Quel index, et à quel prix",
+      "content": "- Colonne de filtre (WHERE), de jointure (ON), de tri (ORDER BY) fréquents : candidats à un index.\n- Index composé (a, b) : sert aux filtres sur a, ou sur a et b, mais pas sur b seul (règle du préfixe gauche). Mets en premier la colonne filtrée par égalité, puis celle des plages ou du tri.\n- Index couvrant : contient toutes les colonnes demandées, la base n'a pas à lire la table.\n- Sélectivité : un index sur une colonne à deux valeurs (un booléen) est peu utile ; le moteur peut préférer le parcours complet.\n- Ce qui empêche l'usage : une fonction sur la colonne (lower(email), date(created_at)), un LIKE '%mot' (début joker), une comparaison de types différents (conversion implicite), un OR entre colonnes différentes selon le moteur.\n- Coût : chaque index ralentit les INSERT, UPDATE, DELETE (il faut le maintenir) et occupe de l'espace. Trop d'index nuisent. Supprime ceux qui ne servent pas (statistiques d'usage).\n- Sur de petites tables, un parcours complet est aussi rapide : n'indexe pas à l'aveugle.\n- Les statistiques du moteur (ANALYZE) guident le planificateur ; des statistiques périmées donnent de mauvais plans.\n- En PostgreSQL, les clés étrangères ne créent pas d'index automatiquement côté enfant : ajoute-le pour les jointures et les suppressions du parent."
+    },
+    {
+      "title": "Erreurs fréquentes à reconnaître",
+      "content": "1. Indexer au jugé, sans lire le plan.\n2. WHERE lower(email) = ? ou WHERE date(created_at) = ? sur une colonne indexée simplement.\n3. Un index composé dans le mauvais ordre.\n4. Un index sur chaque colonne « au cas où » : écritures ralenties.\n5. Comparer des types différents (texte contre entier) : conversion qui désactive l'index.\n6. Mesurer sur une table de 10 lignes et conclure.\n\nRetrouve ces erreurs de mémoire avant l'exercice, puis vérifie-toi avec le quiz : c'est la récupération, pas la relecture, qui fixe la notion."
     }
   ],
   "keyConcepts": [
@@ -39,8 +48,8 @@
       "professionalExample": "Une page de profil client devient lente en production alors qu'elle fonctionnait bien en développement : la table orders contient désormais deux millions de lignes et le filtre WHERE customer_id = ? déclenche un scan séquentiel complet. L'équipe lance EXPLAIN sur la requête, constate l'absence d'index sur customer_id, puis en crée un ; le temps de réponse passe de 800 ms à moins de 5 ms. Sur PostgreSQL, EXPLAIN ANALYZE est préféré à EXPLAIN seul car il exécute réellement la requête et compare le temps estimé au temps réel, révélant les mauvaises estimations de cardinalité.",
       "codeExample": "-- Avant : scan complet de la table\nEXPLAIN QUERY PLAN\nSELECT id, status, total_cents\nFROM orders\nWHERE customer_id = 4821;\n-- SCAN orders\n\nCREATE INDEX idx_orders_customer_id ON orders(customer_id);\n\n-- Après : utilisation de l'index\nEXPLAIN QUERY PLAN\nSELECT id, status, total_cents\nFROM orders\nWHERE customer_id = 4821;\n-- SEARCH orders USING INDEX idx_orders_customer_id (customer_id=?)",
       "commonMistake": "Appliquer la technique sans mesurer son effet ni documenter sa frontière.",
-      "masteryQuestion": "Quelle contrainte de index, explain et coût des requêtes doit rester vraie lorsque le système évolue ?",
-      "masteryProof": "Exécuter la preuve, expliquer son invariant et proposer un cas d’échec."
+      "masteryQuestion": "Pourquoi une fonction appliquée à la colonne empêche-t-elle l'usage de l'index, et quel est le coût d'un index ?",
+      "masteryProof": "Comparer le plan d'une recherche par e-mail avant et après création d'un index, puis constater que lower(email) revient au parcours complet."
     }
   ],
   "exercises": [
@@ -56,32 +65,80 @@
     {
       "code": "SQL-06-Q1",
       "type": "SINGLE_CHOICE",
-      "prompt": "Quelle preuve est la plus utile en revue ?",
+      "prompt": "Qu'indique « SCAN user_account » dans un plan SQLite ?",
       "choices": [
-        "Une exécution déterministe avec invariant explicite",
-        "Une sortie aléatoire",
-        "Une capture sans code"
+        "La base utilise un index",
+        "Un parcours complet de la table, ligne par ligne",
+        "Une jointure",
+        "Une erreur"
       ],
-      "correctChoice": 0,
-      "expectedKeywords": []
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "SCAN signifie que toutes les lignes sont lues. « SEARCH ... USING INDEX » indique l'utilisation d'un index."
     },
     {
       "code": "SQL-06-Q2",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Un index existe sur email. Quelle requête ne peut pas l'utiliser simplement ?",
+      "choices": [
+        "WHERE email = 'ada@dlr.dev'",
+        "WHERE lower(email) = 'ada@dlr.dev'",
+        "WHERE email >= 'a' AND email < 'b'",
+        "WHERE email LIKE 'ada%'"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "L'index est trié sur email, pas sur lower(email). La base doit appliquer la fonction à chaque ligne. Solution : normaliser à l'écriture ou créer un index sur l'expression lower(email)."
+    },
+    {
+      "code": "SQL-06-Q3",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Un index composé (a, b) existe. Quelle requête en profite le moins ?",
+      "choices": [
+        "WHERE a = 1",
+        "WHERE a = 1 AND b = 2",
+        "WHERE b = 2 seul",
+        "WHERE a = 1 ORDER BY b"
+      ],
+      "correctChoice": 2,
+      "expectedKeywords": [],
+      "explanation": "La règle du préfixe gauche : un index (a, b) est trié d'abord par a. Un filtre sur b seul ne peut pas l'exploiter efficacement. D'où l'importance de l'ordre des colonnes."
+    },
+    {
+      "code": "SQL-06-Q4",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Quel est le principal coût d'un index ?",
+      "choices": [
+        "Il ralentit les lectures",
+        "Il ralentit les écritures (INSERT, UPDATE, DELETE) et occupe de l'espace, car il faut le maintenir",
+        "Il supprime les doublons",
+        "Il verrouille la table en permanence"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "À chaque modification d'une ligne, tous les index concernés doivent être mis à jour. Il faut indexer ce qui sert vraiment, après lecture du plan."
+    },
+    {
+      "code": "SQL-06-Q5",
       "type": "FREE_TEXT",
-      "prompt": "Explique une décision liée à index, explain et coût des requêtes.",
+      "prompt": "Sans relire le cours, explique avec tes mots comment tu décides de créer un index et comment tu vérifies qu'il sert.",
       "choices": [],
       "correctChoice": null,
       "expectedKeywords": [
-        "contrat",
-        "preuve",
-        "test"
-      ]
+        "plan",
+        "filtre",
+        "explain",
+        "mesure",
+        "ecriture"
+      ],
+      "modelAnswer": "Je repère une requête lente ou fréquente avec un filtre, une jointure ou un tri sur une colonne, je lis son plan d'exécution (EXPLAIN) pour confirmer qu'il s'agit d'un parcours complet, je crée un index sélectif adapté (ordre des colonnes d'un index composé), puis je relis le plan et je mesure pour vérifier le gain. Je garde en tête le coût sur les écritures et je n'indexe pas à l'aveugle.",
+      "explanation": "Une bonne réponse enchaîne repérage, lecture du plan, création de l'index, vérification par un nouveau plan ou une mesure, et mention du coût en écriture."
     }
   ],
   "checklist": [
-    "Je peux expliquer le concept sans réciter une définition",
-    "Je sais exécuter et modifier la preuve",
-    "Je peux nommer un risque et son contrôle",
-    "Je relie cette étape à la suivante"
+    "Je lis le plan d'exécution avant et après un index",
+    "Je n'applique pas de fonction à une colonne indexée dans un filtre",
+    "Je connais la règle du préfixe gauche des index composés",
+    "Je mesure le coût d'un index sur les écritures"
   ]
 }

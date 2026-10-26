@@ -11,25 +11,30 @@
     "ARCHITECTURE-12"
   ],
   "objectives": [
-    "Créer des modules métier cohésifs avant d’envisager des microservices",
-    "Justifier les compromis et nommer un risque opérationnel",
-    "Produire une preuve reproductible avant d’élargir la solution"
+    "Découper un monolithe en modules qui possèdent chacun leurs données et exposent une interface publique.",
+    "Vérifier qu'un module n'utilise que l'interface publique d'un autre, sans cycle de dépendances.",
+    "Mesurer le couplage (dépendances entrantes et sortantes) pour repérer un module trop central.",
+    "Choisir entre monolithe modulaire et microservices selon des critères mesurables."
   ],
   "sections": [
     {
-      "title": "Concept clé et décision",
+      "title": "Le monolithe modulaire : un seul déploiement, des frontières nettes",
+      "content": "Un monolithe est un seul programme déployé en une fois. Mal organisé, c'est un « gros paquet de boue » où tout appelle tout. Un monolithe modulaire garde l'unité de déploiement mais impose des frontières internes :\n- Chaque module possède un domaine (catalogue, commandes, identité) et ses données : les tables d'un module ne sont lues ni écrites par les autres.\n- Un module expose une interface publique (quelques fonctions ou événements) ; tout le reste est privé.\n- Les dépendances forment un graphe sans cycle.\nC'est le bon point de départ pour la plupart des équipes : simplicité d'exploitation, transactions locales, refactorisations faciles, et une route claire vers des services séparés si un module le justifie."
+    },
+    {
+      "title": "Exemple résolu : contrôler les frontières",
       "conceptCodes": [
         "MODULAR-MONOLITH"
       ],
-      "content": "Découper un monolithe modulaire relie les besoins, le logiciel, les données et l’exploitation. Commence par les contraintes observables, trace les responsabilités, puis choisis la solution la plus simple qui respecte les invariants."
+      "content": "Problème : trois modules (catalogue, commandes, identité) avec leurs entités, leurs exports et ce que chacun utilise. Vérifier les règles.\n\nRaisonnement, étape par étape :\n1. Propriété des données : une entité appartient à un seul module ; construire la table entité → module propriétaire (product → catalogue, order → commandes, user → identité).\n2. Interface publique : chaque module liste ses exports (par exemple commandes expose place_order et order_summary).\n3. Utilisation : chaque module déclare ce qu'il utilise ailleurs, sous la forme (module, symbole). Règle 1 : le symbole doit figurer dans les exports du module ciblé.\n4. Règle 2 : aucun module ne manipule directement une entité d'un autre (accès à la table user depuis commandes est interdit ; il passe par l'interface d'identité).\n5. Règle 3 : pas de cycle entre modules. On construit le graphe module → modules utilisés et on cherche un cycle par parcours.\n6. Couplage : dépendances sortantes (ce que j'utilise) et entrantes (qui dépend de moi). Un module avec beaucoup d'entrantes est central et coûteux à changer ; beaucoup de sortantes, fragile.\n```python\nowner = {entity: name for name, info in MODULES.items() for entity in info[\"owns\"]}\nviolations = [(user, mod, symbol) for user, info in MODULES.items()\n              for mod, symbol in info[\"uses\"] if symbol not in MODULES[mod][\"exports\"]]\n```"
     },
     {
-      "title": "Construction verticale",
-      "content": "La preuve ARCHITECTURE-13 modélise une décision réelle sous forme déterministe. Elle ne remplace pas un déploiement complet : elle rend l’hypothèse testable avant l’intégration Spring Boot, Angular, PostgreSQL et Docker."
+      "title": "Du monolithe modulaire aux services",
+      "content": "Découper en microservices apporte : déploiement et mise à l'échelle indépendants, autonomie d'équipes, isolation des pannes. Coûts : réseau (latence, pannes partielles), cohérence à terme au lieu de transactions locales, observabilité distribuée, versionnement de contrats, charge opérationnelle importante. Beaucoup d'équipes subissent ces coûts sans en avoir les besoins.\n\nCritères pour extraire un module en service : charge ou cycle de déploiement très différents du reste, équipe autonome dédiée, exigences de disponibilité ou de sécurité spécifiques, frontières stables et bien comprises (un mauvais découpage devient un « monolithe distribué »).\n\nPratiques :\n- Définir les modules par domaine métier (contextes délimités), pas par couche technique.\n- Contrôler les règles de dépendance automatiquement dans la CI (tests d'architecture, ArchUnit, outils de graphe d'imports).\n- Échanger entre modules par appels d'interface ou événements internes ; éviter les jointures SQL entre tables de modules différents.\n- Migrer progressivement : étrangler un module (strangler fig) derrière sa propre interface avant de le déplacer.\n- Mesurer avant de séparer : temps de déploiement, conflits entre équipes, besoins de mise à l'échelle.\nUn monolithe modulaire bien tenu est une étape, pas un échec."
     },
     {
-      "title": "Revue professionnelle",
-      "content": "Documente le contexte, la décision, une option rejetée, les conséquences, le signal à surveiller et la condition qui imposerait de revoir le choix."
+      "title": "Erreurs fréquentes à reconnaître",
+      "content": "1. Un module qui lit directement la table d'un autre.\n2. Des dépendances circulaires entre modules.\n3. Découper par couche technique (controllers, services) plutôt que par domaine.\n4. Passer aux microservices par mode, sans besoin mesuré.\n5. Aucun contrôle automatique : les frontières s'érodent à chaque pull request.\n6. Un module « commun » qui devient un fourre-tout dont tout dépend.\n\nRetrouve ces erreurs de mémoire avant l'exercice, puis vérifie-toi avec le quiz : c'est la récupération, pas la relecture, qui fixe la notion."
     }
   ],
   "keyConcepts": [
@@ -43,49 +48,97 @@
       "professionalExample": "Une équipe découpe prématurément son application en microservices « commandes » et « facturation » alors que les deux modules partageaient une transaction métier simple. Le moindre changement de statut de commande nécessite désormais un appel réseau, une saga de compensation et une gestion d’échec partiel, alors qu’un simple appel de fonction suffisait auparavant. Revenir à un monolithe modulaire avec des frontières de module claires, mais un seul déploiement et une seule transaction, a divisé par quatre la latence et supprimé la classe entière de bugs liés aux transactions distribuées.",
       "codeExample": "// Frontière de module explicite sans réseau ni service séparé\npackage com.dlr.orders;      // ne dépend que de son propre package\npackage com.dlr.billing;     // communique via une interface publique, pas la base d'orders\n\npublic interface BillingFacade {\n    Invoice chargeForOrder(OrderId orderId); // appel en mémoire, transaction unique\n}",
       "commonMistake": "Choisir un outil avant d’identifier le besoin, la charge, le risque et le propriétaire de la donnée.",
-      "masteryQuestion": "Quel compromis, quel signal et quelle condition de réévaluation associes-tu à « Découper un monolithe modulaire » ?",
-      "masteryProof": "Exécuter la preuve, modifier une contrainte, expliquer le résultat et dessiner la place du composant dans la stack complète."
+      "masteryQuestion": "Que doit respecter un monolithe modulaire (données, interface, dépendances) et quand séparer un module en service ?",
+      "masteryProof": "Construire la propriété des entités, contrôler l'usage de l'interface publique, détecter un cycle et mesurer le couplage."
     }
   ],
   "exercises": [
     {
       "code": "ARCHITECTURE-13-E1",
-      "title": "Créer des modules métier cohésifs avant d’envisager des microservices",
-      "statement": "Complète la preuve pour produire exactement la sortie attendue, puis explique la décision, une alternative et le signal de production qui validerait ton choix.",
-      "starterCode": "modules = {\"catalogue\": {\"product\"}, \"commandes\": {\"order\"}, \"identité\": {\"user\"}}\n# TODO 1 : construis un dictionnaire entité -> module propriétaire\n# TODO 2 : affiche \"Propriétaire order: \" suivi du module propriétaire de \"order\"\n# TODO 3 : affiche \"Modules: \" suivi du nombre de modules\n",
-      "expectedOutput": "Propriétaire order: commandes\nModules: 3"
+      "title": "Contrôler les frontières d'un monolithe modulaire",
+      "statement": "Complète : la table entité → module propriétaire, le contrôle de chaque usage (le symbole doit être exporté par le module appelé), la détection d'un cycle entre modules et le couplage entrant/sortant de chaque module. Affiche exactement :\nPropriétaire product: catalogue\nPropriétaire order: commandes\nPropriétaire user: identité\ncommandes -> catalogue.find_product: OK\ncommandes -> identité.current_user: OK\ncommandes -> catalogue.product_table: INTERDIT (non exporté)\nCycle: aucun\ncatalogue: sortantes=0, entrantes=1\ncommandes: sortantes=2, entrantes=0\nidentité: sortantes=0, entrantes=1",
+      "starterCode": "MODULES = {\n    \"catalogue\": {\"owns\": [\"product\"], \"exports\": [\"find_product\", \"list_products\"], \"uses\": []},\n    \"commandes\": {\"owns\": [\"order\"], \"exports\": [\"place_order\"], \"uses\": [(\"catalogue\", \"find_product\"), (\"identité\", \"current_user\"), (\"catalogue\", \"product_table\")]},\n    \"identité\": {\"owns\": [\"user\"], \"exports\": [\"current_user\"], \"uses\": []},\n}\n\n\ndef find_cycle() -> list[str] | None:\n    # TODO 1 : graphe module -> modules utilisés ; retourne un cycle sous forme de liste de modules (fermée : premier = dernier) ou None\n    return None\n\n\n# TODO 2 : affiche \"Propriétaire <entité>: <module>\" pour chaque entité (dans l'ordre des modules)\n# TODO 3 : pour chaque usage (module, (cible, symbole)) affiche \"<module> -> <cible>.<symbole>: OK\" si le symbole est exporté,\n#          sinon \"<module> -> <cible>.<symbole>: INTERDIT (non exporté)\"\n# TODO 4 : affiche \"Cycle: aucun\" ou \"Cycle: a -> b -> a\" selon find_cycle()\n# TODO 5 : pour chaque module affiche \"<module>: sortantes=<n>, entrantes=<n>\" (n = nombre de modules distincts utilisés / utilisateurs)\n",
+      "expectedOutput": "Propriétaire product: catalogue\nPropriétaire order: commandes\nPropriétaire user: identité\ncommandes -> catalogue.find_product: OK\ncommandes -> identité.current_user: OK\ncommandes -> catalogue.product_table: INTERDIT (non exporté)\nCycle: aucun\ncatalogue: sortantes=0, entrantes=1\ncommandes: sortantes=2, entrantes=0\nidentité: sortantes=0, entrantes=1"
     }
   ],
   "quiz": [
     {
       "code": "ARCHITECTURE-13-Q1",
       "type": "SINGLE_CHOICE",
-      "prompt": "Quelle démarche produit la décision la plus robuste ?",
+      "prompt": "Que signifie qu'un module « possède » une entité ?",
       "choices": [
-        "Relier contraintes, responsabilités, preuve et observabilité",
-        "Choisir la technologie la plus populaire",
-        "Ajouter des services avant de mesurer"
+        "Il est le seul à lire et écrire ses tables ; les autres passent par son interface",
+        "Il la copie dans tous les modules",
+        "Il la stocke dans un fichier",
+        "Il la partage librement"
       ],
       "correctChoice": 0,
-      "expectedKeywords": []
+      "expectedKeywords": [],
+      "explanation": "La propriété des données est la règle qui rend les modules indépendants : on peut changer le schéma d'un module sans casser les autres."
     },
     {
       "code": "ARCHITECTURE-13-Q2",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Prédis le verdict de « commandes -> catalogue.product_table » si catalogue n'exporte que find_product et list_products :",
+      "choices": [
+        "OK",
+        "INTERDIT (non exporté) : product_table n'est pas dans l'interface publique",
+        "OK avec avertissement",
+        "Cycle"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Utiliser un élément non exporté revient à dépendre d'un détail interne : un refactoring du catalogue casserait les commandes."
+    },
+    {
+      "code": "ARCHITECTURE-13-Q3",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Trouve le défaut :\n```sql\nSELECT o.id, u.email FROM orders o JOIN users u ON u.id = o.user_id;\n```\ndans le module « commandes » d'un monolithe modulaire.",
+      "choices": [
+        "Aucun, c'est du SQL standard",
+        "La jointure lit la table d'un autre module (identité) : on contourne son interface ; il faut appeler son interface ou garder une copie locale à jour par événement",
+        "Il manque un index",
+        "JOIN est interdit"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Les jointures entre tables de modules différents créent un couplage par le schéma qui empêche toute évolution ou séparation ultérieure."
+    },
+    {
+      "code": "ARCHITECTURE-13-Q4",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Quel critère justifie le mieux d'extraire un module en service séparé ?",
+      "choices": [
+        "La mode",
+        "Un besoin mesuré : charge ou cycle de déploiement très différents, équipe autonome, exigences de disponibilité spécifiques, frontière stable",
+        "Avoir plus de technologies",
+        "Un nom de module long"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Les services séparés ajoutent réseau, cohérence à terme et complexité d'exploitation : il faut un bénéfice mesuré pour les justifier."
+    },
+    {
+      "code": "ARCHITECTURE-13-Q5",
       "type": "FREE_TEXT",
-      "prompt": "Nomme un compromis et le signal qui permettrait de le réévaluer.",
+      "prompt": "Sans relire le cours, explique avec tes mots les avantages d'un monolithe modulaire sur un monolithe classique et sur des microservices.",
       "choices": [],
       "correctChoice": null,
       "expectedKeywords": [
-        "compromis",
-        "mesure",
-        "risque"
-      ]
+        "fronti",
+        "deploiement",
+        "transaction",
+        "module",
+        "evolu"
+      ],
+      "modelAnswer": "Par rapport à un monolithe classique, il impose des frontières (données possédées, interface publique, pas de cycle) qui limitent le couplage et rendent les changements locaux. Par rapport aux microservices, il garde un seul déploiement, des transactions locales et une exploitation simple, sans latence réseau ni cohérence à terme, tout en préparant une extraction ultérieure d'un module si un besoin mesuré le justifie.",
+      "explanation": "Une bonne réponse cite frontières et couplage réduit face au monolithe classique, simplicité d'exploitation et transactions locales face aux microservices, et la voie d'extraction."
     }
   ],
   "checklist": [
-    "Je peux dessiner la circulation de la donnée",
-    "Je sais nommer les responsabilités de chaque couche",
-    "Je justifie une alternative rejetée",
-    "Je définis une mesure et une condition de réévaluation"
+    "Chaque entité appartient à un seul module",
+    "Les modules ne s'appellent que par leurs interfaces publiques",
+    "Mon graphe de dépendances n'a pas de cycle",
+    "Un contrôle automatique protège ces règles en CI"
   ]
 }

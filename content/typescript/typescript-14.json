@@ -11,21 +11,30 @@
     "TYPESCRIPT-13"
   ],
   "objectives": [
-    "Expliquer fetch, validation runtime et contrats externes",
-    "Construire une preuve exécutable et déterministe",
-    "Relier le concept à une décision professionnelle"
+    "Expliquer pourquoi un type TypeScript ne protège pas contre une donnée externe.",
+    "Écrire un type guard (value is User) et valider une réponse JSON à l'exécution.",
+    "Distinguer JSON invalide, contrat violé et erreur HTTP.",
+    "Repérer un as dangereux, un any venant de JSON.parse ou une absence de timeout."
   ],
   "sections": [
     {
-      "title": "Concept et usage professionnel",
-      "content": "Fetch, validation runtime et contrats externes répond à un besoin concret de maintenabilité, de sûreté ou de performance. Le laboratoire demande de rendre la décision observable et vérifiable.",
-      "conceptCodes": [
-        "TYPESCRIPT-HTTP"
-      ]
+      "title": "Les types ont disparu quand la donnée arrive",
+      "content": "Quand une réponse arrive du réseau, le compilateur n'a aucun moyen de savoir ce qu'elle contient : JSON.parse retourne any, et response.json() retourne Promise<any>. Écrire const user: User = await response.json() fait taire le compilateur mais ne vérifie rien. Si le serveur renvoie { \"id\": \"1\" } au lieu de { \"id\": 1 }, le programme continue avec une donnée fausse jusqu'à ce qu'elle casse ailleurs.\n\nLa règle : tout ce qui vient de l'extérieur (réseau, fichier, saisie, variable d'environnement, localStorage) est unknown jusqu'à preuve du contraire. On le valide à la frontière, et seulement après on le traite comme un type connu."
     },
     {
-      "title": "Mise en pratique",
-      "content": "La preuve minimale est locale, déterministe et peut être enrichie sans changer le contrat attendu."
+      "title": "Exemple résolu : un type guard et un verdict par réponse",
+      "conceptCodes": [
+        "TYPESCRIPT-HTTP"
+      ],
+      "content": "Problème : transformer un texte JSON en User fiable, et distinguer les deux sortes d'échec.\n\nRaisonnement, étape par étape :\n1. Parser : JSON.parse lève SyntaxError si le texte n'est pas du JSON. On attrape cette erreur précise et on la traduit en « JSON invalide ».\n2. Valider la forme : un type guard function isUser(value: unknown): value is User vérifie que value est un objet non nul, que id est un nombre et que name est une chaîne.\n3. Si la forme est mauvaise : « contrat violé ». Le message nomme la nature du problème.\n4. Si tout va bien, parseUser retourne un User : à partir de là, le compilateur et l'exécution sont d'accord.\n5. Le type guard rend ce que la fonction a prouvé visible du compilateur : après if (isUser(x)), x est un User.\n6. Vérification : {\"id\":1,\"name\":\"Ada\"} est accepté ; {\"id\":\"1\",...} (mauvais type), not json (syntaxe) et {\"id\":2} (champ manquant) sont rejetés avec des messages distincts.\n```ts\ninterface User { id: number; name: string }\n\nfunction isUser(value: unknown): value is User {\n  return typeof value === 'object' && value !== null\n    && typeof (value as Record<string, unknown>).id === 'number'\n    && typeof (value as Record<string, unknown>).name === 'string';\n}\n\nfunction parseUser(text: string): User {\n  let data: unknown;\n  try { data = JSON.parse(text); } catch { throw new Error('JSON invalide'); }\n  if (!isUser(data)) throw new Error('contrat violé');\n  return data;\n}\n```"
+    },
+    {
+      "title": "Clients robustes et schémas",
+      "content": "Pour des contrats plus riches, écrire des type guards à la main devient long : une bibliothèque de schémas (zod, valibot, io-ts) déclare la forme une fois, dérive le type TypeScript (z.infer) et valide à l'exécution, avec des messages d'erreur précis. Le schéma devient la source unique.\n```ts\nconst UserSchema = z.object({ id: z.number().int(), name: z.string().min(1) });\ntype User = z.infer<typeof UserSchema>;\nconst user = UserSchema.parse(data);       // lève une erreur détaillée si la forme est mauvaise\n```\nUn client fetch robuste :\n- Vérifie response.ok (fetch ne rejette pas sur un 404 ou un 500, seulement sur une panne réseau).\n- Impose un délai maximal (AbortSignal.timeout(5000)).\n- Distingue erreur réseau, statut HTTP, JSON invalide et contrat violé.\n- Ne réessaie que les erreurs transitoires et les opérations idempotentes, avec un délai croissant.\n- Ne met aucun jeton dans l'URL ni dans les logs.\n- Limite la taille des réponses acceptées."
+    },
+    {
+      "title": "Erreurs fréquentes à reconnaître",
+      "content": "1. const user = (await res.json()) as User : aucune vérification.\n2. Oublier response.ok : un 500 est traité comme un succès.\n3. Pas de timeout : l'appel peut attendre indéfiniment.\n4. Écrire un type guard incomplet (ne vérifie pas la nullité ou un champ).\n5. Valider une partie des champs seulement et utiliser les autres.\n6. Journaliser la réponse complète avec des données personnelles.\n\nRetrouve ces erreurs de mémoire avant l'exercice, puis vérifie-toi avec le quiz : c'est la récupération, pas la relecture, qui fixe la notion."
     }
   ],
   "keyConcepts": [
@@ -39,8 +48,8 @@
       "professionalExample": "Une intégration avec l'API d'un partenaire de paiement typait la réponse fetch avec un simple `as PaymentResponse`, une pure assertion de compilation sans aucune vérification à l'exécution. Le jour où le partenaire a renvoyé amountCents sous forme de chaîne de caractères suite à une mise à jour de son API, le bug n'a été détecté qu'en production via des montants incorrects. L'équipe a remplacé l'assertion par un schéma zod validé à l'exécution, qui rejette désormais explicitement toute réponse dont la forme ne correspond plus au contrat attendu.",
       "codeExample": "import { z } from 'zod';\n\nconst PaymentResponseSchema = z.object({\n  id: z.string(),\n  amountCents: z.number(),\n  status: z.enum(['succeeded', 'failed']),\n});\n\ntype PaymentResponse = z.infer<typeof PaymentResponseSchema>;\n\nasync function fetchPayment(id: string): Promise<PaymentResponse> {\n  const response = await fetch(`https://api.partner.example/payments/${id}`);\n  const json = await response.json();\n  return PaymentResponseSchema.parse(json); // lève une erreur si le contrat est rompu\n}",
       "commonMistake": "Appliquer la technique sans mesurer son effet ni documenter sa frontière.",
-      "masteryQuestion": "Quelle contrainte de fetch, validation runtime et contrats externes doit rester vraie lorsque le système évolue ?",
-      "masteryProof": "Exécuter la preuve, expliquer son invariant et proposer un cas d’échec."
+      "masteryQuestion": "Pourquoi un cast as User ne protège-t-il pas, et qu'apporte un type guard ?",
+      "masteryProof": "Écrire isUser (value is User) et parseUser qui distingue JSON invalide et contrat violé, puis afficher le verdict de quatre réponses."
     }
   ],
   "exercises": [
@@ -56,32 +65,80 @@
     {
       "code": "TYPESCRIPT-14-Q1",
       "type": "SINGLE_CHOICE",
-      "prompt": "Quelle preuve est la plus utile en revue ?",
+      "prompt": "Que retourne response.json() du point de vue du compilateur TypeScript ?",
       "choices": [
-        "Une exécution déterministe avec invariant explicite",
-        "Une sortie aléatoire",
-        "Une capture sans code"
+        "Un User",
+        "Une Promise<any> : aucune garantie sur la forme réelle des données",
+        "Une Promise<unknown> validée",
+        "Un objet readonly"
       ],
-      "correctChoice": 0,
-      "expectedKeywords": []
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Le compilateur ne connaît pas le contenu du réseau. Le résultat est any (ou unknown si on le force) : la forme doit être vérifiée à l'exécution avant de la traiter comme un User."
     },
     {
       "code": "TYPESCRIPT-14-Q2",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Prédis le comportement :\n```ts\nconst user = JSON.parse('{\"id\":\"1\",\"name\":\"Ada\"}') as { id: number; name: string };\nconsole.log(user.id + 1);\n```\n",
+      "choices": [
+        "2",
+        "11 : id est en réalité la chaîne \"1\" concaténée avec 1",
+        "NaN",
+        "Une erreur de compilation"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "as ne convertit rien. user.id est la chaîne \"1\" ; \"1\" + 1 donne \"11\". Le bug passe la compilation et corrompt les calculs en silence."
+    },
+    {
+      "code": "TYPESCRIPT-14-Q3",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Trouve le défaut :\n```ts\nconst res = await fetch(url);\nconst data = await res.json();\n```\npour un serveur qui répond 500 avec un corps d'erreur JSON.",
+      "choices": [
+        "fetch rejette toujours sur un 500",
+        "fetch ne rejette pas sur un statut d'erreur : sans contrôle de res.ok, le corps d'erreur est traité comme des données valides",
+        "json() n'existe pas",
+        "await est interdit"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "fetch ne rejette que sur une panne réseau. Il faut tester res.ok (ou le statut) avant de parser, puis valider la forme."
+    },
+    {
+      "code": "TYPESCRIPT-14-Q4",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Que fait un type guard « value is User » pour le compilateur ?",
+      "choices": [
+        "Il convertit value en User",
+        "Après un test réussi de la fonction, value est traité comme un User dans le bloc",
+        "Il valide automatiquement le contenu",
+        "Il lance une exception"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Le prédicat de type indique que, si la fonction renvoie true, la variable a ce type. La fonction doit réellement faire les vérifications : le compilateur lui fait confiance."
+    },
+    {
+      "code": "TYPESCRIPT-14-Q5",
       "type": "FREE_TEXT",
-      "prompt": "Explique une décision liée à fetch, validation runtime et contrats externes.",
+      "prompt": "Sans relire le cours, explique avec tes mots pourquoi on distingue JSON invalide et contrat violé, et ce qu'apporte un schéma comme zod.",
       "choices": [],
       "correctChoice": null,
       "expectedKeywords": [
+        "syntaxe",
+        "forme",
         "contrat",
-        "preuve",
-        "test"
-      ]
+        "schema",
+        "source"
+      ],
+      "modelAnswer": "JSON invalide signifie que le texte n'a pas la syntaxe JSON (parse échoue) : souvent une réponse tronquée ou une page d'erreur. Contrat violé signifie que le JSON est valide mais n'a pas la forme attendue (champ manquant ou mauvais type) : un changement côté fournisseur. Les deux causes se traitent et se signalent différemment. Un schéma comme zod déclare la forme une seule fois, valide à l'exécution avec des messages précis et dérive le type TypeScript, ce qui évite que le type et la validation divergent.",
+      "explanation": "Une bonne réponse oppose syntaxe et forme, et décrit le schéma comme source unique pour le type et la validation."
     }
   ],
   "checklist": [
-    "Je peux expliquer le concept sans réciter une définition",
-    "Je sais exécuter et modifier la preuve",
-    "Je peux nommer un risque et son contrôle",
-    "Je relie cette étape à la suivante"
+    "Je traite toute donnée externe comme unknown jusqu'à validation",
+    "Je vérifie res.ok avant de parser la réponse",
+    "J'écris des type guards complets ou j'utilise un schéma",
+    "Mes appels réseau ont un délai maximal"
   ]
 }

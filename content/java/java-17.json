@@ -1,9 +1,144 @@
 {
-  "code":"JAVA-17","language":"JAVA","number":17,"slug":"patterns-strategy-factory-builder-template","title":"Design patterns : Strategy, Factory, Builder et Template","difficulty":"AVANCE","threshold":75,"activityType":"LAB","prerequisites":["JAVA-16"],
-  "objectives":["Choisir un pattern pour un problème concret","Implémenter Strategy","Éviter le pattern décoratif"],
-  "sections":[{"title":"Vocabulaire de conception","content":"Un pattern nomme une solution récurrente avec ses compromis. Il doit répondre à une variation réelle, pas anticipée sans preuve.","conceptCodes":["JAVA-STRATEGY"]},{"title":"Familles de patterns","content":"Strategy remplace un algorithme, Factory centralise une création, Builder assemble un objet complexe et Template fixe un squelette d'étapes."}],
-  "keyConcepts":[{"code":"JAVA-STRATEGY","name":"Strategy","definition":"Un contrat interchangeable encapsule une variante d'algorithme.","whyExists":"Il remplace les conditions dispersées par une extension localisée.","whyImportant":"Les règles tarifaires et politiques métier évoluent fréquemment.","minimalExample":"PricePolicy policy = new PremiumPolicy();","professionalExample":"Le calcul des remises d'un site e-commerce reposait sur un enchaînement de if (campaign.equals(\"BLACK_FRIDAY\")) ... else if (campaign.equals(\"LOYALTY\")) ... : chaque nouvelle campagne marketing obligeait à modifier et retester l'ensemble du module de caisse, sous pression de délais serrés. Introduire une interface DiscountPolicy avec une implémentation par campagne a permis d'ajouter la remise de Noël en écrivant une seule nouvelle classe, sans toucher au code de caisse existant ni risquer de casser les campagnes déjà en production.","codeExample":"interface DiscountPolicy {\n    int apply(int totalCents);\n}\n\nclass BlackFridayDiscount implements DiscountPolicy {\n    public int apply(int totalCents) { return totalCents - totalCents * 30 / 100; }\n}\n\nclass LoyaltyDiscount implements DiscountPolicy {\n    public int apply(int totalCents) { return totalCents - totalCents * 5 / 100; }\n}\n\nint finalPrice = checkout(new BlackFridayDiscount(), 15000); // aucune condition dans checkout()","commonMistake":"Ajouter un pattern sans axe de variation réel.","masteryQuestion":"Quel changement justifie l'introduction de Strategy ?","masteryProof":"Ajouter une stratégie sans modifier le client."}],
-  "exercises":[{"code":"JAVA-17-E1","title":"Appliquer une remise","statement":"Utilise une Strategy et affiche exactement : Remise: 15","starterCode":"interface Discount { int apply(int total); }\n\n// TODO 1 : crée une stratégie TenPercent qui retourne 10 % du total (division entière)\n\npublic class Main {\n    public static void main(String[] args) {\n        // TODO 2 : applique la stratégie à un total de 150\n        // TODO 3 : affiche \"Remise: \" suivi du résultat\n    }\n}\n","expectedOutput":"Remise: 15"}],
-  "quiz":[{"code":"JAVA-17-Q1","type":"SINGLE_CHOICE","prompt":"Quel pattern encapsule un algorithme variable ?","choices":["Strategy","Singleton global","DTO"],"correctChoice":0,"expectedKeywords":[]},{"code":"JAVA-17-Q2","type":"FREE_TEXT","prompt":"Pourquoi un pattern possède-t-il un coût ?","choices":[],"correctChoice":null,"expectedKeywords":["complexité","abstraction","besoin","variation"]}],
-  "checklist":["Je pars du problème","Je nomme l'axe de variation","Je peux ajouter une stratégie sans condition"]
+  "code": "JAVA-17",
+  "language": "JAVA",
+  "number": 17,
+  "slug": "patterns-strategy-factory-builder-template",
+  "title": "Design patterns : Strategy, Factory, Builder et Template",
+  "difficulty": "AVANCE",
+  "threshold": 75,
+  "activityType": "LAB",
+  "prerequisites": [
+    "JAVA-16"
+  ],
+  "objectives": [
+    "Choisir entre Strategy, Factory, Builder et Template Method à partir du problème posé.",
+    "Implémenter une Strategy et une fabrique qui la sélectionne par code.",
+    "Construire un objet immuable avec un Builder et valider ses champs.",
+    "Reconnaître quand un pattern ajoute de la complexité sans bénéfice."
+  ],
+  "sections": [
+    {
+      "title": "Un pattern est une solution nommée à un problème récurrent",
+      "content": "Un pattern n'est pas du code à copier : c'est un vocabulaire pour décrire une solution. On le choisit à partir du problème, pas l'inverse.\n- Strategy : plusieurs variantes d'un algorithme interchangeables derrière une interface (calcul de livraison, de remise).\n- Factory : centraliser la création quand le type concret dépend d'une entrée (un code, une configuration).\n- Builder : construire pas à pas un objet à nombreux paramètres, puis le figer.\n- Template Method : fixer le squelette d'un algorithme dans une classe parente, laisser les étapes variables aux sous-classes.\n\nChaque pattern coûte des classes et de l'indirection. Il se justifie quand la variation existe déjà ou est très probable."
+    },
+    {
+      "title": "Exemple résolu : choisir le mode de livraison",
+      "conceptCodes": [
+        "JAVA-STRATEGY"
+      ],
+      "content": "Problème : le coût de livraison dépend du mode (standard, express, gratuit au-delà de 100). Un if/else grandit à chaque nouveau mode.\n\nRaisonnement, étape par étape :\n1. Ce qui varie : le calcul du coût. On l'isole dans une interface Shipping (Strategy).\n2. Chaque mode est une implémentation : lambda ou classe.\n3. Qui choisit le mode ? Une fabrique qui traduit un code texte en Strategy et refuse les codes inconnus.\n4. Les appelants ne connaissent que l'interface.\n5. Vérification : ajouter un mode ne modifie ni les appelants ni les autres modes.\n```java\ninterface Shipping { int cost(int total); }\n\nstatic Shipping of(String code) {\n    return switch (code) {\n        case \"STANDARD\" -> total -> 5;\n        case \"EXPRESS\"  -> total -> 15;\n        case \"FREE\"     -> total -> total >= 100 ? 0 : 5;\n        default -> throw new IllegalArgumentException(\"mode inconnu : \" + code);\n    };\n}\n\nint frais = of(\"EXPRESS\").cost(150);   // 15\n```\nLa Strategy remplace le if/else sur le type ; la Factory garde la sélection à un seul endroit."
+    },
+    {
+      "title": "Builder et Template Method",
+      "content": "Le Builder sert quand un objet a beaucoup de champs, dont certains optionnels. Il évite les constructeurs à neuf paramètres dont on ne sait plus l'ordre, valide au moment de build() et produit un objet immuable.\n```java\nrecord Order(String customer, int total, String shipping) {}\n\nstatic class OrderBuilder {\n    private String customer; private int total; private String shipping = \"STANDARD\";\n    OrderBuilder customer(String c) { this.customer = c; return this; }\n    OrderBuilder total(int t)       { this.total = t;    return this; }\n    OrderBuilder shipping(String s) { this.shipping = s; return this; }\n    Order build() {\n        if (customer == null || customer.isBlank()) throw new IllegalStateException(\"client requis\");\n        return new Order(customer, total, shipping);\n    }\n}\n```\nTemplate Method fixe l'ordre des étapes (lire, transformer, écrire) dans une classe abstraite ; les sous-classes remplissent les étapes. Aujourd'hui on lui préfère souvent la composition : passer les étapes variables en paramètre (Strategy) évite l'héritage.\n\nUn pattern en trop : un Builder pour un objet à deux champs, une Factory pour un seul type concret, une interface sans seconde implémentation prévisible."
+    },
+    {
+      "title": "Erreurs fréquentes à reconnaître",
+      "content": "1. Appliquer un pattern « parce que c'est propre » alors qu'aucune variation n'existe.\n2. Un switch sur un code répété à plusieurs endroits au lieu d'une fabrique unique.\n3. Un Builder qui oublie la validation dans build() : l'objet invalide circule.\n4. Un Builder réutilisé pour deux objets (état partagé) : crée un builder par objet.\n5. Un Singleton utilisé comme variable globale cachée : difficile à tester.\n6. Hériter pour réutiliser du code (Template Method) quand la composition suffirait.\n\nRetrouve ces six erreurs de mémoire avant l'exercice, puis passe au quiz."
+    }
+  ],
+  "keyConcepts": [
+    {
+      "code": "JAVA-STRATEGY",
+      "name": "Strategy",
+      "definition": "Un contrat interchangeable encapsule une variante d'algorithme.",
+      "whyExists": "Il remplace les conditions dispersées par une extension localisée.",
+      "whyImportant": "Les règles tarifaires et politiques métier évoluent fréquemment.",
+      "minimalExample": "PricePolicy policy = new PremiumPolicy();",
+      "professionalExample": "Le calcul des remises d'un site e-commerce reposait sur un enchaînement de if (campaign.equals(\"BLACK_FRIDAY\")) ... else if (campaign.equals(\"LOYALTY\")) ... : chaque nouvelle campagne marketing obligeait à modifier et retester l'ensemble du module de caisse, sous pression de délais serrés. Introduire une interface DiscountPolicy avec une implémentation par campagne a permis d'ajouter la remise de Noël en écrivant une seule nouvelle classe, sans toucher au code de caisse existant ni risquer de casser les campagnes déjà en production.",
+      "codeExample": "interface DiscountPolicy {\n    int apply(int totalCents);\n}\n\nclass BlackFridayDiscount implements DiscountPolicy {\n    public int apply(int totalCents) { return totalCents - totalCents * 30 / 100; }\n}\n\nclass LoyaltyDiscount implements DiscountPolicy {\n    public int apply(int totalCents) { return totalCents - totalCents * 5 / 100; }\n}\n\nint finalPrice = checkout(new BlackFridayDiscount(), 15000); // aucune condition dans checkout()",
+      "commonMistake": "Ajouter un pattern sans axe de variation réel.",
+      "masteryQuestion": "Comment décides-tu qu'un pattern se justifie, et en quoi Strategy et Factory se complètent-elles ?",
+      "masteryProof": "Implémenter des modes de livraison par Strategy, les sélectionner par une fabrique et construire une commande avec un Builder validé."
+    }
+  ],
+  "exercises": [
+    {
+      "code": "JAVA-17-E1",
+      "title": "Livraison : Strategy, Factory et Builder",
+      "statement": "Complète Main : une interface Shipping, une fabrique shippingOf(code) qui refuse les codes inconnus, et un OrderBuilder qui valide et produit un record Order. Affiche exactement :\nSTANDARD(150) : 5\nEXPRESS(150) : 15\nFREE(150) : 0\nFREE(60) : 5\nCommande : Order[customer=Nyx, total=150, shipping=EXPRESS, shippingCost=15]\nErreur : mode inconnu : DRONE\nErreur : client requis",
+      "starterCode": "public class Main {\n    interface Shipping { int cost(int total); }\n\n    // TODO 1 : static Shipping shippingOf(String code) — switch sur le code :\n    //          STANDARD -> 5 ; EXPRESS -> 15 ; FREE -> 0 si total >= 100 sinon 5 ;\n    //          autre code -> IllegalArgumentException avec le code dans le message\n\n    record Order(String customer, int total, String shipping, int shippingCost) {}\n\n    // TODO 2 : classe OrderBuilder avec customer(String), total(int), shipping(String) chaînables\n    //          (shipping vaut \"STANDARD\" par défaut) et build() qui :\n    //          - lève IllegalStateException si le client est vide\n    //          - calcule shippingCost avec shippingOf(...)\n\n    public static void main(String[] args) {\n        // TODO 3 : affiche \"STANDARD(150) : 5\", \"EXPRESS(150) : 15\", \"FREE(150) : 0\" puis \"FREE(60) : 5\"\n        // TODO 4 : construis la commande Nyx / 150 / EXPRESS avec le builder et affiche \"Commande : \" + commande\n        // TODO 5 : tente shippingOf(\"DRONE\") dans un try/catch et affiche \"Erreur : \" + message de l'exception\n        // TODO 6 : tente build() sans client dans un try/catch et affiche \"Erreur : \" + message de l'exception\n    }\n}\n",
+      "expectedOutput": "STANDARD(150) : 5\nEXPRESS(150) : 15\nFREE(150) : 0\nFREE(60) : 5\nCommande : Order[customer=Nyx, total=150, shipping=EXPRESS, shippingCost=15]\nErreur : mode inconnu : DRONE\nErreur : client requis"
+    }
+  ],
+  "quiz": [
+    {
+      "code": "JAVA-17-Q1",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Le coût de livraison dépend du mode choisi, et de nouveaux modes arrivent régulièrement. Quel pattern est le plus adapté ?",
+      "choices": [
+        "Singleton",
+        "Strategy",
+        "Observer",
+        "Decorator"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Strategy encapsule une variante d'algorithme derrière une interface : chaque mode est une implémentation et l'ajout d'un mode n'impose aucune modification des appelants. Singleton gère l'unicité d'instance ; Observer notifie des abonnés ; Decorator ajoute des responsabilités."
+    },
+    {
+      "code": "JAVA-17-Q2",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Prédis la sortie :\n```java\nstatic Shipping of(String code) {\n    return switch (code) {\n        case \"FREE\" -> total -> total >= 100 ? 0 : 5;\n        default -> total -> 5;\n    };\n}\nSystem.out.println(of(\"FREE\").cost(100) + \" \" + of(\"free\").cost(100));\n```\n",
+      "choices": [
+        "0 0",
+        "0 5",
+        "5 5",
+        "5 0"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "« FREE » correspond au premier cas : 100 >= 100 donne 0. « free » (minuscules) ne correspond pas, donc le cas par défaut renvoie 5. Un switch sur chaîne est sensible à la casse : une fabrique doit normaliser ou refuser explicitement le code."
+    },
+    {
+      "code": "JAVA-17-Q3",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Trouve le bug :\n```java\nOrderBuilder b = new OrderBuilder().customer(\"Ada\").total(40);\nOrder o1 = b.build();\nb.customer(\"Nyx\");\nOrder o2 = b.build();\n```\nQue peut-on reprocher à ce usage ?",
+      "choices": [
+        "Rien, c'est le but du Builder",
+        "Réutiliser un builder partage son état entre les objets : on crée un builder par objet",
+        "build() ne peut être appelé qu'une fois par le compilateur",
+        "Le builder doit être static"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Ici o1 reste correct car Order est un record immuable, mais le builder garde son état : un champ oublié sur le second objet hériterait de la valeur précédente. Crée un builder par objet pour éviter les fuites d'état."
+    },
+    {
+      "code": "JAVA-17-Q4",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Dans quel cas un pattern est-il probablement inutile ?",
+      "choices": [
+        "Trois modes de livraison déjà demandés et d'autres prévus",
+        "Une classe à deux champs avec un Builder et une Factory alors qu'il n'existe qu'un seul type concret",
+        "Une création qui dépend d'une configuration lue au démarrage",
+        "Un algorithme dont les étapes varient selon le client"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Un pattern se justifie par une variation réelle ou très probable. Pour deux champs et un seul type, un constructeur suffit : le pattern ajoute des classes et de l'indirection sans bénéfice."
+    },
+    {
+      "code": "JAVA-17-Q5",
+      "type": "FREE_TEXT",
+      "prompt": "Sans relire le cours, explique avec tes mots comment Strategy et Factory se complètent pour gérer plusieurs modes de livraison.",
+      "choices": [],
+      "correctChoice": null,
+      "expectedKeywords": [
+        "interface",
+        "strategy",
+        "factory",
+        "code",
+        "choisit"
+      ],
+      "modelAnswer": "Strategy isole chaque mode de livraison derrière une interface commune, donc les appelants ne connaissent que le contrat. La Factory centralise le choix : elle traduit un code (ou une configuration) en l'implémentation adéquate et refuse un code inconnu. Ajouter un mode revient à ajouter une implémentation et un cas dans la fabrique.",
+      "explanation": "Une bonne réponse sépare ce qui varie (Strategy) de la sélection de la variante (Factory) et mentionne l'ajout d'un mode sans toucher aux appelants."
+    }
+  ],
+  "checklist": [
+    "Je choisis un pattern d'après le problème et la variation réelle",
+    "J'implémente une Strategy et une fabrique qui refuse les codes inconnus",
+    "Mon Builder valide dans build() et n'est pas réutilisé entre objets",
+    "Je sais dire quand un pattern est du bruit"
+  ]
 }

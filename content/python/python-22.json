@@ -11,21 +11,30 @@
     "PYTHON-21"
   ],
   "objectives": [
-    "Expliquer observabilité, conteneurisation et exploitation",
-    "Construire une preuve exécutable et déterministe",
-    "Relier le concept à une décision professionnelle"
+    "Produire des journaux JSON corrélés (niveau, événement, identifiant de corrélation) sans secret.",
+    "Compter requêtes et erreurs et calculer un taux pour détecter une dégradation.",
+    "Écrire un Dockerfile minimal et sûr (image slim, utilisateur non root, dépendances d'abord).",
+    "Décrire l'exploitation d'un service : santé, arrêt propre, configuration externe."
   ],
   "sections": [
     {
-      "title": "Concept et usage professionnel",
-      "content": "Observabilité, conteneurisation et exploitation répond à un besoin concret de maintenabilité, de sûreté ou de performance. Le laboratoire demande de rendre la décision observable et vérifiable.",
-      "conceptCodes": [
-        "PYTHON-OBSERVABILITY"
-      ]
+      "title": "Rendre un service observable",
+      "content": "Observer un service, c'est pouvoir comprendre son état interne depuis l'extérieur. Trois signaux : les logs (événements détaillés), les métriques (nombres agrégés : requêtes, erreurs, latence) et les traces (parcours d'une requête). Pour les logs, une ligne JSON par événement se filtre et s'agrège bien mieux que du texte libre.\n```python\nimport json\n\ndef log(level, event, **champs):\n    print(json.dumps({\"level\": level, \"event\": event, **champs},\n                     sort_keys=True, ensure_ascii=False))\n\nlog(\"INFO\", \"commande créée\", order_id=42, correlation_id=\"req-1\")\n# {\"correlation_id\": \"req-1\", \"event\": \"commande créée\", \"level\": \"INFO\", \"order_id\": 42}\n```\nsort_keys=True rend la sortie reproductible, ensure_ascii=False conserve les accents. Un identifiant de corrélation, attribué à l'entrée de la requête et repris dans chaque log, permet de suivre toute une requête, même à travers plusieurs services."
     },
     {
-      "title": "Mise en pratique",
-      "content": "La preuve minimale est locale, déterministe et peut être enrichie sans changer le contrat attendu."
+      "title": "Exemple résolu : journaux et taux d'erreur",
+      "conceptCodes": [
+        "PYTHON-OBSERVABILITY"
+      ],
+      "content": "Problème : traiter deux demandes, une réussie et une refusée, journaliser chaque issue avec son identifiant et produire un rapport de métriques.\n\nRaisonnement, étape par étape :\n1. log() imprime une ligne JSON par événement, avec niveau, événement et champs libres.\n2. handle(demande) reçoit un identifiant de corrélation, incrémente le compteur de requêtes, journalise l'issue.\n3. En cas d'échec métier (fonds insuffisants), incrémente aussi le compteur d'erreurs et journalise au niveau ERROR avec la raison.\n4. Le rapport calcule le taux d'erreurs : erreurs / requêtes en pourcentage arrondi (1 sur 2 donne 50 %).\n5. Division par zéro : sans requête, le taux vaut 0 (cas limite à traiter explicitement).\n6. Vérification : aucun secret ni donnée personnelle dans les champs journalisés.\n```python\nmetrics = {\"requests\": 0, \"errors\": 0}\n\ndef report():\n    taux = round(100 * metrics[\"errors\"] / metrics[\"requests\"]) if metrics[\"requests\"] else 0\n    print(f\"metrics: requests={metrics['requests']} errors={metrics['errors']} error_rate={taux}%\")\n```\nLe taux d'erreurs, la latence (p95), le trafic et la saturation (CPU, mémoire, file d'attente) forment les « quatre signaux d'or »."
+    },
+    {
+      "title": "Conteneuriser et exploiter",
+      "content": "Un Dockerfile minimal et sûr pour une application Python :\n```dockerfile\nFROM python:3.13-slim\nWORKDIR /app\nCOPY requirements.txt .\nRUN pip install --no-cache-dir -r requirements.txt   # couche des dépendances : mise en cache\nCOPY src/ ./src/\nRUN useradd --no-create-home app\nUSER app                                              # jamais root\nCMD [\"python\", \"-m\", \"src.main\"]\n```\nBonnes pratiques : image slim ou distroless ; copier d'abord les dépendances (cache de build) puis le code ; utilisateur non root ; un fichier .dockerignore (.git, .venv, .env) ; aucun secret dans l'image (variables d'environnement à l'exécution) ; versions de base épinglées ; construction en plusieurs étapes si des outils de compilation sont nécessaires.\n\nExploitation : un point de santé (/health) pour l'orchestrateur ; arrêt propre sur SIGTERM (finir les requêtes en cours, fermer les connexions) ; configuration par variables d'environnement ; journaux sur la sortie standard (l'orchestrateur les collecte) ; limites de mémoire et de CPU déclarées ; redémarrage automatique."
+    },
+    {
+      "title": "Erreurs fréquentes à reconnaître",
+      "content": "1. Des logs en texte libre sans niveau ni identifiant de corrélation.\n2. Journaliser un mot de passe, un jeton ou un corps de requête complet.\n3. Un taux d'erreurs qui plante par division par zéro quand il n'y a aucune requête.\n4. Un conteneur lancé en root avec les secrets copiés dans l'image.\n5. Copier tout le code avant d'installer les dépendances : cache de build inutile.\n6. Aucun point de santé ni arrêt propre : l'orchestrateur coupe les requêtes en cours.\n\nRetrouve ces erreurs de mémoire avant l'exercice, puis vérifie-toi avec le quiz : c'est la récupération, pas la relecture, qui fixe la notion."
     }
   ],
   "keyConcepts": [
@@ -39,8 +48,8 @@
       "professionalExample": "Un service Python déployé en conteneur Docker fonctionnait correctement en local mais tombait en boucle de redémarrage en production, sans que personne ne sache pourquoi car aucune métrique ni endpoint de santé n'existait. En ajoutant un endpoint /health que l'orchestrateur peut sonder et des métriques Prometheus exposant la latence et le taux d'erreur, l'équipe a identifié que le conteneur manquait de mémoire sous charge, un fait invisible sans instrumentation.",
       "codeExample": "from fastapi import FastAPI, Response\nfrom prometheus_client import Counter, generate_latest\n\napp = FastAPI()\norders_processed = Counter(\"orders_processed_total\", \"Nombre de commandes traitées\")\n\n@app.get(\"/health\")\ndef health() -> dict:\n    return {\"status\": \"ok\"}\n\n@app.get(\"/metrics\")\ndef metrics() -> Response:\n    return Response(generate_latest(), media_type=\"text/plain\")\n\n@app.post(\"/orders\")\ndef create_order() -> dict:\n    orders_processed.inc()  # observable par l'orchestrateur et les tableaux de bord\n    return {\"status\": \"created\"}",
       "commonMistake": "Appliquer la technique sans mesurer son effet ni documenter sa frontière.",
-      "masteryQuestion": "Quelle contrainte de observabilité, conteneurisation et exploitation doit rester vraie lorsque le système évolue ?",
-      "masteryProof": "Exécuter la preuve, expliquer son invariant et proposer un cas d’échec."
+      "masteryQuestion": "À quoi sert un identifiant de corrélation, et pourquoi copier requirements.txt avant le code dans un Dockerfile ?",
+      "masteryProof": "Écrire log() en JSON trié, handle() qui journalise l'issue avec l'identifiant et compte requêtes et erreurs, et report() avec le taux d'erreurs arrondi."
     }
   ],
   "exercises": [
@@ -56,32 +65,80 @@
     {
       "code": "PYTHON-22-Q1",
       "type": "SINGLE_CHOICE",
-      "prompt": "Quelle preuve est la plus utile en revue ?",
+      "prompt": "Quelle ligne de log est la plus exploitable en production ?",
       "choices": [
-        "Une exécution déterministe avec invariant explicite",
-        "Une sortie aléatoire",
-        "Une capture sans code"
+        "Erreur de paiement !!!",
+        "{\"level\": \"ERROR\", \"event\": \"paiement refusé\", \"correlation_id\": \"req-2\", \"reason\": \"fonds insuffisants\"}",
+        "print(e)",
+        "ça a planté"
       ],
-      "correctChoice": 0,
-      "expectedKeywords": []
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Une ligne JSON avec niveau, événement, identifiant de corrélation et raison se filtre, se compte et se relie à une requête précise. Le texte libre oblige à lire à la main."
     },
     {
       "code": "PYTHON-22-Q2",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Prédis la sortie :\n```python\nmetrics = {\"requests\": 0, \"errors\": 0}\ntaux = round(100 * metrics[\"errors\"] / metrics[\"requests\"])\n```\n",
+      "choices": [
+        "0",
+        "ZeroDivisionError : aucun garde pour le cas sans requête",
+        "None",
+        "100"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Sans requête, la division par zéro lève une exception. Le cas limite doit être traité explicitement : taux = 0 s'il n'y a aucune requête."
+    },
+    {
+      "code": "PYTHON-22-Q3",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Pourquoi un Dockerfile copie-t-il requirements.txt et installe les dépendances avant de copier le code source ?",
+      "choices": [
+        "Pour que l'image soit plus petite",
+        "Pour réutiliser le cache de build : tant que requirements.txt ne change pas, la couche des dépendances n'est pas reconstruite",
+        "Parce que Docker l'exige",
+        "Pour chiffrer les dépendances"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Docker met en cache les couches dans l'ordre. Le code change souvent, les dépendances rarement : en les plaçant avant, un changement de code ne relance pas un long pip install."
+    },
+    {
+      "code": "PYTHON-22-Q4",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Que penser de « USER root » dans l'image finale et d'un fichier .env copié dedans ?",
+      "choices": [
+        "C'est pratique et sûr",
+        "C'est dangereux : en cas de compromission le processus a tous les droits, et les secrets sont lisibles par quiconque obtient l'image",
+        "Cela accélère le démarrage",
+        "Cela n'a aucun effet"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Applique le moindre privilège (utilisateur dédié sans droits superflus) et injecte les secrets à l'exécution par variables d'environnement ou coffre, jamais dans l'image."
+    },
+    {
+      "code": "PYTHON-22-Q5",
       "type": "FREE_TEXT",
-      "prompt": "Explique une décision liée à observabilité, conteneurisation et exploitation.",
+      "prompt": "Sans relire le cours, explique avec tes mots la différence entre logs, métriques et traces, et celle à consulter d'abord lors d'un incident.",
       "choices": [],
       "correctChoice": null,
       "expectedKeywords": [
-        "contrat",
-        "preuve",
-        "test"
-      ]
+        "metrique",
+        "log",
+        "trace",
+        "incident",
+        "agreg"
+      ],
+      "modelAnswer": "Les métriques sont des nombres agrégés dans le temps (requêtes, erreurs, latence) : elles disent qu'un problème existe et quand il a commencé. Les traces suivent une requête à travers les services et montrent où le temps est perdu. Les logs sont des événements détaillés qui expliquent pourquoi. En incident, on commence par les métriques, puis les traces, puis les logs.",
+      "explanation": "Une bonne réponse associe chaque signal à sa question et donne l'ordre métriques, traces, logs."
     }
   ],
   "checklist": [
-    "Je peux expliquer le concept sans réciter une définition",
-    "Je sais exécuter et modifier la preuve",
-    "Je peux nommer un risque et son contrôle",
-    "Je relie cette étape à la suivante"
+    "Mes logs sont en JSON avec niveau et identifiant de corrélation",
+    "Je gère le cas sans requête dans mes taux",
+    "Mon conteneur tourne sans root et sans secret embarqué",
+    "J'ai un point de santé et un arrêt propre"
   ]
 }

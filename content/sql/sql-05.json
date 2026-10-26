@@ -11,21 +11,30 @@
     "SQL-04"
   ],
   "objectives": [
-    "Expliquer contraintes, normalisation et intégrité",
-    "Construire une preuve exécutable et déterministe",
-    "Relier le concept à une décision professionnelle"
+    "Exprimer des règles métier par des contraintes : PRIMARY KEY, NOT NULL, UNIQUE, CHECK, FOREIGN KEY.",
+    "Reconnaître la contrainte violée à partir du message d'erreur.",
+    "Appliquer les formes normales (1NF à 3NF) pour supprimer la redondance et connaître le coût de la dénormalisation.",
+    "Choisir entre contrainte en base et validation applicative."
   ],
   "sections": [
     {
-      "title": "Concept et usage professionnel",
-      "content": "Contraintes, normalisation et intégrité répond à un besoin concret de maintenabilité, de sûreté ou de performance. Le laboratoire demande de rendre la décision observable et vérifiable.",
-      "conceptCodes": [
-        "SQL-INTEGRITY"
-      ]
+      "title": "Les contraintes, dernière ligne de défense",
+      "content": "Le code applicatif peut avoir un bug, être contourné ou ne pas être le seul à écrire dans la base. Les contraintes garantissent l'intégrité quoi qu'il arrive :\n```sql\nCREATE TABLE product (\n    id    INTEGER PRIMARY KEY,\n    sku   TEXT    NOT NULL UNIQUE,                    -- référence unique et obligatoire\n    name  TEXT    NOT NULL,                           -- nom obligatoire\n    price INTEGER NOT NULL CHECK (price > 0)          -- prix strictement positif\n);\n```\n- NOT NULL : la valeur est obligatoire.\n- UNIQUE : pas de doublon (un NULL est traité différemment selon le moteur).\n- CHECK : une condition booléenne sur la ligne.\n- PRIMARY KEY : NOT NULL et UNIQUE, identifiant de la ligne.\n- FOREIGN KEY : la valeur existe dans la table parente.\nUne violation fait échouer l'instruction avec un message qui nomme le type de contrainte."
     },
     {
-      "title": "Mise en pratique",
-      "content": "La requête est exécutée sur SQLite en mémoire pour rester locale et reproductible ; les différences PostgreSQL et l'analyse EXPLAIN sont signalées dans le cours."
+      "title": "Exemple résolu : quatre insertions, quatre verdicts",
+      "conceptCodes": [
+        "SQL-INTEGRITY"
+      ],
+      "content": "Problème : insérer quatre produits et savoir pour chacun s'il est accepté ou quelle contrainte le refuse.\n\nRaisonnement, étape par étape :\n1. ('A1', 'Clavier', 50) : respecte toutes les règles : accepté.\n2. ('A1', 'Souris', 20) : même sku : la contrainte UNIQUE refuse.\n3. ('B2', None, 10) : le nom est absent : NOT NULL refuse.\n4. ('C3', 'Câble', -5) : prix négatif : CHECK (price > 0) refuse.\n5. En Python, sqlite3.IntegrityError est levée ; son message commence par « UNIQUE constraint failed », « NOT NULL constraint failed » ou « CHECK constraint failed » ; on le lit pour classer l'erreur.\n6. Vérification : après les quatre tentatives, la table ne contient qu'une ligne (les refus n'ont rien laissé).\n```python\ntry:\n    connexion.execute(\"INSERT INTO product (sku, name, price) VALUES (?, ?, ?)\", ligne)\n    print(f\"{ligne}: accepté\")\nexcept sqlite3.IntegrityError as erreur:\n    message = str(erreur)\n    kind = next(k for k in (\"UNIQUE\", \"NOT NULL\", \"CHECK\") if message.startswith(k))\n    print(f\"{ligne}: refusé ({kind})\")\n```\nUne instruction en échec n'écrit rien : c'est l'atomicité au niveau de la ligne."
+    },
+    {
+      "title": "Normalisation et ses compromis",
+      "content": "Normaliser, c'est organiser les tables pour qu'un fait ne soit stocké qu'à un seul endroit :\n- 1NF : une valeur par cellule (pas de liste « Ada, Linus » dans une colonne), chaque ligne identifiable.\n- 2NF : chaque colonne dépend de toute la clé (pertinent quand la clé est composée).\n- 3NF : chaque colonne dépend de la clé, et de rien d'autre (le nom du pays ne dépend pas de la commande mais du code pays : table séparée).\nUn fait dupliqué (nom du client recopié dans chaque commande) finit par se contredire après une mise à jour.\n\nDénormaliser (dupliquer volontairement) se justifie pour des performances en lecture mesurées ou un historique figé (le prix à la date de la commande, l'adresse de livraison de cette commande) : ces copies ne doivent pas changer avec la source, ce n'est plus de la redondance accidentelle.\n\nContrainte en base ou validation applicative ? Les deux. La base garantit l'intégrité (obligatoire, unique, bornes, références) ; l'application fournit des messages utiles et valide plus tôt. Une règle complexe (inter-tables) peut exiger un déclencheur (trigger), à utiliser avec parcimonie. Donne des noms explicites aux contraintes (CONSTRAINT price_positive CHECK ...) pour lire l'erreur sans deviner."
+    },
+    {
+      "title": "Erreurs fréquentes à reconnaître",
+      "content": "1. Aucune contrainte « parce que l'application vérifie ».\n2. Un CHECK qui duplique maladroitement une règle qui change souvent.\n3. Stocker plusieurs valeurs dans une colonne (liste séparée par des virgules).\n4. Recopier une donnée source dans plusieurs tables sans règle de synchronisation.\n5. Ignorer le message d'erreur d'intégrité et afficher « erreur inconnue » à l'utilisateur.\n6. Confondre UNIQUE et NULL : plusieurs NULL sont autorisés par la plupart des moteurs.\n\nRetrouve ces erreurs de mémoire avant l'exercice, puis vérifie-toi avec le quiz : c'est la récupération, pas la relecture, qui fixe la notion."
     }
   ],
   "keyConcepts": [
@@ -39,8 +48,8 @@
       "professionalExample": "Après un incident où deux comptes utilisateurs ont été créés avec le même email suite à un double clic sur le formulaire d'inscription, l'équipe backend ajoute une contrainte UNIQUE sur customers.email plutôt que de compter sur une vérification applicative facilement contournable en cas de requêtes concurrentes. De même, stocker le statut d'une commande en texte libre sans CHECK a permis à un bug de déploiement d'écrire la valeur 'shiped' (faute de frappe) en production, cassant les filtres du tableau de bord logistique ; une contrainte CHECK sur les valeurs autorisées aurait rejeté l'insertion immédiatement.",
       "codeExample": "-- Empêche les doublons d'email, y compris sous concurrence\nALTER TABLE customers\n  ADD CONSTRAINT customers_email_unique UNIQUE (email);\n\n-- Empêche les statuts invalides d'entrer en base\nALTER TABLE orders\n  ADD CONSTRAINT orders_status_check\n  CHECK (status IN ('pending', 'paid', 'shipped', 'cancelled'));\n\n-- Cette insertion échoue désormais au lieu de corrompre les données\nINSERT INTO orders (customer_id, status, total_cents)\nVALUES (42, 'shiped', 1999);",
       "commonMistake": "Appliquer la technique sans mesurer son effet ni documenter sa frontière.",
-      "masteryQuestion": "Quelle contrainte de contraintes, normalisation et intégrité doit rester vraie lorsque le système évolue ?",
-      "masteryProof": "Exécuter la preuve, expliquer son invariant et proposer un cas d’échec."
+      "masteryQuestion": "Pourquoi garder des contraintes en base alors que l'application valide déjà, et quand dénormaliser se justifie-t-il ?",
+      "masteryProof": "Protéger une table product par sku unique, nom obligatoire et prix positif, puis tenter quatre insertions et indiquer le verdict de chacune."
     }
   ],
   "exercises": [
@@ -56,32 +65,80 @@
     {
       "code": "SQL-05-Q1",
       "type": "SINGLE_CHOICE",
-      "prompt": "Quelle preuve est la plus utile en revue ?",
+      "prompt": "Quelle contrainte refuse l'insertion d'un prix de -5 ?",
       "choices": [
-        "Une exécution déterministe avec invariant explicite",
-        "Une sortie aléatoire",
-        "Une capture sans code"
+        "UNIQUE",
+        "NOT NULL",
+        "CHECK (price > 0)",
+        "PRIMARY KEY"
       ],
-      "correctChoice": 0,
-      "expectedKeywords": []
+      "correctChoice": 2,
+      "expectedKeywords": [],
+      "explanation": "CHECK exprime une condition sur la valeur de la ligne. UNIQUE concerne les doublons, NOT NULL l'absence de valeur, PRIMARY KEY l'identifiant."
     },
     {
       "code": "SQL-05-Q2",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Prédis le contenu de la table après ces insertions : ('A1', 'Clavier', 50), ('A1', 'Souris', 20), ('B2', NULL, 10), ('C3', 'Câble', -5).",
+      "choices": [
+        "4 lignes",
+        "1 ligne : seul le premier produit respecte toutes les contraintes",
+        "2 lignes",
+        "0 ligne"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Chaque insertion violant une contrainte est refusée entièrement et ne laisse aucune trace. Seul ('A1', 'Clavier', 50) est accepté."
+    },
+    {
+      "code": "SQL-05-Q3",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Trouve le défaut de modélisation :\n```sql\nCREATE TABLE orders (id INTEGER PRIMARY KEY, customer_name TEXT, customer_city TEXT, ...);\n```\navec 10 000 commandes par client.",
+      "choices": [
+        "Les colonnes TEXT sont interdites",
+        "Le nom et la ville du client sont recopiés dans chaque commande : une mise à jour crée des contradictions ; ils appartiennent à une table customer",
+        "orders est un mauvais nom",
+        "Il manque un CHECK"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Un fait ne doit être stocké qu'à un endroit (3NF). Ici la ville du client dépend du client et non de la commande. Exception volontaire : une adresse de livraison figée à la date de la commande."
+    },
+    {
+      "code": "SQL-05-Q4",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Plusieurs lignes ont NULL dans une colonne UNIQUE. Que se passe-t-il avec la plupart des moteurs (SQLite, PostgreSQL, MySQL) ?",
+      "choices": [
+        "Elles sont refusées",
+        "Elles sont acceptées : NULL n'est égal à aucune valeur, y compris lui-même",
+        "Une seule est acceptée",
+        "La table est verrouillée"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "UNIQUE compare des valeurs connues ; deux NULL ne sont pas considérés égaux. Si l'absence ne doit être autorisée qu'une fois, ajoute NOT NULL ou un index unique partiel."
+    },
+    {
+      "code": "SQL-05-Q5",
       "type": "FREE_TEXT",
-      "prompt": "Explique une décision liée à contraintes, normalisation et intégrité.",
+      "prompt": "Sans relire le cours, explique avec tes mots pourquoi on met des contraintes en base même si l'application valide, et ce que la 3NF évite.",
       "choices": [],
       "correctChoice": null,
       "expectedKeywords": [
-        "contrat",
-        "preuve",
-        "test"
-      ]
+        "derniere ligne",
+        "contourn",
+        "redondance",
+        "contradiction",
+        "integrite"
+      ],
+      "modelAnswer": "L'application peut avoir un bug, être contournée ou ne pas être la seule à écrire dans la base : les contraintes garantissent l'intégrité quoi qu'il arrive. La troisième forme normale évite la redondance : un fait (la ville d'un client) n'est stocké qu'une fois, donc il ne peut pas se contredire d'une ligne à l'autre après une mise à jour. On ne dénormalise que pour une raison mesurée ou pour figer un historique.",
+      "explanation": "Une bonne réponse dit que la base est la dernière ligne de défense et que la 3NF supprime la redondance qui crée les contradictions."
     }
   ],
   "checklist": [
-    "Je peux expliquer le concept sans réciter une définition",
-    "Je sais exécuter et modifier la preuve",
-    "Je peux nommer un risque et son contrôle",
-    "Je relie cette étape à la suivante"
+    "Mes règles essentielles sont des contraintes nommées",
+    "Je sais lire le type de contrainte dans un message d'erreur",
+    "Un fait n'est stocké qu'à un seul endroit sauf copie historique voulue",
+    "Je connais le comportement de NULL avec UNIQUE"
   ]
 }

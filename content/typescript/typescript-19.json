@@ -11,21 +11,30 @@
     "TYPESCRIPT-18"
   ],
   "objectives": [
-    "Expliquer événements, files de tâches et concurrence",
-    "Construire une preuve exécutable et déterministe",
-    "Relier le concept à une décision professionnelle"
+    "Typer un bus d'événements avec une table de types (nom d'événement vers charge utile).",
+    "Gérer l'abonnement et le désabonnement sans fuite.",
+    "Sérialiser des tâches asynchrones dans une file pour garantir l'ordre.",
+    "Repérer une course asynchrone, un abonné jamais retiré ou une file qui perd une erreur."
   ],
   "sections": [
     {
-      "title": "Concept et usage professionnel",
-      "content": "Événements, files de tâches et concurrence répond à un besoin concret de maintenabilité, de sûreté ou de performance. Le laboratoire demande de rendre la décision observable et vérifiable.",
-      "conceptCodes": [
-        "TYPESCRIPT-EVENTS"
-      ]
+      "title": "Découpler par les événements",
+      "content": "Un bus d'événements permet à un composant d'annoncer qu'il s'est passé quelque chose sans connaître ceux qui réagissent. Le typage évite les fautes de frappe sur le nom ou la forme de la charge utile : une table décrit les événements.\n```ts\ninterface Events {\n  created: { id: number };\n  deleted: { id: number; reason: string };\n}\n\nclass EventBus<E extends Record<string, unknown>> {\n  private handlers: { [K in keyof E]?: Array<(payload: E[K]) => void> } = {};\n\n  on<K extends keyof E>(event: K, handler: (payload: E[K]) => void): () => void {\n    (this.handlers[event] ??= []).push(handler);\n    return () => { this.handlers[event] = this.handlers[event]?.filter(h => h !== handler); };   // désabonnement\n  }\n  emit<K extends keyof E>(event: K, payload: E[K]): void {\n    this.handlers[event]?.forEach(handler => handler(payload));\n  }\n}\n```\nbus.on('created', p => p.id) : p est typé { id: number } ; bus.emit('created', { id: 'x' }) est refusé."
     },
     {
-      "title": "Mise en pratique",
-      "content": "La preuve minimale est locale, déterministe et peut être enrichie sans changer le contrat attendu."
+      "title": "Exemple résolu : un bus typé et une file séquentielle",
+      "conceptCodes": [
+        "TYPESCRIPT-EVENTS"
+      ],
+      "content": "Problème : deux événements « created » doivent être reçus par un abonné, puis trois tâches asynchrones de durées différentes doivent s'exécuter dans l'ordre.\n\nRaisonnement, étape par étape :\n1. Bus : on(événement, gestionnaire) retourne la fonction de désabonnement ; emit appelle les gestionnaires abonnés.\n2. Abonné : il compte ses appels. On émet deux fois, on affiche les charges reçues, puis on se désabonne et on vérifie qu'une troisième émission n'est plus reçue.\n3. File : TaskQueue.add(tâche) enchaîne la tâche après la précédente : this.tail = this.tail.then(() => tâche()).\n4. Sans file, trois tâches lancées ensemble finissent dans l'ordre de leur durée (la plus courte d'abord). Avec la file, la tâche 1 se termine avant que la 2 démarre, même si la 2 est plus rapide.\n5. Les erreurs : une tâche qui échoue ne doit pas bloquer les suivantes ni être silencieuse ; on capture pour la file, tout en rejetant la promesse de l'appelant.\n6. Vérification : l'ordre d'achèvement est 1, 2, 3.\n```ts\nclass TaskQueue {\n  private tail: Promise<unknown> = Promise.resolve();\n  add<T>(task: () => Promise<T>): Promise<T> {\n    const result = this.tail.then(task);\n    this.tail = result.catch(() => undefined);      // la file continue même si une tâche échoue\n    return result;                                   // l'appelant, lui, voit l'erreur\n  }\n}\n```"
+    },
+    {
+      "title": "Courses asynchrones et fuites",
+      "content": "- Fuite d'abonnés : un composant qui s'abonne sans jamais se désabonner reste en mémoire et continue de réagir. Garde la fonction de désabonnement et appelle-la à la destruction.\n- Ordre d'émission : les gestionnaires sont appelés dans l'ordre d'abonnement, de façon synchrone ; un gestionnaire qui lève une exception empêche les suivants (isole chaque appel dans un try/catch si nécessaire).\n- Course asynchrone : deux séquences « lire, attendre, écrire » qui s'entrecroisent perdent des mises à jour (check-then-act). Une file sérialise ; une clé de version ou une transaction côté base protège aussi.\n- Ordre garanti : Promise.all lance en parallèle et ne garantit pas l'ordre d'exécution, seulement l'ordre des résultats.\n- Évite les événements qui déclenchent d'autres événements en cascade : le flux devient impossible à suivre.\n- Pour un système distribué, les événements nécessitent idempotence, ordre et reprise sur erreur (broker de messages) : un bus en mémoire ne les offre pas.\n```ts\nconst stop = bus.on('created', p => console.log(`reçu: created #${p.id}`));\nbus.emit('created', { id: 1 });\nstop();                                // plus d'abonné\nbus.emit('created', { id: 2 });        // rien reçu\n```"
+    },
+    {
+      "title": "Erreurs fréquentes à reconnaître",
+      "content": "1. Des noms d'événements en chaînes libres, sans table de types.\n2. Un abonnement jamais annulé : fuite de mémoire et comportements fantômes.\n3. Un gestionnaire qui plante et empêche les autres d'être appelés.\n4. Lancer des tâches dépendantes en parallèle en attendant qu'elles s'exécutent dans l'ordre.\n5. Une file qui s'arrête définitivement après la première erreur (ou qui l'avale silencieusement).\n6. Confondre un bus en mémoire et une vraie messagerie fiable.\n\nRetrouve ces erreurs de mémoire avant l'exercice, puis vérifie-toi avec le quiz : c'est la récupération, pas la relecture, qui fixe la notion."
     }
   ],
   "keyConcepts": [
@@ -39,8 +48,8 @@
       "professionalExample": "Le traitement d'une commande déclenche plusieurs effets indépendants (envoi d'email, mise à jour du stock, notification de livraison). Plutôt que d'appeler ces trois actions en séquence directement dans orderService.create, couplant fortement les modules et laissant un échec d'email bloquer toute la création de commande, l'équipe émet un événement typé 'order.created' consommé séparément par chaque listener via un émetteur d'événements typé, les tâches non critiques comme les emails étant déposées dans une file de tâches pour ne jamais bloquer la réponse HTTP.",
       "codeExample": "import { EventEmitter } from 'node:events';\n\ninterface OrderEvents {\n  'order.created': [orderId: string, customerEmail: string];\n}\n\nclass TypedEmitter extends EventEmitter {\n  emit<K extends keyof OrderEvents>(event: K, ...args: OrderEvents[K]): boolean {\n    return super.emit(event, ...args);\n  }\n  on<K extends keyof OrderEvents>(event: K, listener: (...args: OrderEvents[K]) => void): this {\n    return super.on(event, listener as (...args: unknown[]) => void);\n  }\n}\n\nconst bus = new TypedEmitter();\nbus.on('order.created', (orderId, email) => {\n  console.log(`file d'envoi email pour ${orderId} -> ${email}`);\n});\n\nbus.emit('order.created', 'ORD-9', 'client@example.com');",
       "commonMistake": "Appliquer la technique sans mesurer son effet ni documenter sa frontière.",
-      "masteryQuestion": "Quelle contrainte de événements, files de tâches et concurrence doit rester vraie lorsque le système évolue ?",
-      "masteryProof": "Exécuter la preuve, expliquer son invariant et proposer un cas d’échec."
+      "masteryQuestion": "Pourquoi une file de tâches garantit-elle l'ordre alors que Promise.all ne le fait pas, et comment éviter une fuite d'abonné ?",
+      "masteryProof": "Écrire un EventBus typé dont on() retourne la fonction de désabonnement et une TaskQueue qui exécute les tâches strictement l'une après l'autre."
     }
   ],
   "exercises": [
@@ -56,32 +65,80 @@
     {
       "code": "TYPESCRIPT-19-Q1",
       "type": "SINGLE_CHOICE",
-      "prompt": "Quelle preuve est la plus utile en revue ?",
+      "prompt": "Que gagne-t-on à typer un EventBus avec une table d'événements ?",
       "choices": [
-        "Une exécution déterministe avec invariant explicite",
-        "Une sortie aléatoire",
-        "Une capture sans code"
+        "Un bus plus rapide",
+        "Le compilateur détecte une faute de frappe sur le nom de l'événement ou une charge utile de mauvaise forme",
+        "La suppression des abonnés inutiles",
+        "Une exécution asynchrone automatique"
       ],
-      "correctChoice": 0,
-      "expectedKeywords": []
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Avec K extends keyof Events et Events[K], emit('created', { id: 'x' }) est refusé et on('creaed', ...) aussi. L'erreur apparaît à la compilation au lieu d'un abonné qui ne se déclenche jamais."
     },
     {
       "code": "TYPESCRIPT-19-Q2",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Prédis l'ordre de fin sans file : trois tâches lancées en même temps durent respectivement 30 ms, 10 ms et 20 ms.",
+      "choices": [
+        "1, 2, 3",
+        "2, 3, 1 : l'ordre des durées",
+        "3, 2, 1",
+        "Aucun ordre prévisible"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Chaque tâche démarre immédiatement et finit à son rythme. Pour garantir 1, 2, 3, il faut les enchaîner dans une file."
+    },
+    {
+      "code": "TYPESCRIPT-19-Q3",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Trouve le défaut :\n```ts\nclass Dashboard {\n  constructor(bus: EventBus<Events>) {\n    bus.on('created', p => this.refresh(p.id));\n  }\n}\n```\nsi des Dashboard sont créés et détruits en boucle.",
+      "choices": [
+        "on ne peut pas être appelée dans un constructeur",
+        "L'abonnement n'est jamais annulé : chaque Dashboard détruit continue de réagir et reste en mémoire",
+        "p.id est undefined",
+        "refresh doit être static"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Conserve la fonction de désabonnement retournée par on() et appelle-la dans une méthode destroy(). Sinon le bus garde une référence vers le Dashboard."
+    },
+    {
+      "code": "TYPESCRIPT-19-Q4",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Une tâche de la file échoue. Que doit faire une bonne TaskQueue ?",
+      "choices": [
+        "S'arrêter pour toujours",
+        "Rejeter la promesse de l'appelant concerné et continuer à exécuter les tâches suivantes",
+        "Avaler l'erreur sans rien dire",
+        "Relancer la tâche indéfiniment"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "L'erreur doit remonter à celui qui a ajouté la tâche, mais une tâche défaillante ne doit pas bloquer toutes les autres. Séparer la promesse de l'appelant et la chaîne interne de la file permet les deux."
+    },
+    {
+      "code": "TYPESCRIPT-19-Q5",
       "type": "FREE_TEXT",
-      "prompt": "Explique une décision liée à événements, files de tâches et concurrence.",
+      "prompt": "Sans relire le cours, explique avec tes mots ce qu'est une course asynchrone (check-then-act) et comment une file ou un verrou l'évite.",
       "choices": [],
       "correctChoice": null,
       "expectedKeywords": [
-        "contrat",
-        "preuve",
-        "test"
-      ]
+        "lire",
+        "ecrire",
+        "entrecroise",
+        "file",
+        "ordre"
+      ],
+      "modelAnswer": "Une course asynchrone survient quand deux séquences « lire une valeur, attendre, puis écrire » s'entrecroisent : toutes deux lisent la même valeur de départ et la seconde écrase la mise à jour de la première. Une file de tâches exécute les séquences l'une après l'autre, ce qui rend chaque séquence atomique du point de vue des autres ; un verrou, une version optimiste ou une transaction côté base obtiennent le même résultat.",
+      "explanation": "Une bonne réponse décrit l'entrecroisement lecture/écriture et la perte de mise à jour, puis la sérialisation par une file, un verrou ou une version."
     }
   ],
   "checklist": [
-    "Je peux expliquer le concept sans réciter une définition",
-    "Je sais exécuter et modifier la preuve",
-    "Je peux nommer un risque et son contrôle",
-    "Je relie cette étape à la suivante"
+    "Mon bus d'événements est typé par une table",
+    "Je conserve et j'appelle les fonctions de désabonnement",
+    "Je sérialise les tâches dépendantes avec une file",
+    "Mes erreurs de tâche remontent sans bloquer la file"
   ]
 }

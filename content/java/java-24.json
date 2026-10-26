@@ -1,9 +1,144 @@
 {
-  "code":"JAVA-24","language":"JAVA","number":24,"slug":"defi-final-adaptatif","title":"Défi final Java personnalisé","difficulty":"DEFI","threshold":85,"activityType":"CHALLENGE","prerequisites":["JAVA-23"],
-  "objectives":["Réutiliser les acquis sans guidage détaillé","Cibler plusieurs faiblesses mesurées","Défendre les décisions techniques"],
-  "sections":[{"title":"Défi adaptatif","content":"Le défi combine validation, conception et traitement de données. Le professeur local peut renforcer les contraintes liées aux concepts encore fragiles.","conceptCodes":["JAVA-ADAPTIVE-CHALLENGE"]},{"title":"Autonomie démontrée","content":"L'aide est limitée progressivement. La solution doit rester lisible, déterministe et accompagnée d'une explication des compromis."}],
-  "keyConcepts":[{"code":"JAVA-ADAPTIVE-CHALLENGE","name":"Défi de maîtrise","definition":"Une tâche inédite exige de transférer plusieurs compétences avec une aide réduite.","whyExists":"La maîtrise se démontre par le transfert, pas par la répétition d'un exemple connu.","whyImportant":"Elle mesure l'autonomie attendue dans un contexte professionnel.","minimalExample":"contraintes -> conception -> implémentation -> preuves -> défense","professionalExample":"Un nouvel employé, formé sur un schéma de données précis pendant son onboarding, s'est retrouvé face à un schéma légèrement différent le premier jour en production : les noms de colonnes et les règles de validation n'étaient pas exactement ceux appris en formation. Sa capacité à transférer les principes de validation, de conception par contrat et de traitement de collections vers ce nouveau contexte, plutôt qu'à chercher à reproduire un exemple mémorisé, a déterminé la rapidité de son autonomie sur le projet réel.","codeExample":"record Candidate(String name, int score, boolean reviewed) {}\n\nList<Boolean> rules = List.of(\n    !candidate.name().isBlank(),\n    candidate.score() >= threshold, // seuil différent de l'exemple d'entraînement\n    candidate.reviewed()\n);\n\nlong passed = rules.stream().filter(Boolean::booleanValue).count();\nif (passed != rules.size()) throw new AssertionError(\"critères non transférés au nouveau contexte\");","commonMistake":"Chercher à reproduire exactement un laboratoire antérieur.","masteryQuestion":"Quelle décision prendrais-tu différemment avec dix fois plus de données ?","masteryProof":"Résoudre, tester puis défendre trois choix techniques."}],
-  "exercises":[{"code":"JAVA-24-E1","title":"Valider trois règles métier","statement":"Implémente et conserve trois règles vérifiées, puis affiche exactement : Défi validé: 3 règles","starterCode":"import java.util.List;\nrecord Candidate(String name, int score, boolean reviewed) {}\n\npublic class Main {\n    public static void main(String[] args) {\n        Candidate candidate = new Candidate(\"Nyx\", 90, true);\n        // TODO 1 : écris trois règles : nom non vide, score >= 85, candidat relu\n        // TODO 2 : compte les règles respectées ; lance une AssertionError(\"défi incomplet\")\n        //          si elles ne sont pas toutes respectées\n        // TODO 3 : affiche \"Défi validé: 3 règles\"\n    }\n}\n","expectedOutput":"Défi validé: 3 règles"}],
-  "quiz":[{"code":"JAVA-24-Q1","type":"SINGLE_CHOICE","prompt":"Que mesure principalement le défi final ?","choices":["Le transfert autonome","La mémorisation d'une sortie","La vitesse de frappe"],"correctChoice":0,"expectedKeywords":[]},{"code":"JAVA-24-Q2","type":"FREE_TEXT","prompt":"Défends un compromis technique de ta solution.","choices":[],"correctChoice":null,"expectedKeywords":["compromis","choix","test","évolution"]}],
-  "checklist":["Je résous sans recopier un laboratoire","Je cible mes faiblesses mesurées","Je fournis des preuves reproductibles","Je défends mes compromis"]
+  "code": "JAVA-24",
+  "language": "JAVA",
+  "number": 24,
+  "slug": "defi-final-adaptatif",
+  "title": "Défi final Java personnalisé",
+  "difficulty": "DEFI",
+  "threshold": 85,
+  "activityType": "CHALLENGE",
+  "prerequisites": [
+    "JAVA-23"
+  ],
+  "objectives": [
+    "Résoudre un problème inédit en le décomposant en règles testables, avec peu de guidage.",
+    "Écrire des règles métier sous forme de prédicats nommés et les combiner.",
+    "Prévoir les cas limites avant de coder et les vérifier à la fin.",
+    "Justifier un compromis technique (simplicité contre extensibilité) à l'oral."
+  ],
+  "sections": [
+    {
+      "title": "Face à un problème inédit : décomposer avant de coder",
+      "content": "Le défi final ne ressemble à aucun exercice précédent : il vérifie que tu transfères tes acquis. La méthode qui fonctionne face à un énoncé nouveau :\n1. Reformuler : qu'est-ce qui entre, qu'est-ce qui sort, quelles règles s'appliquent ?\n2. Lister les cas : un cas normal, les frontières, les entrées invalides.\n3. Décomposer en petites fonctions nommées, chacune testable seule.\n4. Coder le cas normal, le vérifier, puis ajouter les cas limites un à un.\n5. Relire : le résultat respecte-t-il exactement le format demandé ?\n\nSi tu bloques, ne cherche pas la solution complète : écris la plus petite chose qui marche, puis améliore."
+    },
+    {
+      "title": "Exemple résolu : des règles nommées et combinables",
+      "conceptCodes": [
+        "JAVA-ADAPTIVE-CHALLENGE"
+      ],
+      "content": "Problème : décider si un candidat est accepté selon des règles (nom non vide, score >= 85, dossier relu) et dire quelles règles échouent.\n\nRaisonnement, étape par étape :\n1. Chaque règle est un prédicat avec un nom : record Rule(String name, Predicate<Candidate> test).\n2. On les range dans une liste : l'ajout d'une règle n'exige aucune autre modification.\n3. L'évaluation produit la liste des règles en échec, pas un simple booléen : c'est ce qui rend le résultat explicable.\n4. Accepté si la liste d'échecs est vide.\n5. Frontières : score 84, 85 et 86 ; nom blanc ; dossier non relu.\n```java\nrecord Candidate(String name, int score, boolean reviewed) {}\nrecord Rule(String name, Predicate<Candidate> test) {}\n\nList<Rule> rules = List.of(\n        new Rule(\"nom\", c -> !c.name().isBlank()),\n        new Rule(\"score>=85\", c -> c.score() >= 85),\n        new Rule(\"relu\", Candidate::reviewed));\n\nList<String> echecs = rules.stream().filter(r -> !r.test().test(candidate)).map(Rule::name).toList();\n```\nUne règle devient une donnée : on peut la compter, la journaliser, la désactiver, ce qu'un enchaînement de if ne permet pas."
+    },
+    {
+      "title": "Défendre un compromis",
+      "content": "Chaque solution fait un compromis ; l'important est de le nommer. Pour cette solution :\n- Simplicité : une liste de règles est lisible. Pour des dizaines de règles dépendantes, un moteur de règles ou une configuration serait plus adapté, mais plus lourd.\n- Extensibilité : ajouter une règle se fait en une ligne, sans modifier les autres (ouvert/fermé).\n- Explicabilité : retourner les règles échouées coûte un peu plus de code qu'un booléen mais économise des heures de diagnostic.\n- Tests : chaque règle se teste seule avec ses valeurs limites.\n\nQuand on te demande « pourquoi ainsi ? », réponds avec le problème, l'alternative écartée et la raison. Défendre ne veut pas dire prétendre que la solution est parfaite, mais savoir quand elle cesserait d'être adaptée."
+    },
+    {
+      "title": "Erreurs fréquentes à reconnaître",
+      "content": "1. Coder immédiatement, sans lister les cas limites.\n2. Un gros if/else imbriqué qu'il faut rouvrir à chaque nouvelle règle.\n3. Un booléen final qui n'explique pas pourquoi le candidat est refusé.\n4. Oublier la frontière (score exactement 85).\n5. Ne pas relire l'énoncé : un espace ou un mot du format de sortie qui diffère.\n6. Chercher la perfection avant d'avoir un cas normal qui marche.\n\nPour ce dernier défi, garde la solution du JAVA-10 à JAVA-23 en tête, mais écris le code de mémoire."
+    }
+  ],
+  "keyConcepts": [
+    {
+      "code": "JAVA-ADAPTIVE-CHALLENGE",
+      "name": "Défi de maîtrise",
+      "definition": "Une tâche inédite exige de transférer plusieurs compétences avec une aide réduite.",
+      "whyExists": "La maîtrise se démontre par le transfert, pas par la répétition d'un exemple connu.",
+      "whyImportant": "Elle mesure l'autonomie attendue dans un contexte professionnel.",
+      "minimalExample": "contraintes -> conception -> implémentation -> preuves -> défense",
+      "professionalExample": "Un nouvel employé, formé sur un schéma de données précis pendant son onboarding, s'est retrouvé face à un schéma légèrement différent le premier jour en production : les noms de colonnes et les règles de validation n'étaient pas exactement ceux appris en formation. Sa capacité à transférer les principes de validation, de conception par contrat et de traitement de collections vers ce nouveau contexte, plutôt qu'à chercher à reproduire un exemple mémorisé, a déterminé la rapidité de son autonomie sur le projet réel.",
+      "codeExample": "record Candidate(String name, int score, boolean reviewed) {}\n\nList<Boolean> rules = List.of(\n    !candidate.name().isBlank(),\n    candidate.score() >= threshold, // seuil différent de l'exemple d'entraînement\n    candidate.reviewed()\n);\n\nlong passed = rules.stream().filter(Boolean::booleanValue).count();\nif (passed != rules.size()) throw new AssertionError(\"critères non transférés au nouveau contexte\");",
+      "commonMistake": "Chercher à reproduire exactement un laboratoire antérieur.",
+      "masteryQuestion": "Comment décomposes-tu un problème inédit, et que gagnes-tu à rendre les règles métier explicites ?",
+      "masteryProof": "Évaluer plusieurs candidats avec des règles nommées, lister les règles échouées et conclure."
+    }
+  ],
+  "exercises": [
+    {
+      "code": "JAVA-24-E1",
+      "title": "Évaluer des candidats avec des règles nommées",
+      "statement": "Écris trois règles nommées (nom non vide, score >= 85, dossier relu) sous forme de prédicats, évalue quatre candidats et affiche, pour chacun, ACCEPTE ou REFUSE avec la liste des règles en échec, puis un bilan. Affiche exactement :\nNyx : ACCEPTE\nAda : REFUSE [score>=85]\nLinus : REFUSE [relu]\n : REFUSE [nom, score>=85, relu]\nBilan : 1/4 acceptes",
+      "starterCode": "import java.util.*;\nimport java.util.function.Predicate;\n\npublic class Main {\n    record Candidate(String name, int score, boolean reviewed) {}\n    // TODO 1 : record Rule(String name, Predicate<Candidate> test)\n\n    public static void main(String[] args) {\n        List<Candidate> candidates = List.of(\n                new Candidate(\"Nyx\", 90, true),\n                new Candidate(\"Ada\", 84, true),\n                new Candidate(\"Linus\", 85, false),\n                new Candidate(\"\", 10, false));\n        // TODO 2 : List<Rule> rules — \"nom\" (nom non vide), \"score>=85\" (score >= 85), \"relu\" (dossier relu), dans cet ordre\n        // TODO 3 : pour chaque candidat, calcule la liste des NOMS de règles en échec (dans l'ordre des règles)\n        //          et affiche  nom + \" : ACCEPTE\"  ou  nom + \" : REFUSE \" + liste (ex. \"Ada : REFUSE [score>=85]\")\n        // TODO 4 : affiche \"Bilan : \" + nombre d'acceptés + \"/\" + total + \" acceptes\"\n    }\n}\n",
+      "expectedOutput": "Nyx : ACCEPTE\nAda : REFUSE [score>=85]\nLinus : REFUSE [relu]\n : REFUSE [nom, score>=85, relu]\nBilan : 1/4 acceptes"
+    }
+  ],
+  "quiz": [
+    {
+      "code": "JAVA-24-Q1",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Face à un énoncé que tu n'as jamais vu, quelle première étape est la plus utile ?",
+      "choices": [
+        "Écrire le code le plus vite possible",
+        "Reformuler les entrées, les sorties et les règles, puis lister les cas limites",
+        "Chercher la solution complète en ligne",
+        "Écrire les tests à la toute fin"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Reformuler et lister les cas (normal, frontières, invalides) évite de coder le mauvais problème et prépare les vérifications. Coder tout de suite fait souvent oublier une frontière."
+    },
+    {
+      "code": "JAVA-24-Q2",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Prédis le résultat : la règle est score >= 85.\n```java\nnew Candidate(\"Ada\", 84, true)   // score 84\nnew Candidate(\"Linus\", 85, true)  // score 85\n```\n",
+      "choices": [
+        "Les deux sont acceptés",
+        "Ada est refusée, Linus est accepté : 85 respecte >= 85",
+        "Les deux sont refusés",
+        "Linus est refusé car la frontière est exclue"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "L'opérateur >= inclut la frontière. 84 est sous le seuil, 85 le respecte. Une règle formulée en > aurait refusé Linus : c'est exactement le bug que les valeurs limites attrapent."
+    },
+    {
+      "code": "JAVA-24-Q3",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Pourquoi retourner la liste des règles en échec plutôt qu'un simple booléen ?",
+      "choices": [
+        "Pour écrire plus de code",
+        "Le résultat devient explicable : on sait pourquoi un candidat est refusé, sans relire toutes les règles",
+        "Les booléens sont interdits dans les records",
+        "C'est plus rapide à l'exécution"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Un booléen dit « non » sans raison. La liste des échecs sert à l'utilisateur, au journal et au diagnostic, pour un coût de code très faible."
+    },
+    {
+      "code": "JAVA-24-Q4",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Une nouvelle règle (« l'e-mail est valide ») arrive. Avec une liste de Rule, que faut-il faire ?",
+      "choices": [
+        "Réécrire la méthode d'évaluation",
+        "Ajouter une entrée dans la liste de règles, sans toucher aux autres",
+        "Créer une sous-classe de Candidate",
+        "Dupliquer la méthode pour chaque règle"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Les règles sont des données : en ajouter une n'exige pas de modifier l'évaluation ni les autres règles. C'est le principe ouvert/fermé appliqué simplement."
+    },
+    {
+      "code": "JAVA-24-Q5",
+      "type": "FREE_TEXT",
+      "prompt": "Sans relire le cours, défends à l'oral le choix d'une liste de règles nommées : quels avantages, et à partir de quand ce choix ne suffirait plus ?",
+      "choices": [],
+      "correctChoice": null,
+      "expectedKeywords": [
+        "regle",
+        "extens",
+        "explic",
+        "teste",
+        "limite"
+      ],
+      "modelAnswer": "Une liste de règles nommées est simple et lisible, extensible (une règle de plus se fait en une ligne sans toucher aux autres), explicable (on sait quelles règles échouent) et chaque règle se teste seule. Elle ne suffirait plus avec de très nombreuses règles dépendantes entre elles ou configurables par des non-développeurs : un moteur de règles ou une configuration externe serait alors plus adapté.",
+      "explanation": "Une bonne réponse cite lisibilité, extensibilité, explicabilité et testabilité, puis nomme la limite : règles très nombreuses, dépendantes ou configurables."
+    }
+  ],
+  "checklist": [
+    "Je décompose un problème inédit avant de coder",
+    "Je liste les cas limites et je les vérifie à la fin",
+    "Mes règles métier sont nommées, combinables et explicables",
+    "Je sais défendre un compromis et dire quand il cesserait d'être adapté"
+  ]
 }

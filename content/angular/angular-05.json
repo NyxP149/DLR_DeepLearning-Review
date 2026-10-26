@@ -11,21 +11,30 @@
     "ANGULAR-04"
   ],
   "objectives": [
-    "Expliquer routing, guards, resolvers et chargement différé",
-    "Construire une preuve exécutable et déterministe",
-    "Relier le concept à une décision professionnelle"
+    "Déclarer des routes avec paramètres, redirections et route joker, dans le bon ordre.",
+    "Écrire un guard fonctionnel (canActivate) qui redirige vers /login et expliquer pourquoi ce n'est pas une protection de sécurité.",
+    "Charger une route à la demande une seule fois, uniquement si la navigation est autorisée.",
+    "Utiliser un resolver et lire les paramètres de route."
   ],
   "sections": [
     {
-      "title": "Concept et usage professionnel",
-      "content": "Routing, guards, resolvers et chargement différé répond à un besoin concret de maintenabilité, de sûreté ou de performance. Le laboratoire demande de rendre la décision observable et vérifiable.",
-      "conceptCodes": [
-        "ANGULAR-ROUTING"
-      ]
+      "title": "Une URL est un état de l'application",
+      "content": "Le routeur associe des URL à des composants. Les routes sont évaluées dans l'ordre : la première qui correspond gagne, d'où la route joker ** à la fin.\n```ts\nexport const routes: Routes = [\n  { path: '', redirectTo: 'orders', pathMatch: 'full' },\n  { path: 'login', component: LoginPage },\n  { path: 'orders/:id', component: OrderDetail, resolve: { order: orderResolver } },\n  { path: 'admin', canActivate: [authGuard], loadComponent: () => import('./admin/admin.page').then(m => m.AdminPage) },\n  { path: '**', component: NotFound },\n];\n```\nParamètre de chemin (:id), de requête (?page=2), fragments (#section). Avec withComponentInputBinding(), les paramètres sont injectés comme inputs du composant (id = input<string>()). L'URL doit pouvoir être copiée, partagée et rechargée : mets-y l'état de navigation qui compte (filtre, page, identifiant)."
     },
     {
-      "title": "Mise en pratique",
-      "content": "La preuve TypeScript isole le contrat réactif ; son intégration dans un composant Angular est décrite sans rendre le runner dépendant d'un navigateur."
+      "title": "Exemple résolu : correspondre, protéger, charger",
+      "conceptCodes": [
+        "ANGULAR-ROUTING"
+      ],
+      "content": "Problème : résoudre /orders/42, protéger /admin par un guard qui redirige vers /login, et charger le module admin à la demande, une seule fois.\n\nRaisonnement, étape par étape :\n1. Correspondance : on découpe le chemin en segments et on compare avec le gabarit segment par segment ; un segment :id capture sa valeur dans les paramètres. Les longueurs doivent être égales.\n2. Guard canActivate : fonction qui retourne true ou une redirection (UrlTree vers /login). Le guard est évalué avant d'activer la route.\n3. Chargement différé : loadComponent n'est appelé que si la route correspond ET que le guard autorise. Le résultat est mémorisé : un second accès ne recharge pas.\n4. Route inconnue : la joker ** affiche NotFound.\n5. Vérification : /admin sans session redirige et ne charge rien ; après connexion, /admin charge admin une fois ; la liste des modules chargés est orders, admin.\n```ts\nfunction match(pattern: string, path: string): Record<string, string> | null {\n  const p = pattern.split('/').filter(Boolean), s = path.split('/').filter(Boolean);\n  if (p.length !== s.length) return null;\n  const params: Record<string, string> = {};\n  for (let i = 0; i < p.length; i++) {\n    if (p[i].startsWith(':')) params[p[i].slice(1)] = s[i];\n    else if (p[i] !== s[i]) return null;\n  }\n  return params;\n}\n\nexport const authGuard: CanActivateFn = () => inject(Auth).isLoggedIn() || inject(Router).createUrlTree(['/login']);\n```"
+    },
+    {
+      "title": "Guards, resolvers et sécurité réelle",
+      "content": "- canActivate : peut-on entrer dans la route ? canActivateChild pour les enfants, canMatch pour décider si la route doit même être considérée (utile pour charger une variante selon le rôle), canDeactivate pour empêcher de quitter une page avec des modifications non enregistrées.\n- Resolver : charge des données avant d'activer la route, pour que le composant démarre avec ce dont il a besoin. Attention : la navigation attend, donc un resolver lent bloque l'écran ; pour un chargement long, préfère afficher le composant et un état de chargement.\n- Un guard est du confort d'interface, pas de la sécurité. Le code Angular s'exécute chez l'utilisateur, qui peut le modifier ; toute donnée sensible doit être protégée côté serveur (l'API vérifie le jeton et les droits). Un guard évite d'afficher une page inutile, rien de plus.\n- Préchargement : PreloadAllModules ou une stratégie personnalisée télécharge les routes différées en arrière-plan après le démarrage.\n- Titre de page, focus après navigation, annonce du changement de page pour les lecteurs d'écran : un changement de route n'est pas perçu automatiquement par un lecteur d'écran, il faut déplacer le focus ou annoncer.\n- Les liens utilisent routerLink (pas href) pour éviter le rechargement complet."
+    },
+    {
+      "title": "Erreurs fréquentes à reconnaître",
+      "content": "1. La route joker ** placée avant les autres : tout y correspond.\n2. Croire qu'un guard protège des données : l'API doit refuser.\n3. Un resolver qui fait un gros appel et fige la navigation.\n4. Charger un module différé alors que la navigation est refusée.\n5. Un état de navigation uniquement en mémoire : le rechargement le perd.\n6. Utiliser href au lieu de routerLink : rechargement de toute l'application.\n\nRetrouve ces erreurs de mémoire avant l'exercice, puis vérifie-toi avec le quiz : c'est la récupération, pas la relecture, qui fixe la notion."
     }
   ],
   "keyConcepts": [
@@ -39,8 +48,8 @@
       "professionalExample": "Sur l'écran de détail d'une commande, un resolver charge la commande via l'API avant d'activer la route, pour éviter d'afficher un composant vide le temps que la requête HTTP réponde. Un CanActivateFn vérifie que l'utilisateur a le rôle admin avant d'autoriser l'accès à la route de remboursement, et redirige vers /login sinon. La section commandes est chargée en différé via loadChildren, ce qui évite d'alourdir le bundle initial pour les utilisateurs qui ne la visitent jamais. L'erreur fréquente est de faire le contrôle d'accès uniquement dans le composant après navigation, ce qui affiche brièvement une page protégée avant la redirection.",
       "codeExample": "export const orderResolver: ResolveFn<Order> = (route) => {\n  const orders = inject(OrderService);\n  return orders.getById(route.paramMap.get('id')!);\n};\n\nexport const adminGuard: CanActivateFn = () => {\n  const auth = inject(AuthService);\n  const router = inject(Router);\n  return auth.hasRole('admin') || router.createUrlTree(['/login']);\n};\n\nexport const ORDER_ROUTES: Routes = [\n  {\n    path: ':id',\n    resolve: { order: orderResolver },\n    loadComponent: () => import('./order-detail.component').then(m => m.OrderDetailComponent),\n  },\n  {\n    path: ':id/refund',\n    canActivate: [adminGuard],\n    loadComponent: () => import('./order-refund.component').then(m => m.OrderRefundComponent),\n  },\n];",
       "commonMistake": "Appliquer la technique sans mesurer son effet ni documenter sa frontière.",
-      "masteryQuestion": "Quelle contrainte de routing, guards, resolvers et chargement différé doit rester vraie lorsque le système évolue ?",
-      "masteryProof": "Exécuter la preuve, expliquer son invariant et proposer un cas d’échec."
+      "masteryQuestion": "Pourquoi un guard ne remplace-t-il pas un contrôle côté serveur, et pourquoi ** doit-elle être la dernière route ?",
+      "masteryProof": "Écrire la correspondance segment par segment avec :id, un guard qui redirige vers /login et le chargement différé unique des modules."
     }
   ],
   "exercises": [
@@ -56,32 +65,80 @@
     {
       "code": "ANGULAR-05-Q1",
       "type": "SINGLE_CHOICE",
-      "prompt": "Quelle preuve est la plus utile en revue ?",
+      "prompt": "Où placer la route joker { path: '**' } et pourquoi ?",
       "choices": [
-        "Une exécution déterministe avec invariant explicite",
-        "Une sortie aléatoire",
-        "Une capture sans code"
+        "En premier, pour attraper les erreurs",
+        "En dernier : le routeur prend la première route qui correspond, et ** correspond à tout",
+        "Peu importe",
+        "Dans un module séparé"
       ],
-      "correctChoice": 0,
-      "expectedKeywords": []
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Le routeur évalue les routes dans l'ordre. Placée en premier, ** masquerait toutes les autres routes."
     },
     {
       "code": "ANGULAR-05-Q2",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Prédis les modules chargés :\nnavigation /orders/42, /admin sans session, puis connexion, puis /admin deux fois.",
+      "choices": [
+        "orders seulement",
+        "orders puis admin (une seule fois)",
+        "orders, admin, admin",
+        "admin seulement"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "/admin sans session est refusé : rien n'est chargé. Après connexion, le premier accès charge admin ; le second réutilise le module déjà chargé."
+    },
+    {
+      "code": "ANGULAR-05-Q3",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Trouve le défaut :\n```ts\nexport const authGuard: CanActivateFn = () => localStorage.getItem('role') === 'admin';\n```\nprésenté comme la protection de la page d'administration.",
+      "choices": [
+        "localStorage est lent",
+        "Le rôle est lu côté client où l'utilisateur peut le modifier ; seule l'API peut refuser l'accès aux données",
+        "CanActivateFn est déprécié",
+        "Il faut un resolver"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Un guard sert l'expérience (ne pas montrer une page inutile). Le contrôle réel d'accès doit se faire sur le serveur avec un jeton vérifié. Un utilisateur peut écrire role=admin dans son navigateur."
+    },
+    {
+      "code": "ANGULAR-05-Q4",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Quand préférer un état dans l'URL (paramètre de requête) plutôt que dans un service ?",
+      "choices": [
+        "Jamais",
+        "Quand l'état (filtre, page, identifiant) doit survivre à un rechargement, pouvoir être partagé par lien et fonctionner avec le bouton retour",
+        "Pour les secrets",
+        "Pour accélérer l'application"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "L'URL est la mémoire du navigateur : partager un lien reproduit la vue, le bouton retour restaure l'état précédent, un rechargement ne perd rien."
+    },
+    {
+      "code": "ANGULAR-05-Q5",
       "type": "FREE_TEXT",
-      "prompt": "Explique une décision liée à routing, guards, resolvers et chargement différé.",
+      "prompt": "Sans relire le cours, explique avec tes mots à quoi servent un guard, un resolver et le chargement différé, et la limite de sécurité du guard.",
       "choices": [],
       "correctChoice": null,
       "expectedKeywords": [
-        "contrat",
-        "preuve",
-        "test"
-      ]
+        "guard",
+        "resolver",
+        "differe",
+        "bundle",
+        "serveur"
+      ],
+      "modelAnswer": "Un guard décide si une navigation est autorisée (par exemple rediriger vers /login) ; un resolver charge des données avant d'activer la route ; le chargement différé ne télécharge le code d'une route qu'au moment de la visiter, ce qui allège le bundle initial. Le guard n'est pas une sécurité : le code s'exécute chez l'utilisateur et peut être contourné, donc l'API doit toujours vérifier les droits.",
+      "explanation": "Une bonne réponse décrit les trois mécanismes et précise que le contrôle de sécurité réel est côté serveur."
     }
   ],
   "checklist": [
-    "Je peux expliquer le concept sans réciter une définition",
-    "Je sais exécuter et modifier la preuve",
-    "Je peux nommer un risque et son contrôle",
-    "Je relie cette étape à la suivante"
+    "Mes routes sont ordonnées avec ** en dernier",
+    "Mes guards redirigent vers un UrlTree et ne sont pas ma seule sécurité",
+    "Je charge les routes lourdes à la demande",
+    "Je mets l'état partageable dans l'URL"
   ]
 }

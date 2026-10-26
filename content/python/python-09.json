@@ -11,21 +11,30 @@
     "PYTHON-08"
   ],
   "objectives": [
-    "Expliquer décorateurs et gestionnaires de contexte",
-    "Construire une preuve exécutable et déterministe",
-    "Relier le concept à une décision professionnelle"
+    "Expliquer qu'une fonction est une valeur et écrire un décorateur qui enveloppe une fonction.",
+    "Conserver nom et docstring avec functools.wraps et écrire un décorateur paramétré.",
+    "Écrire un gestionnaire de contexte avec contextlib.contextmanager (BEGIN, COMMIT, ROLLBACK).",
+    "Identifier ce qu'on peut réessayer sans danger (idempotence) et les pièges d'un décorateur."
   ],
   "sections": [
     {
-      "title": "Concept et usage professionnel",
-      "content": "Décorateurs et gestionnaires de contexte répond à un besoin concret de maintenabilité, de sûreté ou de performance. Le laboratoire demande de rendre la décision observable et vérifiable.",
-      "conceptCodes": [
-        "PYTHON-DECORATORS"
-      ]
+      "title": "Une fonction est une valeur, un décorateur l'enveloppe",
+      "content": "En Python, une fonction est un objet : on peut la passer en argument, la renvoyer, la stocker. Un décorateur est une fonction qui prend une fonction et renvoie une version enveloppée, avec un comportement ajouté avant ou après l'appel. La syntaxe @decorateur au-dessus d'une définition est un raccourci pour f = decorateur(f).\n```python\nimport functools\n\ndef chronometre(fonction):\n    @functools.wraps(fonction)            # conserve __name__ et __doc__\n    def enveloppe(*args, **kwargs):\n        print(f\"appel de {fonction.__name__}\")\n        return fonction(*args, **kwargs)  # on transmet les arguments et on renvoie le résultat\n    return enveloppe\n```\nSans functools.wraps, la fonction décorée s'appellerait « enveloppe » dans les traces, les logs et l'aide. Le même schéma sert à journaliser, mesurer, mettre en cache (functools.lru_cache), contrôler l'accès ou réessayer."
     },
     {
-      "title": "Mise en pratique",
-      "content": "La preuve minimale est locale, déterministe et peut être enrichie sans changer le contrat attendu."
+      "title": "Exemple résolu : retry et transaction",
+      "conceptCodes": [
+        "PYTHON-DECORATORS"
+      ],
+      "content": "Problème : réessayer une fonction qui échoue sur une erreur réseau, et encadrer un bloc par BEGIN/COMMIT/ROLLBACK.\n\nRaisonnement, étape par étape :\n1. retry a un paramètre (times) : c'est un décorateur paramétré, donc trois niveaux de fonctions : retry(times) renvoie le décorateur, qui renvoie l'enveloppe.\n2. L'enveloppe tente l'appel jusqu'à times fois et ne capture que ConnectionError (pas toute Exception).\n3. À la dernière tentative, l'erreur remonte : on ne l'avale pas.\n4. functools.wraps garde le nom de la fonction d'origine.\n5. transaction() est un gestionnaire de contexte : avant yield BEGIN ; si le bloc réussit COMMIT ; sinon ROLLBACK avec le message puis relance l'erreur.\n```python\ndef retry(times):\n    def decorateur(fonction):\n        @functools.wraps(fonction)\n        def enveloppe(*args, **kwargs):\n            for essai in range(1, times + 1):\n                try:\n                    return fonction(*args, **kwargs)\n                except ConnectionError as erreur:\n                    if essai == times:\n                        raise\n        return enveloppe\n    return decorateur\n\n@contextmanager\ndef transaction():\n    print(\"BEGIN\")\n    try:\n        yield\n        print(\"COMMIT\")\n    except Exception as erreur:\n        print(f\"ROLLBACK ({erreur})\")\n        raise\n```"
+    },
+    {
+      "title": "Quand utiliser (ou éviter) retry, cache et décorateurs",
+      "content": "Réessayer n'a de sens que pour une opération idempotente ou sans effet de bord (lecture, appel avec clé d'idempotence). Réessayer un paiement sans protection peut débiter deux fois. Bonnes pratiques : limiter le nombre d'essais, attendre entre deux essais avec un délai croissant (backoff exponentiel) et un peu de hasard (jitter), ne réessayer que les erreurs transitoires (délai dépassé, 503), jamais une erreur de validation (400).\n\nUn cache (lru_cache) ne convient qu'aux fonctions pures : même arguments, même résultat, pas d'effet de bord, arguments hashables. Un cache sur une fonction qui lit l'heure ou une base renvoie des valeurs périmées.\n\nDécorateurs : empile-les dans l'ordre voulu (le plus proche de la fonction s'applique en premier) ; garde-les simples, car ils masquent la signature ; documente ce qu'ils changent. Pour un comportement d'entrée/sortie autour d'un bloc, un gestionnaire de contexte est plus adapté qu'un décorateur."
+    },
+    {
+      "title": "Erreurs fréquentes à reconnaître",
+      "content": "1. Oublier functools.wraps : noms et aides perdus.\n2. Ne pas renvoyer le résultat de la fonction dans l'enveloppe : la fonction décorée renvoie None.\n3. Capturer Exception dans retry et réessayer des erreurs de programmation.\n4. Réessayer une opération non idempotente.\n5. Un cache sur une fonction non pure.\n6. Oublier de relancer l'exception dans le except d'un gestionnaire de contexte : l'erreur disparaît.\n\nRetrouve ces erreurs de mémoire avant l'exercice, puis vérifie-toi avec le quiz : c'est la récupération, pas la relecture, qui fixe la notion."
     }
   ],
   "keyConcepts": [
@@ -39,8 +48,8 @@
       "professionalExample": "Une API de paiement devait mesurer le temps de chaque appel externe et retenter automatiquement les appels réseau instables, ce qui produisait au départ du code de mesure et de retry dupliqué dans chaque fonction. En factorisant cette logique dans un décorateur @retry réutilisable, l'équipe a pu ajouter la même politique de robustesse à n'importe quelle fonction d'appel réseau sans modifier son corps métier.",
       "codeExample": "import time\nfrom functools import wraps\n\ndef retry(times: int = 3, delay: float = 0.5):\n    def decorator(func):\n        @wraps(func)\n        def wrapper(*args, **kwargs):\n            last_error = None\n            for attempt in range(times):\n                try:\n                    return func(*args, **kwargs)\n                except ConnectionError as error:\n                    last_error = error\n                    time.sleep(delay)\n            raise last_error\n        return wrapper\n    return decorator\n\n@retry(times=3)\ndef charge_gateway(order_id: str) -> dict:\n    return payment_client.charge(order_id)",
       "commonMistake": "Appliquer la technique sans mesurer son effet ni documenter sa frontière.",
-      "masteryQuestion": "Quelle contrainte de décorateurs et gestionnaires de contexte doit rester vraie lorsque le système évolue ?",
-      "masteryProof": "Exécuter la preuve, expliquer son invariant et proposer un cas d’échec."
+      "masteryQuestion": "Pourquoi réessayer uniquement des opérations idempotentes, et que fait functools.wraps ?",
+      "masteryProof": "Écrire un décorateur retry(times) et un gestionnaire de contexte transaction() qui affiche BEGIN, COMMIT ou ROLLBACK."
     }
   ],
   "exercises": [
@@ -56,32 +65,80 @@
     {
       "code": "PYTHON-09-Q1",
       "type": "SINGLE_CHOICE",
-      "prompt": "Quelle preuve est la plus utile en revue ?",
+      "prompt": "À quoi sert functools.wraps dans un décorateur ?",
       "choices": [
-        "Une exécution déterministe avec invariant explicite",
-        "Une sortie aléatoire",
-        "Une capture sans code"
+        "À accélérer la fonction",
+        "À copier nom, docstring et attributs de la fonction d'origine sur l'enveloppe",
+        "À rendre la fonction asynchrone",
+        "À mettre les résultats en cache"
       ],
-      "correctChoice": 0,
-      "expectedKeywords": []
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Sans lui, la fonction décorée porte le nom de l'enveloppe, ce qui trompe les logs, les traces et la documentation. wraps conserve l'identité de la fonction d'origine."
     },
     {
       "code": "PYTHON-09-Q2",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Prédis la sortie :\n```python\ndef double(f):\n    def enveloppe(*a, **k):\n        f(*a, **k) * 2\n    return enveloppe\n\n@double\ndef cinq():\n    return 5\n\nprint(cinq())\n```\n",
+      "choices": [
+        "10",
+        "None",
+        "5",
+        "Une exception"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "L'enveloppe calcule f() * 2 mais ne le renvoie pas : il manque return. La fonction décorée renvoie donc None. C'est l'oubli de return le plus courant dans un décorateur."
+    },
+    {
+      "code": "PYTHON-09-Q3",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Trouve le défaut :\n```python\n@retry(times=3)\ndef debiter(compte, montant):\n    api.post(\"/debit\", {\"compte\": compte, \"montant\": montant})\n```\n",
+      "choices": [
+        "retry est mal orthographié",
+        "Si le premier débit a réussi mais que la réponse s'est perdue, le réessai débite deux fois : l'opération n'est pas idempotente",
+        "times ne peut pas valoir 3",
+        "api.post est interdit"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Réessayer n'est sûr que pour une opération idempotente. Ici, il faut une clé d'idempotence transmise à l'API pour qu'un rejeu ne soit pas compté deux fois."
+    },
+    {
+      "code": "PYTHON-09-Q4",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Dans un gestionnaire de contexte @contextmanager, que faut-il faire dans le except autour de yield pour ne pas masquer une erreur ?",
+      "choices": [
+        "Rien, l'erreur remonte toujours",
+        "Annuler (ROLLBACK) puis relancer l'exception avec raise",
+        "Appeler exit()",
+        "Retourner une valeur"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Si le except n'a pas de raise, l'exception est considérée comme traitée et disparaît : le code appelant croit que tout s'est bien passé. On nettoie puis on relance."
+    },
+    {
+      "code": "PYTHON-09-Q5",
       "type": "FREE_TEXT",
-      "prompt": "Explique une décision liée à décorateurs et gestionnaires de contexte.",
+      "prompt": "Sans relire le cours, explique avec tes mots ce qu'est un décorateur et pourquoi un décorateur paramétré comme retry(times) a trois niveaux de fonctions.",
       "choices": [],
       "correctChoice": null,
       "expectedKeywords": [
-        "contrat",
-        "preuve",
-        "test"
-      ]
+        "fonction",
+        "enveloppe",
+        "parametre",
+        "niveau",
+        "decorateur"
+      ],
+      "modelAnswer": "Un décorateur est une fonction qui reçoit une fonction et renvoie une version enveloppée avec un comportement ajouté. Un décorateur paramétré ajoute un niveau : retry(times) reçoit le paramètre et renvoie le vrai décorateur, qui reçoit la fonction et renvoie l'enveloppe qui exécute les tentatives. Trois niveaux : la fabrique, le décorateur, l'enveloppe.",
+      "explanation": "Une bonne réponse nomme les trois niveaux (fabrique, décorateur, enveloppe) et explique le rôle du paramètre."
     }
   ],
   "checklist": [
-    "Je peux expliquer le concept sans réciter une définition",
-    "Je sais exécuter et modifier la preuve",
-    "Je peux nommer un risque et son contrôle",
-    "Je relie cette étape à la suivante"
+    "J'utilise functools.wraps dans chaque décorateur",
+    "Je renvoie toujours le résultat dans l'enveloppe",
+    "Je ne réessaie que des opérations idempotentes",
+    "Mon gestionnaire de contexte relance l'erreur après nettoyage"
   ]
 }

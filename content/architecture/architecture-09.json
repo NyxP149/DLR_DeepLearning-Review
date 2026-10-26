@@ -11,25 +11,30 @@
     "ARCHITECTURE-08"
   ],
   "objectives": [
-    "Choisir une frontière transactionnelle et empêcher les mises à jour perdues",
-    "Justifier les compromis et nommer un risque opérationnel",
-    "Produire une preuve reproductible avant d’élargir la solution"
+    "Expliquer la mise à jour perdue et les moyens de l'éviter : verrouillage optimiste, pessimiste, opérations atomiques.",
+    "Implémenter un verrouillage optimiste avec numéro de version et gérer le conflit par rejeu.",
+    "Garantir un invariant sur plusieurs enregistrements avec une transaction (tout ou rien).",
+    "Choisir le niveau d'isolation et la stratégie selon le risque de conflit."
   ],
   "sections": [
     {
-      "title": "Concept clé et décision",
+      "title": "Deux écrivains, une donnée",
+      "content": "Deux utilisateurs lisent un compte à 100, chacun retire 30, chacun écrit 70 : un retrait est perdu (mise à jour perdue). Les causes : lire, calculer côté application, écrire, sans coordination.\n\nTrois remèdes :\n- Opération atomique côté base : UPDATE account SET balance = balance - 30 WHERE id = ? AND balance >= 30 ; on lit le nombre de lignes modifiées.\n- Verrouillage pessimiste : SELECT ... FOR UPDATE verrouille la ligne jusqu'à la fin de la transaction ; les autres attendent. Sûr mais source d'attente et d'interblocages.\n- Verrouillage optimiste : chaque ligne porte une version ; l'écriture ne réussit que si la version n'a pas changé (UPDATE ... WHERE id = ? AND version = ?). Sinon, conflit : on relit et on rejoue."
+    },
+    {
+      "title": "Exemple résolu : la version qui détecte le conflit",
       "conceptCodes": [
         "CONSISTENCY"
       ],
-      "content": "Transactions, concurrence et cohérence relie les besoins, le logiciel, les données et l’exploitation. Commence par les contraintes observables, trace les responsabilités, puis choisis la solution la plus simple qui respecte les invariants."
+      "content": "Problème : deux clients débitent le même compte (version 3) ; le second doit détecter le conflit et réessayer.\n\nRaisonnement, étape par étape :\n1. Les deux lisent {solde 100, version 3}.\n2. Client A écrit : version attendue 3 correspond à la version courante 3 : débit appliqué (solde 70), version passée à 4. Réponse OK.\n3. Client B écrit avec la version attendue 3 : la version courante est 4, donc CONFLIT. Aucune modification n'est faite : la donnée de A n'est pas écrasée.\n4. B relit {70, version 4}, recalcule (70 - 30 = 40) et réécrit avec la version 4 : OK, solde 40, version 5.\n5. Le nombre de rejeux doit être borné (trois essais par exemple), avec un message clair si le conflit persiste.\n6. Vérification : après les deux retraits, le solde est 40 (100 - 30 - 30) : aucun retrait perdu.\n```python\ndef debit(amount, expected_version):\n    if account[\"version\"] != expected_version:\n        return \"CONFLIT\"\n    account[\"balance\"] -= amount\n    account[\"version\"] += 1\n    return \"OK\"\n```\nEn SQL : UPDATE account SET balance = ?, version = version + 1 WHERE id = ? AND version = ? ; zéro ligne modifiée signifie conflit. Les ORM (JPA @Version) automatisent ce schéma."
     },
     {
-      "title": "Construction verticale",
-      "content": "La preuve ARCHITECTURE-09 modélise une décision réelle sous forme déterministe. Elle ne remplace pas un déploiement complet : elle rend l’hypothèse testable avant l’intégration Spring Boot, Angular, PostgreSQL et Docker."
+      "title": "Transactions multi-enregistrements et choix de stratégie",
+      "content": "Un virement modifie deux comptes : les deux écritures forment une seule unité (atomicité) et un invariant (la somme est conservée, aucun solde négatif) doit rester vrai. Dans une transaction, on applique les deux écritures et on annule tout en cas de violation. Pour éviter l'interblocage, accède aux comptes dans un ordre constant (par identifiant croissant).\n\nChoisir :\n- Conflits rares, lectures nombreuses (profil utilisateur) : optimiste, peu coûteux en attente.\n- Conflits fréquents sur une même ligne (compteur, stock d'un produit populaire) : opération atomique, verrou pessimiste court, ou file de traitement sérialisée.\n- Données réparties sur plusieurs services : pas de transaction globale simple ; on utilise des sagas (suite d'étapes avec compensations), l'idempotence et la cohérence à terme.\nNiveaux d'isolation : READ COMMITTED (défaut courant) évite la lecture sale ; REPEATABLE READ évite la lecture non répétable ; SERIALIZABLE donne l'équivalent d'une exécution en série au prix de rejeux (erreurs de sérialisation à gérer). Plus l'isolation est forte, plus il faut prévoir des réessais.\nMesure : taux de conflits, durée des transactions, interblocages détectés."
     },
     {
-      "title": "Revue professionnelle",
-      "content": "Documente le contexte, la décision, une option rejetée, les conséquences, le signal à surveiller et la condition qui imposerait de revoir le choix."
+      "title": "Erreurs fréquentes à reconnaître",
+      "content": "1. Lire, calculer en code, puis écrire sans version ni verrou.\n2. Un conflit optimiste traité par un échec silencieux ou un écrasement.\n3. Rejouer sans limite.\n4. Une transaction qui englobe un appel réseau.\n5. Deux comptes verrouillés dans des ordres différents : interblocage.\n6. Supposer qu'un niveau d'isolation protège de tout.\n\nRetrouve ces erreurs de mémoire avant l'exercice, puis vérifie-toi avec le quiz : c'est la récupération, pas la relecture, qui fixe la notion."
     }
   ],
   "keyConcepts": [
@@ -43,49 +48,97 @@
       "professionalExample": "Deux employés modifient le même stock d’entrepôt en même temps : chacun lit une quantité de 100 unités, l’un la décrémente de 30 et l’autre de 20, et la dernière écriture gagnante efface silencieusement la première mise à jour au lieu de les cumuler. Ce bug classique de mise à jour perdue passe inaperçu jusqu’à un inventaire physique qui révèle un écart de stock inexpliqué. Un verrouillage optimiste basé sur un numéro de version aurait rejeté la seconde écriture avec un conflit explicite plutôt que de perdre silencieusement la première.",
       "codeExample": "UPDATE stock\nSET quantity = quantity - 30, version = version + 1\nWHERE id = 42 AND version = 3;\n-- 0 ligne affectée si version a déjà changé -> conflit détecté\n-- au lieu d'un écrasement silencieux",
       "commonMistake": "Choisir un outil avant d’identifier le besoin, la charge, le risque et le propriétaire de la donnée.",
-      "masteryQuestion": "Quel compromis, quel signal et quelle condition de réévaluation associes-tu à « Transactions, concurrence et cohérence » ?",
-      "masteryProof": "Exécuter la preuve, modifier une contrainte, expliquer le résultat et dessiner la place du composant dans la stack complète."
+      "masteryQuestion": "Comment une colonne de version détecte-t-elle un conflit, et que doit faire le perdant ?",
+      "masteryProof": "Implémenter un débit avec version attendue, détecter un conflit et rejouer après relecture sans perdre de mise à jour."
     }
   ],
   "exercises": [
     {
       "code": "ARCHITECTURE-09-E1",
-      "title": "Choisir une frontière transactionnelle et empêcher les mises à jour perdues",
-      "statement": "Complète la preuve pour produire exactement la sortie attendue, puis explique la décision, une alternative et le signal de production qui validerait ton choix.",
-      "starterCode": "account = {\"balance\": 100, \"version\": 3}\n\ndef debit(amount: int, expected_version: int) -> str:\n    # TODO : si expected_version ne correspond pas à la version du compte, retourne \"CONFLIT\" ;\n    #        sinon débite le montant, incrémente la version et retourne \"OK\"\n    return \"\"\n\nprint(debit(30, 3), account)\nprint(debit(20, 3), account)\n",
-      "expectedOutput": "OK {'balance': 70, 'version': 4}\nCONFLIT {'balance': 70, 'version': 4}"
+      "title": "Verrouillage optimiste : détecter le conflit et rejouer",
+      "statement": "Complète : debit avec version attendue (CONFLIT si la version a changé), et un client qui relit puis rejoue au plus 3 fois. Deux clients lisent la même version puis écrivent. Affiche exactement :\nA: OK après 1 essai(s)\nB: OK après 2 essai(s)\nCompte: {'balance': 40, 'version': 5}\nSolde insuffisant: SOLDE",
+      "starterCode": "account = {\"balance\": 100, \"version\": 3}\n\n\ndef read() -> dict:\n    return dict(account)\n\n\ndef debit(amount: int, expected_version: int) -> str:\n    # TODO 1 : \"CONFLIT\" si expected_version != account[\"version\"] (aucune modification) ;\n    #          \"SOLDE\" si le solde est insuffisant (aucune modification) ;\n    #          sinon débite, incrémente la version et retourne \"OK\"\n    return \"\"\n\n\ndef debit_with_retry(amount: int, snapshot: dict, max_attempts: int = 3) -> str:\n    # TODO 2 : essaie debit avec snapshot[\"version\"] ; en cas de CONFLIT, relit le compte (read()) et réessaie,\n    #          au plus max_attempts fois ; retourne \"OK après <n> essai(s)\", \"CONFLIT PERSISTANT\" ou \"SOLDE\"\n    return \"\"\n\n\nsnapshot_a = read()\nsnapshot_b = read()\n# TODO 3 : affiche \"A: \" + debit_with_retry(30, snapshot_a) puis \"B: \" + debit_with_retry(30, snapshot_b)\n#          (B part d'une lecture périmée : il doit détecter le conflit puis réussir)\n# TODO 4 : affiche \"Compte: \" + account (print(account)) ; 100 - 30 - 30 = 40 : aucun retrait perdu\n# TODO 5 : affiche \"Solde insuffisant: \" + debit_with_retry(500, read())\n",
+      "expectedOutput": "A: OK après 1 essai(s)\nB: OK après 2 essai(s)\nCompte: {'balance': 40, 'version': 5}\nSolde insuffisant: SOLDE"
     }
   ],
   "quiz": [
     {
       "code": "ARCHITECTURE-09-Q1",
       "type": "SINGLE_CHOICE",
-      "prompt": "Quelle démarche produit la décision la plus robuste ?",
+      "prompt": "Deux clients lisent {solde 100, version 3} et écrivent chacun 70 sans contrôle. Que vaut le solde final et que s'est-il passé ?",
       "choices": [
-        "Relier contraintes, responsabilités, preuve et observabilité",
-        "Choisir la technologie la plus populaire",
-        "Ajouter des services avant de mesurer"
+        "40, c'est correct",
+        "70 : une mise à jour perdue, le second écrasement efface le premier retrait",
+        "100",
+        "Une erreur est levée"
       ],
-      "correctChoice": 0,
-      "expectedKeywords": []
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Les deux calculent à partir de la même valeur lue. Sans version ni verrou, la seconde écriture écrase la première : un retrait disparaît."
     },
     {
       "code": "ARCHITECTURE-09-Q2",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Prédis le résultat de B : il écrit avec la version 3 alors que A a déjà fait passer la version à 4.",
+      "choices": [
+        "OK",
+        "CONFLIT : la version attendue ne correspond plus, rien n'est modifié",
+        "SOLDE",
+        "Une exception"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Le contrôle de version protège la modification de A. B doit relire la version courante (4) et rejouer son calcul."
+    },
+    {
+      "code": "ARCHITECTURE-09-Q3",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Trouve le défaut :\n```python\nwhile True:\n    if debit(30, snapshot['version']) == 'OK':\n        break\n    snapshot = read()\n```\n",
+      "choices": [
+        "break est interdit",
+        "La boucle de rejeu n'a pas de limite : un conflit persistant la fait tourner indéfiniment (et surcharge la base) ; il faut un nombre d'essais borné",
+        "read est lente",
+        "snapshot est un mauvais nom"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Un rejeu non borné peut saturer le système en cas de forte contention. Borne les essais, ajoute un délai croissant et renvoie une erreur claire."
+    },
+    {
+      "code": "ARCHITECTURE-09-Q4",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Quand préférer une opération atomique en base plutôt qu'un verrouillage optimiste ?",
+      "choices": [
+        "Jamais",
+        "Pour un compteur ou un stock très disputé : la contention fréquente ferait échouer et rejouer sans cesse l'optimiste",
+        "Pour les données rarement modifiées",
+        "Quand on n'a pas de base"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "L'optimiste suppose que les conflits sont rares. Pour une ligne très sollicitée, une mise à jour atomique (balance = balance - x) évite les échecs répétés."
+    },
+    {
+      "code": "ARCHITECTURE-09-Q5",
       "type": "FREE_TEXT",
-      "prompt": "Nomme un compromis et le signal qui permettrait de le réévaluer.",
+      "prompt": "Sans relire le cours, explique avec tes mots comment un numéro de version détecte un conflit d'écriture et ce que fait le client perdant.",
       "choices": [],
       "correctChoice": null,
       "expectedKeywords": [
-        "compromis",
-        "mesure",
-        "risque"
-      ]
+        "version",
+        "attendue",
+        "conflit",
+        "relit",
+        "rejoue"
+      ],
+      "modelAnswer": "Chaque ligne porte un numéro de version, incrémenté à chaque modification. Une écriture indique la version qu'elle a lue ; la base n'applique la modification que si la version courante est la même (UPDATE ... WHERE version = ?). Si quelqu'un a modifié la ligne entre-temps, aucune ligne n'est mise à jour : c'est un conflit. Le client perdant relit la donnée à jour, recalcule et rejoue, un nombre borné de fois.",
+      "explanation": "Une bonne réponse décrit la version attendue, la condition dans la mise à jour, le conflit sans écrasement, puis relecture et rejeu borné."
     }
   ],
   "checklist": [
-    "Je peux dessiner la circulation de la donnée",
-    "Je sais nommer les responsabilités de chaque couche",
-    "Je justifie une alternative rejetée",
-    "Je définis une mesure et une condition de réévaluation"
+    "Mes mises à jour concurrentes portent une version ou sont atomiques",
+    "Je rejoue un nombre borné de fois après un conflit",
+    "J'accède aux enregistrements dans un ordre constant pour éviter l'interblocage",
+    "Mes transactions n'englobent aucun appel réseau"
   ]
 }

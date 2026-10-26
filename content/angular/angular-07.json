@@ -11,21 +11,30 @@
     "ANGULAR-06"
   ],
   "objectives": [
-    "Expliquer http, interceptors et gestion des erreurs",
-    "Construire une preuve exécutable et déterministe",
-    "Relier le concept à une décision professionnelle"
+    "Écrire des intercepteurs HTTP fonctionnels qui ne modifient pas la requête d'origine.",
+    "Composer des intercepteurs et prédire l'ordre d'exécution.",
+    "Réessayer seulement les erreurs transitoires et les requêtes idempotentes.",
+    "Traduire un code HTTP en message utilisateur sans fuite d'information."
   ],
   "sections": [
     {
-      "title": "Concept et usage professionnel",
-      "content": "HTTP, interceptors et gestion des erreurs répond à un besoin concret de maintenabilité, de sûreté ou de performance. Le laboratoire demande de rendre la décision observable et vérifiable.",
-      "conceptCodes": [
-        "ANGULAR-HTTP"
-      ]
+      "title": "Un intercepteur enveloppe chaque requête",
+      "content": "Un intercepteur HTTP est une fonction qui reçoit la requête et le suivant (next), et retourne un Observable de réponse. Il sert aux préoccupations transversales : authentification, journalisation, gestion d'erreurs, réessais, indicateur de chargement.\n```ts\nexport const authInterceptor: HttpInterceptorFn = (req, next) => {\n  const token = inject(Auth).token();\n  const authReq = token ? req.clone({ setHeaders: { Authorization: `Bearer ${token}` } }) : req;\n  return next(authReq);\n};\n\nbootstrapApplication(App, {\n  providers: [provideHttpClient(withInterceptors([authInterceptor, retryInterceptor, errorInterceptor]))],\n});\n```\nHttpRequest est immuable : on le clone avec les modifications (req.clone) au lieu de le muter. Les intercepteurs s'exécutent dans l'ordre de la liste à l'aller, et dans l'ordre inverse au retour de la réponse."
     },
     {
-      "title": "Mise en pratique",
-      "content": "La preuve TypeScript isole le contrat réactif ; son intégration dans un composant Angular est décrite sans rendre le runner dépendant d'un navigateur."
+      "title": "Exemple résolu : authentification, réessai et message d'erreur",
+      "conceptCodes": [
+        "ANGULAR-HTTP"
+      ],
+      "content": "Problème : ajouter l'en-tête d'authentification, relancer les réponses 503, et transformer un code HTTP en message lisible.\n\nRaisonnement, étape par étape :\n1. withAuth : copie la requête avec l'en-tête Authorization: Bearer <jeton>. L'objet d'origine n'est pas modifié (un test le vérifie).\n2. withRetry(max) : si la réponse est 503 (service indisponible, erreur transitoire), on relance, jusqu'à max tentatives ; au-delà, on rend la dernière réponse. 404 n'est pas une erreur transitoire : pas de réessai.\n3. Composition : la requête passe d'abord par withAuth (en-tête ajouté), puis par withRetry qui peut renvoyer la même requête enrichie.\n4. userMessage(code) : 404 « Ressource introuvable », 401 « Session expirée », 403 « Accès refusé », 5xx « Service momentanément indisponible », autre « Erreur inattendue ». Pas de détail technique.\n5. Vérification : /api/orders échoue en 503 puis réussit en 200 à la deuxième tentative ; /api/missing renvoie 404 sans réessai et le message « Ressource introuvable ».\n```ts\nconst retryTransient = (max: number): HttpInterceptorFn => (req, next) =>\n  next(req).pipe(retry({ count: max - 1, delay: (error) => isTransient(error) ? timer(200) : throwError(() => error) }));\n\nfunction userMessage(status: number): string {\n  if (status === 404) return 'Ressource introuvable';\n  if (status === 401) return 'Session expirée';\n  if (status >= 500) return 'Service momentanément indisponible';\n  return 'Erreur inattendue';\n}\n```"
+    },
+    {
+      "title": "Réessais, sécurité et pièges",
+      "content": "- Réessayer : seulement les erreurs transitoires (0 pour réseau, 502, 503, 504) et les opérations idempotentes (GET, PUT, DELETE). Un POST non idempotent réessayé peut créer deux commandes sauf clé d'idempotence. Limite le nombre d'essais, attends entre deux (backoff exponentiel avec un peu de hasard).\n- Erreurs : HttpErrorResponse.status vaut 0 en cas de panne réseau ou de refus CORS. 401 : session expirée (renouveler le jeton ou rediriger vers la connexion) ; 403 : droits insuffisants ; 422/400 : erreurs de validation à afficher près des champs ; 5xx : message générique.\n- Message utilisateur : lisible, utile, sans trace ni détail serveur. Le détail va dans un journal avec un identifiant de corrélation.\n- Jeton : en mémoire ou cookie HttpOnly plutôt que localStorage, lisible par tout script injecté (XSS). N'ajoute le jeton qu'aux requêtes vers ton API (vérifie l'URL), jamais à des domaines tiers.\n- XSRF : si l'authentification repose sur des cookies, utilise la protection intégrée (withXsrfConfiguration).\n- Ordre des intercepteurs : l'authentification avant le réessai (chaque tentative porte l'en-tête), la gestion d'erreurs globale à la fin.\n- Un intercepteur ne contient pas de logique métier de fonctionnalité."
+    },
+    {
+      "title": "Erreurs fréquentes à reconnaître",
+      "content": "1. Muter la requête au lieu de la cloner.\n2. Réessayer tout, y compris les 400 et les POST non idempotents.\n3. Envoyer le jeton à n'importe quel domaine.\n4. Afficher à l'utilisateur le message brut du serveur.\n5. Stocker le jeton dans localStorage sans mesure contre la XSS.\n6. Des intercepteurs dans le mauvais ordre ou qui avalent l'erreur.\n\nRetrouve ces erreurs de mémoire avant l'exercice, puis vérifie-toi avec le quiz : c'est la récupération, pas la relecture, qui fixe la notion."
     }
   ],
   "keyConcepts": [
@@ -39,8 +48,8 @@
       "professionalExample": "Un intercepteur fonctionnel ajoute automatiquement le header Authorization à chaque requête sortante vers l'API interne, évitant de dupliquer ce code dans chacun des vingt services HTTP de l'application. Un second bloc capture les réponses 401, déconnecte l'utilisateur et le redirige vers la page de connexion, au lieu de laisser chaque appelant gérer cette erreur individuellement. L'erreur fréquente est d'attacher le token à toutes les requêtes sans distinction, y compris vers un service tiers externe, ce qui fuite un jeton d'authentification interne vers un domaine non maîtrisé.",
       "codeExample": "export const authInterceptor: HttpInterceptorFn = (req, next) => {\n  const auth = inject(AuthService);\n  if (!req.url.startsWith(environment.apiUrl)) {\n    return next(req);\n  }\n  const authReq = req.clone({\n    setHeaders: { Authorization: `Bearer ${auth.token()}` },\n  });\n  return next(authReq).pipe(\n    catchError((err: HttpErrorResponse) => {\n      if (err.status === 401) {\n        auth.logout();\n        inject(Router).navigate(['/login']);\n      }\n      return throwError(() => err);\n    }),\n  );\n};",
       "commonMistake": "Appliquer la technique sans mesurer son effet ni documenter sa frontière.",
-      "masteryQuestion": "Quelle contrainte de http, interceptors et gestion des erreurs doit rester vraie lorsque le système évolue ?",
-      "masteryProof": "Exécuter la preuve, expliquer son invariant et proposer un cas d’échec."
+      "masteryQuestion": "Pourquoi cloner la requête dans un intercepteur, et pourquoi ne pas réessayer un 404 ni un POST non idempotent ?",
+      "masteryProof": "Écrire withAuth (en-tête sans muter la requête), withRetry (relance les 503) et userMessage, puis les composer sur deux appels."
     }
   ],
   "exercises": [
@@ -56,32 +65,80 @@
     {
       "code": "ANGULAR-07-Q1",
       "type": "SINGLE_CHOICE",
-      "prompt": "Quelle preuve est la plus utile en revue ?",
+      "prompt": "Pourquoi un intercepteur appelle-t-il req.clone(...) au lieu de modifier req ?",
       "choices": [
-        "Une exécution déterministe avec invariant explicite",
-        "Une sortie aléatoire",
-        "Une capture sans code"
+        "Pour économiser de la mémoire",
+        "Parce que HttpRequest est immuable : on crée une copie avec les modifications",
+        "Parce que clone est plus rapide",
+        "Parce que next ne fonctionne qu'avec des copies"
       ],
-      "correctChoice": 0,
-      "expectedKeywords": []
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Les requêtes sont immuables pour éviter les modifications surprenantes entre intercepteurs. On crée une nouvelle requête avec setHeaders, params ou body modifiés."
     },
     {
       "code": "ANGULAR-07-Q2",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Quelle réponse justifie un réessai automatique ?",
+      "choices": [
+        "404 Not Found",
+        "400 Bad Request",
+        "503 Service Unavailable",
+        "403 Forbidden"
+      ],
+      "correctChoice": 2,
+      "expectedKeywords": [],
+      "explanation": "503 est une indisponibilité temporaire. Les autres codes donneront le même résultat au prochain essai : réessayer ne fait que charger le serveur."
+    },
+    {
+      "code": "ANGULAR-07-Q3",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Trouve le défaut :\n```ts\nexport const authInterceptor: HttpInterceptorFn = (req, next) =>\n  next(req.clone({ setHeaders: { Authorization: `Bearer ${token}` } }));\n```\nsi l'application appelle aussi une API tierce de cartes.",
+      "choices": [
+        "setHeaders est interdit",
+        "Le jeton est envoyé à tous les domaines, y compris des services tiers : fuite de secret ; il faut le limiter à l'URL de l'API",
+        "next ne peut pas être appelé deux fois",
+        "Bearer est déprécié"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Vérifie req.url avant d'ajouter l'en-tête (par exemple startsWith(environment.apiUrl)). Sinon un domaine tiers reçoit le jeton de l'utilisateur."
+    },
+    {
+      "code": "ANGULAR-07-Q4",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Quel message afficher pour une erreur 500 ?",
+      "choices": [
+        "La trace de pile complète pour aider à diagnostiquer",
+        "Un message générique (« Service momentanément indisponible ») ; le détail va dans un journal avec un identifiant de corrélation",
+        "Le corps JSON brut de la réponse",
+        "Rien"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Les détails techniques n'aident pas l'utilisateur et peuvent aider un attaquant. Le support retrouve la cause grâce à l'identifiant de corrélation journalisé."
+    },
+    {
+      "code": "ANGULAR-07-Q5",
       "type": "FREE_TEXT",
-      "prompt": "Explique une décision liée à http, interceptors et gestion des erreurs.",
+      "prompt": "Sans relire le cours, explique avec tes mots l'ordre d'exécution d'une chaîne d'intercepteurs et pourquoi l'authentification précède le réessai.",
       "choices": [],
       "correctChoice": null,
       "expectedKeywords": [
-        "contrat",
-        "preuve",
-        "test"
-      ]
+        "ordre",
+        "aller",
+        "retour",
+        "auth",
+        "tentative"
+      ],
+      "modelAnswer": "Les intercepteurs s'appliquent dans l'ordre de la liste à l'aller (la requête passe du premier au dernier) puis dans l'ordre inverse au retour (la réponse remonte). L'authentification est placée avant le réessai pour que chaque nouvelle tentative parte avec l'en-tête d'authentification déjà ajouté à la requête.",
+      "explanation": "Une bonne réponse décrit l'aller dans l'ordre et le retour inversé, et justifie auth avant retry par l'en-tête présent à chaque tentative."
     }
   ],
   "checklist": [
-    "Je peux expliquer le concept sans réciter une définition",
-    "Je sais exécuter et modifier la preuve",
-    "Je peux nommer un risque et son contrôle",
-    "Je relie cette étape à la suivante"
+    "Mes intercepteurs clonent la requête",
+    "Je ne réessaie que des erreurs transitoires sur des requêtes idempotentes",
+    "Je n'envoie le jeton qu'à mon API",
+    "Mes messages d'erreur sont lisibles et sans détail technique"
   ]
 }

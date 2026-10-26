@@ -11,21 +11,30 @@
     "JAVA-24"
   ],
   "objectives": [
-    "Expliquer images docker, dockerfile et builds reproductibles",
-    "Construire une preuve exécutable et déterministe",
-    "Relier le concept à une décision professionnelle"
+    "Expliquer ce qu'est une image, un conteneur et une couche, et pourquoi l'ordre des instructions d'un Dockerfile compte.",
+    "Écrire un Dockerfile reproductible : image de base épinglée, dépendances avant le code, utilisateur non root.",
+    "Détecter automatiquement trois défauts classiques d'un Dockerfile.",
+    "Repérer un secret dans une image, un tag flottant ou un contexte de build trop large."
   ],
   "sections": [
     {
-      "title": "Concept et usage professionnel",
-      "content": "Images Docker, Dockerfile et builds reproductibles répond à un besoin concret de maintenabilité, de sûreté ou de performance. Le laboratoire demande de rendre la décision observable et vérifiable.",
-      "conceptCodes": [
-        "DEVOPS-IMAGES"
-      ]
+      "title": "Image, conteneur, couches",
+      "content": "Une image est un modèle immuable : un système de fichiers en couches et des métadonnées (commande de démarrage, variables). Un conteneur est une instance en cours d'exécution d'une image, isolée du reste par le noyau (espaces de noms, cgroups). Chaque instruction du Dockerfile (FROM, RUN, COPY...) crée une couche ; Docker met les couches en cache et ne reconstruit que celles qui changent, ainsi que toutes celles qui suivent.\n```dockerfile\nFROM python:3.13-slim                      # image de base, version précise\nWORKDIR /app\nCOPY requirements.txt .                    # d'abord le fichier de dépendances\nRUN pip install --no-cache-dir -r requirements.txt     # couche coûteuse, mise en cache\nCOPY src/ ./src/                           # le code change souvent : en dernier\nRUN useradd --no-create-home app\nUSER app                                   # ne tourne pas en root\nCMD [\"python\", \"-m\", \"src.main\"]\n```\nComme les couches suivantes sont invalidées dès qu'une couche change, on place ce qui change rarement en premier (dépendances) et ce qui change souvent en dernier (code)."
     },
     {
-      "title": "Mise en pratique",
-      "content": "La preuve minimale est locale, déterministe et peut être enrichie sans changer le contrat attendu."
+      "title": "Exemple résolu : un linter de Dockerfile",
+      "conceptCodes": [
+        "DEVOPS-IMAGES"
+      ],
+      "content": "Problème : automatiser la détection de trois défauts qui reviennent sans cesse.\n\nRaisonnement, étape par étape :\n1. Image de base non épinglée : FROM python (sans tag) ou FROM python:latest suit la dernière version : le build d'aujourd'hui diffère de celui de demain. On exige un tag précis (python:3.13-slim), idéalement un condensé (digest).\n2. Pas d'utilisateur non root : sans instruction USER, le conteneur tourne en root ; une compromission donne des droits étendus. On cherche une instruction USER qui n'est pas root.\n3. COPY . avant l'installation des dépendances : copier tout le code d'abord invalide le cache de la couche pip install à chaque changement de code. On compare la position de COPY . (ou COPY ./ ) et celle de l'installation (pip install, npm ci, mvn dependency).\n4. Le linter lit les lignes, applique chaque règle, produit un message par défaut et un compte.\n5. Vérification : le mauvais Dockerfile cumule 3 problèmes, le bon 0.\n```python\ndef lint(dockerfile: str) -> list[str]:\n    lignes = [l.strip() for l in dockerfile.splitlines() if l.strip() and not l.strip().startswith('#')]\n    problemes = []\n    base = next(l.split()[1] for l in lignes if l.upper().startswith('FROM'))\n    if ':' not in base or base.endswith(':latest'):\n        problemes.append(f\"image de base non épinglée ({base})\")\n    if not any(l.upper().startswith('USER') and l.split()[1] != 'root' for l in lignes):\n        problemes.append('aucun USER non-root')\n    return problemes\n```"
+    },
+    {
+      "title": "Reproductibilité, taille et sécurité",
+      "content": "Build reproductible : même entrée, même image. Épingle la base (tag précis ou digest), les dépendances (fichier de verrou), et évite les téléchargements non vérifiés (curl | sh).\n\nTaille et surface d'attaque : image slim ou distroless, build en plusieurs étapes (multi-stage) : une étape contient les outils de compilation, l'étape finale ne copie que le résultat.\n```dockerfile\nFROM maven:3.9-eclipse-temurin-21 AS build\nCOPY . .\nRUN mvn -q package\nFROM eclipse-temurin:21-jre\nCOPY --from=build target/app.jar /app.jar\nUSER 10001\nENTRYPOINT [\"java\", \"-jar\", \"/app.jar\"]\n```\nContexte de build : un .dockerignore exclut .git, node_modules, .env, les fichiers de test ; sinon le contexte est lourd et peut embarquer des secrets.\n\nSecrets : jamais dans une instruction ENV ou ARG, ni copiés dans l'image (une couche reste lisible même si on supprime le fichier ensuite). Utilise des secrets de build (RUN --mount=type=secret) et des secrets d'exécution.\n\nAutres bonnes pratiques : une préoccupation par conteneur ; HEALTHCHECK ; journaux sur la sortie standard ; système de fichiers en lecture seule (--read-only) ; capacités retirées ; analyse de l'image (Trivy, Grype) en intégration continue ; mise à jour régulière de la base."
+    },
+    {
+      "title": "Erreurs fréquentes à reconnaître",
+      "content": "1. FROM python:latest (ou sans tag) : build non reproductible.\n2. Pas de USER : processus root dans le conteneur.\n3. COPY . . avant pip install : cache invalidé à chaque modification.\n4. Un secret copié ou passé en ENV, puis « supprimé » dans une couche suivante (il reste dans l'historique de l'image).\n5. Pas de .dockerignore : contexte énorme, fichiers sensibles embarqués.\n6. Une image de 1,5 Go avec compilateur et caches de paquets.\n\nRetrouve ces erreurs de mémoire avant l'exercice, puis vérifie-toi avec le quiz : c'est la récupération, pas la relecture, qui fixe la notion."
     }
   ],
   "keyConcepts": [
@@ -39,8 +48,8 @@
       "professionalExample": "Une équipe de plateforme constate que le même Dockerfile produit parfois une image différente selon le jour du build, car l'image de base et certaines dépendances ne sont pas figées à une version précise. En épinglant l'image parente par son digest et en verrouillant les versions des paquets installés, elle obtient un build reproductible : deux exécutions du pipeline à des dates différentes produisent des images strictement identiques. Cette rigueur permet de rejouer un incident de production sur un poste local des mois plus tard, sans deviner quelle version de quelle dépendance était réellement utilisée.",
       "codeExample": "# Dockerfile - build reproductible, multi-stage\nFROM python:3.11.6-slim@sha256:1a2b3c4d5e6f7890abcdef1234567890abcdef1234567890abcdef12345678 AS builder\nWORKDIR /app\nCOPY requirements.txt .\nRUN pip install --no-cache-dir -r requirements.txt\n\nFROM python:3.11.6-slim@sha256:1a2b3c4d5e6f7890abcdef1234567890abcdef1234567890abcdef12345678\nWORKDIR /app\nCOPY --from=builder /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages\nCOPY . .\nUSER 1000:1000\nCMD [\"python\", \"app.py\"]",
       "commonMistake": "Appliquer la technique sans mesurer son effet ni documenter sa frontière.",
-      "masteryQuestion": "Quelle contrainte de images docker, dockerfile et builds reproductibles doit rester vraie lorsque le système évolue ?",
-      "masteryProof": "Exécuter la preuve, expliquer son invariant et proposer un cas d’échec."
+      "masteryQuestion": "Pourquoi placer le fichier de dépendances avant le code, et pourquoi un secret supprimé dans une couche suivante reste-t-il récupérable ?",
+      "masteryProof": "Écrire un linter de Dockerfile qui détecte image non épinglée, absence d'USER non root et COPY . avant l'installation des dépendances."
     }
   ],
   "exercises": [
@@ -56,32 +65,80 @@
     {
       "code": "DEVOPS-01-Q1",
       "type": "SINGLE_CHOICE",
-      "prompt": "Quelle preuve est la plus utile en revue ?",
+      "prompt": "Pourquoi copier requirements.txt et installer les dépendances avant de copier le code ?",
       "choices": [
-        "Une exécution déterministe avec invariant explicite",
-        "Une sortie aléatoire",
-        "Une capture sans code"
+        "Pour que l'image soit plus petite",
+        "Pour réutiliser la couche des dépendances tant que requirements.txt ne change pas : un changement de code ne relance pas l'installation",
+        "Parce que Docker l'exige",
+        "Pour chiffrer le code"
       ],
-      "correctChoice": 0,
-      "expectedKeywords": []
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Docker invalide une couche et toutes les suivantes quand son contenu change. Le code change à chaque commit, les dépendances rarement : en les isolant, le build reste rapide."
     },
     {
       "code": "DEVOPS-01-Q2",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Prédis le nombre de défauts du Dockerfile suivant :\n```dockerfile\nFROM python:latest\nCOPY . .\nRUN pip install -r requirements.txt\nCMD [\"python\", \"app.py\"]\n```\n",
+      "choices": [
+        "0",
+        "2",
+        "3 : base non épinglée, aucun USER non root, COPY . avant l'installation",
+        "1"
+      ],
+      "correctChoice": 2,
+      "expectedKeywords": [],
+      "explanation": "python:latest suit la dernière version, il n'y a aucun USER (root par défaut), et COPY . . précède pip install, ce qui invalide le cache à chaque modification de code."
+    },
+    {
+      "code": "DEVOPS-01-Q3",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Trouve le défaut :\n```dockerfile\nCOPY .env /app/.env\nRUN ./setup.sh\nRUN rm /app/.env\n```\n",
+      "choices": [
+        "rm est interdit",
+        "Le fichier .env reste présent dans la couche du COPY : quiconque obtient l'image peut le récupérer, même après le rm",
+        "setup.sh est trop lent",
+        "Il manque USER"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Les couches sont immuables. Supprimer un fichier dans une couche suivante le masque mais ne l'efface pas de la couche précédente. Utilise un secret de build ou une variable à l'exécution."
+    },
+    {
+      "code": "DEVOPS-01-Q4",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Quel est l'intérêt d'un build multi-étapes (multi-stage) ?",
+      "choices": [
+        "Accélérer le réseau",
+        "Garder les outils de compilation hors de l'image finale : image plus petite et surface d'attaque réduite",
+        "Obtenir deux conteneurs",
+        "Éviter d'écrire un Dockerfile"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "La première étape compile, la seconde ne reçoit que l'artefact (jar, binaire). L'image finale ne contient ni compilateur, ni sources, ni caches."
+    },
+    {
+      "code": "DEVOPS-01-Q5",
       "type": "FREE_TEXT",
-      "prompt": "Explique une décision liée à images docker, dockerfile et builds reproductibles.",
+      "prompt": "Sans relire le cours, explique avec tes mots ce qui rend un build Docker reproductible et pourquoi on évite le tag latest.",
       "choices": [],
       "correctChoice": null,
       "expectedKeywords": [
-        "contrat",
-        "preuve",
-        "test"
-      ]
+        "epingl",
+        "version",
+        "reproduct",
+        "tag",
+        "digest"
+      ],
+      "modelAnswer": "Un build est reproductible quand les mêmes entrées donnent la même image : base épinglée (tag précis ou digest), dépendances verrouillées et pas de téléchargement non vérifié. Le tag latest désigne la version la plus récente du moment, donc le même Dockerfile construit des images différentes à des dates différentes, avec le risque d'une rupture imprévue ou d'une vulnérabilité nouvelle.",
+      "explanation": "Une bonne réponse parle d'entrées épinglées et verrouillées, et du fait que latest change au fil du temps."
     }
   ],
   "checklist": [
-    "Je peux expliquer le concept sans réciter une définition",
-    "Je sais exécuter et modifier la preuve",
-    "Je peux nommer un risque et son contrôle",
-    "Je relie cette étape à la suivante"
+    "Mon image de base est épinglée",
+    "Mon conteneur tourne avec un utilisateur non root",
+    "Je copie les dépendances avant le code pour profiter du cache",
+    "Aucun secret n'est copié dans l'image"
   ]
 }

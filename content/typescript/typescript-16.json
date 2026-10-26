@@ -11,21 +11,30 @@
     "TYPESCRIPT-15"
   ],
   "objectives": [
-    "Expliquer tests unitaires, doubles et couverture",
-    "Construire une preuve exécutable et déterministe",
-    "Relier le concept à une décision professionnelle"
+    "Écrire un test unitaire qui vérifie un comportement (Arrange / Act / Assert) avec un message d'échec utile.",
+    "Isoler une dépendance avec un espion (spy) ou un faux et vérifier ses appels.",
+    "Construire un mini exécuteur de tests pour comprendre ce que font Vitest ou Jest.",
+    "Repérer un test sans assertion, dépendant de l'heure ou de l'ordre, ou qui teste l'implémentation."
   ],
   "sections": [
     {
-      "title": "Concept et usage professionnel",
-      "content": "Tests unitaires, doubles et couverture répond à un besoin concret de maintenabilité, de sûreté ou de performance. Le laboratoire demande de rendre la décision observable et vérifiable.",
-      "conceptCodes": [
-        "TYPESCRIPT-TESTS"
-      ]
+      "title": "Un test est une promesse exécutable",
+      "content": "Un test vérifie un comportement observable. Il suit Arrange / Act / Assert : préparer, exécuter une action, affirmer un résultat précis.\n```ts\nimport { describe, it, expect } from 'vitest';\n\ndescribe('add', () => {\n  it('additionne deux nombres', () => {\n    expect(add(2, 3)).toBe(5);\n  });\n  it('refuse un montant négatif', () => {\n    expect(() => pay(-1)).toThrow('négatif');\n  });\n});\n```\nLes frameworks (Vitest, Jest, node:test) fournissent describe/it/expect, mais tout repose sur trois briques simples : une assertion qui lève une erreur au désaccord (« attendu 5, obtenu 4 »), un exécuteur qui attrape les erreurs et compte réussites et échecs, et des doublures pour isoler les dépendances. Les construire une fois montre qu'il n'y a pas de magie."
     },
     {
-      "title": "Mise en pratique",
-      "content": "La preuve minimale est locale, déterministe et peut être enrichie sans changer le contrat attendu."
+      "title": "Exemple résolu : assertEqual, test et spy",
+      "conceptCodes": [
+        "TYPESCRIPT-TESTS"
+      ],
+      "content": "Problème : écrire de quoi tester une fonction qui journalise, et rapporter les résultats.\n\nRaisonnement, étape par étape :\n1. assertEqual(actual, expected) : si les valeurs diffèrent, lève Error(`attendu ${expected}, obtenu ${actual}`). Un message qui dit ce qui diffère fait gagner du temps.\n2. test(nom, corps) : exécute le corps dans un try/catch. Succès : affiche ✓ nom et compte un succès ; erreur : affiche ✗ nom: message et compte un échec.\n3. spy : une fonction qui enregistre ses appels (arguments) pour qu'on puisse vérifier ensuite combien de fois et avec quoi elle a été appelée.\n4. Test du logger : on passe le spy en dépendance, on appelle la fonction testée, puis on vérifie spy.calls.length === 1 et les arguments.\n5. Un test qui doit échouer (pour vérifier que l'exécuteur détecte un écart) est rapporté ✗ sans arrêter les autres.\n6. Résumé final : nombre de réussis et d'échoués.\n```ts\nfunction spy<A extends unknown[]>() {\n  const calls: A[] = [];\n  const fn = (...args: A) => { calls.push(args); };\n  return { fn, calls };\n}\n\nconst logger = spy<[string]>();\ndoWork(logger.fn);\nassertEqual(logger.calls.length, 1);\nassertEqual(logger.calls[0][0], 'ok');\n```"
+    },
+    {
+      "title": "Doublures, déterminisme et couverture",
+      "content": "Doublures : un stub renvoie des valeurs préprogrammées, un fake est une implémentation simplifiée (un dépôt en mémoire), un spy enregistre les appels, un mock vérifie des attentes. Avec Vitest : vi.fn(), vi.spyOn(objet, 'méthode'), vi.useFakeTimers() pour contrôler les minuteurs et l'heure.\n\nUn bon test :\n- vérifie un comportement observable, pas l'ordre des appels internes (sinon il casse au moindre refactoring) ;\n- est indépendant : pas d'ordre imposé, pas d'état partagé entre tests ;\n- est déterministe : pas d'heure réelle, pas de hasard sans graine, pas de réseau ;\n- est lisible : le nom dit ce qui est attendu (« refuse un montant négatif ») ;\n- couvre les valeurs limites (0, 1, la frontière, un de moins, un de plus) et les erreurs, pas seulement le cas heureux.\n\nLa couverture de code indique les lignes exécutées, pas celles qui sont vérifiées : un test sans expect peut donner 100 %. Les tests asynchrones doivent attendre leur promesse (async/await) ou le test passe avant qu'elle ne soit résolue."
+    },
+    {
+      "title": "Erreurs fréquentes à reconnaître",
+      "content": "1. Un test sans assertion : il passe toujours.\n2. Un test async sans await : il se termine avant que l'assertion ne s'exécute.\n3. Vérifier que telle méthode privée a été appelée deux fois plutôt que le résultat visible.\n4. Des tests dépendants de l'heure, du hasard ou de l'ordre d'exécution.\n5. Mocker la fonction qu'on teste.\n6. Courir derrière 100 % de couverture avec des assertions faibles.\n\nRetrouve ces erreurs de mémoire avant l'exercice, puis vérifie-toi avec le quiz : c'est la récupération, pas la relecture, qui fixe la notion."
     }
   ],
   "keyConcepts": [
@@ -39,8 +48,8 @@
       "professionalExample": "Pour tester le service de facturation sans dépendre du vrai fournisseur de paiement (lent, payant, et parfois indisponible en CI), l'équipe remplace PaymentGateway par un double de test qui simule précisément un rejet de carte. Ce test unitaire a révélé un bug réel : le code ne remettait jamais amountRefunded à zéro après un succès, ce qui aurait laissé un montant fantôme en base même quand le vrai fournisseur confirmait le paiement.",
       "codeExample": "import { describe, it, expect, vi } from 'vitest';\n\ninterface PaymentGateway {\n  charge(amountCents: number): Promise<{ success: boolean }>;\n}\n\nasync function processOrder(gateway: PaymentGateway, amountCents: number) {\n  const result = await gateway.charge(amountCents);\n  return { amountRefunded: result.success ? 0 : amountCents };\n}\n\ndescribe('processOrder', () => {\n  it('ne débite pas quand le paiement échoue', async () => {\n    const fakeGateway: PaymentGateway = {\n      charge: vi.fn().mockResolvedValue({ success: false }),\n    };\n    const outcome = await processOrder(fakeGateway, 5000);\n    expect(outcome.amountRefunded).toBe(5000);\n  });\n});",
       "commonMistake": "Appliquer la technique sans mesurer son effet ni documenter sa frontière.",
-      "masteryQuestion": "Quelle contrainte de tests unitaires, doubles et couverture doit rester vraie lorsque le système évolue ?",
-      "masteryProof": "Exécuter la preuve, expliquer son invariant et proposer un cas d’échec."
+      "masteryQuestion": "Pourquoi un test async sans await est-il dangereux, et que vérifie un spy ?",
+      "masteryProof": "Construire assertEqual, test (avec compteur de réussites et d'échecs) et spy, et les utiliser sur trois tests dont un échoue volontairement."
     }
   ],
   "exercises": [
@@ -56,32 +65,80 @@
     {
       "code": "TYPESCRIPT-16-Q1",
       "type": "SINGLE_CHOICE",
-      "prompt": "Quelle preuve est la plus utile en revue ?",
+      "prompt": "Quel test est le plus utile pour la règle « un montant négatif est refusé » ?",
       "choices": [
-        "Une exécution déterministe avec invariant explicite",
-        "Une sortie aléatoire",
-        "Une capture sans code"
+        "expect(pay(10)).toBeDefined()",
+        "expect(() => pay(-1)).toThrow('négatif')",
+        "console.log(pay(-1))",
+        "expect(true).toBe(true)"
       ],
-      "correctChoice": 0,
-      "expectedKeywords": []
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Le test doit exercer la règle avec une entrée qui la viole et vérifier la conséquence attendue. Les autres ne prouvent rien sur le refus."
     },
     {
       "code": "TYPESCRIPT-16-Q2",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Prédis le résultat du test :\n```ts\nit('charge', () => {\n  fetchUser().then(user => expect(user.name).toBe('Zed'));\n});\n```\nsi fetchUser renvoie en réalité 'Ada'.",
+      "choices": [
+        "Le test échoue",
+        "Le test passe : la promesse n'est pas attendue, l'assertion s'exécute après la fin du test (ou jamais)",
+        "Erreur de compilation",
+        "Le test est ignoré"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Sans return ni await, le test se termine avant la résolution de la promesse : l'échec n'est pas détecté. Écris it('charge', async () => { const user = await fetchUser(); expect(...) })."
+    },
+    {
+      "code": "TYPESCRIPT-16-Q3",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Trouve le défaut :\n```ts\nit('journalise', () => {\n  service.run();\n  expect(service['internalCounter']).toBe(3);\n});\n```\n",
+      "choices": [
+        "Il manque async",
+        "Le test lit un détail interne : il casse dès qu'on refactore l'implémentation sans changer le comportement observable",
+        "toBe est déprécié",
+        "Il faut un mock"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "On teste ce qui est observable (résultat, effet visible sur une dépendance injectée), pas l'état interne. Sinon chaque refactoring casse des tests qui ne protègent plus rien."
+    },
+    {
+      "code": "TYPESCRIPT-16-Q4",
+      "type": "SINGLE_CHOICE",
+      "prompt": "À quoi sert un spy dans un test ?",
+      "choices": [
+        "À accélérer le test",
+        "À enregistrer les appels reçus (nombre, arguments) pour vérifier comment une dépendance a été utilisée",
+        "À remplacer le framework de test",
+        "À mesurer la couverture"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Un spy est une fonction qui note ses appels. On l'injecte à la place de la vraie dépendance, puis on vérifie combien de fois et avec quoi elle a été appelée."
+    },
+    {
+      "code": "TYPESCRIPT-16-Q5",
       "type": "FREE_TEXT",
-      "prompt": "Explique une décision liée à tests unitaires, doubles et couverture.",
+      "prompt": "Sans relire le cours, explique avec tes mots les propriétés d'un bon test unitaire et pourquoi la couverture ne suffit pas.",
       "choices": [],
       "correctChoice": null,
       "expectedKeywords": [
-        "contrat",
-        "preuve",
-        "test"
-      ]
+        "comportement",
+        "determin",
+        "independ",
+        "assertion",
+        "couverture"
+      ],
+      "modelAnswer": "Un bon test vérifie un comportement observable avec une assertion précise, est déterministe (pas d'heure, de hasard ni de réseau), indépendant des autres tests, lisible par son nom, et couvre valeurs limites et erreurs. La couverture mesure les lignes exécutées, pas ce qui est vérifié : un test sans assertion peut donner 100 % sans rien protéger.",
+      "explanation": "Une bonne réponse cite comportement observable, déterminisme, indépendance, cas limites, et explique que la couverture ne mesure pas les assertions."
     }
   ],
   "checklist": [
-    "Je peux expliquer le concept sans réciter une définition",
-    "Je sais exécuter et modifier la preuve",
-    "Je peux nommer un risque et son contrôle",
-    "Je relie cette étape à la suivante"
+    "Mes tests vérifient un comportement avec une assertion précise",
+    "Mes tests async attendent leurs promesses",
+    "J'isole les dépendances avec des spies ou des faux, sans tester l'implémentation",
+    "Je couvre les valeurs limites et les erreurs"
   ]
 }

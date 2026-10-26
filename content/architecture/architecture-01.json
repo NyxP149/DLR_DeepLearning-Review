@@ -9,25 +9,30 @@
   "activityType": "LAB",
   "prerequisites": [],
   "objectives": [
-    "Identifier acteurs, responsabilités, données et frontières avant de choisir une technologie",
-    "Justifier les compromis et nommer un risque opérationnel",
-    "Produire une preuve reproductible avant d’élargir la solution"
+    "Décrire un système comme des composants qui portent chacun une responsabilité et en appellent d'autres.",
+    "Suivre le chemin d'une requête à travers les composants et en tirer la liste des dépendances.",
+    "Repérer une responsabilité sans propriétaire, portée par deux composants, ou un composant sans rôle.",
+    "Distinguer ce qui relève du besoin, du logiciel, des données et de l'exploitation."
   ],
   "sections": [
     {
-      "title": "Concept clé et décision",
+      "title": "Un système est une chaîne de responsabilités",
+      "content": "Lire une architecture, ce n'est pas lister des technologies, c'est répondre à une question simple pour chaque composant : de quoi est-il responsable, et de qui dépend-il ? Un client Angular affiche et collecte, une API applique les règles métier, une base conserve les données, un service d'identité authentifie. Quand une responsabilité n'a pas de propriétaire, personne ne la garantit ; quand deux composants la portent, ils finissent par se contredire.\n\nQuatre regards complémentaires : le besoin (qui fait quoi et pourquoi), le logiciel (composants, contrats), les données (où est la vérité, qui l'écrit), l'exploitation (déploiement, supervision, reprise). Une bonne lecture passe par les quatre."
+    },
+    {
+      "title": "Exemple résolu : tracer une requête",
       "conceptCodes": [
         "SYSTEM-BOUNDARIES"
       ],
-      "content": "Lire un système comme une chaîne de responsabilités relie les besoins, le logiciel, les données et l’exploitation. Commence par les contraintes observables, trace les responsabilités, puis choisis la solution la plus simple qui respecte les invariants."
+      "content": "Problème : un système a un client, une API, un service d'identité et une base. Quel chemin suit une requête « consulter mes commandes », et qui est responsable de quoi ?\n\nRaisonnement, étape par étape :\n1. Décrire chaque composant : technologie, responsabilité (ce qu'il possède), composants appelés.\n2. Suivre la requête depuis le point d'entrée : client → api → (auth pour l'identité, data pour la lecture).\n3. Lister les responsabilités exigées par le besoin : affichage, règles métier, persistance, identité.\n4. Vérifier qu'il y a exactement un propriétaire par responsabilité : zéro propriétaire est un trou, deux est un conflit.\n5. Repérer les composants isolés : un composant que personne n'appelle et qui n'est pas un point d'entrée est suspect.\n6. Résultat : un schéma textuel, des flèches de dépendance et une liste d'écarts.\n```python\ndef walk(system, start, seen=None):\n    seen = seen or []\n    if start in seen:\n        return seen\n    seen.append(start)\n    for target in system[start][\"calls\"]:\n        walk(system, target, seen)\n    return seen\n```"
     },
     {
-      "title": "Construction verticale",
-      "content": "La preuve ARCHITECTURE-01 modélise une décision réelle sous forme déterministe. Elle ne remplace pas un déploiement complet : elle rend l’hypothèse testable avant l’intégration Spring Boot, Angular, PostgreSQL et Docker."
+      "title": "Lire un schéma d'architecture avec esprit critique",
+      "content": "Questions à poser devant n'importe quel schéma :\n- Où est la source de vérité de chaque donnée ? Si deux composants écrivent la même donnée, qui a raison en cas de désaccord ?\n- Que se passe-t-il si ce composant tombe ? Quelles fonctions restent disponibles (dégradation) ?\n- Quel est le point d'entrée, et que traverse-t-on avant la donnée (authentification, validation, autorisation) ?\n- Où vivent les préoccupations transverses : identité, journalisation, configuration, chiffrement ? Un « service qui fait tout » ou un « utilitaire commun » cache souvent un manque de propriétaire.\n- Quelles dépendances forment un cycle ? Un cycle empêche de démarrer, de déployer et de raisonner indépendamment.\n- Qu'est-ce qui est synchrone (la requête attend) et asynchrone (on délègue) ?\n- Qu'est-ce qui est inconnu ? Un bon schéma indique ses hypothèses. Une flèche sans nom de contrat (HTTP, événement, SQL) cache l'essentiel.\nUn schéma est un outil de conversation : il sert à repérer les incohérences avant d'écrire du code."
     },
     {
-      "title": "Revue professionnelle",
-      "content": "Documente le contexte, la décision, une option rejetée, les conséquences, le signal à surveiller et la condition qui imposerait de revoir le choix."
+      "title": "Erreurs fréquentes à reconnaître",
+      "content": "1. Un schéma qui liste des technologies sans dire ce que chacune possède.\n2. Une responsabilité portée par deux composants (deux sources de vérité).\n3. Une responsabilité que personne ne porte (qui valide ? qui journalise ?).\n4. Des flèches sans contrat ni sens (qui appelle qui ?).\n5. Oublier l'exploitation : déploiement, supervision, reprise.\n6. Dessiner l'architecture rêvée au lieu de celle qui tourne.\n\nRetrouve ces erreurs de mémoire avant l'exercice, puis vérifie-toi avec le quiz : c'est la récupération, pas la relecture, qui fixe la notion."
     }
   ],
   "keyConcepts": [
@@ -41,49 +46,97 @@
       "professionalExample": "Un architecte audite un incident de production où l’équipe mobile a ajouté un appel direct à la base PostgreSQL pour contourner un endpoint jugé trop lent, en court-circuitant l’API Spring Boot. Six mois plus tard, une migration de schéma casse silencieusement l’application mobile car personne n’avait tracé cette responsabilité cachée. Lire le système comme une chaîne de responsabilités aurait révélé cette frontière violée avant l’incident.",
       "codeExample": "# Chaîne de responsabilités attendue\nAngular (UI) -> Spring Boot (API) -> PostgreSQL (données)\n\n# Ce qui a réellement été trouvé en audit\nAngular (UI) -> Spring Boot (API) -> PostgreSQL (données)\nApp mobile ------------------------> PostgreSQL (données)  # frontière violée",
       "commonMistake": "Choisir un outil avant d’identifier le besoin, la charge, le risque et le propriétaire de la donnée.",
-      "masteryQuestion": "Quel compromis, quel signal et quelle condition de réévaluation associes-tu à « Lire un système comme une chaîne de responsabilités » ?",
-      "masteryProof": "Exécuter la preuve, modifier une contrainte, expliquer le résultat et dessiner la place du composant dans la stack complète."
+      "masteryQuestion": "Que faut-il préciser pour chaque composant d'un schéma, et que révèlent une responsabilité sans propriétaire ou à deux propriétaires ?",
+      "masteryProof": "Tracer le chemin d'une requête dans un système et détecter les responsabilités manquantes ou en double."
     }
   ],
   "exercises": [
     {
       "code": "ARCHITECTURE-01-E1",
-      "title": "Identifier acteurs, responsabilités, données et frontières avant de choisir une technologie",
-      "statement": "Complète la preuve pour produire exactement la sortie attendue, puis explique la décision, une alternative et le signal de production qui validerait ton choix.",
-      "starterCode": "system = {\"client\": \"Angular\", \"api\": \"Spring Boot\", \"data\": \"PostgreSQL\"}\n# TODO : parcours le dictionnaire et affiche une ligne par responsabilité\n#        au format \"<responsabilité> -> <composant>\"\n",
-      "expectedOutput": "client -> Angular\napi -> Spring Boot\ndata -> PostgreSQL"
+      "title": "Lire un système : chemin, propriétaires, écarts",
+      "statement": "Complète l'analyse : le chemin de dépendances à partir du client (parcours en profondeur, sans répétition), le propriétaire de chaque responsabilité exigée, et les écarts (responsabilité sans propriétaire ou à plusieurs). Affiche exactement :\nChemin: client -> api -> data -> auth\naffichage: client\nrègles: api\npersistance: CONFLIT (data, cache)\nidentité: auth\njournalisation: AUCUN PROPRIÉTAIRE\nComposants isolés: cache",
+      "starterCode": "SYSTEM = {\n    \"client\": {\"tech\": \"Angular\", \"owns\": [\"affichage\"], \"calls\": [\"api\"]},\n    \"api\": {\"tech\": \"Spring Boot\", \"owns\": [\"règles\"], \"calls\": [\"data\", \"auth\"]},\n    \"auth\": {\"tech\": \"Keycloak\", \"owns\": [\"identité\"], \"calls\": []},\n    \"data\": {\"tech\": \"PostgreSQL\", \"owns\": [\"persistance\"], \"calls\": []},\n    \"cache\": {\"tech\": \"Redis\", \"owns\": [\"persistance\"], \"calls\": []},\n}\nREQUIRED = [\"affichage\", \"règles\", \"persistance\", \"identité\", \"journalisation\"]\n\n\ndef walk(start: str, seen: list[str] | None = None) -> list[str]:\n    # TODO 1 : parcours en profondeur depuis start (ordre de la liste \"calls\"), sans répéter un composant ;\n    #          retourne la liste des composants visités dans l'ordre de découverte\n    return []\n\n\n# TODO 2 : affiche \"Chemin: \" suivi des composants de walk(\"client\") séparés par \" -> \"\n# TODO 3 : pour chaque responsabilité de REQUIRED, affiche \"<responsabilité>: <composants propriétaires séparés par ', '>\"\n#          ou \"<responsabilité>: AUCUN PROPRIÉTAIRE\" / \"...: CONFLIT (<a, b>)\" selon le cas (0 ou plusieurs propriétaires)\n# TODO 4 : affiche \"Composants isolés: \" suivi des composants jamais appelés (hors \"client\") séparés par \", \" ou \"aucun\"\n#          Attention : un composant appelé par un autre n'est pas isolé\n",
+      "expectedOutput": "Chemin: client -> api -> data -> auth\naffichage: client\nrègles: api\npersistance: CONFLIT (data, cache)\nidentité: auth\njournalisation: AUCUN PROPRIÉTAIRE\nComposants isolés: cache"
     }
   ],
   "quiz": [
     {
       "code": "ARCHITECTURE-01-Q1",
       "type": "SINGLE_CHOICE",
-      "prompt": "Quelle démarche produit la décision la plus robuste ?",
+      "prompt": "Que révèle une responsabilité (par exemple « journalisation ») qu'aucun composant ne porte ?",
       "choices": [
-        "Relier contraintes, responsabilités, preuve et observabilité",
-        "Choisir la technologie la plus populaire",
-        "Ajouter des services avant de mesurer"
+        "Rien de particulier",
+        "Un trou : personne ne la garantit, donc elle sera faite de façon incohérente ou pas du tout",
+        "Une optimisation",
+        "Un composant en trop"
       ],
-      "correctChoice": 0,
-      "expectedKeywords": []
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Chaque responsabilité exigée par le besoin doit avoir un propriétaire clair. Sans propriétaire, chaque composant fait un peu, mal, ou pas."
     },
     {
       "code": "ARCHITECTURE-01-Q2",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Deux composants (data et cache) déclarent tous deux posséder la « persistance ». Quel risque ?",
+      "choices": [
+        "Aucun : c'est de la redondance utile",
+        "Deux sources de vérité qui peuvent diverger : en cas de désaccord, personne ne sait laquelle fait foi",
+        "Un gain de performance garanti",
+        "Un conflit de ports"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Un cache est une copie dérivée, pas un propriétaire. Il faut définir qui écrit, qui fait foi et comment la copie est invalidée."
+    },
+    {
+      "code": "ARCHITECTURE-01-Q3",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Prédis le chemin depuis client (client appelle api, api appelle data puis auth) en profondeur sans répétition :",
+      "choices": [
+        "client -> api -> data -> auth",
+        "client -> api -> auth -> data",
+        "client -> data -> api -> auth",
+        "api -> client -> data -> auth"
+      ],
+      "correctChoice": 0,
+      "expectedKeywords": [],
+      "explanation": "On suit les appels dans l'ordre déclaré : client, api, puis les appels d'api dans l'ordre (data, auth)."
+    },
+    {
+      "code": "ARCHITECTURE-01-Q4",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Quelle question est la plus utile devant un schéma d'architecture ?",
+      "choices": [
+        "Quelle couleur de flèche utilise-t-on ?",
+        "Où est la source de vérité de chaque donnée et que se passe-t-il si ce composant tombe ?",
+        "Combien de technologies différentes ?",
+        "Qui a dessiné le schéma ?"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Ces questions révèlent les doubles propriétaires, les points de défaillance unique et les dépendances cachées."
+    },
+    {
+      "code": "ARCHITECTURE-01-Q5",
       "type": "FREE_TEXT",
-      "prompt": "Nomme un compromis et le signal qui permettrait de le réévaluer.",
+      "prompt": "Sans relire le cours, explique avec tes mots pourquoi une architecture se lit par responsabilités plutôt que par technologies.",
       "choices": [],
       "correctChoice": null,
       "expectedKeywords": [
-        "compromis",
-        "mesure",
-        "risque"
-      ]
+        "responsabilite",
+        "proprietaire",
+        "technolog",
+        "donnee",
+        "contrat"
+      ],
+      "modelAnswer": "Une liste de technologies ne dit pas ce que chaque composant garantit. En lisant par responsabilités, on vérifie que chaque besoin (affichage, règles, persistance, identité, supervision) a exactement un propriétaire, on repère les sources de vérité multiples, les trous et les dépendances, et on peut remplacer une technologie sans perdre de vue ce qu'elle devait assurer.",
+      "explanation": "Une bonne réponse oppose liste de technologies et propriété des responsabilités, et mentionne les trous, les doublons et les dépendances."
     }
   ],
   "checklist": [
-    "Je peux dessiner la circulation de la donnée",
-    "Je sais nommer les responsabilités de chaque couche",
-    "Je justifie une alternative rejetée",
-    "Je définis une mesure et une condition de réévaluation"
+    "Pour chaque composant, je sais dire ce qu'il possède et ce qu'il appelle",
+    "Chaque responsabilité exigée a exactement un propriétaire",
+    "Je repère les composants isolés et les cycles",
+    "J'inclus données et exploitation dans ma lecture"
   ]
 }

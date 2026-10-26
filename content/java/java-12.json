@@ -1,9 +1,144 @@
 {
-  "code":"JAVA-12","language":"JAVA","number":12,"slug":"lambdas-streams","title":"Lambdas, interfaces fonctionnelles et Streams","difficulty":"INTERMEDIAIRE","threshold":70,"activityType":"LAB","prerequisites":["JAVA-11"],
-  "objectives":["Écrire une lambda lisible","Composer un pipeline Stream","Éviter les effets de bord"],
-  "sections":[{"title":"Comportement comme valeur","content":"Une interface fonctionnelle contient une opération abstraite. Une lambda fournit cette opération sans classe anonyme cérémonieuse.","conceptCodes":["JAVA-STREAM-PIPELINE"]},{"title":"Pipeline déclaratif","content":"Un Stream sépare source, transformations intermédiaires et opération terminale. Il ne doit pas masquer des effets de bord complexes."}],
-  "keyConcepts":[{"code":"JAVA-STREAM-PIPELINE","name":"Pipeline Stream","definition":"Une suite de transformations déclaratives produit un résultat depuis une source.","whyExists":"Elle exprime clairement filtrage, projection et agrégation.","whyImportant":"Les traitements de collections gagnent en concision sans sacrifier la testabilité.","minimalExample":"values.stream().filter(...).map(...).toList();","professionalExample":"Un rapport de chiffre d'affaires quotidien accumulait ses résultats dans une liste externe modifiée depuis un map() exécuté en parallelStream : sous charge, des lignes du rapport disparaissaient ou apparaissaient en double à cause d'accès concurrents non synchronisés à cette liste. Remplacer l'effet de bord par un pipeline purement déclaratif filter/map/collect, dont le résultat est retourné plutôt qu'accumulé à la main, a supprimé la course de données.","codeExample":"List<Order> paidOrders = orders.stream()\n    .filter(Order::isPaid)\n    .toList();\n\nint dailyRevenueCents = paidOrders.stream()\n    .mapToInt(Order::amountCents)\n    .sum(); // aucun état externe modifié pendant le pipeline","commonMistake":"Modifier un état partagé depuis map ou filter.","masteryQuestion":"Pourquoi un Stream est-il paresseux avant l'opération terminale ?","masteryProof":"Composer filter, map et reduce sans effet de bord."}],
-  "exercises":[{"code":"JAVA-12-E1","title":"Agréger un flux","statement":"Filtre les nombres pairs et affiche exactement : Somme: 12","starterCode":"import java.util.List;\npublic class Main {\n    public static void main(String[] args) {\n        List<Integer> numbers = List.of(1, 2, 4, 6, 7);\n        // TODO 1 : garde seulement les nombres pairs\n        // TODO 2 : calcule leur somme\n        // TODO 3 : affiche \"Somme: \" suivi du résultat\n    }\n}\n","expectedOutput":"Somme: 12"}],
-  "quiz":[{"code":"JAVA-12-Q1","type":"SINGLE_CHOICE","prompt":"Quelle opération déclenche le pipeline ?","choices":["Une opération terminale","filter seul","La déclaration de la liste"],"correctChoice":0,"expectedKeywords":[]},{"code":"JAVA-12-Q2","type":"FREE_TEXT","prompt":"Pourquoi éviter les effets de bord dans un Stream ?","choices":[],"correctChoice":null,"expectedKeywords":["effet","ordre","test","parallèle"]}],
-  "checklist":["Je reconnais une interface fonctionnelle","Je compose un pipeline lisible","J'évite l'état partagé"]
+  "code": "JAVA-12",
+  "language": "JAVA",
+  "number": 12,
+  "slug": "lambdas-streams",
+  "title": "Lambdas, interfaces fonctionnelles et Streams",
+  "difficulty": "INTERMEDIAIRE",
+  "threshold": 70,
+  "activityType": "LAB",
+  "prerequisites": [
+    "JAVA-11"
+  ],
+  "objectives": [
+    "Écrire une lambda ou une référence de méthode et nommer l'interface fonctionnelle qu'elle implémente.",
+    "Distinguer opérations intermédiaires et terminales et expliquer pourquoi un Stream est paresseux.",
+    "Construire un pipeline filter, map, collect lisible, y compris un regroupement.",
+    "Repérer un effet de bord ou une réutilisation de Stream et les corriger."
+  ],
+  "sections": [
+    {
+      "title": "Une lambda est une fonction passée comme une valeur",
+      "content": "Une interface fonctionnelle possède une seule méthode abstraite ; une lambda en fournit le corps. Les quatre formes à connaître : Predicate<T> (T vers boolean), Function<T, R> (T vers R), Consumer<T> (T vers rien), Supplier<T> (rien vers T).\n```java\nPredicate<String> court = s -> s.length() < 4;\nFunction<String, Integer> taille = String::length;   // référence de méthode\nConsumer<String> afficher = System.out::println;\nSupplier<List<String>> fabrique = ArrayList::new;\n```\nUne lambda ne peut capturer que des variables effectivement finales : ce qu'elle lit ne doit pas changer après sa création. Si le corps dépasse deux lignes, extrais une méthode nommée et passe-la en référence : le pipeline reste lisible."
+    },
+    {
+      "title": "Exemple résolu : de la liste de commandes au total payé",
+      "conceptCodes": [
+        "JAVA-STREAM-PIPELINE"
+      ],
+      "content": "Problème : à partir d'une liste de commandes, obtenir le total des commandes payées.\n\nRaisonnement, étape par étape :\n1. Source : orders.stream().\n2. Que garder ? Les commandes dont le statut est PAID : filter.\n3. Que mesurer ? Le montant : mapToDouble(Order::amount).\n4. Comment conclure ? Une somme : sum() (opération terminale).\n5. Vérification : sans cette dernière étape, rien ne s'exécute.\n```java\ndouble paye = orders.stream()\n        .filter(o -> o.status().equals(\"PAID\"))\n        .mapToDouble(Order::amount)\n        .sum();\n\nMap<String, Long> parStatut = orders.stream()\n        .collect(Collectors.groupingBy(Order::status, TreeMap::new, Collectors.counting()));\n```\nLes opérations intermédiaires (filter, map, sorted, distinct) décrivent la transformation et ne font rien tant qu'une opération terminale (sum, collect, forEach, count, findFirst) ne réclame un résultat. C'est la paresse : le flux n'est parcouru qu'une fois, élément par élément."
+    },
+    {
+      "title": "Paresse, effets de bord et réutilisation",
+      "content": "Deux règles évitent la plupart des bugs.\n\n1. Les étapes d'un pipeline ne doivent pas modifier un état extérieur. Ajouter dans une liste depuis un forEach ou un map rend le code fragile (et faux en parallèle) ; utilise collect ou toList().\n2. Un Stream se consomme une seule fois : le réutiliser lève IllegalStateException. On recrée un flux depuis la source.\n```java\nStream<String> flux = noms.stream().peek(System.out::println);\n// aucune sortie : il n'y a pas d'opération terminale\n\nList<String> mauvais = new ArrayList<>();\nnoms.stream().filter(n -> n.length() > 2).forEach(mauvais::add);   // effet de bord\nList<String> bon = noms.stream().filter(n -> n.length() > 2).toList();\n```\nPréfère les streams primitifs (mapToInt, mapToDouble) pour sommer sans boxing. N'ajoute parallel() qu'après mesure : il ajoute des pièges de concurrence avant d'ajouter de la vitesse."
+    },
+    {
+      "title": "Erreurs fréquentes à reconnaître",
+      "content": "1. Oublier l'opération terminale : le pipeline ne s'exécute pas.\n2. Réutiliser un Stream déjà consommé : IllegalStateException.\n3. Modifier une liste extérieure dans forEach ou map.\n4. Capturer une variable locale modifiée : la lambda ne compile pas.\n5. Appeler get() sur un Optional (retour de findFirst, max) sans traiter le cas vide : utilise orElse, orElseThrow ou ifPresent.\n6. Écrire des lambdas de dix lignes au lieu d'une méthode nommée.\n\nRetrouve ces six erreurs de mémoire avant l'exercice, puis vérifie-toi avec le quiz."
+    }
+  ],
+  "keyConcepts": [
+    {
+      "code": "JAVA-STREAM-PIPELINE",
+      "name": "Pipeline Stream",
+      "definition": "Une suite de transformations déclaratives produit un résultat depuis une source.",
+      "whyExists": "Elle exprime clairement filtrage, projection et agrégation.",
+      "whyImportant": "Les traitements de collections gagnent en concision sans sacrifier la testabilité.",
+      "minimalExample": "values.stream().filter(...).map(...).toList();",
+      "professionalExample": "Un rapport de chiffre d'affaires quotidien accumulait ses résultats dans une liste externe modifiée depuis un map() exécuté en parallelStream : sous charge, des lignes du rapport disparaissaient ou apparaissaient en double à cause d'accès concurrents non synchronisés à cette liste. Remplacer l'effet de bord par un pipeline purement déclaratif filter/map/collect, dont le résultat est retourné plutôt qu'accumulé à la main, a supprimé la course de données.",
+      "codeExample": "List<Order> paidOrders = orders.stream()\n    .filter(Order::isPaid)\n    .toList();\n\nint dailyRevenueCents = paidOrders.stream()\n    .mapToInt(Order::amountCents)\n    .sum(); // aucun état externe modifié pendant le pipeline",
+      "commonMistake": "Modifier un état partagé depuis map ou filter.",
+      "masteryQuestion": "Pourquoi un Stream ne fait-il rien sans opération terminale, et pourquoi éviter les effets de bord dans ses étapes ?",
+      "masteryProof": "Calculer un total filtré, la liste des clients distincts triés et un regroupement avec un seul style de pipeline."
+    }
+  ],
+  "exercises": [
+    {
+      "code": "JAVA-12-E1",
+      "title": "Analyser des commandes avec un pipeline",
+      "statement": "Complète Main pour analyser la liste de commandes avec des Streams (sans boucle for) et afficher exactement :\nTotal paye : 235.0\nClients : Ada, Linus, Nyx\nPar statut : {CANCELLED=1, PAID=4, PENDING=1}\nPlus grosse commande : Linus (120.0)",
+      "starterCode": "import java.util.*;\nimport java.util.stream.Collectors;\n\npublic class Main {\n    record Order(String customer, double amount, String status) {}\n\n    public static void main(String[] args) {\n        List<Order> orders = List.of(\n                new Order(\"Nyx\", 50.0, \"PAID\"),\n                new Order(\"Ada\", 35.0, \"PAID\"),\n                new Order(\"Linus\", 120.0, \"PAID\"),\n                new Order(\"Nyx\", 30.0, \"PAID\"),\n                new Order(\"Ada\", 80.0, \"PENDING\"),\n                new Order(\"Linus\", 15.0, \"CANCELLED\"));\n        // TODO 1 : total des montants des commandes PAID -> \"Total paye : 235.0\"\n        // TODO 2 : clients distincts ayant au moins une commande PAID, triés, séparés par \", \" -> \"Clients : Ada, Linus, Nyx\"\n        // TODO 3 : nombre de commandes par statut dans une TreeMap (groupingBy + counting) -> \"Par statut : {...}\"\n        // TODO 4 : commande au montant maximal (max + Comparator.comparingDouble) -> \"Plus grosse commande : Linus (120.0)\"\n    }\n}\n",
+      "expectedOutput": "Total paye : 235.0\nClients : Ada, Linus, Nyx\nPar statut : {CANCELLED=1, PAID=4, PENDING=1}\nPlus grosse commande : Linus (120.0)"
+    }
+  ],
+  "quiz": [
+    {
+      "code": "JAVA-12-Q1",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Quelle ligne déclenche réellement l'exécution du pipeline ?",
+      "choices": [
+        "noms.stream()",
+        "noms.stream().filter(n -> n.length() > 2)",
+        "noms.stream().map(String::toUpperCase).count()",
+        "noms.stream().peek(System.out::println)"
+      ],
+      "correctChoice": 2,
+      "expectedKeywords": [],
+      "explanation": "count() est une opération terminale : elle réclame un résultat et fait parcourir le flux. stream(), filter, map et peek sont intermédiaires et paresseux ; sans terminale, peek n'affiche rien."
+    },
+    {
+      "code": "JAVA-12-Q2",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Prédis la sortie avant de répondre :\n```java\nStream<Integer> flux = List.of(1, 2, 3).stream().peek(n -> System.out.println(\"vu \" + n));\nSystem.out.println(\"fin\");\n```\n",
+      "choices": [
+        "vu 1, vu 2, vu 3, puis fin",
+        "fin uniquement",
+        "fin puis vu 1, vu 2, vu 3",
+        "Une exception"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Aucune opération terminale : le flux n'est jamais parcouru, donc peek ne s'exécute pas. Seul « fin » est affiché. C'est la paresse des Streams."
+    },
+    {
+      "code": "JAVA-12-Q3",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Trouve le bug :\n```java\nStream<String> flux = noms.stream();\nlong a = flux.count();\nlong b = flux.filter(n -> n.length() > 2).count();\n```\n",
+      "choices": [
+        "count() ne peut pas être appelé deux fois dans le même programme",
+        "Le flux est consommé par le premier count() : le second appel lève IllegalStateException",
+        "filter est interdit avant count",
+        "Le code est correct"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Un Stream ne se parcourt qu'une fois. Après la première opération terminale, il est fermé. Il faut recréer un flux depuis la source (noms.stream()) ou stocker le résultat intermédiaire dans une liste."
+    },
+    {
+      "code": "JAVA-12-Q4",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Quelle écriture est la plus saine pour obtenir les noms de plus de 2 caractères ?",
+      "choices": [
+        "List<String> r = new ArrayList<>(); noms.stream().filter(n -> n.length() > 2).forEach(r::add);",
+        "List<String> r = noms.stream().filter(n -> n.length() > 2).toList();",
+        "List<String> r = noms; noms.removeIf(n -> n.length() <= 2);",
+        "noms.parallelStream().forEach(n -> r.add(n));"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "toList() (ou collect) construit le résultat sans modifier d'état extérieur. La version forEach avec add est un effet de bord, fragile et incorrecte en parallèle ; removeIf mute la source ; le dernier choix ne compile même pas."
+    },
+    {
+      "code": "JAVA-12-Q5",
+      "type": "FREE_TEXT",
+      "prompt": "Sans relire le cours, explique avec tes mots la différence entre opération intermédiaire et terminale, et pourquoi un forEach qui modifie une liste extérieure est une mauvaise idée.",
+      "choices": [],
+      "correctChoice": null,
+      "expectedKeywords": [
+        "intermediaire",
+        "terminale",
+        "paresseu",
+        "effet",
+        "bord"
+      ],
+      "modelAnswer": "Une opération intermédiaire (filter, map...) décrit une transformation et reste paresseuse ; rien ne s'exécute tant qu'une opération terminale (collect, sum, count...) ne demande un résultat. Modifier une liste extérieure depuis le pipeline est un effet de bord : le code devient dépendant de l'ordre et du contexte, non thread-safe en parallèle, et plus difficile à tester ; on préfère collect ou toList().",
+      "explanation": "Une bonne réponse cite la paresse, le déclenchement par l'opération terminale et la notion d'effet de bord (état partagé, parallélisme, testabilité)."
+    }
+  ],
+  "checklist": [
+    "Je nomme l'interface fonctionnelle derrière une lambda",
+    "Je peux dire quelle opération déclenche un pipeline",
+    "J'évite les effets de bord et la réutilisation d'un Stream",
+    "J'ai prédit la sortie des extraits avant de lire les corrections"
+  ]
 }

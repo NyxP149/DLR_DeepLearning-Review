@@ -11,25 +11,30 @@
     "ARCHITECTURE-19"
   ],
   "objectives": [
-    "Appliquer validation, moindre privilège, chiffrement et audit à chaque couche",
-    "Justifier les compromis et nommer un risque opérationnel",
-    "Produire une preuve reproductible avant d’élargir la solution"
+    "Dresser la liste des frontières de confiance d'un système (internet, API, services, base, tiers).",
+    "Associer à chaque frontière les contrôles attendus (TLS, authentification, autorisation, validation, secrets, audit).",
+    "Détecter les contrôles manquants et prioriser selon l'exposition et l'impact.",
+    "Raisonner avec STRIDE pour ne pas oublier une famille de menaces."
   ],
   "sections": [
     {
-      "title": "Concept clé et décision",
+      "title": "La sécurité se joue aux frontières",
+      "content": "Une frontière de confiance sépare deux zones qui n'ont pas le même niveau de confiance : le navigateur de l'utilisateur et l'API, l'API et un service interne, l'application et la base de données, l'application et un fournisseur tiers. À chaque passage, ce qui entre doit être considéré comme non fiable jusqu'à vérification.\n\nContrôles typiques par frontière :\n- Chiffrement en transit (TLS) et authentification mutuelle entre services.\n- Authentification de l'appelant, autorisation de l'action et de la ressource.\n- Validation de toute entrée (forme, taille, type) et encodage de toute sortie.\n- Gestion des secrets (coffre, rotation, jamais dans le code).\n- Journalisation d'audit et limitation de débit."
+    },
+    {
+      "title": "Exemple résolu : un tableau frontière × contrôle",
       "conceptCodes": [
         "DEFENSE-IN-DEPTH"
       ],
-      "content": "Sécuriser chaque frontière relie les besoins, le logiciel, les données et l’exploitation. Commence par les contraintes observables, trace les responsabilités, puis choisis la solution la plus simple qui respecte les invariants."
+      "content": "Problème : quatre frontières (internet vers API, API vers base, API vers service de paiement tiers, service vers service). Quels contrôles manquent ?\n\nRaisonnement, étape par étape :\n1. Lister les frontières, pas les composants : une flèche qui traverse un niveau de confiance est une frontière.\n2. Pour chaque frontière, définir les contrôles requis (au minimum TLS, authentification, autorisation, validation, audit ; secrets quand un identifiant est utilisé).\n3. Relever les contrôles réellement présents (revue de configuration, tests).\n4. Écart = requis moins présents. Le tableau fait ressortir les trous : « internet → API : validation absente », « API → base : TLS absent ».\n5. Priorité selon l'exposition (internet avant interne) et l'impact (base de données avant outil de statistiques) : une absence de validation sur l'entrée publique passe avant un audit manquant en interne.\n6. Plan : pour chaque trou, un responsable, une échéance et un test qui prouve la correction.\n```python\nmissing = {boundary: sorted(REQUIRED[boundary] - PRESENT[boundary]) for boundary in REQUIRED}\ngaps = {b: m for b, m in missing.items() if m}\n```\nSTRIDE aide à ne pas oublier de famille de menaces : Spoofing (usurpation → authentification), Tampering (altération → intégrité, signatures), Repudiation (déni → journal d'audit), Information disclosure (fuite → chiffrement, droits), Denial of service (→ limites, quotas), Elevation of privilege (→ moindre privilège)."
     },
     {
-      "title": "Construction verticale",
-      "content": "La preuve ARCHITECTURE-20 modélise une décision réelle sous forme déterministe. Elle ne remplace pas un déploiement complet : elle rend l’hypothèse testable avant l’intégration Spring Boot, Angular, PostgreSQL et Docker."
+      "title": "Défense en profondeur et hygiène",
+      "content": "- Plusieurs couches indépendantes : si l'une cède, la suivante protège. Authentification + autorisation + validation + base à droits limités.\n- Moindre privilège partout : comptes de service restreints, base avec un compte applicatif sans droits d'administration, réseaux segmentés.\n- Valeurs par défaut sûres : refuser par défaut, TLS obligatoire, cookies Secure et HttpOnly, en-têtes de sécurité (CSP, HSTS).\n- Secrets : coffre, rotation, détection de fuite dans le dépôt, jamais dans les journaux.\n- Dépendances : analyse des vulnérabilités (SCA), mises à jour, verrouillage, chaîne d'approvisionnement (signatures, provenance).\n- Données : classification, chiffrement au repos des données sensibles, minimisation, durée de conservation.\n- Détection et réponse : journaux d'audit centralisés, alertes sur les anomalies, plan de réponse aux incidents, exercices.\n- Tests : analyse statique (SAST), dynamique (DAST), tests d'intrusion, revue de modèle de menaces à chaque évolution importante.\n- Honnêteté sur le risque résiduel : tout n'est pas corrigeable tout de suite ; documente ce qui est accepté, par qui, jusqu'à quand.\n- Conformité : RGPD (base légale, droits des personnes), exigences sectorielles ; elle n'équivaut pas à la sécurité mais l'impose parfois."
     },
     {
-      "title": "Revue professionnelle",
-      "content": "Documente le contexte, la décision, une option rejetée, les conséquences, le signal à surveiller et la condition qui imposerait de revoir le choix."
+      "title": "Erreurs fréquentes à reconnaître",
+      "content": "1. Sécuriser le périmètre (pare-feu) et laisser l'intérieur en confiance totale.\n2. TLS sur l'entrée publique mais pas entre services ni vers la base.\n3. Valider côté client seulement.\n4. Un compte de service administrateur pour tout.\n5. Aucun journal d'audit : impossible d'enquêter.\n6. Un modèle de menaces fait une fois puis oublié.\n\nRetrouve ces erreurs de mémoire avant l'exercice, puis vérifie-toi avec le quiz : c'est la récupération, pas la relecture, qui fixe la notion."
     }
   ],
   "keyConcepts": [
@@ -43,49 +48,97 @@
       "professionalExample": "Une API d’administration interne n’implémente aucune authentification parce que « seul le réseau interne peut l’atteindre » ; six mois plus tard, une reconfiguration accidentelle du reverse proxy l’expose sur Internet et un scan automatisé découvre l’accès libre aux fonctions d’administration en quelques heures. Une défense en profondeur — authentification, autorisation, validation et chiffrement appliqués indépendamment à chaque couche, pas seulement au périmètre réseau — aurait bloqué l’accès même après l’erreur de configuration. Sécuriser chaque frontière suppose qu’aucune couche ne fait confiance aveuglément à celle qui la précède.",
       "codeExample": "controls_per_layer = {\n    \"reseau\": \"TLS + firewall\",\n    \"passerelle\": \"authentification obligatoire\",\n    \"api\": \"autorisation RBAC + validation des entrées\",\n    \"donnees\": \"chiffrement au repos + audit\",\n}\n# Chaque couche vérifie indépendamment, même si la précédente a été contournée",
       "commonMistake": "Choisir un outil avant d’identifier le besoin, la charge, le risque et le propriétaire de la donnée.",
-      "masteryQuestion": "Quel compromis, quel signal et quelle condition de réévaluation associes-tu à « Sécuriser chaque frontière » ?",
-      "masteryProof": "Exécuter la preuve, modifier une contrainte, expliquer le résultat et dessiner la place du composant dans la stack complète."
+      "masteryQuestion": "Qu'est-ce qu'une frontière de confiance, et comment prioriser les contrôles manquants ?",
+      "masteryProof": "Dresser un tableau frontière × contrôle, calculer les écarts et les classer par exposition et impact."
     }
   ],
   "exercises": [
     {
       "code": "ARCHITECTURE-20-E1",
-      "title": "Appliquer validation, moindre privilège, chiffrement et audit à chaque couche",
-      "statement": "Complète la preuve pour produire exactement la sortie attendue, puis explique la décision, une alternative et le signal de production qui validerait ton choix.",
-      "starterCode": "controls = [\"TLS\", \"validation\", \"RBAC\", \"secrets\", \"audit\"]\nrequired = {\"TLS\", \"validation\", \"RBAC\", \"secrets\", \"audit\"}\n# TODO 1 : affiche \"Contrôles: \" suivi du nombre de contrôles\n# TODO 2 : affiche \"Prêt: \" suivi de True si tous les contrôles requis sont présents, sinon False\n",
-      "expectedOutput": "Contrôles: 5\nPrêt: True"
+      "title": "Tableau des contrôles par frontière de confiance",
+      "statement": "Complète : pour chaque frontière, les contrôles manquants (requis moins présents), le nombre total de trous et le classement des frontières par priorité (exposition décroissante, puis nombre de trous décroissant, puis nom). Affiche exactement :\ninternet -> API: validation\nAPI -> base: TLS\nAPI -> paiement tiers: autorisation, secrets, validation\nservice -> service: complète\nTrous: 5\nPriorités:\n  1. internet -> API (exposition 3, 1 trou(s))\n  2. API -> paiement tiers (exposition 2, 3 trou(s))\n  3. API -> base (exposition 1, 1 trou(s))",
+      "starterCode": "STANDARD = {\"TLS\", \"authentification\", \"autorisation\", \"validation\", \"audit\"}\nBOUNDARIES = {\n    \"internet -> API\": {\"exposure\": 3, \"present\": {\"TLS\", \"authentification\", \"autorisation\", \"audit\"}},\n    \"API -> base\": {\"exposure\": 1, \"present\": {\"authentification\", \"autorisation\", \"validation\", \"audit\"}},\n    \"API -> paiement tiers\": {\"exposure\": 2, \"present\": {\"TLS\", \"authentification\", \"audit\"}, \"extra\": {\"secrets\"}},\n    \"service -> service\": {\"exposure\": 1, \"present\": {\"TLS\", \"authentification\", \"autorisation\", \"validation\", \"audit\"}},\n}\n# \"extra\" : contrôles requis en plus de STANDARD pour cette frontière (aucun si absent) ; ils sont présents s'ils figurent dans \"present\"\n\n\ndef required(boundary: dict) -> set[str]:\n    # TODO 1 : STANDARD plus les contrôles \"extra\" de la frontière (ensemble vide si absent)\n    return set()\n\n\ndef missing(boundary: dict) -> list[str]:\n    # TODO 2 : contrôles requis absents de \"present\", triés\n    return []\n\n\n# TODO 3 : pour chaque frontière (ordre du dictionnaire) affiche \"<frontière>: <contrôles manquants séparés par ', '>\" ou \"<frontière>: complète\"\n# TODO 4 : affiche \"Trous: <nombre total de contrôles manquants>\"\n# TODO 5 : affiche \"Priorités:\" puis, pour chaque frontière avec au moins un trou, \"  <rang>. <frontière> (exposition <n>, <m> trou(s))\"\n#          triées par exposition décroissante, puis nombre de trous décroissant, puis nom\n",
+      "expectedOutput": "internet -> API: validation\nAPI -> base: TLS\nAPI -> paiement tiers: autorisation, secrets, validation\nservice -> service: complète\nTrous: 5\nPriorités:\n  1. internet -> API (exposition 3, 1 trou(s))\n  2. API -> paiement tiers (exposition 2, 3 trou(s))\n  3. API -> base (exposition 1, 1 trou(s))"
     }
   ],
   "quiz": [
     {
       "code": "ARCHITECTURE-20-Q1",
       "type": "SINGLE_CHOICE",
-      "prompt": "Quelle démarche produit la décision la plus robuste ?",
+      "prompt": "Qu'est-ce qu'une frontière de confiance ?",
       "choices": [
-        "Relier contraintes, responsabilités, preuve et observabilité",
-        "Choisir la technologie la plus populaire",
-        "Ajouter des services avant de mesurer"
+        "Une clôture physique",
+        "Le passage entre deux zones de niveaux de confiance différents (navigateur et API, API et base, application et tiers), où l'on doit tout vérifier",
+        "Un pare-feu uniquement",
+        "Une règle de nommage"
       ],
-      "correctChoice": 0,
-      "expectedKeywords": []
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Chaque passage est un endroit où une donnée non fiable peut entrer ou où une donnée sensible peut sortir. Les contrôles se placent à ces endroits."
     },
     {
       "code": "ARCHITECTURE-20-Q2",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Prédis les contrôles manquants de « API → paiement tiers » (requis : TLS, authentification, autorisation, validation, audit, secrets ; présents : TLS, authentification, audit) :",
+      "choices": [
+        "Aucun",
+        "autorisation, secrets, validation",
+        "TLS seulement",
+        "audit"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Requis moins présents : autorisation, validation et secrets. Le tri alphabétique donne autorisation, secrets, validation."
+    },
+    {
+      "code": "ARCHITECTURE-20-Q3",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Trouve le défaut :\n« Notre pare-feu bloque tout depuis l'extérieur, donc les services internes se font entièrement confiance. »",
+      "choices": [
+        "Aucun",
+        "Une seule intrusion donne accès à tout (mouvement latéral) : chaque frontière interne doit aussi authentifier, autoriser et chiffrer (défense en profondeur)",
+        "Le pare-feu est inutile",
+        "Il faut moins de services"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Le modèle « château fort » échoue dès que le périmètre est franchi (phishing, dépendance compromise). La confiance zéro suppose l'inverse : chaque appel est vérifié."
+    },
+    {
+      "code": "ARCHITECTURE-20-Q4",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Que couvre la lettre R de STRIDE (Repudiation) et quel contrôle lui répond ?",
+      "choices": [
+        "Le déni de service, limité par des quotas",
+        "Le déni d'une action par son auteur, couvert par un journal d'audit fiable et des signatures",
+        "La fuite de données, couverte par le chiffrement",
+        "L'usurpation, couverte par l'authentification"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Repudiation : « ce n'est pas moi qui ai fait ça ». La traçabilité (audit inaltérable, horodatage, signature) permet de prouver qui a fait quoi."
+    },
+    {
+      "code": "ARCHITECTURE-20-Q5",
       "type": "FREE_TEXT",
-      "prompt": "Nomme un compromis et le signal qui permettrait de le réévaluer.",
+      "prompt": "Sans relire le cours, explique avec tes mots comment tu priorises les contrôles de sécurité manquants.",
       "choices": [],
       "correctChoice": null,
       "expectedKeywords": [
-        "compromis",
-        "mesure",
-        "risque"
-      ]
+        "exposition",
+        "impact",
+        "frontiere",
+        "risque",
+        "resid"
+      ],
+      "modelAnswer": "Je classe les écarts par exposition (une entrée publique d'internet avant un service interne) et par impact (ce qui protège des données sensibles ou des droits d'administration avant le reste), puis je traite d'abord les trous les plus exposés et les plus graves. Pour ce qui n'est pas corrigé tout de suite, je documente le risque résiduel accepté, le responsable et l'échéance de réévaluation.",
+      "explanation": "Une bonne réponse cite exposition et impact comme critères de tri, et la gestion documentée du risque résiduel."
     }
   ],
   "checklist": [
-    "Je peux dessiner la circulation de la donnée",
-    "Je sais nommer les responsabilités de chaque couche",
-    "Je justifie une alternative rejetée",
-    "Je définis une mesure et une condition de réévaluation"
+    "J'ai listé les frontières de confiance de mon système",
+    "Chaque frontière a ses contrôles requis et présents consignés",
+    "Je priorise par exposition et impact",
+    "Je documente le risque résiduel accepté"
   ]
 }

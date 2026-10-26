@@ -11,21 +11,30 @@
     "ANGULAR-03"
   ],
   "objectives": [
-    "Expliquer formulaires typés et validation accessible",
-    "Construire une preuve exécutable et déterministe",
-    "Relier le concept à une décision professionnelle"
+    "Construire un formulaire réactif typé et composer des validateurs.",
+    "Écrire un validateur qui retourne un message d'erreur ou null et en tirer la première erreur d'un champ.",
+    "Afficher des erreurs accessibles (label, aria-describedby, aria-invalid, role=alert).",
+    "Repérer un validateur côté client pris pour une protection, un message affiché trop tôt ou un champ sans label."
   ],
   "sections": [
     {
-      "title": "Concept et usage professionnel",
-      "content": "Formulaires typés et validation accessible répond à un besoin concret de maintenabilité, de sûreté ou de performance. Le laboratoire demande de rendre la décision observable et vérifiable.",
-      "conceptCodes": [
-        "ANGULAR-FORMS"
-      ]
+      "title": "Formulaires réactifs typés",
+      "content": "Un formulaire réactif décrit sa structure en TypeScript, pas seulement dans le template. Depuis Angular 14, les formulaires sont typés :\n```ts\nconst form = new FormGroup({\n  email: new FormControl('', { nonNullable: true, validators: [Validators.required, Validators.email] }),\n  password: new FormControl('', { nonNullable: true, validators: [Validators.required, Validators.minLength(8)] }),\n});\nform.controls.email.value;      // type string (pas string | null grâce à nonNullable)\n```\nUn validateur est une fonction qui reçoit le contrôle et retourne null (valide) ou un objet d'erreurs ({ minlength: { requiredLength: 8, actualLength: 3 } }). Les validateurs se composent : on peut en attacher plusieurs à un champ, et un validateur de groupe compare plusieurs champs (confirmation du mot de passe)."
     },
     {
-      "title": "Mise en pratique",
-      "content": "La preuve TypeScript isole le contrat réactif ; son intégration dans un composant Angular est décrite sans rendre le runner dépendant d'un navigateur."
+      "title": "Exemple résolu : des validateurs qui composent",
+      "conceptCodes": [
+        "ANGULAR-FORMS"
+      ],
+      "content": "Problème : valider un formulaire d'inscription, signaler le premier problème de chaque champ et résumer chaque soumission.\n\nRaisonnement, étape par étape :\n1. Un validateur est une fonction (valeur) → message d'erreur ou null : required (« obligatoire »), email (« format invalide »), minLength(n) (« n caractères minimum »).\n2. minLength(n) est une fabrique : elle reçoit n et retourne le validateur.\n3. firstError(valeur, validateurs) applique les validateurs dans l'ordre et retourne le premier message non nul. Un champ vide affiche « obligatoire » et non « format invalide » : l'ordre compte.\n4. Le formulaire valide chaque champ et collecte les erreurs sous la forme « champ: message ».\n5. Une soumission est valide si la liste est vide.\n6. Vérification : trois soumissions (champs vides, e-mail mal formé, tout correct) donnent invalide avec deux erreurs, invalide avec une erreur, puis valide.\n```ts\ntype Validator = (value: string) => string | null;\nconst required: Validator = v => (v.trim() === '' ? 'obligatoire' : null);\nconst email: Validator = v => (/^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$/.test(v) ? null : 'format invalide');\nconst minLength = (n: number): Validator => v => (v.length >= n ? null : `${n} caractères minimum`);\n\nconst firstError = (value: string, validators: Validator[]): string | null =>\n  validators.map(v => v(value)).find(message => message !== null) ?? null;\n```"
+    },
+    {
+      "title": "Accessibilité et bonnes pratiques",
+      "content": "- Chaque champ a un <label for=\"id\"> : le placeholder n'est pas un label (il disparaît à la saisie et n'est pas toujours lu).\n- Une erreur est reliée au champ : aria-invalid=\"true\" et aria-describedby=\"email-error\" pointant vers le message ; le message utilise role=\"alert\" (ou aria-live=\"polite\") pour être annoncé.\n- N'affiche pas l'erreur avant que l'utilisateur ait touché le champ ou tenté de soumettre (control.touched ou submitted), sinon le formulaire s'ouvre couvert de rouge.\n- Ne désactive pas le bouton de soumission tant que le formulaire est invalide sans expliquer pourquoi : l'utilisateur ne comprend pas ce qui manque. Mieux vaut autoriser la soumission et afficher les erreurs avec un résumé et un focus sur le premier champ en erreur.\n- Utilise les bons types d'input (type=\"email\", autocomplete=\"email\", inputmode) : clavier adapté et remplissage automatique.\n- Validation asynchrone (e-mail déjà utilisé) : débruite (debounceTime) et affiche un état « vérification en cours ».\n- La validation côté client est un confort : le serveur revalide toujours, car n'importe quel client HTTP contourne le formulaire. Ne mets pas de logique de sécurité dans un validateur Angular.\n- Les messages d'erreur sont écrits en langage utilisateur et disent comment corriger (« 8 caractères minimum »)."
+    },
+    {
+      "title": "Erreurs fréquentes à reconnaître",
+      "content": "1. Un placeholder à la place d'un label.\n2. Des erreurs affichées dès l'ouverture du formulaire.\n3. Un message d'erreur non relié au champ (aria-describedby manquant) ou non annoncé.\n4. Un bouton désactivé sans explication.\n5. Croire que la validation côté client protège l'API.\n6. Un validateur qui lève une exception au lieu de retourner null ou une erreur.\n\nRetrouve ces erreurs de mémoire avant l'exercice, puis vérifie-toi avec le quiz : c'est la récupération, pas la relecture, qui fixe la notion."
     }
   ],
   "keyConcepts": [
@@ -39,8 +48,8 @@
       "professionalExample": "Sur un formulaire d'inscription, chaque champ est typé via FormGroup<{ email: FormControl<string>; password: FormControl<string> }> pour que le compilateur signale immédiatement une faute de frappe comme form.value.emial. Chaque contrôle invalide est relié à son message d'erreur par aria-describedby, et aria-invalid est mis à jour dynamiquement pour que les lecteurs d'écran annoncent l'erreur sans attendre une soumission. L'erreur classique est de valider uniquement visuellement avec une bordure rouge, sans exposer l'état invalide aux technologies d'assistance, ce qui rend le formulaire inutilisable pour un utilisateur non-voyant même si l'erreur est visible à l'écran.",
       "codeExample": "interface SignupForm {\n  email: FormControl<string>;\n  password: FormControl<string>;\n}\n\nreadonly form = this.fb.group<SignupForm>({\n  email: this.fb.control('', { nonNullable: true, validators: [Validators.required, Validators.email] }),\n  password: this.fb.control('', { nonNullable: true, validators: [Validators.required, Validators.minLength(8)] }),\n});\n\nget emailInvalid(): boolean {\n  const c = this.form.controls.email;\n  return c.invalid && (c.dirty || c.touched);\n}\n\n// Template\n// <input formControlName=\"email\" [attr.aria-invalid]=\"emailInvalid\" aria-describedby=\"email-error\" />\n// <span id=\"email-error\" *ngIf=\"emailInvalid\">Adresse email invalide</span>",
       "commonMistake": "Appliquer la technique sans mesurer son effet ni documenter sa frontière.",
-      "masteryQuestion": "Quelle contrainte de formulaires typés et validation accessible doit rester vraie lorsque le système évolue ?",
-      "masteryProof": "Exécuter la preuve, expliquer son invariant et proposer un cas d’échec."
+      "masteryQuestion": "Pourquoi la validation côté client ne remplace-t-elle pas celle du serveur, et comment relier une erreur à son champ pour les lecteurs d'écran ?",
+      "masteryProof": "Écrire required, email, minLength(n) et firstError, puis résumer trois soumissions d'un formulaire d'inscription."
     }
   ],
   "exercises": [
@@ -56,32 +65,80 @@
     {
       "code": "ANGULAR-04-Q1",
       "type": "SINGLE_CHOICE",
-      "prompt": "Quelle preuve est la plus utile en revue ?",
+      "prompt": "Un champ e-mail est vide. Avec les validateurs [required, email] dans cet ordre, quelle erreur afficher ?",
       "choices": [
-        "Une exécution déterministe avec invariant explicite",
-        "Une sortie aléatoire",
-        "Une capture sans code"
+        "format invalide",
+        "obligatoire",
+        "Les deux messages",
+        "Aucune"
       ],
-      "correctChoice": 0,
-      "expectedKeywords": []
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "On garde la première erreur : un champ vide est d'abord « obligatoire ». Dire « format invalide » à quelqu'un qui n'a encore rien écrit est déroutant."
     },
     {
       "code": "ANGULAR-04-Q2",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Prédis le résumé :\n```ts\n// email: 'ada-at-dlr.dev', password: 'secret12'\n```\nvalidateurs email: [required, email], password: [required, minLength(8)].",
+      "choices": [
+        "valide",
+        "invalide (email: format invalide)",
+        "invalide (password: 8 caractères minimum)",
+        "invalide (email: obligatoire)"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "L'e-mail ne contient pas @ : « format invalide ». Le mot de passe « secret12 » a exactement 8 caractères : minLength(8) est satisfait."
+    },
+    {
+      "code": "ANGULAR-04-Q3",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Trouve le défaut d'accessibilité :\n```html\n<input type=\"email\" placeholder=\"Adresse e-mail\">\n<span class=\"error\">Format invalide</span>\n```\n",
+      "choices": [
+        "Il manque une classe CSS",
+        "Pas de label (le placeholder n'en tient pas lieu) et l'erreur n'est ni reliée au champ ni annoncée aux lecteurs d'écran",
+        "type=\"email\" est interdit",
+        "span est interdit"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Ajoute <label for>, aria-invalid, aria-describedby vers l'élément d'erreur et role=\"alert\" sur ce dernier, pour que l'erreur soit perçue et reliée au champ."
+    },
+    {
+      "code": "ANGULAR-04-Q4",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Pourquoi le serveur doit-il valider même si le formulaire Angular valide déjà ?",
+      "choices": [
+        "Par habitude",
+        "Parce que n'importe quel client HTTP peut envoyer des données sans passer par le formulaire",
+        "Parce qu'Angular ne valide pas vraiment",
+        "Pour ralentir les attaques"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Le formulaire améliore l'expérience mais ne protège rien : un script, curl ou un navigateur modifié envoie ce qu'il veut. Seul le serveur garantit l'intégrité des données."
+    },
+    {
+      "code": "ANGULAR-04-Q5",
       "type": "FREE_TEXT",
-      "prompt": "Explique une décision liée à formulaires typés et validation accessible.",
+      "prompt": "Sans relire le cours, explique avec tes mots pourquoi on évite d'afficher les erreurs avant que l'utilisateur ait touché un champ, et comment on rend une erreur accessible.",
       "choices": [],
       "correctChoice": null,
       "expectedKeywords": [
-        "contrat",
-        "preuve",
-        "test"
-      ]
+        "touche",
+        "label",
+        "aria",
+        "annonc",
+        "relie"
+      ],
+      "modelAnswer": "Afficher des erreurs sur un formulaire encore vide le fait paraître couvert d'erreurs avant toute saisie : on attend que le champ soit touché ou le formulaire soumis. Pour l'accessibilité, chaque champ a un label, l'erreur est reliée au champ par aria-describedby, le champ porte aria-invalid et le message est annoncé par un rôle alert ou une zone live, avec un texte qui dit comment corriger.",
+      "explanation": "Une bonne réponse mentionne le moment d'affichage (touché ou soumis) et label, aria-describedby/aria-invalid, annonce aux lecteurs d'écran."
     }
   ],
   "checklist": [
-    "Je peux expliquer le concept sans réciter une définition",
-    "Je sais exécuter et modifier la preuve",
-    "Je peux nommer un risque et son contrôle",
-    "Je relie cette étape à la suivante"
+    "Mes champs ont un label et des erreurs reliées par aria-describedby",
+    "J'affiche les erreurs après interaction, pas à l'ouverture",
+    "Je compose des validateurs simples qui retournent null ou une erreur",
+    "Je sais que le serveur revalide toujours"
   ]
 }

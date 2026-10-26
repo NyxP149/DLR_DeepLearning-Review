@@ -11,21 +11,30 @@
     "TYPESCRIPT-10"
   ],
   "objectives": [
-    "Expliquer erreurs métier et modèle result",
-    "Construire une preuve exécutable et déterministe",
-    "Relier le concept à une décision professionnelle"
+    "Choisir entre exception et type Result pour une erreur attendue.",
+    "Modéliser un Result discriminé et le consommer avec un switch exhaustif.",
+    "Écrire des classes d'erreur typées et traiter un catch (unknown) correctement.",
+    "Repérer un throw de chaîne, un catch vide ou une erreur avalée."
   ],
   "sections": [
     {
-      "title": "Concept et usage professionnel",
-      "content": "Erreurs métier et modèle Result répond à un besoin concret de maintenabilité, de sûreté ou de performance. Le laboratoire demande de rendre la décision observable et vérifiable.",
-      "conceptCodes": [
-        "TYPESCRIPT-RESULT"
-      ]
+      "title": "Erreur attendue ou événement exceptionnel ?",
+      "content": "Deux familles :\n- Les erreurs attendues du métier : un texte illisible, un stock insuffisant, un e-mail déjà pris. Elles font partie du fonctionnement normal : leur type doit apparaître dans la signature pour que l'appelant les traite.\n- Les événements exceptionnels : mémoire pleine, bug de programmation, base indisponible. On les laisse remonter (throw) jusqu'à un endroit qui sait réagir.\n\nEn TypeScript, throw n'apparaît pas dans la signature d'une fonction : l'appelant ne sait pas qu'elle peut échouer. Un type Result rend l'échec visible :\n```ts\ntype Result<T, E> = { ok: true; value: T } | { ok: false; error: E };\n\nfunction parseQuantity(text: string): Result<number, string> {\n  const n = Number(text);\n  if (text.trim() === '' || Number.isNaN(n)) return { ok: false, error: 'quantité illisible' };\n  if (!Number.isInteger(n)) return { ok: false, error: 'quantité non entière' };\n  if (n < 0) return { ok: false, error: 'quantité négative' };\n  return { ok: true, value: n };\n}\n```"
     },
     {
-      "title": "Mise en pratique",
-      "content": "La preuve minimale est locale, déterministe et peut être enrichie sans changer le contrat attendu."
+      "title": "Exemple résolu : additionner seulement les valeurs valides",
+      "conceptCodes": [
+        "TYPESCRIPT-RESULT"
+      ],
+      "content": "Problème : convertir une liste de textes en quantités, signaler les entrées invalides avec leur raison et totaliser les valides.\n\nRaisonnement, étape par étape :\n1. parseQuantity renvoie un Result : jamais d'exception pour un texte illisible.\n2. L'appelant utilise le champ ok comme discriminant : if (result.ok) donne accès à value, sinon à error. Le compilateur interdit de lire value sans avoir vérifié ok.\n3. Ordre des tests : texte vide ou NaN, puis entier, puis négatif. Un texte vide donne Number('') = 0, d'où le test explicite.\n4. sumValid additionne seulement les résultats ok (reduce ou boucle) et retourne aussi le nombre d'entrées vues.\n5. Affichage : un switch exhaustif sur result.ok.\n6. Vérification : [\"5\", \"-2\", \"abc\"] donne un total de 5 sur 3 entrées.\n```ts\nfor (const text of ['5', '-2', 'abc']) {\n  const r = parseQuantity(text);\n  console.log(r.ok ? `ok ${r.value}` : `erreur: ${r.error}`);\n}\nconst total = ['5', '-2', 'abc']\n  .map(parseQuantity)\n  .reduce((sum, r) => (r.ok ? sum + r.value : sum), 0);\n```\nAvantage : l'oubli de traiter l'échec devient une erreur de compilation. Coût : un peu de verbosité à chaque appel."
+    },
+    {
+      "title": "Erreurs typées et catch",
+      "content": "Quand tu lances une exception, lance un Error (ou une sous-classe), jamais une chaîne : seul Error porte une pile d'appels. Une classe d'erreur permet de distinguer les cas :\n```ts\nclass ValidationError extends Error {\n  constructor(message: string, readonly field: string) {\n    super(message);\n    this.name = 'ValidationError';\n  }\n}\n\ntry {\n  charger();\n} catch (error: unknown) {                    // en strict, error est unknown\n  if (error instanceof ValidationError) {\n    console.log(`champ ${error.field}: ${error.message}`);\n  } else {\n    throw error;                              // on ne sait pas traiter : on relance\n  }\n}\n```\nRègles : ne laisse pas un catch vide (l'erreur disparaît) ; ne capture que ce que tu sais traiter ; conserve la cause (new Error('contexte', { cause: error })) ; en async, une promesse rejetée non attrapée peut terminer le processus Node. Choisis une convention par projet : exceptions pour l'exceptionnel, Result pour le prévisible."
+    },
+    {
+      "title": "Erreurs fréquentes à reconnaître",
+      "content": "1. throw 'erreur' : pas de pile d'appels, pas d'instanceof Error.\n2. catch (e) {} : l'erreur disparaît silencieusement.\n3. Lire result.value sans tester result.ok (le compilateur l'interdit, sauf si tu castes).\n4. Utiliser une exception pour une saisie invalide courante (coût et lisibilité).\n5. Number('') ou Number(' ') accepté comme 0 sans test.\n6. Capturer toutes les erreurs au sommet et afficher « une erreur est survenue » sans journaliser la cause.\n\nRetrouve ces erreurs de mémoire avant l'exercice, puis vérifie-toi avec le quiz : c'est la récupération, pas la relecture, qui fixe la notion."
     }
   ],
   "keyConcepts": [
@@ -39,8 +48,8 @@
       "professionalExample": "Le service de virement bancaire refuse de modéliser un solde insuffisant comme une exception JavaScript, car les exceptions sont invisibles dans la signature de type et un développeur peut oublier un try/catch sans que le compilateur ne s'en plaigne. À la place, transferFunds renvoie un Result<Transfer, 'INSUFFICIENT_FUNDS' | 'ACCOUNT_NOT_FOUND'>, ce qui oblige chaque appelant à traiter explicitement l'échec avant d'accéder à la valeur, évitant qu'un virement échoué soit affiché comme réussi côté interface.",
       "codeExample": "type Result<T, E> =\n  | { ok: true; value: T }\n  | { ok: false; error: E };\n\ninterface Transfer { id: string; amountCents: number; }\ntype TransferError = 'INSUFFICIENT_FUNDS' | 'ACCOUNT_NOT_FOUND';\n\nfunction transferFunds(balanceCents: number, amountCents: number): Result<Transfer, TransferError> {\n  if (amountCents > balanceCents) {\n    return { ok: false, error: 'INSUFFICIENT_FUNDS' };\n  }\n  return { ok: true, value: { id: 'TRF-1', amountCents } };\n}\n\nconst result = transferFunds(1000, 5000);\nif (!result.ok) {\n  console.error(`Virement refusé : ${result.error}`);\n} else {\n  console.log(`Virement ${result.value.id} effectué`);\n}",
       "commonMistake": "Appliquer la technique sans mesurer son effet ni documenter sa frontière.",
-      "masteryQuestion": "Quelle contrainte de erreurs métier et modèle result doit rester vraie lorsque le système évolue ?",
-      "masteryProof": "Exécuter la preuve, expliquer son invariant et proposer un cas d’échec."
+      "masteryQuestion": "Quand utiliser un type Result plutôt qu'une exception, et pourquoi un throw n'apparaît-il pas dans la signature ?",
+      "masteryProof": "Écrire parseQuantity qui renvoie un Result discriminé et sumValid qui totalise uniquement les valeurs valides."
     }
   ],
   "exercises": [
@@ -56,32 +65,80 @@
     {
       "code": "TYPESCRIPT-11-Q1",
       "type": "SINGLE_CHOICE",
-      "prompt": "Quelle preuve est la plus utile en revue ?",
+      "prompt": "Quel avantage principal apporte Result<T, E> par rapport à throw pour une saisie invalide courante ?",
       "choices": [
-        "Une exécution déterministe avec invariant explicite",
-        "Une sortie aléatoire",
-        "Une capture sans code"
+        "Il est plus rapide à écrire",
+        "L'échec apparaît dans la signature : le compilateur oblige l'appelant à le traiter",
+        "Il supprime tous les bugs",
+        "Il évite les tests"
       ],
-      "correctChoice": 0,
-      "expectedKeywords": []
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "throw est invisible dans le type de la fonction ; on peut l'oublier. Avec Result, lire la valeur sans tester ok est une erreur de compilation."
     },
     {
       "code": "TYPESCRIPT-11-Q2",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Prédis la sortie :\n```ts\nconsole.log(Number(''), Number(' '), Number('5'));\n```\net conclus pour un parseQuantity qui ne teste que Number.isNaN.",
+      "choices": [
+        "NaN NaN 5 : la saisie vide est bien rejetée",
+        "0 0 5 : une saisie vide serait acceptée comme 0, il faut la tester explicitement",
+        "0 NaN 5",
+        "Une exception"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Number('') et Number(' ') valent 0, pas NaN. Sans test sur le texte vide, une saisie vide devient une quantité valide de 0."
+    },
+    {
+      "code": "TYPESCRIPT-11-Q3",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Trouve le défaut :\n```ts\ntry {\n  save(order);\n} catch (e) {\n}\n```\n",
+      "choices": [
+        "Il manque finally",
+        "Le catch vide avale toute erreur : un échec de sauvegarde disparaît sans trace",
+        "try ne peut pas contenir un appel de fonction",
+        "order doit être unknown"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Capture seulement ce que tu sais traiter, journalise ou relance le reste. Un catch vide transforme une panne en perte silencieuse de données."
+    },
+    {
+      "code": "TYPESCRIPT-11-Q4",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Pourquoi écrire throw new Error('x') plutôt que throw 'x' ?",
+      "choices": [
+        "C'est interdit par le compilateur",
+        "Seul un objet Error porte la pile d'appels et permet instanceof Error, name et cause",
+        "throw 'x' est plus lent",
+        "Il n'y a aucune différence"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Une chaîne lancée n'a ni pile ni type : impossible de la tracer ou de la distinguer d'une autre erreur. Lance toujours un Error ou une sous-classe."
+    },
+    {
+      "code": "TYPESCRIPT-11-Q5",
       "type": "FREE_TEXT",
-      "prompt": "Explique une décision liée à erreurs métier et modèle result.",
+      "prompt": "Sans relire le cours, explique avec tes mots la différence entre une erreur attendue du métier et un événement exceptionnel, et comment chacune se traite.",
       "choices": [],
       "correctChoice": null,
       "expectedKeywords": [
-        "contrat",
-        "preuve",
-        "test"
-      ]
+        "attendue",
+        "exception",
+        "result",
+        "signature",
+        "remonte"
+      ],
+      "modelAnswer": "Une erreur attendue (saisie invalide, stock insuffisant) fait partie du fonctionnement normal : on la modélise par un type Result visible dans la signature et l'appelant la traite. Un événement exceptionnel (bug, panne de base) n'est pas prévisible localement : on le laisse remonter par exception jusqu'à un point capable de réagir (journaliser, répondre 500, relancer).",
+      "explanation": "Une bonne réponse associe erreur attendue et Result visible dans la signature, événement exceptionnel et remontée par exception."
     }
   ],
   "checklist": [
-    "Je peux expliquer le concept sans réciter une définition",
-    "Je sais exécuter et modifier la preuve",
-    "Je peux nommer un risque et son contrôle",
-    "Je relie cette étape à la suivante"
+    "Je modélise les erreurs attendues par un Result discriminé",
+    "Je lance toujours un Error (ou une sous-classe), jamais une chaîne",
+    "Je n'écris aucun catch vide",
+    "Je teste le texte vide avant de convertir en nombre"
   ]
 }

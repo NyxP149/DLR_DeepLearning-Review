@@ -11,25 +11,30 @@
     "ARCHITECTURE-18"
   ],
   "objectives": [
-    "Relier une requête utilisateur à ses signaux techniques et métier",
-    "Justifier les compromis et nommer un risque opérationnel",
-    "Produire une preuve reproductible avant d’élargir la solution"
+    "Distinguer journaux, métriques et traces et dire quelle question chacun éclaire.",
+    "Lire une trace : durée de chaque span, temps propre (hors enfants), span le plus lent, erreurs.",
+    "Relier les signaux par un identifiant de corrélation et produire des journaux structurés.",
+    "Définir des indicateurs (RED, quatre signaux d'or) et des alertes utiles."
   ],
   "sections": [
     {
-      "title": "Concept clé et décision",
+      "title": "Trois signaux, trois questions",
+      "content": "Observer un système, c'est comprendre son état interne à partir de ses sorties.\n- Métriques : nombres agrégés dans le temps (requêtes par seconde, taux d'erreurs, latence p95). Elles répondent à « quelque chose ne va-t-il pas, depuis quand, avec quelle ampleur ? ». Peu coûteuses, adaptées aux alertes.\n- Traces : le parcours d'une requête à travers plusieurs services, découpé en spans (une opération, un début, une fin, un parent). Elles répondent à « où le temps est-il perdu, quel service échoue ? ».\n- Journaux : événements détaillés. Ils répondent à « pourquoi cet échec précis ? ». Structurés (JSON), avec niveau et identifiant de corrélation.\nEn incident : métriques d'abord (impact), traces ensuite (où), journaux enfin (pourquoi)."
+    },
+    {
+      "title": "Exemple résolu : lire une trace",
       "conceptCodes": [
         "OBSERVABILITY"
       ],
-      "content": "Observer traces, métriques et journaux relie les besoins, le logiciel, les données et l’exploitation. Commence par les contraintes observables, trace les responsabilités, puis choisis la solution la plus simple qui respecte les invariants."
+      "content": "Problème : une trace contient une requête racine (gateway) qui appelle orders, lequel appelle db et un service de paiement qui échoue. Où est le problème ?\n\nRaisonnement, étape par étape :\n1. Chaque span a un identifiant, un parent (ou aucun pour la racine), un nom, un début, une fin et un indicateur d'erreur.\n2. Durée d'un span : fin - début. Durée totale de la trace : celle de la racine.\n3. Temps propre (self time) : durée du span moins la somme des durées de ses enfants (en supposant des enfants séquentiels). Il isole ce que fait réellement ce span, hors attentes. Un span dont le temps propre est élevé est le vrai suspect ; un span dont la durée est élevée parce que ses enfants sont lents ne l'est pas.\n4. Arbre : on affiche les spans indentés selon leur profondeur pour lire la hiérarchie d'un coup d'œil.\n5. Erreurs : les spans en erreur et leur chemin jusqu'à la racine ; la propagation d'une erreur indique où elle est née (le span en erreur le plus profond).\n6. Vérification : la somme des temps propres de tous les spans égale la durée de la racine (si les enfants ne se chevauchent pas).\n```python\nchildren = {}\nfor span in spans:\n    children.setdefault(span[\"parent\"], []).append(span)\nself_time = {s[\"id\"]: duration(s) - sum(duration(c) for c in children.get(s[\"id\"], [])) for s in spans}\n```\nDans une application réelle, OpenTelemetry fournit ces spans de façon standard, et un identifiant de trace se propage d'un service à l'autre par un en-tête (traceparent)."
     },
     {
-      "title": "Construction verticale",
-      "content": "La preuve ARCHITECTURE-19 modélise une décision réelle sous forme déterministe. Elle ne remplace pas un déploiement complet : elle rend l’hypothèse testable avant l’intégration Spring Boot, Angular, PostgreSQL et Docker."
+      "title": "Des indicateurs et des alertes qui servent",
+      "content": "- RED pour les services : Rate (requêtes par seconde), Errors (taux d'erreurs), Duration (latence, en percentiles).\n- USE pour les ressources : Utilization, Saturation, Errors.\n- Les quatre signaux d'or : latence, trafic, erreurs, saturation.\n- SLI/SLO : un indicateur de niveau de service (taux de requêtes réussies en moins de 300 ms) et un objectif (99,5 % sur 30 jours). L'alerte repose sur la consommation du budget d'erreur, pas sur un pic isolé.\n- Alertes utiles : liées à l'impact utilisateur, actionnables (la personne sait quoi faire), rares. Une alerte qui sonne tous les jours est ignorée. Chaque alerte pointe vers un runbook (procédure).\n- Journaux : niveau, message, identifiant de trace et de requête, utilisateur anonymisé ; pas de secret ni de donnée personnelle superflue ; volume maîtrisé (échantillonnage des niveaux bas).\n- Cardinalité : les étiquettes de métriques sont à valeurs bornées (statut, route gabarit), jamais un identifiant d'utilisateur.\n- Corrélation : un identifiant unique créé à l'entrée et propagé dans les journaux, les métriques exemplaires et les traces.\n- Observabilité dès la conception : ce qu'on ne mesure pas, on ne le répare pas. Ajoute les instruments avec la fonctionnalité, pas après l'incident."
     },
     {
-      "title": "Revue professionnelle",
-      "content": "Documente le contexte, la décision, une option rejetée, les conséquences, le signal à surveiller et la condition qui imposerait de revoir le choix."
+      "title": "Erreurs fréquentes à reconnaître",
+      "content": "1. Des journaux en texte libre sans identifiant de corrélation.\n2. Lire la durée d'un span sans regarder son temps propre.\n3. Des étiquettes de métriques à cardinalité explosive.\n4. Des alertes bruyantes que tout le monde ignore.\n5. Des secrets ou données personnelles dans les journaux.\n6. Mesurer la moyenne au lieu des percentiles.\n\nRetrouve ces erreurs de mémoire avant l'exercice, puis vérifie-toi avec le quiz : c'est la récupération, pas la relecture, qui fixe la notion."
     }
   ],
   "keyConcepts": [
@@ -43,49 +48,97 @@
       "professionalExample": "Un incident de production met trois heures à être diagnostiqué parce que les logs du service passerelle, du service commandes et du service paiement ne partagent aucun identifiant commun : impossible de reconstituer le trajet d’une requête utilisateur en échec à travers les trois services. En propageant un identifiant de trace unique depuis la première requête jusqu’à chaque appel interne, l’équipe réduit le temps de diagnostic à quelques minutes lors de l’incident suivant. Observer traces, métriques et journaux avec un identifiant partagé relie enfin le symptôme utilisateur à sa cause technique.",
       "codeExample": "{\"traceId\": \"abc-42\", \"service\": \"gateway\", \"span\": \"route\", \"durationMs\": 18}\n{\"traceId\": \"abc-42\", \"service\": \"orders\", \"span\": \"create\", \"durationMs\": 42}\n{\"traceId\": \"abc-42\", \"service\": \"payment\", \"span\": \"charge\", \"durationMs\": 25, \"error\": true}\n# Même traceId propagé -> le point d'échec est visible en un coup d'oeil",
       "commonMistake": "Choisir un outil avant d’identifier le besoin, la charge, le risque et le propriétaire de la donnée.",
-      "masteryQuestion": "Quel compromis, quel signal et quelle condition de réévaluation associes-tu à « Observer traces, métriques et journaux » ?",
-      "masteryProof": "Exécuter la preuve, modifier une contrainte, expliquer le résultat et dessiner la place du composant dans la stack complète."
+      "masteryQuestion": "Pourquoi regarder le temps propre d'un span plutôt que sa durée, et dans quel ordre consulter métriques, traces et journaux en incident ?",
+      "masteryProof": "Calculer durées et temps propres d'une trace, afficher l'arbre, repérer le span le plus lent en temps propre et les erreurs."
     }
   ],
   "exercises": [
     {
       "code": "ARCHITECTURE-19-E1",
-      "title": "Relier une requête utilisateur à ses signaux techniques et métier",
-      "statement": "Complète la preuve pour produire exactement la sortie attendue, puis explique la décision, une alternative et le signal de production qui validerait ton choix.",
-      "starterCode": "trace = {\"id\": \"abc-42\", \"spans\": [18, 42, 25], \"errors\": 0}\n# TODO 1 : affiche \"Trace: \" suivi de l'identifiant\n# TODO 2 : affiche \"Durée: \" suivi de la somme des spans puis de \"ms\"\n# TODO 3 : affiche \"Statut: OK\" s'il n'y a aucune erreur, \"Statut: ERROR\" sinon\n",
-      "expectedOutput": "Trace: abc-42\nDurée: 85 ms\nStatut: OK"
+      "title": "Lire une trace : arbre, temps propre et erreurs",
+      "statement": "Complète : la durée de chaque span, son temps propre (durée moins durée de ses enfants), l'arbre indenté, le span au plus grand temps propre et la liste des spans en erreur. Affiche exactement :\nTrace: abc-42\ngateway 120 ms (propre 10 ms)\n  orders 110 ms (propre 15 ms)\n    db 20 ms (propre 20 ms)\n    payment 75 ms (propre 75 ms)\nPlus grand temps propre: payment (75 ms)\nSpans en erreur: payment\nStatut: ERROR",
+      "starterCode": "# (id, parent, nom, début ms, fin ms, erreur)\nSPANS = [\n    (\"s1\", None, \"gateway\", 0, 120, False),\n    (\"s2\", \"s1\", \"orders\", 5, 115, False),\n    (\"s3\", \"s2\", \"db\", 10, 30, False),\n    (\"s4\", \"s2\", \"payment\", 35, 110, True),\n]\nTRACE_ID = \"abc-42\"\n\n\ndef duration(span: tuple) -> int:\n    # TODO 1 : fin - début\n    return 0\n\n\ndef children_of(span_id: str) -> list[tuple]:\n    # TODO 2 : spans dont le parent est span_id (dans l'ordre de SPANS)\n    return []\n\n\ndef self_time(span: tuple) -> int:\n    # TODO 3 : durée du span moins la somme des durées de ses enfants\n    return 0\n\n\ndef render(span: tuple, depth: int = 0) -> None:\n    # TODO 4 : affiche \"<2 espaces x depth><nom> <durée> ms (propre <temps propre> ms)\" puis les enfants (profondeur + 1)\n    pass\n\n\nprint(f\"Trace: {TRACE_ID}\")\n# TODO 5 : appelle render sur la racine (le span sans parent)\n# TODO 6 : affiche \"Plus grand temps propre: <nom> (<ms> ms)\" (départage par ordre dans SPANS)\n# TODO 7 : affiche \"Spans en erreur: <noms séparés par ', '>\" puis \"Statut: OK\" s'il n'y en a aucun, sinon \"Statut: ERROR\"\n",
+      "expectedOutput": "Trace: abc-42\ngateway 120 ms (propre 10 ms)\n  orders 110 ms (propre 15 ms)\n    db 20 ms (propre 20 ms)\n    payment 75 ms (propre 75 ms)\nPlus grand temps propre: payment (75 ms)\nSpans en erreur: payment\nStatut: ERROR"
     }
   ],
   "quiz": [
     {
       "code": "ARCHITECTURE-19-Q1",
       "type": "SINGLE_CHOICE",
-      "prompt": "Quelle démarche produit la décision la plus robuste ?",
+      "prompt": "Une API dure 110 ms dont 100 ms attendent sa base de données. Que dit son temps propre ?",
       "choices": [
-        "Relier contraintes, responsabilités, preuve et observabilité",
-        "Choisir la technologie la plus populaire",
-        "Ajouter des services avant de mesurer"
+        "Que l'API est lente",
+        "Qu'elle ne travaille elle-même que 10 ms : le goulot est la base, pas l'API",
+        "Qu'il y a une erreur",
+        "Rien"
       ],
-      "correctChoice": 0,
-      "expectedKeywords": []
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Temps propre = durée moins durée des enfants. Il évite d'accuser un composant qui attend simplement un autre."
     },
     {
       "code": "ARCHITECTURE-19-Q2",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Prédis le temps propre de orders (durée 110 ms, enfants db 20 ms et payment 75 ms) :",
+      "choices": [
+        "110 ms",
+        "15 ms",
+        "95 ms",
+        "35 ms"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "110 - (20 + 75) = 15 ms. L'essentiel du temps de orders est passé dans ses appels."
+    },
+    {
+      "code": "ARCHITECTURE-19-Q3",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Trouve le défaut :\n```python\nlogger.info('commande échouée')\n```\ndans un service appelé par trois autres services.",
+      "choices": [
+        "info est un mauvais niveau",
+        "Le message n'a ni identifiant de corrélation ni contexte : impossible de le relier à la requête et aux autres services",
+        "logger est trop lent",
+        "Il manque un point"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Sans identifiant de trace ou de requête, les journaux de services différents ne se relient pas. Un journal structuré doit porter niveau, message, identifiants et contexte utile."
+    },
+    {
+      "code": "ARCHITECTURE-19-Q4",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Pourquoi éviter un identifiant utilisateur comme étiquette de métrique ?",
+      "choices": [
+        "Les identifiants sont secrets",
+        "Chaque valeur distincte crée une série temporelle : la cardinalité explose et sature le système de métriques",
+        "Les étiquettes sont limitées à trois",
+        "Cela ralentit le réseau"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Les étiquettes doivent avoir des valeurs bornées (statut, méthode, route gabarit). Le détail par utilisateur se cherche dans les traces et les journaux."
+    },
+    {
+      "code": "ARCHITECTURE-19-Q5",
       "type": "FREE_TEXT",
-      "prompt": "Nomme un compromis et le signal qui permettrait de le réévaluer.",
+      "prompt": "Sans relire le cours, explique avec tes mots la différence entre métriques, traces et journaux et l'ordre de consultation en incident.",
       "choices": [],
       "correctChoice": null,
       "expectedKeywords": [
-        "compromis",
-        "mesure",
-        "risque"
-      ]
+        "metrique",
+        "trace",
+        "journal",
+        "agreg",
+        "pourquoi"
+      ],
+      "modelAnswer": "Les métriques sont des nombres agrégés dans le temps qui montrent qu'un problème existe, depuis quand et avec quelle ampleur. Les traces suivent une requête à travers les services et montrent où le temps est perdu ou où une erreur naît. Les journaux sont des événements détaillés qui expliquent pourquoi. En incident, on consulte d'abord les métriques, puis les traces, puis les journaux, en reliant le tout par un identifiant de corrélation.",
+      "explanation": "Une bonne réponse associe chaque signal à sa question (quoi, où, pourquoi), donne l'ordre métriques, traces, journaux et mentionne la corrélation."
     }
   ],
   "checklist": [
-    "Je peux dessiner la circulation de la donnée",
-    "Je sais nommer les responsabilités de chaque couche",
-    "Je justifie une alternative rejetée",
-    "Je définis une mesure et une condition de réévaluation"
+    "Mes journaux sont structurés et portent un identifiant de corrélation",
+    "Je lis le temps propre des spans, pas seulement leur durée",
+    "Mes étiquettes de métriques ont une cardinalité bornée",
+    "Mes alertes sont rares, actionnables et liées à l'impact"
   ]
 }

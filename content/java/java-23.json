@@ -1,9 +1,144 @@
 {
-  "code":"JAVA-23","language":"JAVA","number":23,"slug":"projet-professionnel-commandes","title":"Projet professionnel : moteur de commandes","difficulty":"PROJET","threshold":80,"activityType":"PROJECT","prerequisites":["JAVA-22"],
-  "objectives":["Combiner domaine, contrats et collections","Produire une architecture présentable","Fournir des preuves déterministes"],
-  "sections":[{"title":"Projet de synthèse","content":"Le moteur de commandes combine valeurs immuables, validation, service applicatif et agrégation. Chaque décision doit être justifiée dans le portfolio.","conceptCodes":["JAVA-PROFESSIONAL-PROJECT"]},{"title":"Personnalisation contrôlée","content":"Le professeur local peut proposer une variante selon les résultats, mais le contrat d'évaluation et les preuves attendues restent déterministes."}],
-  "keyConcepts":[{"code":"JAVA-PROFESSIONAL-PROJECT","name":"Projet professionnel","definition":"Une preuve intégrée démontre plusieurs compétences dans un cas métier cohérent.","whyExists":"Les exercices isolés ne prouvent pas la capacité à assembler une solution maintenable.","whyImportant":"Le projet devient une pièce de portfolio explicable et reproductible.","minimalExample":"input -> validation -> domain -> service -> report","professionalExample":"Un outil interne de suivi des commandes avait été livré comme une seule classe de 400 lignes mêlant lecture du fichier d'entrée, règles métier de validation et formatage de la sortie console : lors d'un entretien technique, le candidat n'a pas pu expliquer clairement où se trouvait la règle métier centrale ni comment la tester isolément. Restructurer ce même projet en couches explicites, entrée validée, domaine immuable, service applicatif et rapport, permet de présenter et de justifier chaque décision d'architecture devant un recruteur.","codeExample":"record Order(String customer, int amountCents, boolean paid) {\n    Order {\n        if (amountCents <= 0) throw new IllegalArgumentException(\"amountCents\");\n    }\n}\n\nclass OrderReportService {\n    Report summarize(List<Order> orders) {\n        var paid = orders.stream().filter(Order::paid).toList();\n        int revenue = paid.stream().mapToInt(Order::amountCents).sum();\n        return new Report(paid.size(), revenue); // aucune I/O, aucune règle cachée ailleurs\n    }\n}","commonMistake":"Mélanger transport, domaine et affichage dans une seule classe.","masteryQuestion":"Quelles frontières rendent ce projet testable ?","masteryProof":"Présenter l'architecture, les invariants et trois tests représentatifs."}],
-  "exercises":[{"code":"JAVA-23-E1","title":"Construire le moteur de commandes","statement":"Agrège seulement les commandes payées et affiche exactement les deux lignes attendues.","starterCode":"import java.util.List;\nrecord Order(String customer, int amount, boolean paid) {\n    // TODO 1 : ajoute un constructeur compact qui refuse un montant <= 0 (IllegalArgumentException)\n}\n\npublic class Main {\n    public static void main(String[] args) {\n        var orders = List.of(new Order(\"Ada\", 120, true), new Order(\"Linus\", 80, false), new Order(\"Grace\", 30, true));\n        // TODO 2 : ne garde que les commandes payées\n        // TODO 3 : calcule leur revenu total\n        // TODO 4 : affiche deux lignes : \"Commandes: 2\" puis \"Revenu: 150 EUR\"\n    }\n}\n","expectedOutput":"Commandes: 2\nRevenu: 150 EUR"}],
-  "quiz":[{"code":"JAVA-23-Q1","type":"SINGLE_CHOICE","prompt":"Quelle preuve renforce le portfolio ?","choices":["Des tests et décisions reproductibles","Une capture sans code","Un résultat aléatoire"],"correctChoice":0,"expectedKeywords":[]},{"code":"JAVA-23-Q2","type":"FREE_TEXT","prompt":"Justifie les frontières de ton projet.","choices":[],"correctChoice":null,"expectedKeywords":["domaine","service","test","responsabilité"]}],
-  "checklist":["Je protège les invariants","Je fournis des tests déterministes","Je peux expliquer mes décisions","Je peux exporter cette preuve au portfolio"]
+  "code": "JAVA-23",
+  "language": "JAVA",
+  "number": 23,
+  "slug": "projet-professionnel-commandes",
+  "title": "Projet professionnel : moteur de commandes",
+  "difficulty": "PROJET",
+  "threshold": 80,
+  "activityType": "PROJECT",
+  "prerequisites": [
+    "JAVA-22"
+  ],
+  "objectives": [
+    "Découper un besoin en domaine, règles, rapport et vérifications, puis justifier chaque frontière.",
+    "Modéliser des valeurs immuables validées à la construction.",
+    "Produire un résultat déterministe (tri total, format fixe) pour que la preuve soit reproductible.",
+    "Présenter le projet : décisions, limites connues et preuve de fonctionnement."
+  ],
+  "sections": [
+    {
+      "title": "Un projet prouve plusieurs compétences dans un cas cohérent",
+      "content": "Un projet de portfolio ne montre pas du code abondant, il montre des décisions défendables. Un recruteur ou un relecteur cherche : un domaine clair, des règles explicites, des erreurs gérées, une preuve que ça marche et la conscience des limites.\n\nIci, le cas est un moteur de commandes : il reçoit des commandes, rejette celles qui sont invalides, ne compte que les commandes payées et produit un rapport. Il mobilise les compétences des labos précédents : records validés (JAVA-14), collections et tri (JAVA-10), Streams (JAVA-12), séparation des responsabilités (JAVA-16), tests (JAVA-15)."
+    },
+    {
+      "title": "Exemple résolu : de l'énoncé au rapport",
+      "conceptCodes": [
+        "JAVA-PROFESSIONAL-PROJECT"
+      ],
+      "content": "Problème : produire un rapport des commandes payées avec le revenu par client, trié du plus gros au plus petit.\n\nRaisonnement, étape par étape :\n1. Domaine : Order(customer, amount, paid) est un record. Le constructeur compact refuse un montant <= 0 : une commande invalide n'existe pas.\n2. Règle : seules les commandes payées comptent.\n3. Calcul : regrouper par client et additionner (Collectors.groupingBy + summingInt).\n4. Ordre : trier par revenu décroissant, puis par nom croissant pour départager. Sans tri total, la sortie dépend de l'ordre interne de la Map.\n5. Rapport : une fonction qui renvoie du texte, séparée du calcul, donc testable.\n6. Preuve : un jeu de données fixe, une sortie attendue exacte et au moins un cas d'erreur.\n```java\nrecord Order(String customer, int amount, boolean paid) {\n    Order { if (amount <= 0) throw new IllegalArgumentException(\"montant invalide\"); }\n}\n\nMap<String, Integer> parClient = orders.stream().filter(Order::paid)\n        .collect(Collectors.groupingBy(Order::customer, Collectors.summingInt(Order::amount)));\n\nList<Map.Entry<String, Integer>> classement = parClient.entrySet().stream()\n        .sorted(Map.Entry.<String, Integer>comparingByValue().reversed().thenComparing(Map.Entry.comparingByKey()))\n        .toList();\n```"
+    },
+    {
+      "title": "Livrer un projet défendable",
+      "content": "Ce qui fait qu'un projet se défend :\n- Un README court : problème, comment le lancer, ce qui est testé, ce qui ne l'est pas.\n- Des décisions écrites : pourquoi un record plutôt qu'une classe, pourquoi cette validation à cet endroit, pourquoi aucun framework ici.\n- Des limites assumées : pas de persistance, montants entiers (centimes) plutôt que double pour l'argent, pas de concurrence.\n- Une preuve reproductible : même entrée, même sortie, vérifiable en une commande.\n- Aucun secret ni donnée réelle dans le dépôt.\n\nArgent : n'utilise pas double pour des montants ; stocke des centimes dans un long/int ou un BigDecimal avec un mode d'arrondi explicite. Une preuve non déterministe (ordre de HashMap, date du jour, hasard) n'est pas une preuve."
+    },
+    {
+      "title": "Erreurs fréquentes à reconnaître",
+      "content": "1. Un rapport qui dépend de l'ordre d'itération d'une HashMap.\n2. Valider les montants dans le rapport au lieu de la construction de la commande.\n3. Mélanger calcul et affichage : impossible de tester l'un sans l'autre.\n4. Utiliser double pour de l'argent.\n5. Un README qui promet des fonctionnalités absentes.\n6. Un projet sans cas d'erreur démontré.\n\nRetrouve ces six erreurs de mémoire avant l'exercice, puis passe au quiz."
+    }
+  ],
+  "keyConcepts": [
+    {
+      "code": "JAVA-PROFESSIONAL-PROJECT",
+      "name": "Projet professionnel",
+      "definition": "Une preuve intégrée démontre plusieurs compétences dans un cas métier cohérent.",
+      "whyExists": "Les exercices isolés ne prouvent pas la capacité à assembler une solution maintenable.",
+      "whyImportant": "Le projet devient une pièce de portfolio explicable et reproductible.",
+      "minimalExample": "input -> validation -> domain -> service -> report",
+      "professionalExample": "Un outil interne de suivi des commandes avait été livré comme une seule classe de 400 lignes mêlant lecture du fichier d'entrée, règles métier de validation et formatage de la sortie console : lors d'un entretien technique, le candidat n'a pas pu expliquer clairement où se trouvait la règle métier centrale ni comment la tester isolément. Restructurer ce même projet en couches explicites, entrée validée, domaine immuable, service applicatif et rapport, permet de présenter et de justifier chaque décision d'architecture devant un recruteur.",
+      "codeExample": "record Order(String customer, int amountCents, boolean paid) {\n    Order {\n        if (amountCents <= 0) throw new IllegalArgumentException(\"amountCents\");\n    }\n}\n\nclass OrderReportService {\n    Report summarize(List<Order> orders) {\n        var paid = orders.stream().filter(Order::paid).toList();\n        int revenue = paid.stream().mapToInt(Order::amountCents).sum();\n        return new Report(paid.size(), revenue); // aucune I/O, aucune règle cachée ailleurs\n    }\n}",
+      "commonMistake": "Mélanger transport, domaine et affichage dans une seule classe.",
+      "masteryQuestion": "Comment rendre la sortie d'un moteur de rapport déterministe, et pourquoi valider à la construction du domaine ?",
+      "masteryProof": "Produire un rapport trié du revenu des commandes payées par client, avec une commande invalide rejetée."
+    }
+  ],
+  "exercises": [
+    {
+      "code": "JAVA-23-E1",
+      "title": "Moteur de commandes : revenu par client",
+      "statement": "Complète le moteur : Order refuse un montant <= 0, le rapport ne garde que les commandes payées, calcule le revenu par client, trie par revenu décroissant puis par nom, et rejette proprement une commande invalide. Affiche exactement :\nCommandes: 4\nRevenu: 300 EUR\n1. Ada : 200\n2. Grace : 70\n3. Linus : 30\nRejetee : montant invalide",
+      "starterCode": "import java.util.*;\nimport java.util.stream.Collectors;\n\npublic class Main {\n    record Order(String customer, int amount, boolean paid) {\n        // TODO 1 : constructeur compact qui refuse un montant <= 0 (IllegalArgumentException(\"montant invalide\"))\n    }\n\n    // TODO 2 : static String report(List<Order> orders) — retourne le rapport (lignes séparées par \\n, sans \\n final) :\n    //          \"Commandes: N\" (nombre de commandes PAYÉES), \"Revenu: T EUR\", puis le classement\n    //          \"1. Ada : 200\" ... trié par revenu décroissant puis nom croissant (revenu par client, commandes payées seulement)\n\n    public static void main(String[] args) {\n        List<Order> orders = List.of(\n                new Order(\"Ada\", 120, true),\n                new Order(\"Linus\", 30, true),\n                new Order(\"Grace\", 70, true),\n                new Order(\"Linus\", 80, false),\n                new Order(\"Ada\", 80, true));\n        // TODO 3 : affiche report(orders)\n        // TODO 4 : tente de créer new Order(\"Bug\", 0, true) dans un try/catch et affiche \"Rejetee : \" + message\n    }\n}\n",
+      "expectedOutput": "Commandes: 4\nRevenu: 300 EUR\n1. Ada : 200\n2. Grace : 70\n3. Linus : 30\nRejetee : montant invalide"
+    }
+  ],
+  "quiz": [
+    {
+      "code": "JAVA-23-Q1",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Pourquoi trier le rapport par revenu puis par nom ?",
+      "choices": [
+        "Pour que deux clients au même revenu apparaissent dans un ordre stable et reproductible",
+        "Parce que Java l'exige",
+        "Pour réduire la mémoire utilisée",
+        "Pour éviter les doublons"
+      ],
+      "correctChoice": 0,
+      "expectedKeywords": [],
+      "explanation": "Sans critère de départage, deux clients à égalité apparaissent dans l'ordre interne d'une Map, qui peut varier. Un tri total rend la sortie déterministe, donc vérifiable par un test ou une preuve de portfolio."
+    },
+    {
+      "code": "JAVA-23-Q2",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Où valider qu'un montant est strictement positif ?",
+      "choices": [
+        "Dans la méthode d'affichage du rapport",
+        "Dans le constructeur de Order, pour qu'une commande invalide ne puisse pas exister",
+        "Dans le README",
+        "Dans la boucle principale, avant chaque appel"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Valider à la construction garantit l'invariant partout où l'objet circule : plus besoin de recontrôler. Le dire dans le README ne protège rien."
+    },
+    {
+      "code": "JAVA-23-Q3",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Prédis la sortie :\n```java\nMap<String, Integer> m = new HashMap<>();\nm.put(\"Grace\", 70); m.put(\"Ada\", 70);\nm.forEach((k, v) -> System.out.println(k));\n```\nPeut-on garantir l'ordre d'affichage dans une preuve de portfolio ?",
+      "choices": [
+        "Oui, l'ordre d'insertion est toujours conservé",
+        "Non, l'ordre d'un HashMap n'est pas garanti : il faut trier explicitement ou utiliser TreeMap/LinkedHashMap",
+        "Oui, toujours alphabétique",
+        "Oui, toujours inverse"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "HashMap ne promet aucun ordre. Une preuve qui s'appuie dessus peut changer d'une version de Java à l'autre. Trie explicitement, ou choisis une map ordonnée."
+    },
+    {
+      "code": "JAVA-23-Q4",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Quel type convient le mieux pour des montants d'argent ?",
+      "choices": [
+        "double",
+        "float",
+        "Des centimes entiers (int/long) ou BigDecimal avec arrondi explicite",
+        "String"
+      ],
+      "correctChoice": 2,
+      "expectedKeywords": [],
+      "explanation": "Les nombres à virgule flottante ne représentent pas exactement 0,1 ou 0,2 : les écarts d'arrondi s'accumulent. Les centimes entiers ou BigDecimal donnent un calcul exact et un arrondi maîtrisé."
+    },
+    {
+      "code": "JAVA-23-Q5",
+      "type": "FREE_TEXT",
+      "prompt": "Sans relire le cours, explique avec tes mots ce qui rend un projet de portfolio défendable devant un relecteur.",
+      "choices": [],
+      "correctChoice": null,
+      "expectedKeywords": [
+        "decision",
+        "limite",
+        "preuve",
+        "test",
+        "reproductible"
+      ],
+      "modelAnswer": "Un projet défendable a un domaine clair, des règles et des erreurs gérées explicitement, des décisions de conception justifiées, une preuve reproductible (jeu de données fixe, sortie attendue, tests) et des limites assumées (ce qui n'est pas couvert). Il n'embarque ni secret ni promesse que le code ne tient pas.",
+      "explanation": "Une bonne réponse cite décisions justifiées, preuve reproductible, tests et limites assumées."
+    }
+  ],
+  "checklist": [
+    "Mon domaine valide ses invariants à la construction",
+    "Ma sortie est déterministe : tri total, format fixe",
+    "J'ai séparé calcul et affichage",
+    "Je peux expliquer mes décisions et mes limites en quelques phrases"
+  ]
 }

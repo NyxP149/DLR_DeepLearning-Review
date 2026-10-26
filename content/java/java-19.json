@@ -1,9 +1,144 @@
 {
-  "code":"JAVA-19","language":"JAVA","number":19,"slug":"jdbc-sql-transactions","title":"JDBC, SQL, transactions et accès aux données","difficulty":"PROFESSIONNEL","threshold":75,"activityType":"LAB","prerequisites":["JAVA-18"],
-  "objectives":["Utiliser des requêtes paramétrées","Délimiter une transaction","Séparer domaine et persistance"],
-  "sections":[{"title":"Accès aux données","content":"JDBC fournit connexions, statements et résultats. Une requête paramétrée sépare les données de la syntaxe SQL.","conceptCodes":["JAVA-TRANSACTION"]},{"title":"Tout ou rien","content":"Une transaction regroupe des changements qui doivent être validés ensemble ou annulés ensemble afin de préserver l'invariant métier."}],
-  "keyConcepts":[{"code":"JAVA-TRANSACTION","name":"Transaction","definition":"Une unité de travail applique tous ses changements ou aucun.","whyExists":"Elle protège la cohérence lorsque plusieurs écritures dépendent les unes des autres.","whyImportant":"Les commandes, paiements et stocks exigent des garanties même en cas d'échec.","minimalExample":"connection.setAutoCommit(false); ... connection.commit();","professionalExample":"Un service de commande insérait la ligne de commande puis décrémentait le stock dans deux instructions SQL séparées, sans transaction explicite : un crash de l'application entre les deux appels a laissé un stock décrémenté sans commande correspondante, découvert seulement lors d'un inventaire physique plusieurs semaines plus tard. Englober les deux écritures dans connection.setAutoCommit(false) suivi d'un commit unique, avec rollback en cas d'exception, garantit que les deux opérations réussissent ou échouent ensemble.","codeExample":"try (Connection connection = dataSource.getConnection()) {\n    connection.setAutoCommit(false);\n    try (var insertOrder = connection.prepareStatement(\n            \"INSERT INTO orders(customer_id, amount) VALUES (?, ?)\");\n         var updateStock = connection.prepareStatement(\n            \"UPDATE stock SET quantity = quantity - 1 WHERE sku = ?\")) {\n        insertOrder.setLong(1, customerId);\n        insertOrder.setInt(2, amount);\n        insertOrder.executeUpdate();\n        updateStock.setString(1, sku);\n        updateStock.executeUpdate();\n        connection.commit();\n    } catch (SQLException e) {\n        connection.rollback();\n        throw e;\n    }\n}","commonMistake":"Construire une requête SQL par concaténation de l'entrée utilisateur.","masteryQuestion":"Quel invariant nécessite une transaction dans une commande ?","masteryProof":"Décrire les étapes commit et rollback d'un cas métier."}],
-  "exercises":[{"code":"JAVA-19-E1","title":"Simuler une unité de travail","statement":"Valide deux opérations et affiche exactement : Transaction: COMMIT 2","starterCode":"import java.util.*;\npublic class Main {\n    public static void main(String[] args) {\n        List<String> unitOfWork = new ArrayList<>();\n        // TODO 1 : ajoute deux opérations à l'unité de travail (\"insert-order\" puis \"update-stock\")\n        // TODO 2 : affiche \"Transaction: COMMIT \" suivi du nombre d'opérations\n    }\n}\n","expectedOutput":"Transaction: COMMIT 2"}],
-  "quiz":[{"code":"JAVA-19-Q1","type":"SINGLE_CHOICE","prompt":"Pourquoi utiliser PreparedStatement ?","choices":["Pour paramétrer et sécuriser la requête","Pour éviter toute transaction","Pour compiler Angular"],"correctChoice":0,"expectedKeywords":[]},{"code":"JAVA-19-Q2","type":"FREE_TEXT","prompt":"Relie transaction et invariant métier.","choices":[],"correctChoice":null,"expectedKeywords":["transaction","invariant","commit","rollback"]}],
-  "checklist":["Je paramètre les requêtes","Je ferme les ressources JDBC","Je place la transaction autour du cas d'usage"]
+  "code": "JAVA-19",
+  "language": "JAVA",
+  "number": 19,
+  "slug": "jdbc-sql-transactions",
+  "title": "JDBC, SQL, transactions et accès aux données",
+  "difficulty": "PROFESSIONNEL",
+  "threshold": 75,
+  "activityType": "LAB",
+  "prerequisites": [
+    "JAVA-18"
+  ],
+  "objectives": [
+    "Écrire une requête paramétrée (PreparedStatement) et expliquer pourquoi elle empêche l'injection SQL.",
+    "Délimiter une transaction : tout valider ou tout annuler, selon un invariant métier.",
+    "Séparer le domaine de la persistance avec un repository.",
+    "Repérer un problème N+1, une connexion non fermée ou une transaction trop large."
+  ],
+  "sections": [
+    {
+      "title": "Parler à la base sans se faire injecter",
+      "content": "JDBC est l'API standard pour envoyer du SQL à une base. Le point de sécurité n°1 : ne construis jamais une requête en concaténant une saisie.\n```java\n// DANGEREUX : si nom vaut  ' OR '1'='1  la condition est toujours vraie\nString sql = \"SELECT * FROM users WHERE name = '\" + nom + \"'\";\n\n// SÛR : les valeurs voyagent séparément du texte SQL\ntry (PreparedStatement ps = connexion.prepareStatement(\"SELECT * FROM users WHERE name = ?\")) {\n    ps.setString(1, nom);\n    try (ResultSet rs = ps.executeQuery()) { ... }\n}\n```\nAvec un PreparedStatement, le SQL est compilé avant que les valeurs n'arrivent : une saisie n'est jamais interprétée comme du SQL. Connexion, statement et ResultSet sont des ressources à fermer (try-with-resources), et la connexion vient d'un pool (HikariCP), pas d'un nouveau DriverManager.getConnection à chaque requête."
+    },
+    {
+      "title": "Exemple résolu : un virement tout ou rien",
+      "conceptCodes": [
+        "JAVA-TRANSACTION"
+      ],
+      "content": "Problème : transférer 30 de A vers B. Si la seconde opération échoue, A ne doit pas avoir perdu son argent.\n\nRaisonnement, étape par étape :\n1. Invariant métier : aucun solde négatif, la somme des soldes ne change pas.\n2. Les deux écritures forment une unité de travail : une transaction.\n3. En JDBC : setAutoCommit(false), les deux UPDATE, puis commit() ; en cas d'erreur, rollback().\n4. On vérifie l'invariant avant de valider.\n5. Vérification : après un échec, les soldes sont identiques à l'état initial.\n```java\nconnexion.setAutoCommit(false);\ntry {\n    debiter(connexion, \"A\", 30);\n    crediter(connexion, \"B\", 30);\n    connexion.commit();\n} catch (SQLException | RuntimeException e) {\n    connexion.rollback();\n    throw e;\n}\n```\nDans Spring, @Transactional pose ce commit/rollback autour d'une méthode. ACID résume les garanties : atomicité (tout ou rien), cohérence (invariants respectés), isolation (les transactions concurrentes ne se voient pas à moitié), durabilité (un commit survit à une panne)."
+    },
+    {
+      "title": "Séparer domaine et persistance, éviter les requêtes en rafale",
+      "content": "Un repository est une interface du domaine (save, findById) dont l'implémentation JDBC ou JPA reste cachée. Le métier ne manipule ni ResultSet ni SQL ; on peut le tester avec un repository en mémoire.\n```java\ninterface AccountRepository {\n    Optional<Account> findById(String id);\n    void save(Account account);\n}\n```\nProblème N+1 : charger 100 commandes (1 requête) puis, pour chacune, charger ses lignes (100 requêtes) : 101 allers-retours. Corrige avec une jointure ou un chargement par lot (IN (...)). Garde les transactions courtes : pas d'appel réseau ni d'attente utilisateur pendant qu'elle est ouverte. Une colonne souvent filtrée mérite un index, au prix d'écritures un peu plus lentes."
+    },
+    {
+      "title": "Erreurs fréquentes à reconnaître",
+      "content": "1. Concaténer une saisie dans le SQL : injection.\n2. Ne pas fermer Connection, Statement ou ResultSet : fuite de connexions du pool.\n3. Faire deux écritures dépendantes sans transaction : état incohérent après une panne.\n4. Capturer l'exception sans rollback.\n5. Charger les lignes dans une boucle (N+1).\n6. Laisser SQL et ResultSet remonter jusqu'à la couche métier.\n\nRetrouve ces six erreurs de mémoire avant l'exercice, puis passe au quiz."
+    }
+  ],
+  "keyConcepts": [
+    {
+      "code": "JAVA-TRANSACTION",
+      "name": "Transaction",
+      "definition": "Une unité de travail applique tous ses changements ou aucun.",
+      "whyExists": "Elle protège la cohérence lorsque plusieurs écritures dépendent les unes des autres.",
+      "whyImportant": "Les commandes, paiements et stocks exigent des garanties même en cas d'échec.",
+      "minimalExample": "connection.setAutoCommit(false); ... connection.commit();",
+      "professionalExample": "Un service de commande insérait la ligne de commande puis décrémentait le stock dans deux instructions SQL séparées, sans transaction explicite : un crash de l'application entre les deux appels a laissé un stock décrémenté sans commande correspondante, découvert seulement lors d'un inventaire physique plusieurs semaines plus tard. Englober les deux écritures dans connection.setAutoCommit(false) suivi d'un commit unique, avec rollback en cas d'exception, garantit que les deux opérations réussissent ou échouent ensemble.",
+      "codeExample": "try (Connection connection = dataSource.getConnection()) {\n    connection.setAutoCommit(false);\n    try (var insertOrder = connection.prepareStatement(\n            \"INSERT INTO orders(customer_id, amount) VALUES (?, ?)\");\n         var updateStock = connection.prepareStatement(\n            \"UPDATE stock SET quantity = quantity - 1 WHERE sku = ?\")) {\n        insertOrder.setLong(1, customerId);\n        insertOrder.setInt(2, amount);\n        insertOrder.executeUpdate();\n        updateStock.setString(1, sku);\n        updateStock.executeUpdate();\n        connection.commit();\n    } catch (SQLException e) {\n        connection.rollback();\n        throw e;\n    }\n}",
+      "commonMistake": "Construire une requête SQL par concaténation de l'entrée utilisateur.",
+      "masteryQuestion": "Pourquoi une transaction protège-t-elle un invariant, et pourquoi un PreparedStatement empêche-t-il l'injection ?",
+      "masteryProof": "Simuler un virement avec commit et rollback qui conserve la somme des soldes."
+    }
+  ],
+  "exercises": [
+    {
+      "code": "JAVA-19-E1",
+      "title": "Un virement tout ou rien (commit et rollback)",
+      "statement": "La base du conteneur n'a pas de pilote JDBC : simule une transaction sur une Map de soldes. Implémente transfer(from, to, amount) : copie l'état, applique les deux écritures, contrôle l'invariant (aucun solde négatif), puis COMMIT ou restaure la copie (ROLLBACK). Affiche exactement :\nAvant : {A=100, B=50}\nTransfert 30 A->B : COMMIT {A=70, B=80}\nTransfert 500 A->B : ROLLBACK {A=70, B=80}\nTotal conserve : true",
+      "starterCode": "import java.util.*;\n\npublic class Main {\n    static final Map<String, Integer> balances = new TreeMap<>();\n\n    // TODO 1 : static String transfer(String from, String to, int amount) qui renvoie \"COMMIT\" ou \"ROLLBACK\" :\n    //          - copie les soldes (snapshot)\n    //          - débite puis crédite\n    //          - si un solde devient négatif : restaure le snapshot (balances.clear(); balances.putAll(snapshot)) et renvoie \"ROLLBACK\"\n    //          - sinon renvoie \"COMMIT\"\n\n    public static void main(String[] args) {\n        balances.put(\"A\", 100);\n        balances.put(\"B\", 50);\n        int totalBefore = balances.values().stream().mapToInt(Integer::intValue).sum();\n        System.out.println(\"Avant : \" + balances);\n        // TODO 2 : affiche \"Transfert 30 A->B : \" + résultat + \" \" + soldes\n        // TODO 3 : affiche \"Transfert 500 A->B : \" + résultat + \" \" + soldes\n        // TODO 4 : affiche \"Total conserve : \" + (la somme des soldes est égale à totalBefore)\n    }\n}\n",
+      "expectedOutput": "Avant : {A=100, B=50}\nTransfert 30 A->B : COMMIT {A=70, B=80}\nTransfert 500 A->B : ROLLBACK {A=70, B=80}\nTotal conserve : true"
+    }
+  ],
+  "quiz": [
+    {
+      "code": "JAVA-19-Q1",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Pourquoi PreparedStatement protège-t-il contre l'injection SQL ?",
+      "choices": [
+        "Il chiffre la requête",
+        "Il envoie les valeurs séparément du texte SQL, donc une saisie n'est jamais interprétée comme du SQL",
+        "Il supprime les apostrophes de la saisie",
+        "Il ouvre une nouvelle connexion à chaque appel"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Le texte SQL est analysé avant l'arrivée des paramètres, qui sont traités comme des valeurs. Une saisie comme ' OR '1'='1 reste une simple chaîne. Supprimer des apostrophes est fragile et ne remplace pas les paramètres."
+    },
+    {
+      "code": "JAVA-19-Q2",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Prédis le résultat :\n```java\nconnexion.setAutoCommit(false);\ndebiter(connexion, \"A\", 30);   // réussit\ncrediter(connexion, \"B\", 30);  // lève une exception\n// aucun commit ni rollback explicite, la connexion est fermée\n```\nQue devient le débit de A ?",
+      "choices": [
+        "Il est conservé",
+        "Il n'est généralement pas validé : sans commit, la transaction n'est pas enregistrée",
+        "A est débité deux fois",
+        "Les deux opérations sont inversées automatiquement dans tous les cas"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Sans commit, les changements d'une transaction ouverte ne sont pas validés ; selon le pilote, la fermeture annule ou valide, d'où l'importance d'un rollback explicite dans le catch. Le comportement ne doit jamais être laissé au hasard."
+    },
+    {
+      "code": "JAVA-19-Q3",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Trouve le problème :\n```java\nList<Order> orders = orderRepo.findAll();   // 1 requête\nfor (Order o : orders) {\n    o.setLines(lineRepo.findByOrderId(o.getId()));   // 1 requête par commande\n}\n```\n",
+      "choices": [
+        "Il manque un commit",
+        "C'est un problème N+1 : 1 + N requêtes, à remplacer par une jointure ou un chargement par lot",
+        "Les commandes sont triées dans le mauvais ordre",
+        "findAll est interdit"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Pour 100 commandes, on fait 101 allers-retours vers la base. Une jointure, un JOIN FETCH ou un chargement par lot (WHERE order_id IN (...)) ramène cela à une ou deux requêtes."
+    },
+    {
+      "code": "JAVA-19-Q4",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Que garantit l'atomicité d'une transaction ?",
+      "choices": [
+        "Que la requête s'exécute en moins d'une seconde",
+        "Que toutes les opérations sont appliquées ou qu'aucune ne l'est",
+        "Que personne d'autre ne peut lire la table",
+        "Que les index sont mis à jour"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "L'atomicité signifie tout ou rien : en cas d'erreur, l'état revient à ce qu'il était avant la transaction. L'isolation, elle, concerne la visibilité entre transactions concurrentes."
+    },
+    {
+      "code": "JAVA-19-Q5",
+      "type": "FREE_TEXT",
+      "prompt": "Sans relire le cours, explique avec tes mots pourquoi un virement doit s'exécuter dans une transaction et quel invariant elle protège.",
+      "choices": [],
+      "correctChoice": null,
+      "expectedKeywords": [
+        "transaction",
+        "atomique",
+        "rollback",
+        "invariant",
+        "solde"
+      ],
+      "modelAnswer": "Un virement comporte deux écritures dépendantes (débit puis crédit). Dans une transaction, elles sont atomiques : soit les deux sont validées (commit), soit aucune ne l'est (rollback en cas d'erreur). Elle protège l'invariant métier : la somme des soldes reste constante et aucun solde ne devient incohérent, même si une panne survient entre les deux.",
+      "explanation": "Une bonne réponse cite l'atomicité (tout ou rien), le rollback sur erreur et l'invariant métier protégé (conservation du total, soldes cohérents)."
+    }
+  ],
+  "checklist": [
+    "Je n'ai jamais de saisie concaténée dans une requête SQL",
+    "Je délimite une transaction avec commit et rollback explicite",
+    "Je repère un N+1 et je sais le corriger",
+    "Je ferme connexion, statement et résultat avec try-with-resources"
+  ]
 }

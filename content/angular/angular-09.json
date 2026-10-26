@@ -11,21 +11,30 @@
     "ANGULAR-08"
   ],
   "objectives": [
-    "Expliquer projet professionnel : dashboard métier",
-    "Construire une preuve exécutable et déterministe",
-    "Relier le concept à une décision professionnelle"
+    "Séparer calcul des indicateurs (fonctions pures typées) et affichage (composants).",
+    "Calculer des indicateurs exacts (somme, moyenne arrondie, comptage par statut, meilleur client) de façon déterministe.",
+    "Présenter un tableau de bord accessible (tableaux, alternatives textuelles aux graphiques).",
+    "Documenter le projet : décisions, limites et preuve de fonctionnement."
   ],
   "sections": [
     {
-      "title": "Concept et usage professionnel",
-      "content": "Projet professionnel : dashboard métier répond à un besoin concret de maintenabilité, de sûreté ou de performance. Le laboratoire demande de rendre la décision observable et vérifiable.",
-      "conceptCodes": [
-        "ANGULAR-PROJECT"
-      ]
+      "title": "Un dashboard est d'abord des calculs fiables",
+      "content": "Un tableau de bord n'est utile que si ses chiffres sont justes. L'erreur classique est de calculer dans le template ou dans le composant, mélangé à l'affichage : impossible à tester, chiffres qui divergent entre deux écrans. La bonne structure :\n1. Des fonctions pures typées (revenue, averageBasket, countByStatus, bestCustomer) qui prennent des commandes et retournent des nombres ou des structures.\n2. Un service ou un computed qui les appelle avec les données chargées.\n3. Des composants de présentation qui affichent, sans calculer.\nCes fonctions sont testables en une ligne, sans TestBed : un jeu de commandes en entrée, une valeur attendue en sortie."
     },
     {
-      "title": "Projet portfolio",
-      "content": "La preuve rapide isole le contrat réactif. Le workspace projects/angular-professional-dashboard fournit une vraie application Angular multi-fichiers : composant standalone, template, styles, service injectable et signals, validés par npm run build."
+      "title": "Exemple résolu : quatre indicateurs",
+      "conceptCodes": [
+        "ANGULAR-PROJECT"
+      ],
+      "content": "Problème : à partir d'une liste de commandes (client, montant, statut), produire le chiffre d'affaires, le panier moyen, le nombre de commandes par statut et le meilleur client.\n\nRaisonnement, étape par étape :\n1. Chiffre d'affaires : somme des montants des commandes payées uniquement (une commande en attente ou annulée n'est pas du revenu).\n2. Panier moyen : chiffre d'affaires divisé par le nombre de commandes payées, arrondi à l'entier le plus proche ; si aucune commande payée, 0 (éviter la division par zéro).\n3. Par statut : un compteur initialisé à 0 pour chaque statut connu, dans un ordre fixe (PAID, PENDING, CANCELLED), pour que l'affichage soit stable même si un statut est absent.\n4. Meilleur client : revenu payé cumulé par client, puis le maximum ; en cas d'égalité, départager par nom pour rester déterministe.\n5. Vérification : chaque indicateur est recalculé à la main sur le jeu de test.\n```ts\nconst STATUSES = ['PAID', 'PENDING', 'CANCELLED'] as const;\ntype Status = typeof STATUSES[number];\n\nfunction revenue(orders: Order[]): number {\n  return orders.filter(o => o.status === 'PAID').reduce((sum, o) => sum + o.amount, 0);\n}\n\nfunction countByStatus(orders: Order[]): Record<Status, number> {\n  const counts: Record<Status, number> = { PAID: 0, PENDING: 0, CANCELLED: 0 };\n  for (const order of orders) counts[order.status]++;\n  return counts;\n}\n```\nArgent : stocke les montants en centimes entiers (ou utilise une bibliothèque décimale) ; formate à l'affichage avec Intl.NumberFormat ou le pipe currency, pas à la main."
+    },
+    {
+      "title": "Présenter un dashboard défendable",
+      "content": "Accessibilité : un graphique seul est invisible pour un lecteur d'écran. Donne une alternative textuelle (résumé, tableau de données, aria-label décrivant la tendance), n'encode jamais une information par la couleur seule (rouge/vert) : ajoute un libellé ou un motif. Les tableaux utilisent <table>, <th scope>, <caption>.\n\nÉtats de l'interface : chargement (squelette), vide (aucune commande : message utile), erreur (message et bouton réessayer), données périmées (horodatage de dernière mise à jour).\n\nPerformance : calcule les indicateurs dans des computed (mémorisés) plutôt que dans des fonctions appelées dans le template à chaque détection de changement ; pagine ou agrège côté serveur les gros volumes plutôt que de tout télécharger.\n\nDocumentation : le README énonce chaque indicateur (définition exacte : « panier moyen = revenu des commandes payées / nombre de commandes payées »), la source des données, les limites (fuseaux horaires, devises multiples, commandes remboursées), comment lancer les tests. Un indicateur sans définition écrite donne des débats sans fin sur « le vrai chiffre ». Les tests couvrent des cas limites : aucune commande, aucune payée, égalité de meilleurs clients, montants à virgule."
+    },
+    {
+      "title": "Erreurs fréquentes à reconnaître",
+      "content": "1. Calculer dans le template ou mélanger calcul et affichage.\n2. Compter les commandes annulées ou en attente dans le chiffre d'affaires.\n3. Diviser par zéro quand il n'y a pas de commande payée.\n4. Un ordre d'affichage qui dépend de l'ordre d'insertion d'un objet.\n5. Des montants flottants et des arrondis incohérents d'un écran à l'autre.\n6. Un graphique sans alternative textuelle, ou une information portée par la seule couleur.\n\nRetrouve ces erreurs de mémoire avant l'exercice, puis vérifie-toi avec le quiz : c'est la récupération, pas la relecture, qui fixe la notion."
     }
   ],
   "keyConcepts": [
@@ -39,8 +48,8 @@
       "professionalExample": "Le dashboard métier agrège les KPIs de ventes, de stock et de support client dans un DashboardService unique qui expose des signals dérivés (computed) plutôt que de laisser chaque composant recalculer ses propres agrégats depuis les données brutes. Chaque widget (ventes, alertes stock, tickets ouverts) est un composant standalone indépendant, injecté dans une grille composable, ce qui permet d'ajouter un nouveau widget sans toucher aux widgets existants. L'erreur fréquente sur ce type de projet est de laisser un widget appeler directement l'API REST au lieu de passer par le service partagé, ce qui duplique la logique de calcul et désynchronise les chiffres affichés entre deux widgets.",
       "codeExample": "@Injectable({ providedIn: 'root' })\nexport class DashboardService {\n  private readonly salesApi = inject(SalesApiService);\n  private readonly ticketsApi = inject(TicketsApiService);\n\n  private readonly sales = signal<SalesPoint[]>([]);\n  private readonly openTickets = signal<Ticket[]>([]);\n\n  readonly monthlyRevenue = computed(() =>\n    this.sales().reduce((sum, point) => sum + point.amount, 0)\n  );\n\n  readonly urgentTickets = computed(() =>\n    this.openTickets().filter(t => t.priority === 'high').length\n  );\n\n  loadDashboard(): void {\n    this.salesApi.getRecent().subscribe(points => this.sales.set(points));\n    this.ticketsApi.getOpen().subscribe(tickets => this.openTickets.set(tickets));\n  }\n}",
       "commonMistake": "Appliquer la technique sans mesurer son effet ni documenter sa frontière.",
-      "masteryQuestion": "Quelle contrainte de projet professionnel : dashboard métier doit rester vraie lorsque le système évolue ?",
-      "masteryProof": "Exécuter la preuve, expliquer son invariant et proposer un cas d’échec."
+      "masteryQuestion": "Pourquoi sortir les indicateurs dans des fonctions pures, et comment gérer le cas sans commande payée ?",
+      "masteryProof": "Calculer le chiffre d'affaires, le panier moyen arrondi, le nombre de commandes par statut dans un ordre fixe et le meilleur client."
     }
   ],
   "exercises": [
@@ -56,32 +65,80 @@
     {
       "code": "ANGULAR-09-Q1",
       "type": "SINGLE_CHOICE",
-      "prompt": "Quelle preuve est la plus utile en revue ?",
+      "prompt": "Un client a trois commandes : 100 (payée), 50 (en attente), 30 (annulée). Quel est son apport au chiffre d'affaires ?",
       "choices": [
-        "Une exécution déterministe avec invariant explicite",
-        "Une sortie aléatoire",
-        "Une capture sans code"
+        "180",
+        "100",
+        "150",
+        "30"
       ],
-      "correctChoice": 0,
-      "expectedKeywords": []
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Seules les commandes payées comptent dans le chiffre d'affaires. Les montants en attente ou annulés ne sont pas du revenu encaissé."
     },
     {
       "code": "ANGULAR-09-Q2",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Prédis le panier moyen : trois commandes payées de 100, 80 et 80 (arrondi à l'entier le plus proche).",
+      "choices": [
+        "86",
+        "87",
+        "88",
+        "260"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Le revenu vaut 260 et il y a 3 commandes : 260 / 3 = 86,67 arrondi à 87. Math.round(260 / 3) = 87."
+    },
+    {
+      "code": "ANGULAR-09-Q3",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Trouve le défaut :\n```ts\naverageBasket(orders) { return revenue(orders) / orders.filter(o => o.status === 'PAID').length; }\n```\n",
+      "choices": [
+        "filter est interdit",
+        "Sans commande payée, la division par zéro donne NaN ou Infinity ; il faut renvoyer 0 (ou un état « sans données »)",
+        "revenue est trop lent",
+        "Il manque async"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "0 / 0 vaut NaN en JavaScript et s'affiche tel quel dans le tableau de bord. Le cas sans donnée doit être traité explicitement."
+    },
+    {
+      "code": "ANGULAR-09-Q4",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Pourquoi compter par statut en initialisant tous les statuts à 0 dans un ordre fixe ?",
+      "choices": [
+        "Pour économiser de la mémoire",
+        "Pour que l'affichage soit stable et complet même si un statut n'a aucune commande",
+        "Parce que les objets doivent avoir trois clés",
+        "Pour trier alphabétiquement"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Sans initialisation, un statut absent n'apparaît pas et l'ordre dépend des données reçues. L'ordre fixe garantit un résultat reproductible et un tableau cohérent."
+    },
+    {
+      "code": "ANGULAR-09-Q5",
       "type": "FREE_TEXT",
-      "prompt": "Explique une décision liée à projet professionnel : dashboard métier.",
+      "prompt": "Sans relire le cours, explique avec tes mots comment rendre un graphique de dashboard accessible.",
       "choices": [],
       "correctChoice": null,
       "expectedKeywords": [
-        "contrat",
-        "preuve",
-        "test"
-      ]
+        "alternative",
+        "tableau",
+        "couleur",
+        "texte",
+        "lecteur"
+      ],
+      "modelAnswer": "Un graphique est une image pour un lecteur d'écran : on fournit une alternative textuelle (résumé de la tendance) et idéalement un tableau de données équivalent. On n'encode jamais une information par la couleur seule : on ajoute des libellés ou des motifs. Les tableaux utilisent des éléments sémantiques (caption, th scope) et l'ensemble reste utilisable au clavier.",
+      "explanation": "Une bonne réponse cite alternative textuelle ou tableau de données, refus de la couleur seule et structure sémantique."
     }
   ],
   "checklist": [
-    "Je peux expliquer le concept sans réciter une définition",
-    "Je sais exécuter et modifier la preuve",
-    "Je peux nommer un risque et son contrôle",
-    "Je peux présenter cette preuve dans mon portfolio"
+    "Mes indicateurs sont des fonctions pures testées",
+    "Je traite le cas sans donnée (division par zéro)",
+    "Mon affichage est stable et accessible (tableau, alternative textuelle)",
+    "Chaque indicateur a une définition écrite dans le README"
   ]
 }

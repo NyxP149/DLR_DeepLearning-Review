@@ -11,21 +11,30 @@
     "PYTHON-14"
   ],
   "objectives": [
-    "Expliquer packaging moderne, pyproject et dépendances",
-    "Construire une preuve exécutable et déterministe",
-    "Relier le concept à une décision professionnelle"
+    "Lire un pyproject.toml : métadonnées du projet, version de Python requise, dépendances, scripts.",
+    "Distinguer dépendance d'une application (épinglée) et dépendance d'une bibliothèque (bornée).",
+    "Créer et utiliser un environnement virtuel pour isoler les dépendances.",
+    "Repérer une dépendance sans borne de version, un verrou absent ou une dépendance vulnérable."
   ],
   "sections": [
     {
-      "title": "Concept et usage professionnel",
-      "content": "Packaging moderne, pyproject et dépendances répond à un besoin concret de maintenabilité, de sûreté ou de performance. Le laboratoire demande de rendre la décision observable et vérifiable.",
-      "conceptCodes": [
-        "PYTHON-PACKAGING"
-      ]
+      "title": "pyproject.toml : la carte d'identité du projet",
+      "content": "Le fichier pyproject.toml (standard PEP 621) décrit un projet Python de façon portable :\n```toml\n[project]\nname = \"dlr-tools\"\nversion = \"1.2.0\"\nrequires-python = \">=3.11\"\ndependencies = [\"requests>=2.31,<3\", \"flask\"]\n\n[project.scripts]\ndlr = \"dlr_tools.cli:main\"      # crée la commande « dlr » à l'installation\n\n[build-system]\nrequires = [\"setuptools>=68\"]\nbuild-backend = \"setuptools.build_meta\"\n```\n[project] contient le nom, la version, la version de Python requise, les dépendances et les commandes installées. [build-system] dit comment construire le paquet. Python lit ce fichier avec tomllib (bibliothèque standard depuis 3.11). Les anciens setup.py et requirements.txt existent encore, mais pyproject.toml est la référence."
     },
     {
-      "title": "Mise en pratique",
-      "content": "La preuve minimale est locale, déterministe et peut être enrichie sans changer le contrat attendu."
+      "title": "Exemple résolu : auditer un pyproject.toml",
+      "conceptCodes": [
+        "PYTHON-PACKAGING"
+      ],
+      "content": "Problème : lire un pyproject.toml et signaler les dépendances sans aucune borne de version.\n\nRaisonnement, étape par étape :\n1. Lire le fichier en mode binaire : tomllib.load(f) exige un fichier ouvert en \"rb\".\n2. Récupérer data[\"project\"] puis ses champs : name, version, requires-python.\n3. Pour chaque dépendance, chercher un opérateur de version parmi >=, ==, ~=, <, !=. Une dépendance sans opérateur (« flask ») accepte n'importe quelle version, y compris une future version cassante.\n4. Lister les scripts de [project.scripts] : « commande -> module:fonction ».\n5. Vérification : requests>=2.31,<3 est bornée ; flask ne l'est pas.\n```python\nimport tomllib\n\nwith open(\"pyproject.toml\", \"rb\") as fichier:\n    data = tomllib.load(fichier)\nprojet = data[\"project\"]\nsans_borne = [d for d in projet[\"dependencies\"]\n              if not any(op in d for op in (\">=\", \"==\", \"~=\", \"<\", \"!=\"))]\n```\nUne borne basse (>=2.31) assure qu'on dispose des fonctions utilisées ; une borne haute (<3) protège d'un changement majeur incompatible."
+    },
+    {
+      "title": "Environnements, verrous et sécurité",
+      "content": "Environnement virtuel : python -m venv .venv crée un Python isolé où pip install n'affecte pas le système ni les autres projets. Un projet par environnement ; .venv n'est jamais versionné.\n\nApplication ou bibliothèque ? Une bibliothèque déclare des plages larges (requests>=2.31,<3) pour cohabiter avec d'autres paquets. Une application déploie des versions exactes verrouillées (fichier de verrou produit par pip-tools, uv, poetry) pour que la production installe exactement ce qui a été testé. Sans verrou, deux installations à des dates différentes peuvent donner des résultats différents.\n\nHygiène : pip-audit (ou l'outil équivalent) détecte les vulnérabilités connues ; mets à jour régulièrement par petits pas ; installe uniquement depuis des sources de confiance (vérifie l'orthographe : le typosquatting imite des noms de paquets populaires) ; épingle avec des empreintes (--require-hashes) pour les déploiements sensibles ; respecte le versionnage sémantique (majeure.mineure.correctif) pour tes propres versions."
+    },
+    {
+      "title": "Erreurs fréquentes à reconnaître",
+      "content": "1. Des dépendances sans borne : une mise à jour majeure casse le projet un matin.\n2. Pas de verrou pour une application : production différente de la recette.\n3. Installer dans le Python du système au lieu d'un environnement virtuel.\n4. Versionner .venv ou des secrets.\n5. Ignorer les alertes de vulnérabilité.\n6. Lire pyproject.toml avec open(..., \"r\") : tomllib attend un fichier binaire.\n\nRetrouve ces erreurs de mémoire avant l'exercice, puis vérifie-toi avec le quiz : c'est la récupération, pas la relecture, qui fixe la notion."
     }
   ],
   "keyConcepts": [
@@ -39,8 +48,8 @@
       "professionalExample": "Une bibliothèque interne partagée entre plusieurs équipes fixait ses dépendances avec des versions exactes (requests==2.28.0), ce qui provoquait des conflits dès qu'un autre projet du même environnement avait besoin d'une version plus récente pour corriger une faille de sécurité. En migrant vers un pyproject.toml avec des contraintes de version compatibles (requests>=2.28,<3) et un outil comme uv pour verrouiller un environnement reproductible, l'équipe a pu mettre à jour les dépendances de sécurité sans casser les autres projets.",
       "codeExample": "[project]\nname = \"billing-core\"\nversion = \"1.4.0\"\nrequires-python = \">=3.13\"\ndependencies = [\n    \"httpx>=0.27,<1\",\n    \"pydantic>=2.5,<3\",\n]\n\n[project.optional-dependencies]\ndev = [\"pytest>=8\", \"mypy>=1.8\"]\n\n[build-system]\nrequires = [\"hatchling\"]\nbuild-backend = \"hatchling.build\"",
       "commonMistake": "Appliquer la technique sans mesurer son effet ni documenter sa frontière.",
-      "masteryQuestion": "Quelle contrainte de packaging moderne, pyproject et dépendances doit rester vraie lorsque le système évolue ?",
-      "masteryProof": "Exécuter la preuve, expliquer son invariant et proposer un cas d’échec."
+      "masteryQuestion": "Pourquoi borner les versions d'une dépendance, et en quoi diffèrent dépendances d'une application et d'une bibliothèque ?",
+      "masteryProof": "Lire un pyproject.toml avec tomllib et afficher nom, version, Python requis, dépendances sans borne et scripts installés."
     }
   ],
   "exercises": [
@@ -56,32 +65,80 @@
     {
       "code": "PYTHON-15-Q1",
       "type": "SINGLE_CHOICE",
-      "prompt": "Quelle preuve est la plus utile en revue ?",
+      "prompt": "Dans quel mode faut-il ouvrir un fichier pour tomllib.load ?",
       "choices": [
-        "Une exécution déterministe avec invariant explicite",
-        "Une sortie aléatoire",
-        "Une capture sans code"
+        "\"r\" (texte)",
+        "\"rb\" (binaire)",
+        "\"w\"",
+        "N'importe lequel"
       ],
-      "correctChoice": 0,
-      "expectedKeywords": []
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "tomllib.load attend un objet fichier ouvert en binaire : il décode lui-même le TOML en UTF-8. Passer un fichier texte lève une TypeError."
     },
     {
       "code": "PYTHON-15-Q2",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Prédis le résultat :\n```python\ndeps = [\"requests>=2.31,<3\", \"flask\", \"rich==13.7\"]\nops = (\">=\", \"==\", \"~=\", \"<\", \"!=\")\nprint([d for d in deps if not any(o in d for o in ops)])\n```\n",
+      "choices": [
+        "['requests>=2.31,<3']",
+        "['flask']",
+        "['flask', 'rich==13.7']",
+        "[]"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "requests a des bornes (>=, <), rich est épinglé (==) ; seul flask n'a aucun opérateur de version et accepte n'importe quelle version, y compris une future version incompatible."
+    },
+    {
+      "code": "PYTHON-15-Q3",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Trouve le défaut : une application déployée en production a seulement `dependencies = [\"requests>=2.0\"]` et aucun fichier de verrou.",
+      "choices": [
+        "Aucun, c'est la bonne pratique",
+        "Deux installations à des dates différentes peuvent installer des versions différentes ; la production n'est plus ce qui a été testé",
+        "requests est interdit",
+        "Il manque requires-python"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Une application doit déployer des versions exactes issues d'un fichier de verrou (pip-tools, uv, poetry). Les plages larges sont adaptées aux bibliothèques, pas aux applications."
+    },
+    {
+      "code": "PYTHON-15-Q4",
+      "type": "SINGLE_CHOICE",
+      "prompt": "À quoi sert un environnement virtuel ?",
+      "choices": [
+        "À accélérer Python",
+        "À isoler les dépendances d'un projet de celles du système et des autres projets",
+        "À compiler le code",
+        "À chiffrer les paquets"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Chaque projet peut avoir ses propres versions de paquets sans conflit. On l'active avant d'installer, et on ne le versionne pas : on le recrée à partir de pyproject.toml ou du verrou."
+    },
+    {
+      "code": "PYTHON-15-Q5",
       "type": "FREE_TEXT",
-      "prompt": "Explique une décision liée à packaging moderne, pyproject et dépendances.",
+      "prompt": "Sans relire le cours, explique avec tes mots la différence entre une dépendance bornée et une dépendance épinglée, et quand utiliser chacune.",
       "choices": [],
       "correctChoice": null,
       "expectedKeywords": [
-        "contrat",
-        "preuve",
-        "test"
-      ]
+        "borne",
+        "epingl",
+        "bibliotheque",
+        "application",
+        "version"
+      ],
+      "modelAnswer": "Une dépendance bornée accepte une plage de versions (>=2.31,<3) : adaptée à une bibliothèque, pour rester compatible avec les autres paquets installés. Une dépendance épinglée fixe une version exacte (==) : adaptée à une application déployée, via un fichier de verrou, pour reproduire exactement ce qui a été testé.",
+      "explanation": "Une bonne réponse associe plage et bibliothèque, version exacte verrouillée et application, avec la raison (compatibilité contre reproductibilité)."
     }
   ],
   "checklist": [
-    "Je peux expliquer le concept sans réciter une définition",
-    "Je sais exécuter et modifier la preuve",
-    "Je peux nommer un risque et son contrôle",
-    "Je relie cette étape à la suivante"
+    "Je sais lire [project], [project.scripts] et [build-system]",
+    "Mes dépendances sont bornées, ou verrouillées pour une application",
+    "Je travaille dans un environnement virtuel non versionné",
+    "Je vérifie régulièrement les vulnérabilités avec un outil d'audit"
   ]
 }

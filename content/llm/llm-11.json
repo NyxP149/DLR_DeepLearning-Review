@@ -11,21 +11,30 @@
     "LLM-10"
   ],
   "objectives": [
-    "Construire un assistant local avec recherche, citations et évaluation",
-    "Produire une expérience hors réseau reproductible",
-    "Documenter une limite et une métrique de contrôle"
+    "Assembler un assistant RAG complet : recherche, réponse citée, refus, évaluation.",
+    "Définir un jeu d'évaluation qui contient des questions répondables et non répondables.",
+    "Mesurer exactitude des sources citées, refus justifiés et réponses indûment refusées.",
+    "Documenter décisions, limites et preuve de fonctionnement pour un portfolio."
   ],
   "sections": [
     {
-      "title": "Concept et décision",
-      "content": "Projet professionnel : assistant RAG local évalué doit être évalué comme un composant logiciel : entrées explicites, sorties contrôlées, métriques et cas d’échec. Aucun appel à un service distant n’est nécessaire pour apprendre le mécanisme.",
-      "conceptCodes": [
-        "LLM-PROJECT"
-      ]
+      "title": "Un assistant, ce n'est pas qu'un modèle",
+      "content": "Un assistant professionnel combine des éléments dont chacun se teste séparément :\n1. Corpus et découpage (indexation, métadonnées).\n2. Recherche (classement, seuil).\n3. Génération contrôlée (consigne, format, citations).\n4. Contrôles (citations valides, refus, sécurité).\n5. Évaluation (jeu de cas, métriques, seuil d'acceptation).\n6. Observabilité (journaux, coût, latence).\nCe laboratoire assemble ces briques en une version locale et déterministe : la « génération » est remplacée par une extraction de la phrase source, ce qui permet de tester tout le reste sans modèle."
     },
     {
-      "title": "Projet portfolio",
-      "content": "L’expérience isole le mécanisme LLM-PROJECT. Elle reste volontairement déterministe afin de distinguer un défaut de pipeline d’une variation propre aux modèles génératifs."
+      "title": "Exemple résolu : répondre, citer, évaluer",
+      "conceptCodes": [
+        "LLM-PROJECT"
+      ],
+      "content": "Problème : construire un assistant qui répond depuis un petit corpus, cite sa source, refuse hors corpus, et mesurer sa qualité sur un jeu de questions.\n\nRaisonnement, étape par étape :\n1. Réponse : un enregistrement immuable Answer(text, source) ; source vaut None pour un refus.\n2. Recherche : le document qui partage le plus de mots-clés avec la question, sous un seuil minimal.\n3. Jeu d'évaluation : des triplets (question, source attendue ou None si aucune réponse n'est attendue). Il contient des questions répondables et des questions piégeuses hors corpus.\n4. Métriques : exactitude de source (la source citée est celle attendue), refus corrects (aucune réponse attendue et aucune donnée inventée), refus indus (on a refusé alors qu'une réponse existait).\n5. Rapport : une ligne par cas (OK ou ÉCHEC) puis un résumé « x/y » et le taux de refus indus.\n6. Seuil de publication : par exemple tous les cas répondables corrects et aucune citation inventée.\n```python\n@dataclass(frozen=True)\nclass Answer:\n    text: str\n    source: str | None\n\ndef evaluate(cases, assistant):\n    ok = 0\n    for question, expected_source in cases:\n        reply = assistant(question)\n        ok += reply.source == expected_source\n    return ok, len(cases)\n```\nLe jeu ne remplace pas la surveillance en production, mais il détecte les régressions à chaque modification."
+    },
+    {
+      "title": "Livrer un projet défendable",
+      "content": "Dossier de projet :\n- Problème et périmètre : à quelles questions l'assistant répond, à quelles questions il refuse.\n- Architecture : schéma des composants (indexation, recherche, génération, contrôles, évaluation).\n- Décisions : taille de morceau, seuil, stratégie de recherche, consigne de refus, avec la raison et l'alternative écartée.\n- Évaluation : le jeu de cas, les métriques, les résultats et les cas d'échec connus. Un projet qui présente ses échecs inspire plus confiance qu'un 100 % sans explication.\n- Sécurité : traitement des documents non fiables, filtrage des droits, journalisation sans secret.\n- Coût et latence : tokens par réponse, nombre d'appels, coût estimé.\n- Limites : ce qui n'est pas géré (documents volumineux, langues multiples, tableaux), et la suite prévue.\n- Reproductibilité : tout se lance avec une commande et donne la même sortie ; aucune clé ni donnée personnelle dans le dépôt.\n- Remplacement par un modèle réel : ce qui change (génération, embeddings) et ce qui reste (validation, évaluation, sécurité).\nQuestion de revue typique : « Comment sais-tu que ton assistant est meilleur après ta modification ? » La réponse est une métrique sur un jeu de cas, pas une impression."
+    },
+    {
+      "title": "Erreurs fréquentes à reconnaître",
+      "content": "1. Un jeu d'évaluation sans question hors corpus : on ne mesure pas le refus.\n2. Ne mesurer que le taux de réponses, pas la fidélité des sources.\n3. Un 100 % obtenu en adaptant le jeu de cas au système.\n4. Une documentation sans limites ni échecs connus.\n5. Un projet non reproductible (dépendance à une clé d'API pour les tests).\n6. Aucune trace des décisions de conception.\n\nRetrouve ces erreurs de mémoire avant l'exercice, puis vérifie-toi avec le quiz : c'est la récupération, pas la relecture, qui fixe la notion."
     }
   ],
   "keyConcepts": [
@@ -39,49 +48,97 @@
       "professionalExample": "Avant de livrer un assistant RAG à un client, une équipe consultante exige un rapport d'évaluation chiffré (taux de bonnes réponses, taux de citations correctes, latence) sur un jeu de questions représentatif, pas seulement une démonstration en direct. Lors d'un audit, le client demande de rejouer exactement les mêmes questions sur une nouvelle version du corpus pour vérifier que le score ne s'est pas dégradé, ce qui n'est possible que parce que le pipeline et son évaluation sont reproductibles et versionnés.",
       "codeExample": "from dataclasses import dataclass\n\n@dataclass(frozen=True)\nclass Answer:\n    text: str\n    source: str\n\ndef evaluate(cases: list[tuple[str, str]], answers: list[Answer]) -> float:\n    correct = sum(expected in a.text for (_, expected), a in zip(cases, answers))\n    return correct / len(cases)\n\ncases = [(\"Qui exécute le bytecode ?\", \"JVM\")]\nanswers = [Answer(\"La JVM exécute le bytecode\", \"JVM\")]\nprint(f\"Score d'évaluation: {evaluate(cases, answers):.0%}\")\n# Rejouable à l'identique sur chaque nouvelle version du corpus",
       "commonMistake": "Évaluer un seul exemple favorable ou confondre plausibilité et exactitude.",
-      "masteryQuestion": "Quelle métrique et quel cas d’échec utiliserais-tu pour projet professionnel : assistant rag local évalué ?",
-      "masteryProof": "Exécuter la preuve, modifier une entrée et expliquer le résultat ainsi que la limite du modèle local."
+      "masteryQuestion": "Pourquoi inclure des questions sans réponse dans le jeu d'évaluation, et comment présenter honnêtement les limites d'un assistant ?",
+      "masteryProof": "Construire un assistant RAG local avec réponse citée, refus et évaluation sur un jeu de cas incluant des questions hors corpus."
     }
   ],
   "exercises": [
     {
       "code": "LLM-11-E1",
-      "title": "Construire un assistant local avec recherche, citations et évaluation",
-      "statement": "Complète l’expérience pour produire exactement la sortie attendue. Explique ensuite quelle partie serait remplacée par un modèle réel.",
-      "starterCode": "from dataclasses import dataclass\n\n# TODO 1 : définis une dataclass immuable Answer (frozen=True) avec text: str et source: str\n\ncorpus = {\"JVM\": \"La JVM exécute le bytecode\", \"JDK\": \"Le JDK compile le code\"}\n# TODO 2 : crée la réponse à partir du texte du corpus \"JVM\" et de la source \"JVM\"\n# TODO 3 : vérifie avec assert que le texte contient \"bytecode\" et que la source existe dans le corpus\n# TODO 4 : affiche \"Réponse: <texte> [<source>]\" puis \"Évaluation: 2/2\"\n",
-      "expectedOutput": "Réponse: La JVM exécute le bytecode [JVM]\nÉvaluation: 2/2"
+      "title": "Assistant RAG local avec évaluation",
+      "statement": "Complète l'assistant : un enregistrement immuable Answer(text, source), une recherche par mots-clés avec seuil, le refus quand rien n'est pertinent, et l'évaluation sur six questions dont deux hors corpus (exactitude des sources, refus justifiés, refus indus). Affiche exactement :\nQui exécute le bytecode ? -> JVM  [OK]\nQue contient le JDK ? -> JDK  [OK]\nQue libère le ramasse-miettes ? -> GC  [OK]\nQui gère les dépendances ? -> Maven  [OK]\nQuelle est la météo ? -> refus  [OK]\nQui a gagné le match ? -> refus  [OK]\nSources exactes: 6/6\nRefus justifiés: 2/2\nRefus indus: 0",
+      "starterCode": "import re\nfrom dataclasses import dataclass\n\nCORPUS = {\n    \"JVM\": \"La JVM exécute le bytecode Java.\",\n    \"JDK\": \"Le JDK contient le compilateur et les outils.\",\n    \"GC\": \"Le ramasse-miettes libère la mémoire inutilisée.\",\n    \"Maven\": \"Maven gère les dépendances et le cycle de build.\",\n}\nSTOP_WORDS = {\"qui\", \"que\", \"quoi\", \"le\", \"la\", \"les\", \"de\", \"des\", \"un\", \"une\", \"est\", \"ce\", \"du\", \"quel\", \"quelle\", \"où\", \"et\"}\nCASES = [\n    (\"Qui exécute le bytecode ?\", \"JVM\"),\n    (\"Que contient le JDK ?\", \"JDK\"),\n    (\"Que libère le ramasse-miettes ?\", \"GC\"),\n    (\"Qui gère les dépendances ?\", \"Maven\"),\n    (\"Quelle est la météo ?\", None),\n    (\"Qui a gagné le match ?\", None),\n]\n\n# TODO 1 : dataclass immuable Answer avec text: str et source: str | None\n\n\ndef keywords(text: str) -> set[str]:\n    # TODO 2 : mots en minuscules (lettres, chiffres, tiret) sans STOP_WORDS\n    return set()\n\n\ndef assistant(question: str):\n    # TODO 3 : retourne Answer(<texte du document le plus proche>, <clé>) si au moins un mot-clé est partagé\n    #          (départage par clé) ; sinon Answer(\"Je ne sais pas\", None)\n    return None\n\n\n# TODO 4 : pour chaque cas affiche \"<question> -> <source ou refus>  [OK|ÉCHEC]\"\n#          (OK si la source citée est celle attendue ; None pour un refus)\n# TODO 5 : affiche \"Sources exactes: <ok>/<total>\" ; \"Refus justifiés: <n>/<nombre de cas sans réponse attendue>\" ;\n#          \"Refus indus: <n>\" (refus alors qu'une source était attendue)\n",
+      "expectedOutput": "Qui exécute le bytecode ? -> JVM  [OK]\nQue contient le JDK ? -> JDK  [OK]\nQue libère le ramasse-miettes ? -> GC  [OK]\nQui gère les dépendances ? -> Maven  [OK]\nQuelle est la météo ? -> refus  [OK]\nQui a gagné le match ? -> refus  [OK]\nSources exactes: 6/6\nRefus justifiés: 2/2\nRefus indus: 0"
     }
   ],
   "quiz": [
     {
       "code": "LLM-11-Q1",
       "type": "SINGLE_CHOICE",
-      "prompt": "Quelle validation est la plus solide ?",
+      "prompt": "Pourquoi un jeu d'évaluation d'assistant doit-il contenir des questions sans réponse dans le corpus ?",
       "choices": [
-        "Plusieurs cas reproductibles avec métriques et provenance",
-        "Une réponse qui semble correcte",
-        "Une démonstration sans jeu de test"
+        "Pour augmenter la taille du jeu",
+        "Pour mesurer si l'assistant refuse au lieu d'inventer",
+        "Pour tester la vitesse",
+        "Ce n'est pas utile"
       ],
-      "correctChoice": 0,
-      "expectedKeywords": []
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Un assistant qui répond toujours a un taux de réponse parfait mais invente quand l'information manque. Les questions piégeuses mesurent la capacité à refuser."
     },
     {
       "code": "LLM-11-Q2",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Prédis : sur 6 cas dont 4 répondables et 2 hors corpus, l'assistant répond correctement aux 4 premiers et refuse les 2 autres. Sources exactes ?",
+      "choices": [
+        "4/6",
+        "6/6 : les refus attendus comptent comme corrects (source attendue None, source citée None)",
+        "2/6",
+        "0/6"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Pour un cas hors corpus, la « source attendue » est l'absence de source. Refuser est donc la réponse correcte, et le cas est compté exact."
+    },
+    {
+      "code": "LLM-11-Q3",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Trouve le défaut :\n« Mon assistant obtient 100 % sur mes 20 questions, que j'ai écrites en regardant le corpus et en réglant les seuils jusqu'à ce que tout passe. »",
+      "choices": [
+        "100 % est impossible",
+        "Le jeu a servi à régler le système : le résultat ne prouve pas la généralisation à des questions nouvelles ; il faut des cas de validation tenus à l'écart",
+        "Vingt questions est trop beaucoup",
+        "Il faut augmenter la température"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Séparer cas de réglage et cas de validation. Un résultat parfait sur ce qu'on a utilisé pour régler n'est pas une mesure."
+    },
+    {
+      "code": "LLM-11-Q4",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Qu'est-ce qu'un « refus indu » ?",
+      "choices": [
+        "Un refus qui coûte trop cher",
+        "Un refus alors qu'une réponse existait dans le corpus",
+        "Un refus d'un utilisateur",
+        "Une réponse trop longue"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Un assistant trop prudent est peu utile. On suit le taux de refus indus en plus des refus justifiés pour équilibrer prudence et couverture."
+    },
+    {
+      "code": "LLM-11-Q5",
       "type": "FREE_TEXT",
-      "prompt": "Nomme une limite et le contrôle associé.",
+      "prompt": "Sans relire le cours, explique avec tes mots ce que doit contenir la documentation d'un projet d'assistant RAG pour être défendable.",
       "choices": [],
       "correctChoice": null,
       "expectedKeywords": [
+        "decision",
+        "evaluation",
         "limite",
-        "test",
-        "mesure"
-      ]
+        "securite",
+        "reproduct"
+      ],
+      "modelAnswer": "Elle décrit le problème et le périmètre, l'architecture, les décisions de conception avec leurs raisons (taille des morceaux, seuil, stratégie de recherche), le jeu d'évaluation, les métriques et les résultats y compris les échecs connus, le traitement de la sécurité (documents non fiables, droits), le coût et les limites assumées. Tout doit être reproductible par une commande, sans clé d'API ni donnée personnelle dans le dépôt.",
+      "explanation": "Une bonne réponse cite périmètre, décisions justifiées, évaluation avec échecs, sécurité, limites et reproductibilité."
     }
   ],
   "checklist": [
-    "Je sais expliquer le mécanisme",
-    "Je peux reproduire la preuve hors réseau",
-    "Je distingue simulation locale et modèle réel",
-    "Je peux nommer une métrique et un risque"
+    "Mon jeu d'évaluation contient des questions sans réponse",
+    "Je mesure sources exactes, refus justifiés et refus indus",
+    "Je sépare cas de réglage et cas de validation",
+    "Ma documentation énonce décisions, échecs connus et limites"
   ]
 }

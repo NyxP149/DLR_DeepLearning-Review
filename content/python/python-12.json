@@ -11,21 +11,30 @@
     "PYTHON-11"
   ],
   "objectives": [
-    "Expliquer asynchronisme avec async, await et asyncio",
-    "Construire une preuve exécutable et déterministe",
-    "Relier le concept à une décision professionnelle"
+    "Expliquer ce que font async, await et la boucle d'événements, et ce que l'asynchrone ne fait pas (parallélisme CPU).",
+    "Lancer des coroutines en concurrence avec asyncio.gather et mesurer le gain.",
+    "Protéger un appel lent avec asyncio.wait_for et gérer l'annulation.",
+    "Repérer un appel bloquant dans une coroutine, un await oublié ou une tâche perdue."
   ],
   "sections": [
     {
-      "title": "Concept et usage professionnel",
-      "content": "Asynchronisme avec async, await et asyncio répond à un besoin concret de maintenabilité, de sûreté ou de performance. Le laboratoire demande de rendre la décision observable et vérifiable.",
-      "conceptCodes": [
-        "PYTHON-ASYNC"
-      ]
+      "title": "Une seule boucle, des attentes partagées",
+      "content": "asyncio exécute des coroutines sur un seul thread grâce à une boucle d'événements. Une coroutine (async def) peut se suspendre avec await pendant qu'elle attend (réseau, temporisation) ; la boucle exécute alors une autre coroutine. C'est de la concurrence coopérative : le gain vient du temps d'attente partagé, pas de calcul en parallèle.\n```python\nimport asyncio\n\nasync def fetch(nom, delai):\n    await asyncio.sleep(delai)       # suspend cette coroutine, la boucle continue ailleurs\n    return nom\n\nresultat = asyncio.run(fetch(\"a\", 0.1))   # point d'entrée du programme\n```\nAppeler fetch(\"a\", 0.1) sans await ne l'exécute pas : on obtient un objet coroutine et un avertissement « coroutine was never awaited ». Convient pour beaucoup d'entrées/sorties (clients HTTP, bases async, serveurs) ; ne convient pas à du calcul intensif (utilise des processus)."
     },
     {
-      "title": "Mise en pratique",
-      "content": "La preuve minimale est locale, déterministe et peut être enrichie sans changer le contrat attendu."
+      "title": "Exemple résolu : trois appels en concurrence avec délai maximal",
+      "conceptCodes": [
+        "PYTHON-ASYNC"
+      ],
+      "content": "Problème : appeler trois services de 0,1 s en concurrence (le total doit rester proche de 0,1 s, pas 0,3 s) et protéger un appel lent par un délai maximal.\n\nRaisonnement, étape par étape :\n1. En séquence : await fetch(\"a\"), await fetch(\"b\"), await fetch(\"c\") coûte 0,1 + 0,1 + 0,1 = 0,3 s.\n2. En concurrence : asyncio.gather(fetch(\"a\"), fetch(\"b\"), fetch(\"c\")) lance les trois ; les attentes se chevauchent, le total vaut environ 0,1 s.\n3. gather renvoie les résultats dans l'ordre des arguments, quel que soit l'ordre de fin.\n4. Mesure avec time.perf_counter() avant et après ; on affirme total < 0,25 s sans imposer une valeur fragile.\n5. Un appel lent est borné par asyncio.wait_for(coroutine, timeout=0.05) : au-delà, TimeoutError est levée et la coroutine annulée.\n```python\ndebut = time.perf_counter()\nresultats = await asyncio.gather(fetch(\"a\", 0.1), fetch(\"b\", 0.1), fetch(\"c\", 0.1))\nduree = time.perf_counter() - debut        # ~0.1, jamais ~0.3\n\ntry:\n    await asyncio.wait_for(fetch(\"lent\", 5), timeout=0.05)\nexcept asyncio.TimeoutError:\n    print(\"délai dépassé\")\n```"
+    },
+    {
+      "title": "Tâches, annulation et pièges",
+      "content": "asyncio.create_task(coroutine) planifie une coroutine immédiatement et renvoie une tâche : garde une référence, sinon elle peut être collectée avant la fin. Depuis Python 3.11, asyncio.TaskGroup attend toutes les tâches et propage les erreurs proprement (concurrence structurée).\n\nLe piège majeur : un appel bloquant dans une coroutine gèle toute la boucle. time.sleep(1) bloque tout le monde ; utilise await asyncio.sleep(1). Pour une fonction bloquante inévitable (bibliothèque synchrone), délègue-la à un thread : await asyncio.to_thread(fonction).\n\nLimite la concurrence avec un asyncio.Semaphore pour ne pas ouvrir 10 000 connexions à la fois. Une annulation (task.cancel()) lève CancelledError dans la tâche : ne l'avale pas ; nettoie avec finally. gather(..., return_exceptions=True) renvoie les exceptions comme résultats au lieu d'annuler le reste à la première erreur."
+    },
+    {
+      "title": "Erreurs fréquentes à reconnaître",
+      "content": "1. Oublier await : la coroutine n'est jamais exécutée.\n2. time.sleep, requests.get ou un calcul long dans une coroutine : la boucle entière est gelée.\n3. Lancer une tâche sans garder de référence ni attendre son résultat (erreur silencieuse).\n4. Croire qu'asyncio accélère du calcul CPU.\n5. Ouvrir un nombre illimité de tâches sans Semaphore.\n6. Avaler CancelledError ou TimeoutError sans nettoyage.\n\nRetrouve ces erreurs de mémoire avant l'exercice, puis vérifie-toi avec le quiz : c'est la récupération, pas la relecture, qui fixe la notion."
     }
   ],
   "keyConcepts": [
@@ -39,8 +48,8 @@
       "professionalExample": "Un service qui agrège des prix depuis cinq fournisseurs externes appelait chaque API l'une après l'autre avec requests, ce qui portait le temps de réponse total à plusieurs secondes. En passant à des appels asynchrones avec asyncio.gather et un client HTTP async, les cinq requêtes s'exécutent pendant l'attente réseau des unes des autres, ramenant le temps total proche de celui de l'appel le plus lent plutôt que de leur somme.",
       "codeExample": "import asyncio\nimport httpx\n\nasync def fetch_price(client: httpx.AsyncClient, supplier_url: str) -> float:\n    response = await client.get(supplier_url, timeout=2.0)\n    response.raise_for_status()\n    return response.json()[\"price\"]\n\nasync def best_price(supplier_urls: list[str]) -> float:\n    async with httpx.AsyncClient() as client:\n        prices = await asyncio.gather(\n            *(fetch_price(client, url) for url in supplier_urls),\n            return_exceptions=True,\n        )\n    valid_prices = [p for p in prices if isinstance(p, float)]\n    return min(valid_prices)",
       "commonMistake": "Appliquer la technique sans mesurer son effet ni documenter sa frontière.",
-      "masteryQuestion": "Quelle contrainte de asynchronisme avec async, await et asyncio doit rester vraie lorsque le système évolue ?",
-      "masteryProof": "Exécuter la preuve, expliquer son invariant et proposer un cas d’échec."
+      "masteryQuestion": "Pourquoi asyncio accélère-t-il des appels réseau mais pas du calcul, et pourquoi time.sleep est-il dangereux dans une coroutine ?",
+      "masteryProof": "Lancer trois appels en concurrence avec gather, prouver que le total reste sous 0,25 s et borner un appel lent avec wait_for."
     }
   ],
   "exercises": [
@@ -56,32 +65,80 @@
     {
       "code": "PYTHON-12-Q1",
       "type": "SINGLE_CHOICE",
-      "prompt": "Quelle preuve est la plus utile en revue ?",
+      "prompt": "Trois coroutines attendent chacune 0,1 s. Combien de temps dure asyncio.gather(c1, c2, c3) environ ?",
       "choices": [
-        "Une exécution déterministe avec invariant explicite",
-        "Une sortie aléatoire",
-        "Une capture sans code"
+        "0,3 s",
+        "0,1 s",
+        "0,03 s",
+        "Indéterminé"
       ],
-      "correctChoice": 0,
-      "expectedKeywords": []
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Les attentes se chevauchent : pendant que c1 attend, la boucle avance c2 et c3. La durée totale est celle de la plus longue, environ 0,1 s. En séquence avec trois await successifs, ce serait 0,3 s."
     },
     {
       "code": "PYTHON-12-Q2",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Prédis ce que fait ce code :\n```python\nasync def main():\n    fetch(\"a\", 0.1)\n    print(\"fini\")\nasyncio.run(main())\n```\n",
+      "choices": [
+        "Il attend 0,1 s puis affiche fini",
+        "Il affiche fini et un avertissement : la coroutine fetch n'est jamais attendue donc jamais exécutée",
+        "Il lève une exception",
+        "Il ne termine jamais"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Sans await, fetch(...) renvoie seulement un objet coroutine. Rien ne s'exécute et Python signale « coroutine ... was never awaited »."
+    },
+    {
+      "code": "PYTHON-12-Q3",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Trouve le défaut :\n```python\nasync def lire(url):\n    reponse = requests.get(url)   # bibliothèque synchrone\n    return reponse.text\n```\nappelée dans gather pour 50 URL.",
+      "choices": [
+        "Il manque un return",
+        "requests.get bloque la boucle d'événements : les 50 appels se font l'un après l'autre ; il faut un client async ou asyncio.to_thread",
+        "gather est limité à 10 tâches",
+        "La fonction devrait être synchrone et rester dans gather"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Un appel bloquant dans une coroutine gèle le thread de la boucle entière. Utilise httpx.AsyncClient ou délègue au thread avec await asyncio.to_thread(requests.get, url)."
+    },
+    {
+      "code": "PYTHON-12-Q4",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Quel mécanisme limite le nombre de tâches qui s'exécutent en même temps ?",
+      "choices": [
+        "asyncio.sleep",
+        "asyncio.Semaphore",
+        "asyncio.run",
+        "asyncio.CancelledError"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Un Semaphore(n) laisse entrer au plus n coroutines dans une section ; les autres attendent. Il protège un serveur distant ou le système contre une avalanche de connexions."
+    },
+    {
+      "code": "PYTHON-12-Q5",
       "type": "FREE_TEXT",
-      "prompt": "Explique une décision liée à asynchronisme avec async, await et asyncio.",
+      "prompt": "Sans relire le cours, explique avec tes mots ce qu'est la concurrence coopérative d'asyncio et pour quels types de travaux elle est adaptée.",
       "choices": [],
       "correctChoice": null,
       "expectedKeywords": [
-        "contrat",
-        "preuve",
-        "test"
-      ]
+        "boucle",
+        "await",
+        "attente",
+        "thread",
+        "cpu"
+      ],
+      "modelAnswer": "asyncio exécute plusieurs coroutines sur un seul thread : à chaque await, une coroutine cède la main à la boucle d'événements qui en exécute une autre. Le gain vient du chevauchement des temps d'attente (réseau, disque, temporisation). C'est adapté aux travaux liés aux entrées/sorties ; pour du calcul CPU intensif, il faut des processus, car un seul thread calcule à la fois.",
+      "explanation": "Une bonne réponse cite la boucle, la cession à chaque await, le chevauchement des attentes et la limite pour le CPU."
     }
   ],
   "checklist": [
-    "Je peux expliquer le concept sans réciter une définition",
-    "Je sais exécuter et modifier la preuve",
-    "Je peux nommer un risque et son contrôle",
-    "Je relie cette étape à la suivante"
+    "Je n'oublie jamais await devant une coroutine",
+    "Je n'appelle aucune fonction bloquante dans une coroutine",
+    "Je borne mes appels avec wait_for et je limite la concurrence",
+    "Je sais pourquoi asyncio n'accélère pas le calcul CPU"
   ]
 }

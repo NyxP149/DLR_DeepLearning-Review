@@ -11,21 +11,30 @@
     "SQL-03"
   ],
   "objectives": [
-    "Expliquer agrégations et fonctions fenêtre",
-    "Construire une preuve exécutable et déterministe",
-    "Relier le concept à une décision professionnelle"
+    "Agréger avec GROUP BY et filtrer les groupes avec HAVING (et pas WHERE).",
+    "Utiliser une fonction fenêtre (SUM() OVER) pour un cumul sans perdre les lignes.",
+    "Distinguer GROUP BY (réduit les lignes) et fonction fenêtre (conserve les lignes).",
+    "Repérer une colonne non agrégée dans SELECT, un NULL ignoré ou une moyenne de moyennes."
   ],
   "sections": [
     {
-      "title": "Concept et usage professionnel",
-      "content": "Agrégations et fonctions fenêtre répond à un besoin concret de maintenabilité, de sûreté ou de performance. Le laboratoire demande de rendre la décision observable et vérifiable.",
-      "conceptCodes": [
-        "SQL-ANALYTICS"
-      ]
+      "title": "Résumer des lignes : GROUP BY et HAVING",
+      "content": "GROUP BY regroupe les lignes qui partagent une valeur et applique une fonction d'agrégation (COUNT, SUM, AVG, MIN, MAX) à chaque groupe : une ligne par groupe en sortie. WHERE filtre les lignes avant le regroupement ; HAVING filtre les groupes après.\n```sql\nSELECT region, SUM(amount) AS total\nFROM sales\nGROUP BY region\nHAVING SUM(amount) > 150          -- filtre sur l'agrégat : impossible dans WHERE\nORDER BY total DESC;\n```\nToute colonne du SELECT doit être soit dans le GROUP BY, soit dans une fonction d'agrégation. Les agrégats ignorent NULL (AVG sur [10, NULL, 20] donne 15) ; COUNT(*) compte les lignes, COUNT(colonne) compte les valeurs non NULL."
     },
     {
-      "title": "Mise en pratique",
-      "content": "La requête est exécutée sur SQLite en mémoire pour rester locale et reproductible ; les différences PostgreSQL et l'analyse EXPLAIN sont signalées dans le cours."
+      "title": "Exemple résolu : régions fortes et cumul mensuel",
+      "conceptCodes": [
+        "SQL-ANALYTICS"
+      ],
+      "content": "Problème : à partir des ventes mensuelles, lister les régions dont le total dépasse 150, puis calculer le cumul mensuel de la région Nord.\n\nRaisonnement, étape par étape :\n1. Total par région : SUM(amount) avec GROUP BY region.\n2. Filtre sur le total : HAVING SUM(amount) > 150 (WHERE ne peut pas, car le total n'existe pas encore au moment du filtrage des lignes).\n3. Tri : ORDER BY total DESC, puis le nom pour un résultat stable.\n4. Cumul : une fonction fenêtre ajoute une colonne calculée sans réduire les lignes : SUM(amount) OVER (ORDER BY month). Chaque ligne voit la somme des lignes de la fenêtre jusqu'à elle.\n5. On filtre la région Nord dans le WHERE (avant le calcul de la fenêtre) : les mois sont 100, puis 250 (100 + 150).\n6. Vérification : le dernier cumul égale le total de la région.\n```sql\nSELECT month, SUM(amount) OVER (ORDER BY month) AS cumul\nFROM sales\nWHERE region = 'Nord'\nORDER BY month;\n```\nLa clause OVER définit la fenêtre : PARTITION BY (un calcul par groupe, sans fusionner les lignes), ORDER BY (l'ordre qui détermine le cumul) et un cadre (ROWS BETWEEN ...)."
+    },
+    {
+      "title": "Fenêtres, rangs et pièges",
+      "content": "Fonctions fenêtre utiles :\n- SUM/AVG/COUNT(...) OVER (PARTITION BY région ORDER BY mois) : cumul ou moyenne par groupe.\n- ROW_NUMBER(), RANK(), DENSE_RANK() : classement. ROW_NUMBER donne un numéro unique (ex æquo départagés arbitrairement), RANK laisse des trous après un ex æquo (1, 1, 3), DENSE_RANK n'en laisse pas (1, 1, 2).\n- LAG(valeur) / LEAD(valeur) : valeur de la ligne précédente/suivante, pour une variation mois sur mois.\n- Top N par groupe : numérote avec ROW_NUMBER() OVER (PARTITION BY ... ORDER BY ...) dans une sous-requête puis garde rn <= N.\n```sql\nSELECT month, amount,\n       amount - LAG(amount) OVER (ORDER BY month) AS variation\nFROM sales WHERE region = 'Nord';\n```\nPièges :\n- Une moyenne de moyennes n'est pas la moyenne globale (pondération différente) : AVG(AVG(x)) est presque toujours faux ; calcule SUM(x) / COUNT(x) au bon niveau.\n- Sans ORDER BY dans OVER, le cumul n'a pas de sens (la fenêtre est l'ensemble de la partition).\n- Avec ORDER BY seul, le cadre par défaut regroupe les ex æquo : deux mois identiques partagent le même cumul. Précise ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW pour un cumul ligne à ligne.\n- Une fonction fenêtre ne peut pas être dans WHERE : filtre-la via une sous-requête ou une CTE.\n- NULL est ignoré par SUM/AVG, mais un groupe entièrement NULL renvoie NULL : COALESCE(SUM(x), 0)."
+    },
+    {
+      "title": "Erreurs fréquentes à reconnaître",
+      "content": "1. Filtrer sur un agrégat dans WHERE (erreur) au lieu de HAVING.\n2. Une colonne dans SELECT ni agrégée ni dans GROUP BY (certains moteurs la tolèrent et rendent une valeur arbitraire).\n3. Confondre GROUP BY (une ligne par groupe) et OVER (toutes les lignes conservées).\n4. Une moyenne de moyennes.\n5. Un cumul sans ORDER BY dans la fenêtre.\n6. Oublier que NULL est ignoré par les agrégats.\n\nRetrouve ces erreurs de mémoire avant l'exercice, puis vérifie-toi avec le quiz : c'est la récupération, pas la relecture, qui fixe la notion."
     }
   ],
   "keyConcepts": [
@@ -39,8 +48,8 @@
       "professionalExample": "Un tableau de bord commercial doit afficher, pour chaque commande, le chiffre d'affaires cumulé du client dans le mois en cours, sans perdre le détail ligne par ligne. Un GROUP BY classique agrège les lignes et fait disparaître les colonnes individuelles de chaque commande, ce qui obligerait à faire une auto-jointure coûteuse pour les récupérer. Une fonction fenêtre comme SUM(...) OVER (PARTITION BY customer_id ORDER BY created_at) calcule ce cumul tout en conservant une ligne par commande, ce qui est exactement ce que demande l'équipe produit.",
       "codeExample": "SELECT\n  o.id,\n  o.customer_id,\n  o.created_at,\n  o.total_cents,\n  SUM(o.total_cents) OVER (\n    PARTITION BY o.customer_id\n    ORDER BY o.created_at\n    ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW\n  ) AS cumulative_total_cents,\n  RANK() OVER (\n    PARTITION BY o.customer_id\n    ORDER BY o.total_cents DESC\n  ) AS order_rank_for_customer\nFROM orders o;",
       "commonMistake": "Appliquer la technique sans mesurer son effet ni documenter sa frontière.",
-      "masteryQuestion": "Quelle contrainte de agrégations et fonctions fenêtre doit rester vraie lorsque le système évolue ?",
-      "masteryProof": "Exécuter la preuve, expliquer son invariant et proposer un cas d’échec."
+      "masteryQuestion": "Pourquoi HAVING plutôt que WHERE pour filtrer un total, et en quoi une fonction fenêtre diffère-t-elle d'un GROUP BY ?",
+      "masteryProof": "Écrire le total par région supérieur à 150 (GROUP BY + HAVING) puis le cumul mensuel de la région Nord avec SUM() OVER."
     }
   ],
   "exercises": [
@@ -56,32 +65,80 @@
     {
       "code": "SQL-04-Q1",
       "type": "SINGLE_CHOICE",
-      "prompt": "Quelle preuve est la plus utile en revue ?",
+      "prompt": "Quel filtre est valide pour « les régions dont le total des ventes dépasse 150 » ?",
       "choices": [
-        "Une exécution déterministe avec invariant explicite",
-        "Une sortie aléatoire",
-        "Une capture sans code"
+        "WHERE SUM(amount) > 150",
+        "HAVING SUM(amount) > 150 après GROUP BY region",
+        "GROUP BY SUM(amount) > 150",
+        "LIMIT 150"
       ],
-      "correctChoice": 0,
-      "expectedKeywords": []
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "WHERE s'évalue ligne par ligne avant les groupes ; le total n'existe pas encore. HAVING filtre les groupes une fois les agrégats calculés."
     },
     {
       "code": "SQL-04-Q2",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Prédis le cumul de la région Nord (mois 1 : 100, mois 2 : 150) avec SUM(amount) OVER (ORDER BY month) :",
+      "choices": [
+        "100, 150",
+        "100, 250",
+        "250, 250",
+        "150, 100"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Le cumul additionne les lignes de la première jusqu'à la ligne courante : 100, puis 100 + 150 = 250. Le dernier cumul égale le total de la région."
+    },
+    {
+      "code": "SQL-04-Q3",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Trouve le défaut :\n```sql\nSELECT region, month, SUM(amount) FROM sales GROUP BY region;\n```\n",
+      "choices": [
+        "SUM est interdit avec GROUP BY",
+        "month n'est ni dans le GROUP BY ni agrégé : la valeur affichée est arbitraire (ou une erreur selon le moteur)",
+        "region doit être entre guillemets",
+        "Il manque HAVING"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Chaque groupe contient plusieurs mois : lequel afficher ? Il faut soit grouper aussi par month, soit agréger (MIN, MAX), soit retirer la colonne."
+    },
+    {
+      "code": "SQL-04-Q4",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Trois ex æquo en tête : RANK() donne 1, 1, 1 puis quel rang à la ligne suivante ?",
+      "choices": [
+        "2",
+        "4",
+        "1",
+        "3"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "RANK laisse des trous : après trois premières places, le rang suivant est 4. DENSE_RANK donnerait 2 ; ROW_NUMBER numéroterait 1, 2, 3, 4 sans ex æquo."
+    },
+    {
+      "code": "SQL-04-Q5",
       "type": "FREE_TEXT",
-      "prompt": "Explique une décision liée à agrégations et fonctions fenêtre.",
+      "prompt": "Sans relire le cours, explique avec tes mots la différence entre GROUP BY et une fonction fenêtre (OVER), avec un cas d'usage de chacun.",
       "choices": [],
       "correctChoice": null,
       "expectedKeywords": [
-        "contrat",
-        "preuve",
-        "test"
-      ]
+        "groupe",
+        "lignes",
+        "conserv",
+        "cumul",
+        "over"
+      ],
+      "modelAnswer": "GROUP BY regroupe les lignes qui partagent une valeur et renvoie une seule ligne par groupe (total par région). Une fonction fenêtre calcule une valeur pour chaque ligne à partir d'un ensemble de lignes voisines sans les fusionner : toutes les lignes sont conservées, ce qui permet un cumul, un classement ou une variation par rapport à la ligne précédente en gardant le détail.",
+      "explanation": "Une bonne réponse oppose une ligne par groupe à toutes les lignes conservées, avec un exemple comme total par région et cumul mensuel."
     }
   ],
   "checklist": [
-    "Je peux expliquer le concept sans réciter une définition",
-    "Je sais exécuter et modifier la preuve",
-    "Je peux nommer un risque et son contrôle",
-    "Je relie cette étape à la suivante"
+    "Je filtre les agrégats avec HAVING, les lignes avec WHERE",
+    "Je sais écrire un cumul avec SUM() OVER",
+    "Je distingue ROW_NUMBER, RANK et DENSE_RANK",
+    "Je ne fais jamais une moyenne de moyennes"
   ]
 }

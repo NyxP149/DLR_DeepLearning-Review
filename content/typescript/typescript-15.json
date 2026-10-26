@@ -11,21 +11,30 @@
     "TYPESCRIPT-14"
   ],
   "objectives": [
-    "Expliquer node.js, fichiers et flux",
-    "Construire une preuve exécutable et déterministe",
-    "Relier le concept à une décision professionnelle"
+    "Utiliser fs/promises, les flux et les itérateurs asynchrones de Node.js.",
+    "Expliquer pourquoi un flux livre des morceaux qui ne correspondent pas aux lignes.",
+    "Écrire un générateur asynchrone qui reconstitue des lignes complètes à partir de morceaux.",
+    "Repérer un fichier lu entièrement en mémoire, une contre-pression ignorée ou un encodage implicite."
   ],
   "sections": [
     {
-      "title": "Concept et usage professionnel",
-      "content": "Node.js, fichiers et flux répond à un besoin concret de maintenabilité, de sûreté ou de performance. Le laboratoire demande de rendre la décision observable et vérifiable.",
-      "conceptCodes": [
-        "TYPESCRIPT-NODE"
-      ]
+      "title": "Lire un gros fichier sans le charger en mémoire",
+      "content": "fs.promises.readFile lit tout le fichier en mémoire : pratique pour un petit fichier, dangereux pour 5 Go. Un flux (stream) traite les données par morceaux (chunks) : mémoire constante, début du traitement avant la fin de la lecture.\n```ts\nimport { createReadStream } from 'node:fs';\n\nconst flux = createReadStream('journal.log', { encoding: 'utf8' });\nfor await (const morceau of flux) {        // un flux est un itérable asynchrone\n  console.log(morceau.length);\n}\n```\nMais un morceau n'est pas une ligne : la taille des morceaux dépend du système (souvent 64 Ko), et un morceau peut couper une ligne n'importe où. Compter les lignes en comptant les morceaux ou découper chaque morceau sur \\n donnerait des lignes cassées en deux."
     },
     {
-      "title": "Mise en pratique",
-      "content": "La preuve minimale est locale, déterministe et peut être enrichie sans changer le contrat attendu."
+      "title": "Exemple résolu : reconstituer des lignes",
+      "conceptCodes": [
+        "TYPESCRIPT-NODE"
+      ],
+      "content": "Problème : un flux arrive en morceaux \"alp\", \"ha\\nbe\", \"ta\\ngamma\" (sans saut de ligne final). Il faut produire alpha, beta, gamma.\n\nRaisonnement, étape par étape :\n1. On garde un tampon (buffer) de ce qui n'est pas encore une ligne complète.\n2. À chaque morceau : buffer += morceau.\n3. Tant que le tampon contient un saut de ligne, on extrait la partie avant ce saut comme ligne complète (yield) et on garde le reste.\n4. Le reste après le dernier saut de ligne est une ligne incomplète : on la garde dans le tampon pour le prochain morceau.\n5. Quand le flux est terminé, s'il reste du texte dans le tampon, c'est la dernière ligne (sans saut final) : on la produit, sinon elle serait perdue.\n6. Vérification : trois lignes produites, quelle que soit la façon dont le texte a été découpé en morceaux.\n```ts\nasync function* lines(source: AsyncIterable<string>): AsyncGenerator<string> {\n  let buffer = '';\n  for await (const chunk of source) {\n    buffer += chunk;\n    let index: number;\n    while ((index = buffer.indexOf('\\n')) !== -1) {\n      yield buffer.slice(0, index);\n      buffer = buffer.slice(index + 1);\n    }\n  }\n  if (buffer.length > 0) yield buffer;      // dernière ligne sans saut final\n}\n```\nEn pratique, node:readline fait cela pour toi (readline.createInterface({ input }) et for await (const ligne of rl)). Comprendre le mécanisme évite les bugs quand on écrit son propre analyseur de protocole."
+    },
+    {
+      "title": "Flux, contre-pression et pièges Node.js",
+      "content": "Contre-pression (backpressure) : si l'écriture est plus lente que la lecture, les données s'accumulent en mémoire. pipeline() de node:stream/promises relie les flux en gérant cela et les erreurs : await pipeline(createReadStream(a), transform, createWriteStream(b)).\n\nEncodage : sans encoding, un flux renvoie des Buffer (octets). Un caractère UTF-8 multi-octets peut être coupé entre deux morceaux : décode avec setEncoding('utf8') ou un StringDecoder, et non en convertissant chaque Buffer séparément.\n\nChemins et sécurité : construis les chemins avec node:path (join, resolve) ; refuse un chemin qui sort du dossier prévu après resolve (traversée de chemin). Les opérations fs.*Sync bloquent la boucle d'événements : acceptables dans un script, pas dans un serveur. Gestion d'erreurs : un flux émet 'error' ; sans gestionnaire (ou pipeline), l'exception peut terminer le processus. Ferme toujours les ressources (stream.destroy(), try/finally, fichier ouvert via fs.open)."
+    },
+    {
+      "title": "Erreurs fréquentes à reconnaître",
+      "content": "1. readFile sur un très gros fichier : mémoire saturée.\n2. Considérer qu'un morceau égale une ligne.\n3. Oublier la dernière ligne sans saut final.\n4. Décoder des Buffer un par un : caractères multi-octets coupés.\n5. fs.readFileSync dans un gestionnaire de requête.\n6. Ne pas gérer l'événement d'erreur d'un flux.\n\nRetrouve ces erreurs de mémoire avant l'exercice, puis vérifie-toi avec le quiz : c'est la récupération, pas la relecture, qui fixe la notion."
     }
   ],
   "keyConcepts": [
@@ -39,8 +48,8 @@
       "professionalExample": "Un job d'export nocturne devait générer un fichier CSV de plusieurs millions de lignes de commandes. La première version chargeait toutes les lignes en mémoire dans un tableau puis écrivait le fichier en une fois, ce qui faisait planter le processus Node avec un JavaScript heap out of memory. En réécrivant l'export avec des flux (une source Readable, un Transform pour le formatage CSV, une destination Writable, reliés par pipeline), la mémoire consommée est restée constante quelle que soit la taille de l'export.",
       "codeExample": "import { createWriteStream } from 'node:fs';\nimport { Readable, Transform, pipeline } from 'node:stream';\nimport { promisify } from 'node:util';\n\nconst pipelineAsync = promisify(pipeline);\n\ninterface Order { id: string; totalCents: number; }\n\nasync function exportOrdersToCsv(orders: AsyncIterable<Order>, path: string): Promise<void> {\n  const toCsvRow = new Transform({\n    objectMode: true,\n    transform(order: Order, _enc, callback) {\n      callback(null, `${order.id},${order.totalCents}\\n`);\n    },\n  });\n\n  await pipelineAsync(Readable.from(orders), toCsvRow, createWriteStream(path));\n}",
       "commonMistake": "Appliquer la technique sans mesurer son effet ni documenter sa frontière.",
-      "masteryQuestion": "Quelle contrainte de node.js, fichiers et flux doit rester vraie lorsque le système évolue ?",
-      "masteryProof": "Exécuter la preuve, expliquer son invariant et proposer un cas d’échec."
+      "masteryQuestion": "Pourquoi un morceau de flux n'est-il pas une ligne, et pourquoi le tampon final doit-il être produit à la fin ?",
+      "masteryProof": "Écrire un générateur asynchrone lines qui reconstitue les lignes complètes depuis un AsyncIterable<string>, y compris la dernière sans saut final."
     }
   ],
   "exercises": [
@@ -56,32 +65,80 @@
     {
       "code": "TYPESCRIPT-15-Q1",
       "type": "SINGLE_CHOICE",
-      "prompt": "Quelle preuve est la plus utile en revue ?",
+      "prompt": "Un fichier de 8 Go doit être filtré ligne par ligne. Quelle approche choisir ?",
       "choices": [
-        "Une exécution déterministe avec invariant explicite",
-        "Une sortie aléatoire",
-        "Une capture sans code"
+        "readFile puis split('\\n')",
+        "Un flux (createReadStream ou readline) traité morceau par morceau",
+        "readFileSync dans une boucle",
+        "Le charger dans un tableau global"
       ],
-      "correctChoice": 0,
-      "expectedKeywords": []
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Un flux garde une mémoire constante et commence à traiter avant la fin de la lecture. readFile charge les 8 Go en mémoire et peut faire échouer le processus."
     },
     {
       "code": "TYPESCRIPT-15-Q2",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Prédis les lignes produites par un reconstituteur correct pour les morceaux « al », « pha\\nbe », « ta » :",
+      "choices": [
+        "al, pha, be, ta",
+        "alpha puis beta",
+        "alpha seulement",
+        "Aucune"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Le tampon vaut « al » puis « alpha\\nbe » ; la ligne « alpha » est produite et « be » reste. Avec « ta », le tampon est « beta » : le flux est fini, la dernière ligne sans saut final doit être produite à la fin."
+    },
+    {
+      "code": "TYPESCRIPT-15-Q3",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Trouve le défaut :\n```ts\nfor await (const chunk of flux) {\n  for (const ligne of chunk.split('\\n')) traiter(ligne);\n}\n```\n",
+      "choices": [
+        "split n'existe pas",
+        "Un morceau peut couper une ligne en deux : chaque moitié sera traitée comme une ligne complète",
+        "for await est interdit",
+        "chunk est trop gros"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Il faut un tampon qui conserve la fin incomplète d'un morceau jusqu'au suivant. node:readline fournit cette logique prête à l'emploi."
+    },
+    {
+      "code": "TYPESCRIPT-15-Q4",
+      "type": "SINGLE_CHOICE",
+      "prompt": "À quoi sert la contre-pression (backpressure) ?",
+      "choices": [
+        "À chiffrer les données",
+        "À ralentir la lecture quand l'écriture ne suit pas, pour éviter d'accumuler les données en mémoire",
+        "À compresser un flux",
+        "À fermer un fichier"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Si le producteur est plus rapide que le consommateur, les données s'empilent. pipeline() gère ce rythme et les erreurs entre flux."
+    },
+    {
+      "code": "TYPESCRIPT-15-Q5",
       "type": "FREE_TEXT",
-      "prompt": "Explique une décision liée à node.js, fichiers et flux.",
+      "prompt": "Sans relire le cours, explique avec tes mots pourquoi on préfère un flux à readFile pour un gros fichier et ce qu'il faut faire d'un morceau qui coupe une ligne.",
       "choices": [],
       "correctChoice": null,
       "expectedKeywords": [
-        "contrat",
-        "preuve",
-        "test"
-      ]
+        "memoire",
+        "flux",
+        "morceau",
+        "tampon",
+        "ligne"
+      ],
+      "modelAnswer": "readFile charge le fichier entier en mémoire, ce qui sature pour un gros fichier ; un flux le traite morceau par morceau avec une mémoire constante et permet de commencer avant la fin de la lecture. Un morceau peut couper une ligne n'importe où : on garde la fin incomplète dans un tampon, on la complète avec le morceau suivant, et on produit la dernière ligne à la fin du flux.",
+      "explanation": "Une bonne réponse cite la mémoire constante, le décalage entre morceaux et lignes, le tampon et la dernière ligne sans saut final."
     }
   ],
   "checklist": [
-    "Je peux expliquer le concept sans réciter une définition",
-    "Je sais exécuter et modifier la preuve",
-    "Je peux nommer un risque et son contrôle",
-    "Je relie cette étape à la suivante"
+    "Je lis les gros fichiers en flux",
+    "Je ne confonds pas morceau et ligne : j'utilise un tampon ou readline",
+    "Je produis la dernière ligne sans saut final",
+    "Je gère erreurs et contre-pression avec pipeline"
   ]
 }

@@ -11,21 +11,30 @@
     "LLM-07"
   ],
   "objectives": [
-    "Classer des documents avec une métrique explicite",
-    "Produire une expérience hors réseau reproductible",
-    "Documenter une limite et une métrique de contrôle"
+    "Classer des documents par pertinence avec une métrique explicite et un départage déterministe.",
+    "Mesurer la qualité d'une recherche avec recall@k et MRR sur des requêtes dont on connaît les bons documents.",
+    "Comparer recherche lexicale et recherche sémantique et connaître l'intérêt d'une recherche hybride.",
+    "Repérer un classement instable, un score non comparable ou un jeu de requêtes trop petit."
   ],
   "sections": [
     {
-      "title": "Concept et décision",
-      "content": "Recherche sémantique et classement doit être évalué comme un composant logiciel : entrées explicites, sorties contrôlées, métriques et cas d’échec. Aucun appel à un service distant n’est nécessaire pour apprendre le mécanisme.",
-      "conceptCodes": [
-        "LLM-RETRIEVAL"
-      ]
+      "title": "Retrouver avant de générer",
+      "content": "La recherche est l'étape qui décide ce que le modèle verra : si le bon passage n'est pas retrouvé, la meilleure génération du monde ne le sauvera pas. Deux grandes familles :\n- Lexicale (BM25, mots-clés) : compte les mots communs, pondérés par leur rareté. Excellente pour les termes exacts, les noms, les identifiants, les codes d'erreur ; aveugle aux synonymes.\n- Sémantique (embeddings) : compare les sens, retrouve les reformulations ; moins fiable pour un identifiant exact ou une négation.\nLa recherche hybride combine les deux (fusion de classements, par exemple Reciprocal Rank Fusion), puis un reclassement (reranking) affine les premiers résultats avec un modèle plus précis mais plus coûteux."
     },
     {
-      "title": "Expérience locale",
-      "content": "L’expérience isole le mécanisme LLM-RETRIEVAL. Elle reste volontairement déterministe afin de distinguer un défaut de pipeline d’une variation propre aux modèles génératifs."
+      "title": "Exemple résolu : classer, puis mesurer",
+      "conceptCodes": [
+        "LLM-RETRIEVAL"
+      ],
+      "content": "Problème : classer trois documents pour la requête {java, jvm}, puis mesurer la qualité de la recherche sur deux requêtes dont on connaît le bon document.\n\nRaisonnement, étape par étape :\n1. Score : le nombre de mots communs entre la requête et le document (A : {java, bytecode, jvm} partage 2, C : {java, spring} partage 1, B : 0).\n2. Classement : tri par score décroissant, avec un départage déterministe (par identifiant) pour que deux documents à égalité gardent le même ordre à chaque exécution.\n3. recall@k : pour une requête, le bon document figure-t-il parmi les k premiers résultats ? La moyenne sur les requêtes est le recall@k.\n4. MRR (Mean Reciprocal Rank) : pour chaque requête, 1 / rang du premier bon document (1 si premier, 1/2 si deuxième, 0 s'il est absent), puis moyenne. Il récompense de placer le bon document haut.\n5. Deux requêtes : si le bon document est 1er pour l'une et 2e pour l'autre, MRR = (1 + 0,5) / 2 = 0,75 et recall@1 = 0,5 ; recall@2 = 1.\n6. Vérification : ces métriques ne changent pas quand on relance (départage fixé).\n```python\nranking = sorted(documents, key=lambda doc: (-len(query & documents[doc]), doc))\n\ndef reciprocal_rank(ranking, relevant):\n    return next((1 / (i + 1) for i, doc in enumerate(ranking) if doc == relevant), 0.0)\n```"
+    },
+    {
+      "title": "Qualité de recherche : pièges et leviers",
+      "content": "- Un jeu de requêtes avec leurs documents pertinents est nécessaire (au moins quelques dizaines) : sinon on améliore au jugé. Constitue-le avec de vraies questions d'utilisateurs, y compris des questions sans réponse dans le corpus.\n- recall@k mesure la couverture du retrieveur, ce qui compte pour la génération (le bon passage est-il dans le contexte transmis ?). La précision@k mesure le bruit.\n- Scores non comparables : un score de similarité n'a de sens qu'au sein d'une même recherche ; ne fixe pas de seuil absolu sans calibration.\n- Départage : sans critère stable, deux exécutions peuvent classer différemment des documents à égalité, et les tests deviennent instables.\n- Pondération des mots : un mot très fréquent (« le », « la ») n'est pas informatif ; TF-IDF et BM25 pondèrent par la rareté. Retire les mots vides ou pondère-les.\n- Filtres : applique les droits d'accès et les métadonnées (langue, date, version) avant ou pendant la recherche, jamais après la génération.\n- Reranking : récupère large (50), reclasse précisément (5) ; mesure le gain contre le coût.\n- Requête : la reformulation de la question (expansion, découpage de questions composées) améliore souvent plus que changer de modèle.\n- Surveille en production : les requêtes sans résultat satisfaisant sont une mine d'améliorations."
+    },
+    {
+      "title": "Erreurs fréquentes à reconnaître",
+      "content": "1. Classer sans critère de départage : ordre instable.\n2. Juger la recherche sur quelques exemples sans jeu de requêtes mesuré.\n3. Fixer un seuil de score universel sans calibration.\n4. Appliquer les permissions après la génération.\n5. Utiliser uniquement les embeddings pour des identifiants exacts (ou uniquement les mots-clés pour des reformulations).\n6. Ne regarder que le premier résultat, pas le rappel dans les k premiers.\n\nRetrouve ces erreurs de mémoire avant l'exercice, puis vérifie-toi avec le quiz : c'est la récupération, pas la relecture, qui fixe la notion."
     }
   ],
   "keyConcepts": [
@@ -39,49 +48,97 @@
       "professionalExample": "Un support technique classe les articles de sa base de connaissances par recouvrement de mots-clés avec la question posée. Un client cherchant « réinitialiser mot de passe » reçoit en premier un article sur la réinitialisation d'usine du routeur, car il partage plus de mots avec la requête que l'article correct sur les comptes utilisateurs : un classement trompeur révélé seulement en mesurant le taux de clic sur le premier résultat proposé. L'équipe ajoute alors une pondération par popularité et par catégorie de produit en plus du score de correspondance brut.",
       "codeExample": "query = {\"réinitialiser\", \"mot\", \"passe\"}\ndocuments = {\n    \"compte-utilisateur\": {\"réinitialiser\", \"mot\", \"passe\", \"compte\"},\n    \"routeur-usine\": {\"réinitialiser\", \"routeur\", \"usine\", \"mot\"},\n}\nranked = sorted(documents, key=lambda k: len(query & documents[k]), reverse=True)\nprint(\"Classement brut:\", ranked)\n# Sans pondération métier, un score lexical élevé ne garantit pas la bonne réponse",
       "commonMistake": "Évaluer un seul exemple favorable ou confondre plausibilité et exactitude.",
-      "masteryQuestion": "Quelle métrique et quel cas d’échec utiliserais-tu pour recherche sémantique et classement ?",
-      "masteryProof": "Exécuter la preuve, modifier une entrée et expliquer le résultat ainsi que la limite du modèle local."
+      "masteryQuestion": "Pourquoi un départage déterministe, et que mesurent recall@k et MRR ?",
+      "masteryProof": "Classer des documents par mots communs avec départage stable, puis calculer recall@k et MRR sur deux requêtes."
     }
   ],
   "exercises": [
     {
       "code": "LLM-08-E1",
-      "title": "Classer des documents avec une métrique explicite",
-      "statement": "Complète l’expérience pour produire exactement la sortie attendue. Explique ensuite quelle partie serait remplacée par un modèle réel.",
-      "starterCode": "query = {\"java\", \"jvm\"}\ndocuments = {\"A\": {\"java\", \"bytecode\", \"jvm\"}, \"B\": {\"python\", \"interpréteur\"}, \"C\": {\"java\", \"spring\"}}\n# TODO 1 : classe les documents par nombre de mots communs avec la requête (ordre décroissant)\n# TODO 2 : affiche \"Classement: \" suivi des identifiants séparés par \" > \"\n# TODO 3 : affiche \"Premier score: \" suivi du score du meilleur document\n",
-      "expectedOutput": "Classement: A > C > B\nPremier score: 2"
+      "title": "Classer puis mesurer la qualité de la recherche",
+      "statement": "Complète : le classement par nombre de mots communs (départage par identifiant), le recall@k et le MRR sur trois requêtes dont on connaît le document pertinent. Affiche exactement :\nClassement: A > C > D > B\nPremier score: 2\nrecall@1: 0.67\nrecall@2: 0.67\nMRR: 0.778",
+      "starterCode": "DOCUMENTS = {\n    \"A\": {\"java\", \"bytecode\", \"jvm\"},\n    \"B\": {\"python\", \"interpréteur\"},\n    \"C\": {\"java\", \"spring\"},\n    \"D\": {\"jvm\", \"garbage\", \"collector\"},\n}\nQUERIES = [\n    ({\"java\", \"jvm\"}, \"A\"),\n    ({\"spring\"}, \"C\"),\n    ({\"garbage\", \"java\"}, \"D\"),\n]\n\n\ndef rank(query: set) -> list[str]:\n    # TODO 1 : identifiants triés par nombre de mots communs décroissant, puis par identifiant croissant\n    return []\n\n\ndef reciprocal_rank(ranking: list[str], relevant: str) -> float:\n    # TODO 2 : 1 / rang (à partir de 1) du document pertinent, 0.0 s'il est absent\n    return 0.0\n\n\n# TODO 3 : pour la première requête, affiche \"Classement: \" suivi des identifiants séparés par \" > \"\n#          et \"Premier score: \" suivi du nombre de mots communs du premier document\n# TODO 4 : calcule pour les trois requêtes le recall@1 et le recall@2 (part des requêtes dont le bon document est dans les k premiers)\n#          affiche \"recall@1: <valeur 2 décimales>\" et \"recall@2: <valeur 2 décimales>\"\n# TODO 5 : affiche \"MRR: <moyenne des rangs réciproques, 3 décimales>\"\n",
+      "expectedOutput": "Classement: A > C > D > B\nPremier score: 2\nrecall@1: 0.67\nrecall@2: 0.67\nMRR: 0.778"
     }
   ],
   "quiz": [
     {
       "code": "LLM-08-Q1",
       "type": "SINGLE_CHOICE",
-      "prompt": "Quelle validation est la plus solide ?",
+      "prompt": "Pourquoi ajouter un critère de départage (par identifiant) au tri par score ?",
       "choices": [
-        "Plusieurs cas reproductibles avec métriques et provenance",
-        "Une réponse qui semble correcte",
-        "Une démonstration sans jeu de test"
+        "Pour accélérer le tri",
+        "Pour que deux documents à égalité gardent le même ordre à chaque exécution : classement et tests reproductibles",
+        "Parce que le tri l'exige",
+        "Pour changer les scores"
       ],
-      "correctChoice": 0,
-      "expectedKeywords": []
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Sans départage, l'ordre des ex æquo dépend de détails d'implémentation. Un classement instable rend les métriques et les tests peu fiables."
     },
     {
       "code": "LLM-08-Q2",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Prédis le MRR : le bon document est 1er pour la requête 1 et 2e pour la requête 2.",
+      "choices": [
+        "1,0",
+        "0,75 : (1 + 1/2) / 2",
+        "0,5",
+        "1,5"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Rang réciproque 1 puis 1/2, moyenne (1 + 0,5) / 2 = 0,75. Le MRR récompense de placer le bon document le plus haut possible."
+    },
+    {
+      "code": "LLM-08-Q3",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Trouve le défaut :\n```python\nresults = [d for d in docs if score(query, d) > 0.8]\n```\ncomme règle universelle de pertinence.",
+      "choices": [
+        "Il manque un tri",
+        "Un seuil absolu n'a pas de sens universel : les scores dépendent du modèle, de la requête et du corpus ; il faut le calibrer sur des exemples",
+        "0.8 est toujours trop bas",
+        "score est interdit"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Une même valeur de similarité ne signifie pas la même pertinence d'une requête ou d'un modèle à l'autre. Choisis un seuil en mesurant sur des cas pertinents et non pertinents, ou utilise un top-k."
+    },
+    {
+      "code": "LLM-08-Q4",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Une recherche par mots-clés et une recherche sémantique ont des forces différentes. Que fait la recherche hybride ?",
+      "choices": [
+        "Elle supprime la plus lente",
+        "Elle combine les deux classements pour profiter des termes exacts (identifiants, noms) et des reformulations (sens)",
+        "Elle ne garde que les documents longs",
+        "Elle remplace les métadonnées"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Les mots-clés retrouvent un code d'erreur exact ; les embeddings retrouvent une reformulation. Fusionner les deux (RRF, par exemple) donne en général un meilleur rappel que chacune seule."
+    },
+    {
+      "code": "LLM-08-Q5",
       "type": "FREE_TEXT",
-      "prompt": "Nomme une limite et le contrôle associé.",
+      "prompt": "Sans relire le cours, explique avec tes mots la différence entre recall@k et la précision@k, et laquelle importe le plus pour alimenter un modèle.",
       "choices": [],
       "correctChoice": null,
       "expectedKeywords": [
-        "limite",
-        "test",
-        "mesure"
-      ]
+        "recall",
+        "precision",
+        "bruit",
+        "contexte",
+        "passage"
+      ],
+      "modelAnswer": "recall@k mesure la part des requêtes dont le bon passage figure parmi les k premiers résultats : il dit si l'information nécessaire est dans le contexte transmis. La précision@k mesure la part des résultats retenus qui sont pertinents : elle dit combien de bruit on envoie. Pour alimenter un modèle, le rappel est prioritaire (sans le bon passage, aucune génération correcte), tout en limitant le bruit qui coûte des tokens et peut distraire le modèle.",
+      "explanation": "Une bonne réponse définit les deux, dit que le rappel conditionne la présence du bon passage et nuance par le bruit et le coût."
     }
   ],
   "checklist": [
-    "Je sais expliquer le mécanisme",
-    "Je peux reproduire la preuve hors réseau",
-    "Je distingue simulation locale et modèle réel",
-    "Je peux nommer une métrique et un risque"
+    "Mon classement a un départage déterministe",
+    "Je mesure recall@k et MRR sur un jeu de requêtes",
+    "Je ne fixe pas de seuil de score sans calibration",
+    "Je sais quand combiner recherche lexicale et sémantique"
   ]
 }

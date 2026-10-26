@@ -11,21 +11,30 @@
     "TYPESCRIPT-23"
   ],
   "objectives": [
-    "Expliquer défi final typescript adaptatif",
-    "Construire une preuve exécutable et déterministe",
-    "Relier le concept à une décision professionnelle"
+    "Concevoir un réducteur pur (état, action) vers nouvel état avec une union discriminée d'actions.",
+    "Garantir l'exhaustivité à la compilation avec assertNever.",
+    "Traiter les cas limites : article absent, doublon, panier vide.",
+    "Défendre des choix de modélisation (immutabilité, centimes, forme de l'état)."
   ],
   "sections": [
     {
-      "title": "Concept et usage professionnel",
-      "content": "Défi final TypeScript adaptatif répond à un besoin concret de maintenabilité, de sûreté ou de performance. Le laboratoire demande de rendre la décision observable et vérifiable.",
-      "conceptCodes": [
-        "TYPESCRIPT-CHALLENGE"
-      ]
+      "title": "Face à un problème inédit : décomposer, modéliser, vérifier",
+      "content": "Ce défi final reprend l'essentiel du parcours dans une situation que tu n'as pas déjà résolue : un panier d'achat géré par un réducteur. Méthode :\n1. Reformuler : état { items, total }, actions add / remove / clear. Que doit faire chaque action, y compris dans les cas limites ?\n2. Modéliser les types d'abord : l'état, l'union discriminée des actions. Le compilateur t'aidera ensuite.\n3. Écrire les règles en français, puis en code : add ajoute l'article et augmente le total de son prix ; remove retire un article présent (une seule occurrence) et diminue le total, ne fait rien s'il est absent ; clear remet à zéro.\n4. Lister les cas limites : retirer un article absent, ajouter deux fois le même, vider un panier vide, total jamais négatif.\n5. Interdire toute mutation : le réducteur ne modifie jamais l'état reçu.\n6. Vérifier avec une séquence d'actions et un affichage reproductible."
     },
     {
-      "title": "Défi de synthèse",
-      "content": "La preuve minimale est locale, déterministe et peut être enrichie sans changer le contrat attendu."
+      "title": "Exemple résolu : un réducteur exhaustif et immuable",
+      "conceptCodes": [
+        "TYPESCRIPT-CHALLENGE"
+      ],
+      "content": "Problème : appliquer add clavier (50), add souris (20), remove clavier, remove clavier (déjà retiré), clear, et afficher l'état après chaque action.\n\nRaisonnement, étape par étape :\n1. Types : type Action = { type: 'add'; item: string; price: number } | { type: 'remove'; item: string; price: number } | { type: 'clear' }.\n2. add : { items: [...state.items, action.item], total: state.total + action.price } : nouvelle valeur.\n3. remove : si l'article n'est pas dans state.items, retourne state sans changement (même référence, rien à faire) ; sinon retire la première occurrence (indexOf, puis tranche avant + tranche après) et décrémente le total.\n4. clear : { items: [], total: 0 }.\n5. default : return assertNever(action) : si on ajoute une action sans la traiter, la compilation échoue.\n6. Vérification : les deux premiers appels donnent 50 puis 70, le premier remove donne 20, le second remove ne change rien (20), clear donne 0.\n```ts\nfunction reducer(state: State, action: Action): State {\n  switch (action.type) {\n    case 'add':\n      return { items: [...state.items, action.item], total: state.total + action.price };\n    case 'remove': {\n      const index = state.items.indexOf(action.item);\n      if (index === -1) return state;\n      return {\n        items: [...state.items.slice(0, index), ...state.items.slice(index + 1)],\n        total: state.total - action.price,\n      };\n    }\n    case 'clear':\n      return { items: [], total: 0 };\n    default:\n      return assertNever(action);\n  }\n}\n```"
+    },
+    {
+      "title": "Choisir, défendre, aller plus loin",
+      "content": "Choix à pouvoir défendre :\n- Réducteur pur : testable sans mock (entrée, sortie), rejouable (journal d'actions), compatible avec Redux, NgRx et useReducer.\n- Immutabilité : détection de changement par comparaison de références, pas de modification surprise.\n- Le prix dans l'action ou dans un catalogue ? Mettre le prix dans l'action est simple mais permet une incohérence (deux prix pour un même article) ; un catalogue séparé (id → prix) rend l'état plus petit et plus cohérent. Une version de production calculerait le total à partir des articles plutôt que de le stocker (valeur dérivée).\n- Argent : en centimes entiers, jamais en flottants.\n- Union discriminée plutôt qu'un type unique avec champs optionnels : les états impossibles ne sont pas représentables.\n\nPour aller plus loin : persistance de l'état (sérialisation JSON validée à la relecture), annuler/rétablir (garder l'historique des états), tests de propriétés (pour toute suite d'actions, total ≥ 0 et total = somme des prix), gestion de la quantité plutôt que de simples doublons."
+    },
+    {
+      "title": "Erreurs fréquentes à reconnaître",
+      "content": "1. Muter state.items.push(...) dans le réducteur puis retourner le même objet.\n2. Retirer toutes les occurrences au lieu d'une seule (filter au lieu de indexOf + tranches).\n3. Oublier le cas « article absent » : le total devient négatif.\n4. Un default silencieux : une nouvelle action est ignorée sans erreur de compilation.\n5. Stocker une valeur dérivée (total) qui peut diverger des articles.\n6. Utiliser des flottants pour les prix.\n\nPour ce dernier défi, écris le réducteur de mémoire et teste tes propres cas limites avant de lancer l'exercice."
     }
   ],
   "keyConcepts": [
@@ -39,8 +48,8 @@
       "professionalExample": "Le défi final combine plusieurs concepts vus dans le parcours : un mini moteur de traitement de commandes qui valide les entrées externes avant de les accepter, modélise les échecs métier avec un type Result plutôt que des exceptions, et utilise des génériques contraints pour rester réutilisable sur différents types d'entités. C'est exactement la même combinaison qu'on retrouve dans un vrai service de traitement de paiements en production, où chaque concept isolé ne suffit pas seul à garantir la fiabilité du système.",
       "codeExample": "type Result<T, E> = { ok: true; value: T } | { ok: false; error: E };\n\ninterface Entity { id: string; }\n\nfunction processEntity<T extends Entity>(\n  entity: T,\n  validate: (e: T) => string | null\n): Result<T, string> {\n  const error = validate(entity);\n  return error ? { ok: false, error } : { ok: true, value: entity };\n}\n\ninterface Order extends Entity { totalCents: number; }\n\nconst outcome = processEntity<Order>(\n  { id: 'ORD-1', totalCents: -50 },\n  order => (order.totalCents < 0 ? 'Montant négatif invalide' : null)\n);\n\nif (!outcome.ok) {\n  console.error(outcome.error);\n}",
       "commonMistake": "Appliquer la technique sans mesurer son effet ni documenter sa frontière.",
-      "masteryQuestion": "Quelle contrainte de défi final typescript adaptatif doit rester vraie lorsque le système évolue ?",
-      "masteryProof": "Exécuter la preuve, expliquer son invariant et proposer un cas d’échec."
+      "masteryQuestion": "Pourquoi un réducteur doit-il être pur et immuable, et que garantit assertNever dans le default ?",
+      "masteryProof": "Écrire un réducteur de panier (add, remove, clear) sans mutation, exhaustif, avec un retrait neutre pour un article absent."
     }
   ],
   "exercises": [
@@ -56,32 +65,80 @@
     {
       "code": "TYPESCRIPT-24-Q1",
       "type": "SINGLE_CHOICE",
-      "prompt": "Quelle preuve est la plus utile en revue ?",
+      "prompt": "Que doit renvoyer le réducteur pour remove d'un article absent du panier ?",
       "choices": [
-        "Une exécution déterministe avec invariant explicite",
-        "Une sortie aléatoire",
-        "Une capture sans code"
+        "Une erreur",
+        "Le même état, sans changement",
+        "Un état avec un total négatif",
+        "Un panier vide"
       ],
-      "correctChoice": 0,
-      "expectedKeywords": []
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Retirer ce qui n'y est pas est un cas limite sans effet : l'état reste identique (et la même référence peut être renvoyée). Soustraire le prix produirait un total faux."
     },
     {
       "code": "TYPESCRIPT-24-Q2",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Prédis le total après ces actions : add clavier (50), add souris (20), remove clavier (50), remove clavier (50).",
+      "choices": [
+        "-30",
+        "20 : le second retrait est ignoré car clavier n'est plus dans le panier",
+        "0",
+        "70"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Après le premier remove le panier contient seulement la souris (20). Le second remove ne trouve pas clavier et renvoie l'état inchangé : le total reste 20."
+    },
+    {
+      "code": "TYPESCRIPT-24-Q3",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Trouve le défaut :\n```ts\ncase 'add':\n  state.items.push(action.item);\n  state.total += action.price;\n  return state;\n```\n",
+      "choices": [
+        "push n'existe pas",
+        "Le réducteur mute l'état reçu et retourne la même référence : les comparateurs de référence ne voient aucun changement et l'historique est corrompu",
+        "total devrait être un string",
+        "Il manque break"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Un réducteur crée une nouvelle valeur ({ ...state, items: [...state.items, item] }). Muter l'ancien état casse la détection de changement et le rejeu des actions."
+    },
+    {
+      "code": "TYPESCRIPT-24-Q4",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Que se passe-t-il à la compilation si on ajoute l'action { type: 'applyCoupon' } à l'union sans modifier le réducteur ?",
+      "choices": [
+        "Rien",
+        "Erreur : dans le default, l'action n'est plus de type never donc assertNever(action) est refusé",
+        "Le réducteur renvoie undefined",
+        "Une exception à l'exécution seulement"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "L'exhaustivité est vérifiée par le compilateur : le default reçoit maintenant un cas non traité. C'est ce qui fait de l'union discriminée un garde-fou des évolutions."
+    },
+    {
+      "code": "TYPESCRIPT-24-Q5",
       "type": "FREE_TEXT",
-      "prompt": "Explique une décision liée à défi final typescript adaptatif.",
+      "prompt": "Sans relire le cours, défends à l'oral deux choix de modélisation de ce réducteur et nomme une limite de la solution.",
       "choices": [],
       "correctChoice": null,
       "expectedKeywords": [
-        "contrat",
-        "preuve",
-        "test"
-      ]
+        "pur",
+        "immuable",
+        "exhaustif",
+        "limite",
+        "total"
+      ],
+      "modelAnswer": "Un réducteur pur et immuable se teste sans mock, se rejoue à partir d'un journal d'actions et permet de détecter un changement par comparaison de références. L'union discriminée avec assertNever rend les actions oubliées visibles à la compilation. Limites : stocker le total avec les articles crée une valeur dérivée qui peut diverger (mieux vaut la calculer) et mettre le prix dans l'action permet des prix incohérents pour un même article ; un catalogue séparé serait plus sain.",
+      "explanation": "Une bonne réponse justifie pureté/immutabilité et l'union exhaustive, puis nomme une limite concrète (valeur dérivée stockée, prix dans l'action)."
     }
   ],
   "checklist": [
-    "Je peux expliquer le concept sans réciter une définition",
-    "Je sais exécuter et modifier la preuve",
-    "Je peux nommer un risque et son contrôle",
-    "Je peux présenter cette preuve dans mon portfolio"
+    "Mon réducteur est pur, immuable et exhaustif",
+    "Je traite l'article absent, le doublon et le panier vide",
+    "Mes montants sont en centimes entiers",
+    "Je sais défendre mes choix de modélisation et nommer leurs limites"
   ]
 }

@@ -11,21 +11,30 @@
     "TYPESCRIPT-06"
   ],
   "objectives": [
-    "Expliquer classes, visibilité et abstraction",
-    "Construire une preuve exécutable et déterministe",
-    "Relier le concept à une décision professionnelle"
+    "Encapsuler un état avec private, protected et #champ et dire ce que TypeScript impose réellement à l'exécution.",
+    "Écrire une classe abstraite qui impose un contrat aux sous-classes.",
+    "Choisir entre héritage et composition.",
+    "Repérer un état exposé, un this perdu ou un héritage utilisé pour réutiliser du code."
   ],
   "sections": [
     {
-      "title": "Concept et usage professionnel",
-      "content": "Classes, visibilité et abstraction répond à un besoin concret de maintenabilité, de sûreté ou de performance. Le laboratoire demande de rendre la décision observable et vérifiable.",
-      "conceptCodes": [
-        "TYPESCRIPT-CLASSES"
-      ]
+      "title": "Une classe protège son état",
+      "content": "Une classe regroupe un état et les opérations qui le manipulent. Visibilité :\n- public (défaut) : accessible partout.\n- protected : la classe et ses sous-classes.\n- private : la classe seule (vérifié par le compilateur uniquement : le JavaScript produit ne l'impose pas).\n- #champ : champ privé natif de JavaScript, réellement inaccessible de l'extérieur à l'exécution.\n\nLes propriétés de paramètre (constructor(private balance: number)) déclarent et initialisent un champ en une ligne. readonly empêche la réaffectation après le constructeur. L'encapsulation sert à garder les invariants : personne ne modifie le solde sans passer par une méthode qui vérifie les règles."
     },
     {
-      "title": "Mise en pratique",
-      "content": "La preuve minimale est locale, déterministe et peut être enrichie sans changer le contrat attendu."
+      "title": "Exemple résolu : des comptes avec une classe abstraite",
+      "conceptCodes": [
+        "TYPESCRIPT-CLASSES"
+      ],
+      "content": "Problème : deux types de comptes (courant avec 1 de frais, épargne sans frais) partagent la logique de retrait.\n\nRaisonnement, étape par étape :\n1. Classe abstraite Account : le solde est protected (visible des sous-classes), l'historique est private.\n2. Une propriété abstraite fee impose à chaque sous-classe de déclarer ses frais.\n3. withdraw(amount) calcule amount + fee ; si le solde est insuffisant, lève Error('solde insuffisant') sans rien modifier.\n4. Sinon, débite, ajoute une ligne à l'historique et retourne.\n5. Checking (fee = 1) et Savings (fee = 0) étendent Account et ne répètent pas la logique.\n6. Vérification : un retrait de 10 sur un solde de 100 laisse 89 en courant et 90 en épargne ; un retrait trop gros est refusé et l'état n'a pas changé.\n```ts\nabstract class Account {\n  private history: string[] = [];\n  constructor(protected balance: number) {}\n  protected abstract get fee(): number;\n\n  withdraw(amount: number): void {\n    const total = amount + this.fee;\n    if (total > this.balance) throw new Error('solde insuffisant');\n    this.balance -= total;\n    this.history.push(`retrait ${amount}`);\n  }\n}\nclass Checking extends Account { protected get fee() { return 1; } }\n```\nOn ne peut pas faire new Account(...) : une classe abstraite n'est pas instanciable."
+    },
+    {
+      "title": "Héritage, composition et pièges",
+      "content": "L'héritage modélise un « est un » : un Checking est un Account. Il crée un couplage fort : une modification de la classe parente peut casser toutes les sous-classes (fragile base class). Pour réutiliser du code sans relation « est un », préfère la composition : une classe contient un collaborateur (un calculateur de frais) et lui délègue le travail ; on peut alors le remplacer ou le tester.\n```ts\nclass Account {\n  constructor(private feePolicy: { fee(amount: number): number }, protected balance = 0) {}\n}\n```\nAutres repères :\n- implements vérifie qu'une classe respecte une interface ; extends hérite du code.\n- Une classe sans état ni polymorphisme est souvent mieux écrite comme un simple module de fonctions.\n- Évite d'exposer un état mutable : retourner un tableau interne permet à l'extérieur de le modifier (retourne une copie ou readonly).\n- Les getters (get fee()) donnent une propriété calculée sans parenthèses.\n- Un private TypeScript n'empêche pas un accès par any ou par du JavaScript : pour une vraie confidentialité, #champ."
+    },
+    {
+      "title": "Erreurs fréquentes à reconnaître",
+      "content": "1. Rendre public un champ qui porte un invariant (balance).\n2. Hériter uniquement pour réutiliser une méthode, sans relation « est un ».\n3. Renvoyer le tableau interne d'une classe : l'extérieur le modifie.\n4. Croire que private protège à l'exécution.\n5. Modifier l'état avant de valider (le retrait est appliqué puis l'erreur levée).\n6. Une hiérarchie profonde de quatre niveaux ou plus.\n\nRetrouve ces erreurs de mémoire avant l'exercice, puis vérifie-toi avec le quiz : c'est la récupération, pas la relecture, qui fixe la notion."
     }
   ],
   "keyConcepts": [
@@ -39,8 +48,8 @@
       "professionalExample": "Un module de paiement définit une classe abstraite PaymentProcessor dont le solde interne est un champ privé (#balanceCents) : seules les sous-classes StripeProcessor et PaypalProcessor implémentent la méthode abstraite charge(), sans jamais pouvoir lire ou modifier le solde directement depuis l'extérieur. Cela a évité un bug où un module de reporting modifiait directement une propriété publique balance, désynchronisant l'état interne du solde réel côté fournisseur de paiement.",
       "codeExample": "abstract class PaymentProcessor {\n  #balanceCents = 0;\n\n  protected credit(amountCents: number): void {\n    this.#balanceCents += amountCents;\n  }\n\n  get balanceCents(): number {\n    return this.#balanceCents;\n  }\n\n  abstract charge(amountCents: number): Promise<void>;\n}\n\nclass StripeProcessor extends PaymentProcessor {\n  async charge(amountCents: number): Promise<void> {\n    // appel réseau au fournisseur, puis mise à jour de l'état interne\n    this.credit(amountCents);\n  }\n}",
       "commonMistake": "Appliquer la technique sans mesurer son effet ni documenter sa frontière.",
-      "masteryQuestion": "Quelle contrainte de classes, visibilité et abstraction doit rester vraie lorsque le système évolue ?",
-      "masteryProof": "Exécuter la preuve, expliquer son invariant et proposer un cas d’échec."
+      "masteryQuestion": "Qu'est-ce qui distingue private de #champ à l'exécution, et quand préférer la composition à l'héritage ?",
+      "masteryProof": "Écrire une classe abstraite Account (solde protected, historique private, frais abstraits) avec deux sous-classes, un retrait validé et l'historique."
     }
   ],
   "exercises": [
@@ -56,32 +65,80 @@
     {
       "code": "TYPESCRIPT-07-Q1",
       "type": "SINGLE_CHOICE",
-      "prompt": "Quelle preuve est la plus utile en revue ?",
+      "prompt": "Que se passe-t-il à l'exécution quand du JavaScript lit un champ déclaré private en TypeScript ?",
       "choices": [
-        "Une exécution déterministe avec invariant explicite",
-        "Une sortie aléatoire",
-        "Une capture sans code"
+        "Une exception",
+        "Il y accède sans problème : private n'est vérifié qu'à la compilation",
+        "Le champ vaut undefined",
+        "Le programme s'arrête"
       ],
-      "correctChoice": 0,
-      "expectedKeywords": []
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "private est effacé à la compilation comme le reste des types. Pour une confidentialité réelle à l'exécution, utilise un champ privé natif #champ."
     },
     {
       "code": "TYPESCRIPT-07-Q2",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Prédis le solde :\n```ts\nconst c = new Checking(100);   // frais 1\nc.withdraw(10);\n// puis\ntry { c.withdraw(500); } catch {}\n```\n(le solde restant du courant après les deux appels)",
+      "choices": [
+        "89",
+        "100",
+        "-411",
+        "90"
+      ],
+      "correctChoice": 0,
+      "expectedKeywords": [],
+      "explanation": "Le premier retrait débite 10 + 1 de frais : 89. Le second est refusé avant toute modification (solde insuffisant) : le solde reste 89. Valider avant de modifier garde l'invariant."
+    },
+    {
+      "code": "TYPESCRIPT-07-Q3",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Trouve le défaut :\n```ts\nclass Cart {\n  private items: string[] = [];\n  getItems() { return this.items; }\n}\n```\n",
+      "choices": [
+        "private est interdit",
+        "getItems renvoie la référence du tableau interne : l'extérieur peut le modifier et contourner l'encapsulation",
+        "items devrait être public",
+        "Il manque static"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Retourne une copie ([...this.items]) ou un type readonly string[] pour que l'état interne reste sous le contrôle de la classe."
+    },
+    {
+      "code": "TYPESCRIPT-07-Q4",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Quand choisir la composition plutôt que l'héritage ?",
+      "choices": [
+        "Toujours",
+        "Quand on veut réutiliser un comportement sans relation « est un », ou pouvoir le remplacer et le tester séparément",
+        "Seulement pour les classes abstraites",
+        "Quand il y a des getters"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "L'héritage couple fortement parent et enfant. La composition délègue à un collaborateur qu'on peut substituer, ce qui est plus flexible et plus testable."
+    },
+    {
+      "code": "TYPESCRIPT-07-Q5",
       "type": "FREE_TEXT",
-      "prompt": "Explique une décision liée à classes, visibilité et abstraction.",
+      "prompt": "Sans relire le cours, explique avec tes mots pourquoi on valide avant de modifier l'état dans une méthode comme withdraw.",
       "choices": [],
       "correctChoice": null,
       "expectedKeywords": [
-        "contrat",
-        "preuve",
-        "test"
-      ]
+        "invariant",
+        "valide",
+        "etat",
+        "erreur",
+        "coherent"
+      ],
+      "modelAnswer": "Si l'état est modifié avant la validation, une erreur levée ensuite laisse l'objet dans un état incohérent (un solde débité alors que l'opération est refusée). En vérifiant d'abord, on garantit que l'invariant (solde suffisant, historique cohérent) reste vrai : soit l'opération réussit entièrement, soit elle échoue sans aucun effet.",
+      "explanation": "Une bonne réponse dit que modifier avant de valider laisse un état incohérent en cas d'erreur, et que valider d'abord garantit tout ou rien."
     }
   ],
   "checklist": [
-    "Je peux expliquer le concept sans réciter une définition",
-    "Je sais exécuter et modifier la preuve",
-    "Je peux nommer un risque et son contrôle",
-    "Je relie cette étape à la suivante"
+    "Mes champs porteurs d'invariants sont protected ou private",
+    "Je valide avant de modifier l'état",
+    "Je ne renvoie pas mes tableaux internes",
+    "Je choisis entre héritage et composition en connaissance de cause"
   ]
 }

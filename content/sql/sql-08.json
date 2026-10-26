@@ -11,21 +11,30 @@
     "SQL-07"
   ],
   "objectives": [
-    "Expliquer cte, sous-requêtes et transformations",
-    "Construire une preuve exécutable et déterministe",
-    "Relier le concept à une décision professionnelle"
+    "Structurer une requête avec des CTE (WITH) plutôt que des sous-requêtes imbriquées.",
+    "Écrire une CTE récursive pour parcourir une hiérarchie (employé et manager).",
+    "Distinguer sous-requête corrélée, non corrélée, IN et EXISTS.",
+    "Repérer une récursion sans condition d'arrêt, un NULL piégeux avec NOT IN ou une CTE recalculée plusieurs fois."
   ],
   "sections": [
     {
-      "title": "Concept et usage professionnel",
-      "content": "CTE, sous-requêtes et transformations répond à un besoin concret de maintenabilité, de sûreté ou de performance. Le laboratoire demande de rendre la décision observable et vérifiable.",
-      "conceptCodes": [
-        "SQL-CTE"
-      ]
+      "title": "CTE : nommer les étapes d'une requête",
+      "content": "Une CTE (Common Table Expression, clause WITH) donne un nom à un résultat intermédiaire que la requête principale réutilise : la requête se lit de haut en bas comme un petit programme.\n```sql\nWITH moyenne AS (\n    SELECT AVG(salary) AS valeur FROM employee\n)\nSELECT name, salary\nFROM employee, moyenne\nWHERE salary > moyenne.valeur\nORDER BY salary DESC;\n```\nÉquivalent à une sous-requête, mais nommée et réutilisable plusieurs fois. Dans certains moteurs, la CTE est mémorisée (matérialisée), dans d'autres elle est réécrite en ligne ; vérifie le plan si la performance compte. Plusieurs CTE se déclarent séparées par des virgules ; chacune peut utiliser les précédentes."
     },
     {
-      "title": "Mise en pratique",
-      "content": "La requête est exécutée sur SQLite en mémoire pour rester locale et reproductible ; les différences PostgreSQL et l'analyse EXPLAIN sont signalées dans le cours."
+      "title": "Exemple résolu : remonter une hiérarchie",
+      "conceptCodes": [
+        "SQL-CTE"
+      ],
+      "content": "Problème : dans une table employee (id, name, manager_id), obtenir la chaîne hiérarchique de Grace jusqu'au sommet.\n\nRaisonnement, étape par étape :\n1. Une CTE récursive a deux parties reliées par UNION ALL : un point de départ (la requête d'ancrage) et un pas récursif qui s'appuie sur les lignes déjà produites.\n2. Ancrage : la ligne de Grace.\n3. Pas récursif : joindre la table employee au résultat courant pour trouver le manager (employee.id = chaine.manager_id).\n4. La récursion s'arrête d'elle-même quand le pas ne produit plus de ligne, c'est-à-dire quand on atteint un employé dont manager_id est NULL (le sommet).\n5. On concatène les noms dans l'ordre de parcours pour obtenir « Grace > Linus > Ada ».\n6. Vérification : la chaîne finit par l'employé sans manager.\n```sql\nWITH RECURSIVE chaine(id, name, manager_id, niveau) AS (\n    SELECT id, name, manager_id, 0 FROM employee WHERE name = 'Grace'          -- ancrage\n    UNION ALL\n    SELECT e.id, e.name, e.manager_id, c.niveau + 1\n    FROM employee e JOIN chaine c ON e.id = c.manager_id                       -- pas récursif\n)\nSELECT name FROM chaine ORDER BY niveau;\n```\nGarde-fou : si les données contiennent un cycle (A est manager de B, B de A), la récursion ne s'arrête jamais. Limite la profondeur (WHERE niveau < 20) ou suis les identifiants déjà vus."
+    },
+    {
+      "title": "Sous-requêtes, EXISTS et pièges",
+      "content": "- Sous-requête non corrélée : indépendante de la requête externe, évaluée une fois (WHERE salary > (SELECT AVG(salary) FROM employee)).\n- Sous-requête corrélée : dépend de la ligne courante (WHERE salary > (SELECT AVG(salary) FROM employee e2 WHERE e2.dept = e.dept)) : moyenne du département de chaque employé ; peut être coûteuse, souvent remplaçable par une jointure ou une fonction fenêtre.\n- EXISTS teste l'existence d'une ligne et s'arrête à la première : adapté à « a au moins une commande ». IN compare à une liste de valeurs.\n- NOT IN et NULL : si la sous-requête renvoie un NULL, x NOT IN (...) ne ramène jamais rien (comparaison inconnue). Préfère NOT EXISTS, qui se comporte comme attendu.\n- Une CTE non récursive suffit pour la plupart des besoins ; réserve la récursion aux structures arborescentes (hiérarchies, catégories, nomenclatures, graphes).\n- Alternatives pour les hiérarchies profondes très lues : chemin matérialisé, ensemble imbriqué ou fermeture transitive.\n- Évite les sous-requêtes dans la liste SELECT qui s'exécutent par ligne ; remplace-les par une jointure agrégée.\n- Lisibilité d'abord : une requête de 80 lignes bien découpée en CTE nommées vaut mieux que quatre niveaux d'imbrication."
+    },
+    {
+      "title": "Erreurs fréquentes à reconnaître",
+      "content": "1. Une CTE récursive sans condition d'arrêt sur des données qui peuvent boucler.\n2. NOT IN avec une sous-requête pouvant renvoyer NULL.\n3. UNION au lieu de UNION ALL dans une récursion (déduplication coûteuse, comportement différent).\n4. Une sous-requête corrélée exécutée des millions de fois.\n5. Empiler cinq sous-requêtes imbriquées illisibles.\n6. Utiliser une récursion pour un besoin qu'une simple jointure résout.\n\nRetrouve ces erreurs de mémoire avant l'exercice, puis vérifie-toi avec le quiz : c'est la récupération, pas la relecture, qui fixe la notion."
     }
   ],
   "keyConcepts": [
@@ -39,8 +48,8 @@
       "professionalExample": "Une requête de reporting imbrique trois sous-requêtes dans la clause WHERE pour calculer le panier moyen des clients actifs, au point de devenir illisible et impossible à relire en revue de code. L'équipe la réécrit avec des CTE nommées (WITH active_customers AS (...), order_totals AS (...)) qui isolent chaque étape du calcul, facilitant les tests intermédiaires. Pour un catalogue produit organisé en catégories et sous-catégories, une CTE récursive est aussi nécessaire pour remonter toute la hiérarchie d'un produit jusqu'à sa catégorie racine.",
       "codeExample": "WITH active_customers AS (\n  SELECT DISTINCT customer_id\n  FROM orders\n  WHERE created_at >= date('now', '-90 days')\n),\norder_totals AS (\n  SELECT customer_id, SUM(total_cents) AS total_cents, COUNT(*) AS nb_orders\n  FROM orders\n  WHERE customer_id IN (SELECT customer_id FROM active_customers)\n  GROUP BY customer_id\n)\nSELECT customer_id, total_cents / nb_orders AS avg_basket_cents\nFROM order_totals\nORDER BY avg_basket_cents DESC;\n\n-- CTE récursive : remonter une hiérarchie de catégories\nWITH RECURSIVE category_path(id, parent_id, name) AS (\n  SELECT id, parent_id, name FROM categories WHERE id = 42\n  UNION ALL\n  SELECT c.id, c.parent_id, c.name\n  FROM categories c\n  JOIN category_path p ON c.id = p.parent_id\n)\nSELECT * FROM category_path;",
       "commonMistake": "Appliquer la technique sans mesurer son effet ni documenter sa frontière.",
-      "masteryQuestion": "Quelle contrainte de cte, sous-requêtes et transformations doit rester vraie lorsque le système évolue ?",
-      "masteryProof": "Exécuter la preuve, expliquer son invariant et proposer un cas d’échec."
+      "masteryQuestion": "Pourquoi une CTE récursive s'arrête-t-elle, et pourquoi NOT EXISTS est-il plus sûr que NOT IN ?",
+      "masteryProof": "Remonter la hiérarchie de Grace avec une CTE récursive, puis lister les employés mieux payés que la moyenne avec une CTE non récursive."
     }
   ],
   "exercises": [
@@ -56,32 +65,80 @@
     {
       "code": "SQL-08-Q1",
       "type": "SINGLE_CHOICE",
-      "prompt": "Quelle preuve est la plus utile en revue ?",
+      "prompt": "Dans une CTE récursive, que représente la partie avant UNION ALL ?",
       "choices": [
-        "Une exécution déterministe avec invariant explicite",
-        "Une sortie aléatoire",
-        "Une capture sans code"
+        "La condition d'arrêt",
+        "L'ancrage : le point de départ de la récursion",
+        "Le résultat final",
+        "Un index"
       ],
-      "correctChoice": 0,
-      "expectedKeywords": []
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "L'ancrage produit les lignes initiales. Le pas récursif, après UNION ALL, s'applique ensuite aux lignes produites jusqu'à ce qu'il n'en renvoie plus."
     },
     {
       "code": "SQL-08-Q2",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Prédis le résultat : Grace a pour manager Linus, qui a pour manager Ada, qui n'a pas de manager. Quelle chaîne remonte la CTE ?",
+      "choices": [
+        "Grace",
+        "Grace > Linus > Ada",
+        "Ada > Linus > Grace",
+        "Linus > Ada"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "On part de Grace puis on suit manager_id : Linus, puis Ada. Ada a un manager_id NULL : le pas récursif ne trouve plus de ligne, la récursion s'arrête."
+    },
+    {
+      "code": "SQL-08-Q3",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Trouve le défaut :\n```sql\nSELECT name FROM employee WHERE id NOT IN (SELECT manager_id FROM employee);\n```\ncomme requête « employés qui ne sont le manager de personne ».",
+      "choices": [
+        "NOT IN est interdit",
+        "manager_id contient NULL (le sommet) : la comparaison devient inconnue et la requête ne renvoie aucune ligne ; utilise NOT EXISTS",
+        "Il manque un index",
+        "employee est un mauvais nom"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "x NOT IN (liste contenant NULL) n'est jamais vrai. NOT EXISTS (SELECT 1 FROM employee m WHERE m.manager_id = e.id) répond correctement."
+    },
+    {
+      "code": "SQL-08-Q4",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Que risque une CTE récursive sur des données avec un cycle (A manager de B, B manager de A) ?",
+      "choices": [
+        "Rien",
+        "Une récursion infinie (ou une erreur de profondeur) ; il faut une limite de niveau ou un suivi des éléments déjà visités",
+        "Un résultat vide",
+        "Une conversion automatique en jointure"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Chaque tour produit de nouvelles lignes sans fin. Ajoute WHERE niveau < N, un chemin des identifiants visités, ou la clause de détection de cycle prévue par le moteur."
+    },
+    {
+      "code": "SQL-08-Q5",
       "type": "FREE_TEXT",
-      "prompt": "Explique une décision liée à cte, sous-requêtes et transformations.",
+      "prompt": "Sans relire le cours, explique avec tes mots l'intérêt des CTE par rapport aux sous-requêtes imbriquées et une situation où la récursion s'impose.",
       "choices": [],
       "correctChoice": null,
       "expectedKeywords": [
-        "contrat",
-        "preuve",
-        "test"
-      ]
+        "nomme",
+        "lisib",
+        "etape",
+        "hierarchie",
+        "recurs"
+      ],
+      "modelAnswer": "Une CTE donne un nom à une étape intermédiaire : la requête se lit de haut en bas, chaque étape est testable séparément et réutilisable, contrairement à des sous-requêtes imbriquées difficiles à relire. La récursion s'impose pour les structures arborescentes de profondeur inconnue : hiérarchie d'employés, catégories imbriquées, nomenclatures, graphes.",
+      "explanation": "Une bonne réponse cite lisibilité et nommage des étapes, et une structure hiérarchique de profondeur inconnue comme cas pour la récursion."
     }
   ],
   "checklist": [
-    "Je peux expliquer le concept sans réciter une définition",
-    "Je sais exécuter et modifier la preuve",
-    "Je peux nommer un risque et son contrôle",
-    "Je relie cette étape à la suivante"
+    "Je découpe mes requêtes complexes en CTE nommées",
+    "Je sais écrire ancrage et pas récursif, avec un garde-fou contre les cycles",
+    "Je préfère NOT EXISTS à NOT IN",
+    "Je repère une sous-requête corrélée coûteuse"
   ]
 }

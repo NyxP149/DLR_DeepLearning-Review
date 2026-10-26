@@ -11,21 +11,30 @@
     "SPRING_BOOT-03"
   ],
   "objectives": [
-    "Expliquer contrôleurs rest, http et négociation de contenu",
-    "Construire une preuve exécutable et déterministe",
-    "Relier le concept à une décision professionnelle"
+    "Écrire le contrat d'un contrôleur REST : verbe, chemin, statut de succès et statuts d'erreur.",
+    "Distinguer 404, 405, 406 et 415 et prédire lequel est renvoyé.",
+    "Expliquer la négociation de contenu (Accept, Content-Type, produces, consumes).",
+    "Repérer un GET qui modifie l'état, un statut 200 trompeur ou un chemin ambigu."
   ],
   "sections": [
     {
-      "title": "Concept et usage professionnel",
-      "content": "Contrôleurs REST, HTTP et négociation de contenu répond à un besoin concret de maintenabilité, de sûreté ou de performance. Le laboratoire demande de rendre la décision observable et vérifiable.",
-      "conceptCodes": [
-        "SPRING-REST"
-      ]
+      "title": "HTTP est un contrat de verbes et de statuts",
+      "content": "Un contrôleur REST expose des ressources (/orders, /orders/42) manipulées par des verbes : GET lit (sûr et idempotent), POST crée, PUT remplace (idempotent), PATCH modifie en partie, DELETE supprime (idempotent). « Idempotent » veut dire que répéter l'appel produit le même état final : c'est ce qui permet de réessayer sans crainte après un délai dépassé.\n\nStatuts de succès : 200 OK, 201 Created (avec Location), 204 No Content. Erreurs client : 400 requête invalide, 401 non authentifié, 403 interdit, 404 ressource introuvable, 405 méthode non permise (avec l'en-tête Allow), 406 le serveur ne peut pas produire ce que le client accepte, 409 conflit, 415 le serveur ne comprend pas le format envoyé. Erreurs serveur : 500 et suivants."
     },
     {
-      "title": "Mise en pratique",
-      "content": "La preuve unifichier valide ici la frontière d'architecture hors réseau ; le laboratoire explique ensuite son branchement aux annotations et dépendances Spring Boot réelles."
+      "title": "Exemple résolu : router une requête",
+      "conceptCodes": [
+        "SPRING-REST"
+      ],
+      "content": "Problème : décider du statut de cinq requêtes sur /orders.\n\nRaisonnement, étape par étape, dans cet ordre de décision :\n1. L'en-tête Accept demande-t-il un format que l'API sait produire (application/json ou */*) ? Sinon 406.\n2. Le chemin existe-t-il ? /orders et /orders/{id} oui, /customers non : 404.\n3. Pour un chemin connu, la méthode est-elle permise ? POST sur /orders (201), GET sur /orders/42 (200), DELETE sur /orders/42 n'est pas permis : 405.\n4. Vérification : une même ressource ne renvoie 404 que si elle n'existe pas, pas parce que le verbe est mauvais.\n```java\n@RestController\n@RequestMapping(\"/orders\")\nclass OrderController {\n    @GetMapping(value = \"/{id}\", produces = \"application/json\")\n    OrderView get(@PathVariable long id) { ... }               // 200\n\n    @PostMapping(consumes = \"application/json\", produces = \"application/json\")\n    ResponseEntity<OrderView> create(@RequestBody CreateOrder body) {\n        OrderView created = service.create(body);\n        return ResponseEntity.created(URI.create(\"/orders/\" + created.id())).body(created);   // 201\n    }\n}\n```\nSpring répond de lui-même 405 (méthode inconnue sur un chemin connu), 406 (produces non satisfait) et 415 (consumes non satisfait)."
+    },
+    {
+      "title": "Négociation de contenu et conception d'URL",
+      "content": "Content-Type décrit le corps envoyé ; Accept décrit ce que le client sait lire. produces et consumes déclarent ce que le contrôleur offre et accepte, et Jackson convertit objets et JSON. Garde un contrat explicite : une API qui renvoie tantôt un tableau, tantôt un objet, casse ses clients.\n\nConception d'URL : des noms au pluriel pour les ressources (/orders), pas de verbe dans le chemin (/createOrder), des sous-ressources pour la hiérarchie (/orders/42/lines), des paramètres de requête pour filtrer et paginer (?status=PAID&page=0&size=20). Un GET ne doit jamais modifier l'état : un robot d'indexation ou un préchargement peut l'appeler.\n\nUne réponse d'erreur garde le même format partout (voir le labo suivant) ; ne renvoie pas 200 avec { \"error\": ... } dans le corps."
+    },
+    {
+      "title": "Erreurs fréquentes à reconnaître",
+      "content": "1. Un GET qui crée ou supprime : danger avec le cache, les robots et le préchargement.\n2. Répondre 200 avec un message d'erreur dans le corps.\n3. Confondre 404 (inconnu) et 405 (méthode non permise sur un chemin connu).\n4. Oublier consumes/produces et accepter n'importe quel format.\n5. Un verbe dans l'URL (/getOrders) ou un format incohérent d'une route à l'autre.\n6. Un POST non idempotent sans mécanisme pour éviter les doublons lors d'un nouvel essai.\n\nRetrouve ces erreurs de mémoire avant l'exercice, puis vérifie-toi avec le quiz : c'est la récupération, pas la relecture, qui fixe la notion."
     }
   ],
   "keyConcepts": [
@@ -39,8 +48,8 @@
       "professionalExample": "Un client mobile et un intégrateur partenaire consomment la même API produits, mais le partenaire exige du XML pour ses systèmes legacy pendant que l'application mobile attend du JSON. Plutôt que de créer deux contrôleurs distincts, l'équipe s'appuie sur la négociation de contenu HTTP via l'en-tête Accept et retourne un ResponseEntity avec le bon MediaType, tout en distinguant clairement dans le code un GET idempotent (200) d'un POST de création (201 avec Location) plutôt que de tout renvoyer en 200, ce qui cassait auparavant les clients qui vérifiaient le code de statut.",
       "codeExample": "@RestController\n@RequestMapping(\"/api/products\")\npublic class ProductController {\n\n    private final ProductService productService;\n\n    public ProductController(ProductService productService) {\n        this.productService = productService;\n    }\n\n    @GetMapping(value = \"/{id}\", produces = { MediaType.APPLICATION_JSON_VALUE, MediaType.APPLICATION_XML_VALUE })\n    public ResponseEntity<ProductView> getProduct(@PathVariable Long id) {\n        return productService.findById(id)\n                .map(ResponseEntity::ok)\n                .orElseGet(() -> ResponseEntity.notFound().build());\n    }\n\n    @PostMapping\n    public ResponseEntity<ProductView> createProduct(@RequestBody NewProductRequest request) {\n        ProductView created = productService.create(request);\n        return ResponseEntity.created(URI.create(\"/api/products/\" + created.id())).body(created);\n    }\n}",
       "commonMistake": "Appliquer la technique sans mesurer son effet ni documenter sa frontière.",
-      "masteryQuestion": "Quelle contrainte de contrôleurs rest, http et négociation de contenu doit rester vraie lorsque le système évolue ?",
-      "masteryProof": "Exécuter la preuve, expliquer son invariant et proposer un cas d’échec."
+      "masteryQuestion": "Comment distinguer 404, 405, 406 et 415, et pourquoi un GET ne doit-il jamais modifier l'état ?",
+      "masteryProof": "Écrire une fonction de routage qui renvoie 200, 201, 404, 405 ou 406 selon le verbe, le chemin et l'en-tête Accept."
     }
   ],
   "exercises": [
@@ -56,32 +65,80 @@
     {
       "code": "SPRING_BOOT-04-Q1",
       "type": "SINGLE_CHOICE",
-      "prompt": "Quelle preuve est la plus utile en revue ?",
+      "prompt": "Un client envoie DELETE /orders/42 alors que l'API n'offre que GET sur cette ressource. Quel statut convient ?",
       "choices": [
-        "Une exécution déterministe avec invariant explicite",
-        "Une sortie aléatoire",
-        "Une capture sans code"
+        "404 Not Found",
+        "405 Method Not Allowed, avec l'en-tête Allow",
+        "400 Bad Request",
+        "500 Internal Server Error"
       ],
-      "correctChoice": 0,
-      "expectedKeywords": []
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "La ressource existe mais le verbe n'est pas permis : 405, accompagné de l'en-tête Allow qui liste les verbes acceptés. 404 dirait à tort que la ressource n'existe pas."
     },
     {
       "code": "SPRING_BOOT-04-Q2",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Prédis le statut : le client envoie Accept: application/xml à un contrôleur avec produces = \"application/json\".",
+      "choices": [
+        "200 avec du JSON",
+        "406 Not Acceptable",
+        "415 Unsupported Media Type",
+        "404 Not Found"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "406 concerne ce que le client accepte en réponse (Accept) ; 415 concerne le format du corps envoyé (Content-Type). Ici l'API ne sait produire que du JSON."
+    },
+    {
+      "code": "SPRING_BOOT-04-Q3",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Trouve le défaut :\n```java\n@GetMapping(\"/orders/{id}/cancel\")\nvoid cancel(@PathVariable long id) { service.cancel(id); }\n```\n",
+      "choices": [
+        "Le chemin est trop long",
+        "Un GET modifie l'état : un robot, un préchargement ou un cache peut annuler des commandes",
+        "void est interdit",
+        "Il manque @RequestBody"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "GET est supposé sûr et idempotent. Une annulation est un changement d'état : utilise POST /orders/{id}/cancel ou PATCH. Sinon un simple lien préchargé peut annuler une commande."
+    },
+    {
+      "code": "SPRING_BOOT-04-Q4",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Un POST /payments échoue par délai dépassé côté client, qui le renvoie. Quel risque et quelle parade ?",
+      "choices": [
+        "Aucun risque, POST est idempotent",
+        "Un double paiement ; on ajoute une clé d'idempotence fournie par le client et vérifiée par le serveur",
+        "Le serveur répond automatiquement 409",
+        "Le paiement est annulé par Spring"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "POST n'est pas idempotent par défaut : un nouvel essai peut dupliquer l'opération. Une clé d'idempotence unique par intention permet au serveur de reconnaître et d'ignorer le doublon (voir aussi le labo sur les transactions)."
+    },
+    {
+      "code": "SPRING_BOOT-04-Q5",
       "type": "FREE_TEXT",
-      "prompt": "Explique une décision liée à contrôleurs rest, http et négociation de contenu.",
+      "prompt": "Sans relire le cours, explique avec tes mots la différence entre les statuts 401, 403 et 404 sur une API REST.",
       "choices": [],
       "correctChoice": null,
       "expectedKeywords": [
-        "contrat",
-        "preuve",
-        "test"
-      ]
+        "401",
+        "403",
+        "404",
+        "authentifi",
+        "existe"
+      ],
+      "modelAnswer": "401 signifie que le client n'est pas authentifié (identité absente ou invalide). 403 signifie qu'il est authentifié mais n'a pas le droit d'accéder à la ressource. 404 signifie que la ressource n'existe pas (ou, par prudence, qu'on ne veut pas révéler son existence).",
+      "explanation": "Une bonne réponse distingue authentification (401), autorisation (403) et inexistence (404)."
     }
   ],
   "checklist": [
-    "Je peux expliquer le concept sans réciter une définition",
-    "Je sais exécuter et modifier la preuve",
-    "Je peux nommer un risque et son contrôle",
-    "Je relie cette étape à la suivante"
+    "Je choisis le bon statut pour chaque cas, y compris 405 et 406",
+    "Mon GET ne modifie jamais l'état",
+    "J'explique Accept, Content-Type, produces et consumes",
+    "Je sais pourquoi un POST doit se protéger des doublons"
   ]
 }
