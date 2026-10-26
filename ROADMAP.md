@@ -69,7 +69,6 @@
 
 - [x] Préparation du socle Render (`render.yaml`, Dockerfile Java 21, health check, CORS, `runtime-config.js`)
 - [x] Mode hybride privé et gratuit : frontend Render + API/Docker/Ollama locaux via Tailscale Serve
-- [ ] Déploiement réel Neon + Render validé (checklist de recette dans `docs/DLR_Deploye.md`)
-- [ ] Service Runner distant isolé pour Java/Python/TypeScript (travaux signés, file d'attente, workers en bac à sable — Partie B de `docs/DLR_Deploye.md`) : utile seulement pour ouvrir DLR à d'autres personnes sans dépendre du PC ; inutile en mode hybride
+- [x] Déploiement réel Neon + Render validé (recette de `docs/DLR_Deploye.md` confirmée par l'utilisateur, mode hybride actif)
 - [x] Professeur IA distant pour les déploiements cloud sans Ollama local (API DeepSeek, V3.16)
 - [x] Lancement simplifié sous Windows : `DLR.cmd` (démarrer, `stop`, `status`, mode local ou hybride), configuration locale `dlr.config.json`, jar reconstruit seulement si nécessaire, attente de l'API prête, raccourci Bureau généré (V3.36)

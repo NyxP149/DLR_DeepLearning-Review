@@ -351,6 +351,8 @@ Sur les offres gratuites, attends le réveil du Web Service Render. Consulte les
 
 # Partie B — Déploiement futur complet
 
+> **Décision (octobre 2026) : non retenu.** DLR reste un outil personnel en mode hybride (API et Docker sur le PC), sans ouverture au public ; le service Runner distant ci-dessous n'est donc pas planifié. Cette partie est conservée comme référence au cas où l'usage changerait.
+
 ## Pourquoi les runners doivent être séparés
 
 Le backend actuel lance `docker run` pour exécuter du code Java, Python et TypeScript avec :
