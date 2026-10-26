@@ -28,6 +28,41 @@ export interface AdaptationInsights {
   disclaimer: string;
 }
 
+export interface CalibrationLevel {
+  confidence: 1 | 2 | 3;
+  total: number;
+  correct: number;
+  partial: number;
+  wrong: number;
+  correctPercent: number;
+}
+
+export interface CalibrationSource {
+  code: 'QUIZ' | 'REVIEW';
+  total: number;
+  correctPercent: number;
+}
+
+export interface CalibrationBlindSpot {
+  labCode: string;
+  questionId: string;
+  prompt: string;
+  outcome: 'PARTIAL' | 'WRONG';
+  source: 'QUIZ' | 'REVIEW';
+  answeredAt: string;
+}
+
+export interface Calibration {
+  totalAnswers: number;
+  levels: CalibrationLevel[];
+  sources: CalibrationSource[];
+  verdict: 'INSUFFICIENT_DATA' | 'OVERCONFIDENT' | 'UNDERCONFIDENT' | 'CALIBRATED';
+  message: string;
+  overconfidencePercent: number;
+  underconfidencePercent: number;
+  blindSpots: CalibrationBlindSpot[];
+}
+
 @Injectable({ providedIn: 'root' })
 export class AdaptationApiService {
   private readonly http = inject(HttpClient);
@@ -39,6 +74,10 @@ export class AdaptationApiService {
 
   insights() {
     return this.http.get<AdaptationInsights>(`${this.url}/insights`);
+  }
+
+  calibration() {
+    return this.http.get<Calibration>(`${this.url}/calibration`);
   }
 
   decide(id: string, decision: AdaptationDecision) {

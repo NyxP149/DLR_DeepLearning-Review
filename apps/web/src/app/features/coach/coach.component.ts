@@ -7,7 +7,8 @@ import {
   AdaptationApiService,
   AdaptationDecision,
   AdaptationInsights,
-  AdaptationRecommendation
+  AdaptationRecommendation,
+  Calibration
 } from '../../core/api/adaptation-api.service';
 import { TutorApiService, TutorRole } from '../../core/api/tutor-api.service';
 
@@ -62,6 +63,40 @@ import { TutorApiService, TutorRole } from '../../core/api/tutor-api.service';
           <p class="disclaimer">{{ data.disclaimer }}</p>
         </section>
       }
+      @if (calibration(); as cal) {
+        <section class="calibration" aria-labelledby="calibration-title">
+          <div class="section-title"><div><p>Métacognition</p><h2 id="calibration-title">Calibration : ce que tu crois savoir</h2></div><span>{{ cal.totalAnswers }} réponse{{ cal.totalAnswers > 1 ? 's' : '' }} avec confiance</span></div>
+          <p class="verdict" [class.alert]="cal.verdict === 'OVERCONFIDENT'" [class.good]="cal.verdict === 'CALIBRATED' || cal.verdict === 'UNDERCONFIDENT'" role="status">{{ cal.message }}</p>
+          @if (cal.totalAnswers > 0) {
+            <div class="levels">
+              @for (level of cal.levels; track level.confidence) {
+                <article>
+                  <header><strong>{{ confidenceLabel(level.confidence) }}</strong><span>{{ level.total }} réponse{{ level.total > 1 ? 's' : '' }}</span></header>
+                  <div class="stack" role="img" [attr.aria-label]="level.correct + ' justes, ' + level.partial + ' partielles, ' + level.wrong + ' fausses'">
+                    <i class="ok" [style.flex-grow]="level.correct"></i><i class="part" [style.flex-grow]="level.partial"></i><i class="ko" [style.flex-grow]="level.wrong"></i>
+                  </div>
+                  <small>{{ level.total === 0 ? 'Aucune réponse' : level.correctPercent + ' % justes · ' + level.partial + ' partielles · ' + level.wrong + ' fausses' }}</small>
+                </article>
+              }
+            </div>
+            <p class="reading">Une bonne calibration se voit à des barres vertes de plus en plus longues quand la confiance monte.
+              @if (cal.levels[2].total > 0) { Quand tu es sûr·e, tu te trompes ou n'as qu'à moitié raison dans {{ cal.overconfidencePercent }} % des cas. }
+              @if (cal.levels[0].total > 0) { Quand tu n'es pas sûr·e, tu as pourtant raison dans {{ cal.underconfidencePercent }} % des cas. }</p>
+            <ul class="sources">@for (source of cal.sources; track source.code) { <li><strong>{{ source.code === 'QUIZ' ? 'Quiz des labos' : 'Révisions' }}</strong> : {{ source.total }} réponse{{ source.total > 1 ? 's' : '' }}{{ source.total > 0 ? ', ' + source.correctPercent + ' % justes' : '' }}</li> }</ul>
+          }
+          @if (cal.blindSpots.length > 0) {
+            <div class="blind-spots">
+              <h3>Angles morts à retravailler</h3>
+              <p>Des questions où tu étais sûr·e de toi sans avoir raison, les plus récentes d'abord.</p>
+              <ul>
+                @for (spot of cal.blindSpots; track spot.labCode + spot.questionId) {
+                  <li><span class="tag">{{ spot.outcome === 'WRONG' ? 'Fausse' : 'Partielle' }}</span><div><strong>{{ spot.prompt }}</strong><small>{{ spot.source === 'QUIZ' ? 'Quiz' : 'Révision' }} · {{ spot.answeredAt | date:'dd/MM/yyyy' }}</small></div><a [routerLink]="['/labs', spot.labCode]">{{ spot.labCode }} →</a></li>
+                }
+              </ul>
+            </div>
+          }
+        </section>
+      }
       <section class="role-lab">
         <div class="section-title"><div><p>Tuteur multi-rôle</p><h2>Choisis la posture utile</h2></div><span>Ollama local · aucun score modifié</span></div>
         <div class="roles" role="radiogroup" aria-label="Rôle du tuteur">
@@ -81,7 +116,7 @@ import { TutorApiService, TutorRole } from '../../core/api/tutor-api.service';
     }
   `,
   styles: [`
-    :host{display:block}.page-header{margin-bottom:1.4rem}.page-header p,.section-title p{color:var(--accent);font-size:.75rem;font-weight:800;letter-spacing:.09em;margin:0;text-transform:uppercase}.page-header h1{font-size:clamp(2rem,4vw,3rem);margin:.25rem 0}.page-header span,.eyebrow small,.section-title span,.metrics span,.metrics small,.disclaimer{color:var(--text-muted)}.recommendation,.analytics,.role-lab,.state{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:clamp(1rem,3vw,1.5rem)}.recommendation{box-shadow:inset 4px 0 var(--accent)}.eyebrow,.section-title{align-items:center;display:flex;justify-content:space-between}.eyebrow>span{background:var(--accent-soft);border-radius:99px;color:var(--link);font-size:.7rem;font-weight:800;padding:.35rem .65rem}.recommendation h2{font-size:1.4rem;margin:1rem 0 .35rem}.reason{color:var(--text);font-size:1.05rem;line-height:1.6}.recommendation article{background:var(--background);border:1px solid var(--border);border-radius:.7rem;display:grid;gap:.35rem;margin-top:.7rem;padding:.85rem}.recommendation article small{color:var(--accent);font-weight:750}.recommendation article strong{line-height:1.5}.recommendation details{border-top:1px solid var(--border);margin-top:1rem;padding-top:1rem}.recommendation summary{cursor:pointer;font-weight:750}.recommendation li,.analytics li{color:var(--text-muted);margin:.35rem 0}.actions{align-items:center;display:flex;flex-wrap:wrap;gap:.55rem;margin-top:1.1rem}.actions button,.actions a{background:var(--surface-raised);border:1px solid var(--border);border-radius:.55rem;color:var(--text);cursor:pointer;font:inherit;font-size:.78rem;font-weight:750;padding:.65rem .85rem;text-decoration:none}.actions button.primary{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}.actions button.quiet{background:transparent;color:var(--text-muted)}.actions .accepted{background:var(--success-soft);border:1px solid var(--success);border-radius:.55rem;color:var(--success);font-size:.78rem;font-weight:800;padding:.65rem .85rem}.actions a{margin-left:auto}.actions button:disabled{cursor:wait;opacity:.55}.feedback{color:var(--success);font-size:.8rem;margin-bottom:0}.analytics,.role-lab{margin-top:1rem}.section-title h2{margin:.2rem 0}.metrics{display:grid;gap:.75rem;grid-template-columns:repeat(4,1fr);margin-top:1rem}.metrics article{background:var(--background);border:1px solid var(--border);border-radius:.7rem;display:grid;gap:.4rem;padding:.85rem}.metrics strong{font-size:1.55rem}.metrics i{background:var(--track);border-radius:99px;height:.35rem;overflow:hidden}.metrics b{background:linear-gradient(90deg,var(--accent),var(--success));display:block;height:100%}.disclaimer{border-top:1px solid var(--border);font-size:.72rem;margin:1rem 0 0;padding-top:.8rem}.roles{display:grid;gap:.6rem;grid-template-columns:repeat(5,1fr);margin-top:1rem}.roles button{background:var(--background);border:1px solid var(--border);border-radius:.7rem;color:var(--text);cursor:pointer;display:grid;gap:.35rem;padding:.8rem;text-align:left}.roles button.active{background:var(--accent-soft);border-color:var(--accent)}.roles small{color:var(--text-muted);font-size:.68rem}.consult-form{display:grid;gap:.8rem;margin-top:1rem}.consult-form label{color:var(--text-muted);display:grid;font-size:.76rem;font-weight:750;gap:.35rem}.consult-form input,.consult-form textarea{background:var(--input-background);border:1px solid var(--border);border-radius:.55rem;color:var(--text);font:inherit;padding:.7rem;resize:vertical}.ask{background:var(--accent);border:0;border-radius:.55rem;color:var(--on-accent);cursor:pointer;font:inherit;font-weight:800;justify-self:start;padding:.7rem 1rem}.ask:disabled{opacity:.5}.answer{background:var(--success-soft);border:1px solid var(--success);border-radius:.7rem;margin-top:1rem;padding:1rem}.answer small{color:var(--success);font-weight:800}.answer p{line-height:1.65;white-space:pre-wrap}.state.error{color:var(--danger);margin-top:1rem}@media(max-width:1000px){.roles{grid-template-columns:repeat(3,1fr)}}@media(max-width:850px){.metrics{grid-template-columns:1fr 1fr}}@media(max-width:600px){.eyebrow,.section-title{align-items:flex-start;flex-direction:column;gap:.55rem}.metrics,.roles{grid-template-columns:1fr}.actions a{margin-left:0;width:100%}}
+    :host{display:block}.page-header{margin-bottom:1.4rem}.page-header p,.section-title p{color:var(--accent);font-size:.75rem;font-weight:800;letter-spacing:.09em;margin:0;text-transform:uppercase}.page-header h1{font-size:clamp(2rem,4vw,3rem);margin:.25rem 0}.page-header span,.eyebrow small,.section-title span,.metrics span,.metrics small,.disclaimer{color:var(--text-muted)}.recommendation,.analytics,.role-lab,.state{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:clamp(1rem,3vw,1.5rem)}.recommendation{box-shadow:inset 4px 0 var(--accent)}.eyebrow,.section-title{align-items:center;display:flex;justify-content:space-between}.eyebrow>span{background:var(--accent-soft);border-radius:99px;color:var(--link);font-size:.7rem;font-weight:800;padding:.35rem .65rem}.recommendation h2{font-size:1.4rem;margin:1rem 0 .35rem}.reason{color:var(--text);font-size:1.05rem;line-height:1.6}.recommendation article{background:var(--background);border:1px solid var(--border);border-radius:.7rem;display:grid;gap:.35rem;margin-top:.7rem;padding:.85rem}.recommendation article small{color:var(--accent);font-weight:750}.recommendation article strong{line-height:1.5}.recommendation details{border-top:1px solid var(--border);margin-top:1rem;padding-top:1rem}.recommendation summary{cursor:pointer;font-weight:750}.recommendation li,.analytics li{color:var(--text-muted);margin:.35rem 0}.actions{align-items:center;display:flex;flex-wrap:wrap;gap:.55rem;margin-top:1.1rem}.actions button,.actions a{background:var(--surface-raised);border:1px solid var(--border);border-radius:.55rem;color:var(--text);cursor:pointer;font:inherit;font-size:.78rem;font-weight:750;padding:.65rem .85rem;text-decoration:none}.actions button.primary{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}.actions button.quiet{background:transparent;color:var(--text-muted)}.actions .accepted{background:var(--success-soft);border:1px solid var(--success);border-radius:.55rem;color:var(--success);font-size:.78rem;font-weight:800;padding:.65rem .85rem}.actions a{margin-left:auto}.actions button:disabled{cursor:wait;opacity:.55}.feedback{color:var(--success);font-size:.8rem;margin-bottom:0}.analytics,.role-lab{margin-top:1rem}.section-title h2{margin:.2rem 0}.metrics{display:grid;gap:.75rem;grid-template-columns:repeat(4,1fr);margin-top:1rem}.metrics article{background:var(--background);border:1px solid var(--border);border-radius:.7rem;display:grid;gap:.4rem;padding:.85rem}.metrics strong{font-size:1.55rem}.metrics i{background:var(--track);border-radius:99px;height:.35rem;overflow:hidden}.metrics b{background:linear-gradient(90deg,var(--accent),var(--success));display:block;height:100%}.disclaimer{border-top:1px solid var(--border);font-size:.72rem;margin:1rem 0 0;padding-top:.8rem}.roles{display:grid;gap:.6rem;grid-template-columns:repeat(5,1fr);margin-top:1rem}.roles button{background:var(--background);border:1px solid var(--border);border-radius:.7rem;color:var(--text);cursor:pointer;display:grid;gap:.35rem;padding:.8rem;text-align:left}.roles button.active{background:var(--accent-soft);border-color:var(--accent)}.roles small{color:var(--text-muted);font-size:.68rem}.consult-form{display:grid;gap:.8rem;margin-top:1rem}.consult-form label{color:var(--text-muted);display:grid;font-size:.76rem;font-weight:750;gap:.35rem}.consult-form input,.consult-form textarea{background:var(--input-background);border:1px solid var(--border);border-radius:.55rem;color:var(--text);font:inherit;padding:.7rem;resize:vertical}.ask{background:var(--accent);border:0;border-radius:.55rem;color:var(--on-accent);cursor:pointer;font:inherit;font-weight:800;justify-self:start;padding:.7rem 1rem}.ask:disabled{opacity:.5}.answer{background:var(--success-soft);border:1px solid var(--success);border-radius:.7rem;margin-top:1rem;padding:1rem}.answer small{color:var(--success);font-weight:800}.answer p{line-height:1.65;white-space:pre-wrap}.state.error{color:var(--danger);margin-top:1rem}.calibration{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);margin-top:1rem;padding:clamp(1rem,3vw,1.5rem)}.verdict{background:var(--background);border:1px solid var(--border);border-radius:.7rem;line-height:1.6;margin:1rem 0 0;padding:.85rem 1rem}.verdict.alert{border-color:var(--danger)}.verdict.good{border-color:var(--success)}.levels{display:grid;gap:.75rem;grid-template-columns:repeat(3,1fr);margin-top:1rem}.levels article{background:var(--background);border:1px solid var(--border);border-radius:.7rem;display:grid;gap:.5rem;padding:.85rem}.levels header{align-items:baseline;display:flex;justify-content:space-between}.levels header span,.levels small,.reading,.sources,.blind-spots p,.blind-spots small{color:var(--text-muted)}.levels small{font-size:.72rem}.stack{background:var(--track);border-radius:99px;display:flex;height:.7rem;overflow:hidden}.stack i{display:block;flex:0 1 0%}.stack .ok{background:var(--success)}.stack .part{background:var(--accent);opacity:.55}.stack .ko{background:var(--danger)}.reading{line-height:1.6;margin:1rem 0 .4rem}.sources{font-size:.78rem;list-style:none;margin:0;padding:0}.sources li{margin:.25rem 0}.blind-spots{border-top:1px solid var(--border);margin-top:1rem;padding-top:1rem}.blind-spots h3{margin:0 0 .2rem}.blind-spots ul{display:grid;gap:.5rem;list-style:none;margin:.8rem 0 0;padding:0}.blind-spots li{align-items:center;background:var(--background);border:1px solid var(--border);border-radius:.6rem;display:grid;gap:.75rem;grid-template-columns:auto 1fr auto;padding:.7rem .85rem}.blind-spots li div{display:grid;gap:.2rem;line-height:1.45}.blind-spots .tag{background:var(--accent-soft);border-radius:99px;color:var(--text);font-size:.68rem;font-weight:800;padding:.25rem .55rem}.blind-spots a{color:var(--link);font-size:.78rem;font-weight:750;text-decoration:none;white-space:nowrap}@media(max-width:850px){.levels{grid-template-columns:1fr}}@media(max-width:1000px){.roles{grid-template-columns:repeat(3,1fr)}}@media(max-width:850px){.metrics{grid-template-columns:1fr 1fr}}@media(max-width:600px){.eyebrow,.section-title{align-items:flex-start;flex-direction:column;gap:.55rem}.metrics,.roles{grid-template-columns:1fr}.actions a{margin-left:0;width:100%}}
   `],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
@@ -94,6 +129,7 @@ export class CoachComponent {
   readonly feedback = signal('');
   readonly recommendation = signal<AdaptationRecommendation | null>(null);
   readonly insights = signal<AdaptationInsights | null>(null);
+  readonly calibration = signal<Calibration | null>(null);
   readonly role = signal<TutorRole>('TEACHER');
   readonly labCode = signal('JAVA-01');
   readonly question = signal('Comment puis-je mieux comprendre ce laboratoire ?');
@@ -110,10 +146,11 @@ export class CoachComponent {
   ];
 
   constructor() {
-    forkJoin({ recommendation: this.api.recommendation(), insights: this.api.insights() }).subscribe({
-      next: ({ recommendation, insights }) => {
+    forkJoin({ recommendation: this.api.recommendation(), insights: this.api.insights(), calibration: this.api.calibration() }).subscribe({
+      next: ({ recommendation, insights, calibration }) => {
         this.recommendation.set(recommendation);
         this.insights.set(insights);
+        this.calibration.set(calibration);
         this.loading.set(false);
       },
       error: () => {
@@ -144,6 +181,10 @@ export class CoachComponent {
 
   difficultyLabel(difficulty: AdaptationRecommendation['difficulty']): string {
     return ({ GUIDE: 'Découverte guidée', RENFORCEMENT: 'Renforcement', TRANSFERT: 'Mise en transfert', CHALLENGE: 'Défi autonome' })[difficulty];
+  }
+
+  confidenceLabel(level: number): string {
+    return ({ 1: 'Pas sûr·e', 2: 'Plutôt sûr·e', 3: 'Sûr·e' } as Record<number, string>)[level] ?? String(level);
   }
 
   consult(): void {
