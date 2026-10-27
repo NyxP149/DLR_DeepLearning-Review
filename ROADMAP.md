@@ -64,6 +64,7 @@
 - [x] Évolution de la calibration dans le temps : écart hebdomadaire entre confiance déclarée et réussite réelle, tendance (amélioration, stable, dégradation) sur la page Coach (V3.33)
 - [x] Gain du quiz de départ agrégé sur la page Coach : réussite avant le cours contre première réponse du quiz final sur tous les labos terminés, questions apprises ou perdues, détail par labo (V3.34)
 - [x] Maîtrise des concepts pilotée par la rétention : « maîtrisé » exige un dernier rappel juste, confiant, à l'étape finale et 7 jours ou plus après la fin du labo ; un rappel raté renvoie le concept à revoir et passe en tête des recommandations (V3.35)
+- [x] Correction du score « Explication » : la sauvegarde automatique du texte ne compte plus comme première réponse, brouillons déjà journalisés retirés (V3.39)
 
 ## Déploiement cloud
 
