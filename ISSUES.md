@@ -482,3 +482,16 @@ Depuis le déploiement des exercices de transfert aux 172 laboratoires (V3.32), 
 **Solution**
 Les tests ciblent l'exercice guidé : `#lab-source` pour l'éditeur et le champ de code, `.first()` pour le bouton d'exécution (l'exercice guidé précède toujours les transferts). 19 tests e2e verts sur une base neuve.
 
+---
+
+## Le panneau du quiz débordait de la page de labo
+- severity: medium
+- date: 2026-10
+- tags: Interface, CSS
+
+**Problème**
+Sur une fenêtre d'environ 830 px, la page d'un laboratoire (JAVA-10) montrait un trait vertical à l'intérieur du panneau « Validation des acquis » : le fond du panneau s'arrêtait avant la fin de ses cartes, qui dépassaient à droite, et la page défilait horizontalement.
+
+**Solution**
+La grille à une colonne (`1fr`) ne pouvait pas rétrécir sous la largeur de son contenu. Elle passe à `minmax(0, 1fr)`, de même que les listes du quiz et de la checklist ; les colonnes et le `fieldset` des questions reçoivent `min-width: 0` et le texte des choix `overflow-wrap: anywhere` pour qu'une longue chaîne de code passe à la ligne. À 830 px, plus aucun élément ne dépasse de la fenêtre.
+

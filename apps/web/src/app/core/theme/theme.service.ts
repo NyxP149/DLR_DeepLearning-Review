@@ -1,6 +1,6 @@
 import { Injectable, signal } from '@angular/core';
 
-export type ThemeId = 'obsidian' | 'monochrome' | 'boreal' | 'emerald' | 'royal' | 'solar';
+export type ThemeId = 'obsidian' | 'monochrome' | 'boreal' | 'emerald' | 'royal' | 'solar' | 'ember' | 'nordic' | 'contrast';
 
 export interface ThemeOption {
   id: ThemeId;
@@ -16,7 +16,10 @@ export const DLR_THEMES: readonly ThemeOption[] = [
   { id: 'boreal', name: 'Océan Boréal', description: 'Bleu pétrole, cyan glacé et corail.', colors: ['#061c27', '#22c7d6', '#ff8066'], mode: 'dark' },
   { id: 'emerald', name: 'Forêt Émeraude', description: 'Vert profond, sauge et ambre.', colors: ['#0b211b', '#55c78c', '#f0b45a'], mode: 'dark' },
   { id: 'royal', name: 'Aubergine Royale', description: 'Prune, rose sophistiqué et champagne.', colors: ['#24152b', '#d66aa7', '#e7bd72'], mode: 'dark' },
-  { id: 'solar', name: 'Atelier Solaire', description: 'Ivoire chaud, terre cuite et bleu encre.', colors: ['#fbf4e8', '#9f3e27', '#183a5a'], mode: 'light' }
+  { id: 'solar', name: 'Atelier Solaire', description: 'Ivoire chaud, terre cuite et bleu encre.', colors: ['#fbf4e8', '#9f3e27', '#183a5a'], mode: 'light' },
+  { id: 'ember', name: 'Braise Nocturne', description: 'Charbon chaud, orange ardent et sauge.', colors: ['#140e0a', '#ff8a3d', '#8fd9a0'], mode: 'dark' },
+  { id: 'nordic', name: 'Brume Nordique', description: 'Gris-bleu clair, indigo vif et vert lagon.', colors: ['#e9eff6', '#2b5bd7', '#17695a'], mode: 'light' },
+  { id: 'contrast', name: 'Haut Contraste', description: 'Noir pur, jaune vif et texte maximal, pensé pour la lisibilité.', colors: ['#000000', '#ffd400', '#5dff9a'], mode: 'dark' }
 ];
 
 const STORAGE_KEY = 'dlr-interface-theme';

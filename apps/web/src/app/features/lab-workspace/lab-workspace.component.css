@@ -171,9 +171,11 @@
 .lesson-column {
   display: grid;
   gap: 1rem;
+  min-width: 0;
 }
 
 .practice-column {
+  min-width: 0;
   position: sticky;
   top: 1.5rem;
 }
@@ -361,12 +363,21 @@ pre {
 .choice-list {
   display: grid;
   gap: 0.7rem;
+  grid-template-columns: minmax(0, 1fr);
+}
+
+/* Un choix sans espace (ex. une chaîne d'appels Java) passe à la ligne au lieu d'élargir la grille. */
+.choice-list label span,
+.checklist label span {
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .quiz-question {
   border: 0;
   border-top: 1px solid var(--border);
   margin: 0;
+  min-width: 0;
   padding: 1rem 0 0;
 }
 
@@ -608,7 +619,7 @@ pre {
   }
 
   .workspace-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .practice-column {

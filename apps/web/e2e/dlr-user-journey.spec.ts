@@ -232,10 +232,10 @@ test('le planning ne date que la prochaine activité disponible', async ({ page 
   await expect(page.getByLabel('Planning glissant SQL')).toBeVisible();
 });
 
-test('les six thèmes restent lisibles et persistent', async ({ page }) => {
+test('les neuf thèmes restent lisibles et persistent', async ({ page }) => {
   await page.goto('/settings');
-  const themes = ['obsidian', 'monochrome', 'boreal', 'emerald', 'royal', 'solar'];
-  await expect(page.getByRole('radio')).toHaveCount(6);
+  const themes = ['obsidian', 'monochrome', 'boreal', 'emerald', 'royal', 'solar', 'ember', 'nordic', 'contrast'];
+  await expect(page.getByRole('radio')).toHaveCount(9);
 
   for (const theme of themes) {
     await page.locator(`[data-preview="${theme}"]`).click();
@@ -273,7 +273,7 @@ test('les six thèmes restent lisibles et persistent', async ({ page }) => {
   }
 
   await page.reload();
-  await expect(page.locator('html')).toHaveAttribute('data-theme', 'solar');
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'contrast');
 });
 
 test('le déploiement cloud conserve le brouillon sans simuler un runner', async ({ page }) => {

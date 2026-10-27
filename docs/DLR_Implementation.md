@@ -1393,3 +1393,12 @@ Le lancement quotidien passait par un raccourci `.lnk`, Git Bash, `start-hybrid.
 - **Limites** : sauvegarde logique complète à chaque arrêt (suffisant pour la taille d'une base personnelle) ; la restauration reste manuelle (`pg_restore`).
 - **Correctif après le premier arrêt réel** : la sauvegarde a signalé un échec sur Neon sans que le détail soit visible. `Backup-Database` capture désormais la sortie de `pg_dump`, l'affiche en rouge en cas d'échec et, sur « server version mismatch » (serveur plus récent que `pg_dump` 17), relance avec `postgres:<version du serveur>-alpine`. Cas joué sur un serveur PostgreSQL 18 jetable : détection, nouvel essai et sauvegarde créée ; conteneur et fichier de test supprimés. La cause exacte de l'échec réel n'a pas été relevée (message non transmis) : à confirmer au prochain arrêt.
 
+## V3.38 — Débordement de la page de labo et trois nouveaux thèmes
+
+- **Problème** : dans un thème sombre, à environ 830 px de large, le panneau du quiz s'arrêtait avant le bord de ses réponses : un trait vertical traversait la page et les cartes dépassaient du fond du panneau (voir `ISSUES.md`).
+- **Cause** : en dessous de 960 px, `.workspace-grid` passait à `grid-template-columns: 1fr`, c'est-à-dire `minmax(auto, 1fr)` ; un contenu large l'empêchait de rétrécir. Deux contenus étaient en cause : le `fieldset` d'une question (`min-width: min-content` par défaut) et un choix de quiz sans espace (`Comparator.comparingDouble(Product::price)…`) qui élargissait la grille des choix.
+- **Correctif** (`lab-workspace.component.css`) : `minmax(0, 1fr)` pour la grille et les listes (quiz, choix, checklist), `min-width: 0` sur les colonnes et le `fieldset`, `overflow-wrap: anywhere` sur le texte des choix. Contrôlé à 830 px sur JAVA-10 : plus aucun élément au-delà de la fenêtre, code du quiz contenu dans le panneau.
+- **Trois thèmes** (`styles.css`, `theme.service.ts`) : « Braise Nocturne » (charbon chaud, orange, sauge, sombre), « Brume Nordique » (gris-bleu clair, indigo, vert lagon, clair) et « Haut Contraste » (noir pur, jaune vif, texte maximal, sombre), soit neuf thèmes. Ils apparaissent d'eux-mêmes dans Paramètres.
+- **Tests** : le test e2e des thèmes passe à neuf thèmes et vérifie pour chacun un contraste d'au moins 4,5 (texte, texte secondaire, champs, boutons) ; ils le respectent tous. 19 tests e2e verts.
+- **Limites** : la correction a été vérifiée sur JAVA-10 à 830 px ; les autres largeurs et labos n'ont pas été parcourus un par un.
+
