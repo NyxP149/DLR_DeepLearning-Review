@@ -35,7 +35,7 @@ test('un laboratoire expose concept, runner et réinitialisation', async ({ page
   await page.goto('/labs/LLM-01');
   await expect(page.getByRole('heading', { name: /prompt, tokens et sortie contrôlée/i })).toBeVisible();
   await expect(page.getByText('Concept clé · LLM-PROMPT-TOKENS')).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Compiler et exécuter' })).toBeEnabled();
+  await expect(page.getByRole('button', { name: 'Compiler et exécuter' }).first()).toBeEnabled();
   await expect(page.getByRole('button', { name: 'Réinitialiser ce laboratoire' })).toBeVisible();
 });
 
@@ -65,7 +65,7 @@ test('le quiz de départ précède le cours et peut être validé sans voir la c
   await questions.nth(2).getByLabel('Je ne sais pas').check();
   await start.click();
 
-  await expect(page.getByRole('button', { name: 'Compiler et exécuter' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Compiler et exécuter' }).first()).toBeVisible();
   expect(submitted).toEqual({ answers: [
     { questionId: 'JAVA-01-Q1', selectedChoice: 0 },
     { questionId: 'JAVA-01-Q2', selectedChoice: null },
@@ -86,9 +86,9 @@ test('JAVA-10 propose deux exercices de transfert facultatifs, sans indice ni sc
 
 test('le curseur CodeMirror se déplace librement et le texte reste modifiable', async ({ page }) => {
   await page.goto('/labs/JAVA-01');
-  const editor = page.getByRole('textbox', { name: 'Code JAVA' });
-  await expect(page.locator('.cm-editor')).toBeVisible();
-  await expect(page.locator('.editor-host textarea')).toHaveCount(0);
+  const editor = page.locator('#lab-source').getByRole('textbox', { name: 'Code JAVA' });
+  await expect(page.locator('#lab-source .cm-editor')).toBeVisible();
+  await expect(page.locator('#lab-source .editor-host textarea')).toHaveCount(0);
 
   await editor.click();
   await page.keyboard.press('Control+A');
@@ -106,7 +106,7 @@ test('le curseur CodeMirror se déplace librement et le texte reste modifiable',
 for (const lab of ['JAVA-01', 'PYTHON-01', 'TYPESCRIPT-01']) {
   test(`la coloration syntaxique est active pour ${lab}`, async ({ page }) => {
     await page.goto(`/labs/${lab}`);
-    const editor = page.locator('.cm-editor');
+    const editor = page.locator('#lab-source .cm-editor');
     await expect(editor).toBeVisible();
     const plain = await editor.locator('.cm-content').evaluate((element) => getComputedStyle(element).color);
     const colors = await editor.locator('.cm-line span').evaluateAll((spans) =>
@@ -118,7 +118,7 @@ for (const lab of ['JAVA-01', 'PYTHON-01', 'TYPESCRIPT-01']) {
 
 test('Échap puis Tab quitte CodeMirror sans piéger le clavier', async ({ page }) => {
   await page.goto('/labs/JAVA-01');
-  const editor = page.getByRole('textbox', { name: 'Code JAVA' });
+  const editor = page.locator('#lab-source').getByRole('textbox', { name: 'Code JAVA' });
   await editor.click();
   await page.keyboard.press('Tab');
   await expect(editor).toBeFocused();
@@ -130,9 +130,9 @@ test('Échap puis Tab quitte CodeMirror sans piéger le clavier', async ({ page 
 test("l'éditeur simple reste modifiable et son brouillon survit au rechargement", async ({ page }) => {
   await page.goto('/labs/JAVA-01');
   await page.getByRole('button', { name: 'Éditeur simple' }).click();
-  await expect(page.locator('.cm-editor')).toHaveCount(0);
+  await expect(page.locator('#lab-source .cm-editor')).toHaveCount(0);
 
-  const editor = page.getByRole('textbox', { name: 'Code JAVA' });
+  const editor = page.locator('#lab-source').getByRole('textbox', { name: 'Code JAVA' });
   await editor.click();
   await page.keyboard.press('Control+A');
   await page.keyboard.type('ABC');
@@ -144,7 +144,7 @@ test("l'éditeur simple reste modifiable et son brouillon survit au rechargement
   await page.waitForTimeout(800);
   await page.reload();
   await expect(page.getByRole('button', { name: 'Éditeur avancé' })).toBeVisible();
-  await expect(page.getByRole('textbox', { name: 'Code JAVA' })).toHaveValue('AB    X');
+  await expect(page.locator('#lab-source').getByRole('textbox', { name: 'Code JAVA' })).toHaveValue('AB    X');
 });
 
 test('le code du laboratoire peut être téléchargé pour un éditeur externe', async ({ page }) => {
@@ -288,7 +288,7 @@ test('le déploiement cloud conserve le brouillon sans simuler un runner', async
 
   await page.goto('/labs/JAVA-01');
   await expect(page.getByText('Runner local non connecté')).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Runner hors ligne' })).toBeDisabled();
+  await expect(page.getByRole('button', { name: 'Runner hors ligne' }).first()).toBeDisabled();
   await expect(page.getByRole('button', { name: 'Validation disponible avec le Runner' })).toBeDisabled();
   await expect(page.getByText('Brouillon actif · démarre le service hybride pour exécuter')).toBeVisible();
 });
@@ -299,11 +299,11 @@ test('le bilan d’un laboratoire terminé reste affiché après un rechargement
   await page.getByRole('button', { name: 'Réinitialiser ce laboratoire' }).click();
   await expect(page.getByText('a été remis à zéro')).toBeVisible();
   await page.getByRole('button', { name: 'Éditeur simple' }).click();
-  await page.getByRole('textbox', { name: 'Code JAVA' }).fill(
+  await page.locator('#lab-source').getByRole('textbox', { name: 'Code JAVA' }).fill(
     'public class Main {\n    public static void main(String[] args) {\n        System.out.println("DLR Java Lab 1");\n        System.out.println("Source: Main.java");\n        System.out.println("Bytecode: Main.class");\n        System.out.println("Exécution: JVM");\n    }\n}\n'
   );
 
-  await page.getByRole('button', { name: 'Compiler et exécuter' }).click();
+  await page.getByRole('button', { name: 'Compiler et exécuter' }).first().click();
   await expect(page.locator('.execution-result.success')).toBeVisible({ timeout: 15_000 });
 
   // Bonnes réponses des quatre questions à choix (indices dans le contenu de JAVA-01).

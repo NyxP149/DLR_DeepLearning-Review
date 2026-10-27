@@ -468,3 +468,17 @@ La carte de maîtrise déclarait un concept « maîtrisé » dès qu'une révisi
 
 **Solution**
 Le statut dépend maintenant du dernier rappel enregistré : « maîtrisé » exige une réponse juste, faite avec confiance, à l'étape finale et 7 jours ou plus après la fin du labo ; un dernier rappel raté renvoie le concept à revoir (« Oublié : à revoir ») et la recommandation du coach le traite avant les concepts simplement sous le seuil. Les labos sans aucune réponse de rappel (anciennes révisions validées d'un bouton) gardent l'ancienne règle. `ConceptMasteryControllerTest` couvre huit cas, dont l'étape finale ratée, la réponse hésitante et la primauté du dernier rappel.
+
+---
+
+## Dix tests Playwright cassés par les exercices de transfert
+- severity: low
+- date: 2026-10
+- tags: Tests, E2E
+
+**Problème**
+Depuis le déploiement des exercices de transfert aux 172 laboratoires (V3.32), chaque page de laboratoire contient un second éditeur de code et un second bouton « Compiler et exécuter ». Dix tests e2e utilisaient des sélecteurs globaux (`.cm-editor`, `getByRole('button', { name: 'Compiler et exécuter' })`, le champ « Code JAVA ») et échouaient en « strict mode violation » parce qu'ils trouvaient deux éléments ; la suite e2e n'avait pas été relancée depuis le déploiement.
+
+**Solution**
+Les tests ciblent l'exercice guidé : `#lab-source` pour l'éditeur et le champ de code, `.first()` pour le bouton d'exécution (l'exercice guidé précède toujours les transferts). 19 tests e2e verts sur une base neuve.
+
