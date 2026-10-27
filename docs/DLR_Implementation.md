@@ -1383,3 +1383,12 @@ Le lancement quotidien passait par un raccourci `.lnk`, Git Bash, `start-hybrid.
 - **Vérification** : mode local joué de bout en bout sur un projet Docker Compose et des ports jetables (`DLR_COMPOSE_PROJECT=dlrtest`, base 5499, API 8099) : PostgreSQL démarré et déclaré sain, jar construit puis API prête, `/api/execution/status` indique le Runner Docker prêt, site local servi sur 4200, `status` puis `stop` ramènent API, site et base à l'arrêt, projet de test supprimé. Le mode hybride n'a pas été rejoué ici (il demande le mot de passe Neon et Tailscale) : à valider au premier lancement réel.
 - **Limites** : si la fenêtre est fermée brutalement, la partie « arrêt propre » ne s'exécute pas ; `DLR.cmd stop` la rattrape.
 
+## V3.37 — Sauvegarde automatique de Neon
+
+`backup-database.ps1` ne sauvegarde que le PostgreSQL local (conteneur Docker) alors que la progression vit dans Neon en mode hybride : rien ne protégeait la vraie base.
+
+- **Lanceur** : `Backup-Database` dans `dlr.ps1`. `pg_dump --format=custom` tourne dans un conteneur `postgres:17-alpine` (aucun outil à installer), l'hôte « -pooler » de Neon est remplacé par l'hôte direct, le mot de passe passe par `PGPASSWORD` dans l'environnement du conteneur (jamais sur disque), `sslmode` de l'URL JDBC est repris.
+- **Déclenchement** : à l'arrêt du lanceur, l'API étant arrêtée (sauvegarde cohérente), avec le mot de passe déjà saisi au démarrage ; ou à la demande avec `DLR.cmd backup`. Fichiers `backups/neon-AAAAMMJJ-HHMMSS.dump`, rotation sur `keepBackups` (10) sans toucher aux `dlr-*.dump` locaux. Un échec est signalé sans bloquer l'arrêt. Réglages `backupOnStop` et `keepBackups` dans `dlr.config.json`.
+- **Vérification** : sur un PostgreSQL local jetable (hôte `host.docker.internal:5499`) : sauvegarde créée, contenu relu avec `pg_restore` (les trois lignes de la table d'essai), rotation ramenée à 10 fichiers avec les plus récents conservés ; fichiers et base de test supprimés. **Non vérifié sur Neon** (mot de passe réel) : au premier arrêt réel, contrôle que `backups/neon-*.dump` apparaît ; si Neon tourne sur une version de PostgreSQL supérieure à 17, `pg_dump` le dira et il faudra changer l'image.
+- **Limites** : sauvegarde logique complète à chaque arrêt (suffisant pour la taille d'une base personnelle) ; la restauration reste manuelle (`pg_restore`).
+

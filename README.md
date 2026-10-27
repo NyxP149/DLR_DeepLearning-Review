@@ -148,6 +148,10 @@ Trois projets jalonnent la progression : une tranche CRUD verticale (`ARCHITECTU
 
 Les exercices s'exécutent vraiment, dans l'image `dlr/shell-runner:1` (Debian, bash, PowerShell 7, Git, jq, gawk, make), avec les mêmes restrictions que les autres runners : sans réseau, système de fichiers en lecture seule, utilisateur non privilégié, limites CPU, mémoire et processus. Les exercices manipulent donc de vrais fichiers dans un répertoire de travail éphémère.
 
+## Sauvegarde de Neon
+
+`DLR.cmd` sauvegarde automatiquement la base Neon à chaque arrêt dans `backups/neon-*.dump` (10 conservées, désactivable par `backupOnStop` dans `dlr.config.json`) ; `DLR.cmd backup` la déclenche à la demande.
+
 ## Sauvegarde locale
 
 Créer une sauvegarde PostgreSQL binaire dans le dossier ignoré `backups/` :

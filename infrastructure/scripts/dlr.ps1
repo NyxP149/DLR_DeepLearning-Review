@@ -6,9 +6,10 @@
   .\infrastructure\scripts\dlr.ps1            # démarre selon dlr.config.json
   .\infrastructure\scripts\dlr.ps1 stop       # arrête l'API, Tailscale Serve et PostgreSQL local
   .\infrastructure\scripts\dlr.ps1 status
+  .\infrastructure\scripts\dlr.ps1 backup   # sauvegarde la base Neon dans backups/ (mot de passe demandé)
 #>
 param(
-    [ValidateSet('start', 'stop', 'status')]
+    [ValidateSet('start', 'stop', 'status', 'backup')]
     [string]$Action = 'start',
     [ValidateSet('hybrid', 'local')]
     [string]$Mode,
@@ -36,7 +37,7 @@ function Find-Tool($name, $fallbacks, $help) {
 }
 
 # --- Configuration : fichier local (jamais suivi par Git, sans mot de passe) puis paramètres ---------------------------
-$config = [ordered]@{ mode = 'hybrid'; apiPort = 8081; frontendOrigin = ''; databaseUrl = ''; databaseUser = '' }
+$config = [ordered]@{ mode = 'hybrid'; apiPort = 8081; frontendOrigin = ''; databaseUrl = ''; databaseUser = ''; backupOnStop = $true; keepBackups = 10 }
 $configExists = Test-Path -LiteralPath $configPath
 if ($configExists) {
     $stored = Get-Content -LiteralPath $configPath -Raw | ConvertFrom-Json
@@ -72,6 +73,57 @@ function Get-ComposeArguments {
     $arguments = @()
     if (-not [string]::IsNullOrWhiteSpace($env:DLR_COMPOSE_PROJECT)) { $arguments += @('-p', $env:DLR_COMPOSE_PROJECT) }
     return $arguments + @('--file', (Join-Path $repositoryRoot 'compose.yaml'))
+}
+
+# --- sauvegarde Neon ------------------------------------------------------------------------------------------------------
+# pg_dump tourne dans un conteneur postgres:17 (aucun outil PostgreSQL à installer). L'hôte « -pooler » de Neon est
+# remplacé par l'hôte direct, que pg_dump exige. Le mot de passe passe par l'environnement du conteneur, jamais par un fichier.
+function Backup-Database {
+    param([string]$JdbcUrl, [string]$User, [string]$Password)
+    $match = [regex]::Match($JdbcUrl, '^jdbc:postgresql://(?<host>[^:/?]+)(:(?<port>\d+))?/(?<db>[^?]+)(\?(?<query>.*))?$')
+    if (-not $match.Success) { Write-Warning "Sauvegarde ignorée : URL JDBC illisible."; return }
+    $dbHost = $match.Groups['host'].Value -replace '-pooler', ''
+    $dbPort = if ($match.Groups['port'].Success) { $match.Groups['port'].Value } else { '5432' }
+    $sslMode = [regex]::Match($match.Groups['query'].Value, 'sslmode=(?<mode>[a-z-]+)').Groups['mode'].Value
+    $backupDirectory = Join-Path $repositoryRoot 'backups'
+    New-Item -ItemType Directory -Path $backupDirectory -Force | Out-Null
+    $fileName = 'neon-' + (Get-Date -Format 'yyyyMMdd-HHmmss') + '.dump'
+    $dockerPath = Get-DockerPath
+    $dockerArguments = @('run', '--rm', '-e', 'PGPASSWORD', '-v', "${backupDirectory}:/backup")
+    if ($sslMode) { $dockerArguments += @('-e', "PGSSLMODE=$sslMode") }
+    $dockerArguments += @('postgres:17-alpine', 'pg_dump', '--host', $dbHost, '--port', $dbPort, '--username', $User,
+        '--dbname', $match.Groups['db'].Value, '--format=custom', '--no-owner', '--file', "/backup/$fileName")
+    Write-Step "Sauvegarde de la base ($dbHost)"
+    $env:PGPASSWORD = $Password
+    try {
+        & $dockerPath @dockerArguments
+        $succeeded = $LASTEXITCODE -eq 0
+    }
+    finally { Remove-Item Env:PGPASSWORD -ErrorAction SilentlyContinue }
+    $file = Join-Path $backupDirectory $fileName
+    if (-not $succeeded -or -not (Test-Path -LiteralPath $file)) {
+        Remove-Item -LiteralPath $file -ErrorAction SilentlyContinue
+        Write-Warning 'La sauvegarde a échoué (voir le message ci-dessus) : la base n''a pas été modifiée.'
+        return
+    }
+    Write-Host ("Sauvegarde créée : backups\$fileName ({0:N0} Ko)" -f ((Get-Item -LiteralPath $file).Length / 1KB)) -ForegroundColor Green
+    # Conserve les `keepBackups` plus récentes ; les sauvegardes locales (dlr-*.dump) ne sont jamais touchées.
+    Get-ChildItem -LiteralPath $backupDirectory -Filter 'neon-*.dump' | Sort-Object LastWriteTime -Descending |
+        Select-Object -Skip ([int]$config.keepBackups) | Remove-Item -Force
+}
+
+function Read-DatabasePassword {
+    if (-not [string]::IsNullOrWhiteSpace($env:DLR_DB_PASSWORD)) { return $env:DLR_DB_PASSWORD }
+    $securePassword = Read-Host 'Mot de passe de la base' -AsSecureString
+    $pointer = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($securePassword)
+    try { return [Runtime.InteropServices.Marshal]::PtrToStringBSTR($pointer) }
+    finally { [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($pointer) }
+}
+
+if ($Action -eq 'backup') {
+    if ([string]::IsNullOrWhiteSpace($config.databaseUrl)) { throw 'Aucune base distante configurée (databaseUrl). Pour PostgreSQL local, utilise backup-database.ps1.' }
+    Backup-Database -JdbcUrl $config.databaseUrl -User $config.databaseUser -Password (Read-DatabasePassword)
+    return
 }
 
 # --- status ---------------------------------------------------------------------------------------------------------------
@@ -322,5 +374,10 @@ finally {
         & taskkill /PID $frontendProcess.Id /T /F *> $null
     }
     if (-not $apiProcess.HasExited) { Stop-Process -Id $apiProcess.Id -Force }
+    # L'API est arrêtée : sauvegarde cohérente de Neon avant de tout couper (un échec n'empêche pas l'arrêt).
+    if ($useNeon -and $config.backupOnStop -and -not [string]::IsNullOrWhiteSpace($env:DLR_DB_PASSWORD)) {
+        try { Backup-Database -JdbcUrl $config.databaseUrl -User $config.databaseUser -Password $env:DLR_DB_PASSWORD }
+        catch { Write-Warning "Sauvegarde ignorée : $($_.Exception.Message)" }
+    }
     Stop-All
 }

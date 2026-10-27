@@ -519,6 +519,7 @@ Le script demande ensuite le mot de passe Neon dans une saisie masquée. Ne jama
 .\DLR.cmd status             # état de l'API, de la base locale et de Tailscale
 .\DLR.cmd -Mode local        # site, API et PostgreSQL entièrement sur ce PC (sans Render ni Neon)
 .\DLR.cmd -Rebuild           # force la reconstruction du jar
+.\DLR.cmd backup             # sauvegarde la base Neon dans backups\ (mot de passe demandé)
 .\infrastructure\scripts\install-shortcut.ps1   # crée le raccourci « DLR » sur le Bureau
 ```
 
@@ -528,6 +529,7 @@ Ce que le lanceur fait de plus que l'ancien script :
 - il attend que `/actuator/health` réponde `UP`, affiche l'adresse puis ouvre le site (Render en mode hybride, `http://localhost:4200` en mode local, où il démarre aussi le site) ;
 - à la fermeture (Ctrl+C) ou avec `stop`, il arrête l'API et le site, retire la publication Tailscale Serve du port 443 (les autres réglages Tailscale restent) et arrête PostgreSQL local ; les données sont conservées ;
 - le mode local ne touche **jamais** la base Neon de la configuration, sauf si `-DatabaseUrl` est donné explicitement.
+- **sauvegarde Neon automatique** : à l'arrêt (Ctrl+C ou `stop`), une fois l'API arrêtée, le lanceur exécute un `pg_dump` dans un conteneur `postgres:17-alpine` avec le mot de passe déjà saisi au lancement, et écrit `backups/neon-AAAAMMJJ-HHMMSS.dump` (dossier ignoré par Git). Il garde les 10 plus récentes (`keepBackups`) et ne touche jamais aux sauvegardes locales `dlr-*.dump`. L'hôte `-pooler` est remplacé par l'hôte direct, que `pg_dump` exige. Un échec est signalé mais n'empêche pas l'arrêt. Désactivable avec `"backupOnStop": false` dans `dlr.config.json`. Restauration : `pg_restore` (par exemple via le même conteneur) vers une base vide ; `restore-database.ps1` ne concerne que la base locale.
 
 Le mot de passe Neon et la clé DeepSeek restent demandés à chaque lancement (saisie masquée, jamais écrits sur disque). `start-hybrid.ps1` est conservé comme enveloppe de compatibilité autour de `dlr.ps1`.
 
