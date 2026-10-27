@@ -89,15 +89,32 @@ function Backup-Database {
     New-Item -ItemType Directory -Path $backupDirectory -Force | Out-Null
     $fileName = 'neon-' + (Get-Date -Format 'yyyyMMdd-HHmmss') + '.dump'
     $dockerPath = Get-DockerPath
-    $dockerArguments = @('run', '--rm', '-e', 'PGPASSWORD', '-v', "${backupDirectory}:/backup")
-    if ($sslMode) { $dockerArguments += @('-e', "PGSSLMODE=$sslMode") }
-    $dockerArguments += @('postgres:17-alpine', 'pg_dump', '--host', $dbHost, '--port', $dbPort, '--username', $User,
-        '--dbname', $match.Groups['db'].Value, '--format=custom', '--no-owner', '--file', "/backup/$fileName")
+    function Invoke-Dump([string]$image) {
+        $dockerArguments = @('run', '--rm', '-e', 'PGPASSWORD', '-v', "${backupDirectory}:/backup")
+        if ($sslMode) { $dockerArguments += @('-e', "PGSSLMODE=$sslMode") }
+        $dockerArguments += @($image, 'pg_dump', '--host', $dbHost, '--port', $dbPort, '--username', $User,
+            '--dbname', $match.Groups['db'].Value, '--format=custom', '--no-owner', '--file', "/backup/$fileName")
+        # Les messages d'erreur de pg_dump sont capturés pour pouvoir réagir à une version de serveur trop récente.
+        $previous = $ErrorActionPreference
+        $ErrorActionPreference = 'Continue'
+        try { $text = (& $dockerPath @dockerArguments 2>&1 | ForEach-Object { "$_" }) -join "`n" }
+        finally { $ErrorActionPreference = $previous }
+        return [pscustomobject]@{ Succeeded = ($LASTEXITCODE -eq 0); Output = $text }
+    }
     Write-Step "Sauvegarde de la base ($dbHost)"
     $env:PGPASSWORD = $Password
     try {
-        & $dockerPath @dockerArguments
-        $succeeded = $LASTEXITCODE -eq 0
+        $image = 'postgres:17-alpine'
+        $result = Invoke-Dump $image
+        # « server version: 18.x; pg_dump version: 17.x » : on réessaie avec l'image de la version du serveur.
+        $versionMatch = [regex]::Match($result.Output, 'server version: (?<major>\d+)')
+        if (-not $result.Succeeded -and $versionMatch.Success -and $result.Output -match 'version mismatch') {
+            $image = 'postgres:' + $versionMatch.Groups['major'].Value + '-alpine'
+            Write-Host "Version du serveur différente : nouvel essai avec $image" -ForegroundColor Yellow
+            $result = Invoke-Dump $image
+        }
+        $succeeded = $result.Succeeded
+        if (-not $succeeded -and -not [string]::IsNullOrWhiteSpace($result.Output)) { Write-Host $result.Output -ForegroundColor Red }
     }
     finally { Remove-Item Env:PGPASSWORD -ErrorAction SilentlyContinue }
     $file = Join-Path $backupDirectory $fileName
