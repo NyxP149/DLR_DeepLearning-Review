@@ -32,7 +32,8 @@ public class AttemptAssessmentController {
             @RequestBody QuizAnswerRequest request
     ) {
         return QuizAnswerResponse.from(assessmentService.answer(
-                attemptId, questionId, request.selectedChoice(), request.answerText(), request.confidence()));
+                attemptId, questionId, request.selectedChoice(), request.answerText(), request.confidence(),
+                Boolean.TRUE.equals(request.draft())));
     }
 
     @DeleteMapping("/quiz/{questionId}")
@@ -54,7 +55,8 @@ public class AttemptAssessmentController {
         return assessmentService.complete(attemptId);
     }
 
-    public record QuizAnswerRequest(Integer selectedChoice, String answerText, Integer confidence) {
+    /** {@code draft} : sauvegarde automatique en cours de frappe, qui ne compte pas comme une réponse donnée. */
+    public record QuizAnswerRequest(Integer selectedChoice, String answerText, Integer confidence, Boolean draft) {
     }
 
     public record QuizAnswerResponse(

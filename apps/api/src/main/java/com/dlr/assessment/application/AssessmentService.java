@@ -76,7 +76,8 @@ public class AssessmentService {
             String questionId,
             Integer selectedChoice,
             String answerText,
-            Integer confidence
+            Integer confidence,
+            boolean draft
     ) {
         if (confidence != null && (confidence < 1 || confidence > 3)) {
             throw new IllegalArgumentException("La confiance doit être comprise entre 1 et 3.");
@@ -93,7 +94,10 @@ public class AssessmentService {
         AssessmentRepository.QuizAnswer saved = new AssessmentRepository.QuizAnswer(
                 UUID.randomUUID(), attemptId, questionId, selectedChoice, answerText, grade.score(), grade.feedback(),
                 Instant.now(clock), confidence);
-        assessmentRepository.logAnswer(saved);
+        // Un brouillon enregistré pendant la frappe n'est pas la « première réponse » : seul un envoi réel est journalisé.
+        if (!draft) {
+            assessmentRepository.logAnswer(saved);
+        }
         assessmentRepository.saveAnswer(saved);
         return AnswerResult.of(saved, question, grade.missingIdeas());
     }

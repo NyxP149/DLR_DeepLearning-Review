@@ -95,6 +95,33 @@ class RetrievalPracticeControllerTest {
     }
 
     @Test
+    void ignoresDraftsSavedWhileTypingWhenScoringTheFirstAnswer() throws Exception {
+        String attemptId = startAndRunAttempt();
+        for (var question : lab.quiz()) {
+            if ("SINGLE_CHOICE".equals(question.type())) {
+                answer(attemptId, question.code(), "{\"selectedChoice\":" + question.correctChoice() + "}");
+            }
+        }
+        // La sauvegarde automatique enregistre des textes partiels avant l'envoi réel de la réponse complète.
+        answer(attemptId, textQuestion.code(), "{\"answerText\":\"Le\",\"draft\":true}");
+        answer(attemptId, textQuestion.code(), "{\"answerText\":\"Le contrat\",\"draft\":true}");
+        answer(attemptId, textQuestion.code(),
+                "{\"answerText\":\"" + String.join(" ", textQuestion.expectedKeywords()) + "\",\"confidence\":2}");
+        checklistAllDone(attemptId);
+
+        mockMvc.perform(post("/api/attempts/{id}/complete", attemptId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.breakdown.connections").value(100));
+        assertThat(jdbcTemplate.queryForObject(
+                "select count(*) from quiz_answer_log where attempt_id = ? and question_id = ?", Integer.class,
+                UUID.fromString(attemptId), textQuestion.code())).isEqualTo(1);
+        // La réponse reste enregistrée pour être restaurée au rechargement.
+        assertThat(jdbcTemplate.queryForObject(
+                "select count(*) from quiz_answer where attempt_id = ? and question_id = ?", Integer.class,
+                UUID.fromString(attemptId), textQuestion.code())).isEqualTo(1);
+    }
+
+    @Test
     void keepsTheV1RulesWhenAnAlreadyScoredAttemptIsRecalculated() throws Exception {
         String attemptId = startAndRunAttempt();
         for (var question : lab.quiz()) {

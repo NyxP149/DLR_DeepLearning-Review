@@ -136,7 +136,7 @@ export class ExecutionApiService {
   answerQuiz(
     attemptId: string,
     questionId: string,
-    answer: { selectedChoice?: number; answerText?: string; confidence?: number }
+    answer: { selectedChoice?: number; answerText?: string; confidence?: number; draft?: boolean }
   ): Observable<QuizAnswerResponse> {
     return this.http.put<QuizAnswerResponse>(
       `${this.apiUrl}/attempts/${encodeURIComponent(attemptId)}/quiz/${encodeURIComponent(questionId)}`,

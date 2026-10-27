@@ -1402,3 +1402,12 @@ Le lancement quotidien passait par un raccourci `.lnk`, Git Bash, `start-hybrid.
 - **Tests** : le test e2e des thèmes passe à neuf thèmes et vérifie pour chacun un contraste d'au moins 4,5 (texte, texte secondaire, champs, boutons) ; ils le respectent tous. 19 tests e2e verts.
 - **Limites** : la correction a été vérifiée sur JAVA-10 à 830 px ; les autres largeurs et labos n'ont pas été parcourus un par un.
 
+
+## V3.39 — La sauvegarde automatique ne compte plus comme « première réponse »
+
+- **Problème** : au bilan de JAVA-10, « Explication » affichait 0 % alors que la réponse rédigée était bonne et jugée « Bonne réponse » à la vérification (voir `ISSUES.md`).
+- **Cause** : la sauvegarde automatique du texte (700 ms après chaque pause de frappe) appelait la même route que « Vérifier » et journalisait chaque envoi dans `quiz_answer_log`. Le score V2 retient la première ligne du journal par question : c'était un brouillon partiel (« Le… »), sans aucun des mots-clés attendus. Les statistiques qui lisent la première réponse (gain du quiz de départ, rétention) étaient faussées de la même façon, sur tous les labos à question rédigée.
+- **Correctif** : `QuizAnswerRequest` reçoit `draft` ; la sauvegarde automatique du front l'envoie à `true`. `AssessmentService.answer` enregistre alors la réponse (restaurée au rechargement) mais ne la journalise pas. Un envoi réel (« Vérifier », fin de labo) reste journalisé comme avant.
+- **Migration V25** : retire du journal les lignes sans confiance suivies d'une autre ligne de la même question et de la même tentative (un envoi réel porte une confiance, un brouillon jamais). Un bilan déjà calculé garde son ancienne valeur jusqu'à « Recalculer mon score ».
+- **Tests** : `ignoresDraftsSavedWhileTypingWhenScoringTheFirstAnswer` (brouillons « Le », « Le contrat », puis réponse complète : explication à 100, une seule ligne de journal, réponse conservée) ; calibration, gain, rétention et pratique de rappel verts. Suite API complète non relancée.
+- **Limites** : la migration ne distingue pas un brouillon d'une première réponse envoyée sans confiance puis renvoyée ; ce cas n'existe que si la confiance n'a jamais été choisie avant la fin du labo.

@@ -746,7 +746,7 @@ export class LabWorkspaceComponent implements OnDestroy {
           await firstValueFrom(this.executionApi.answerQuiz(
             attemptId,
             questionId,
-            typeof value === 'number' ? { selectedChoice: value } : { answerText: value }
+            typeof value === 'number' ? { selectedChoice: value, draft: true } : { answerText: value, draft: true }
           ));
         }
         if (this.activeLabCode === labCode) this.reflectionStatus.set('Réponse sauvegardée dans Neon et sur cet appareil.');

@@ -495,3 +495,16 @@ Sur une fenêtre d'environ 830 px, la page d'un laboratoire (JAVA-10) montrait u
 **Solution**
 La grille à une colonne (`1fr`) ne pouvait pas rétrécir sous la largeur de son contenu. Elle passe à `minmax(0, 1fr)`, de même que les listes du quiz et de la checklist ; les colonnes et le `fieldset` des questions reçoivent `min-width: 0` et le texte des choix `overflow-wrap: anywhere` pour qu'une longue chaîne de code passe à la ligne. À 830 px, plus aucun élément ne dépasse de la fenêtre.
 
+
+---
+
+## Le score « Explication » restait à 0 % malgré une bonne réponse
+- severity: high
+- date: 2026-10
+- tags: Évaluation, API, Score
+
+**Problème**
+Au bilan de JAVA-10, la ligne « Explication » indiquait 0 % alors que la réponse rédigée était complète et jugée « Bonne réponse » à la vérification. Le score total était sous-évalué (73,75 % au lieu d'environ 93,75 %), et les statistiques de gain du quiz de départ et de rétention étaient faussées sur tous les labos à question rédigée.
+
+**Solution**
+La sauvegarde automatique du texte passait par la même route que « Vérifier » et était journalisée comme une vraie réponse ; le score V2 prenait donc pour « première réponse » un brouillon de quelques mots. La sauvegarde automatique envoie maintenant `draft: true` et n'est plus journalisée, et la migration V25 retire les anciens brouillons du journal. « Recalculer mon score » donne alors la valeur correcte.
