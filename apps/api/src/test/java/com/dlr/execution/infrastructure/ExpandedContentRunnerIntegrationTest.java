@@ -25,7 +25,7 @@ class ExpandedContentRunnerIntegrationTest {
             "SPRING_BOOT-", 12,
             "ANGULAR-", 10,
             "SQL-", 10,
-            "DEVOPS-", 8,
+            "DEVOPS-", 13,
             "ARCHITECTURE-", 24,
             "LLM-", 12);
 

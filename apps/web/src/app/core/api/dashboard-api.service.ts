@@ -18,6 +18,17 @@ export interface Dashboard {
   badges: { code: string; label: string; description: string; unlocked: boolean }[];
   nextLabCode: string | null;
   recentAttempts: { labCode: string; status: string; score: number | null; startedAt: string; completedAt: string | null }[];
+  overall?: OverallProgress;
+}
+
+export interface OverallProgress {
+  progressPercent: number;
+  totalLabs: number;
+  validatedLabs: number;
+  toConsolidateLabs: number;
+  inProgressLabs: number;
+  notStartedLabs: number;
+  paths: { pathCode: string; title: string; totalLabs: number; validatedLabs: number; progressPercent: number }[];
 }
 
 @Injectable({ providedIn: 'root' })

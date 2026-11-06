@@ -20,6 +20,7 @@ export interface Pretest {
   status: 'PENDING' | 'ANSWERED' | 'SKIPPED' | 'NOT_APPLICABLE';
   questionCodes: string[];
   gain: PretestGain | null;
+  start?: { total: number; correct: number; unknown: number } | null;
 }
 export type LabProgressState = 'LOCKED' | 'AVAILABLE' | 'IN_PROGRESS' | 'ACTION_REQUIRED' | 'COMPLETED';
 export interface PathProgress {

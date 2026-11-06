@@ -1,0 +1,152 @@
+{
+  "code": "DEVOPS-12",
+  "language": "PYTHON",
+  "number": 12,
+  "slug": "projet-deployer-une-application-sur-kubernetes",
+  "title": "Projet professionnel : déployer une application sur Kubernetes",
+  "difficulty": "PROJET",
+  "threshold": 80,
+  "activityType": "PROJECT",
+  "prerequisites": [
+    "DEVOPS-11"
+  ],
+  "objectives": [
+    "Assembler Namespace, ConfigMap, Secret, Deployment et Service en un déploiement cohérent.",
+    "Vérifier les liens entre objets : sélecteurs, ports, références de configuration.",
+    "Appliquer les objets dans un ordre qui respecte leurs dépendances.",
+    "Livrer un déploiement relu, reproductible et documenté."
+  ],
+  "sections": [
+    {
+      "title": "Cadrer le projet : une boutique en ligne sur Kubernetes",
+      "content": "Mission : déployer l'API d'une boutique sur un cluster, avec trois exigences. D'abord la reproductibilité : tout est décrit dans des manifestes versionnés, aucune commande manuelle ne change l'état du cluster. Ensuite la continuité : au moins deux réplicas et une mise à jour progressive. Enfin la sécurité : aucun secret en clair, image épinglée, utilisateur non root.\n\nLivrables : un dossier k8s/ avec un fichier par objet (namespace.yaml, configmap.yaml, secret.yaml sans la vraie valeur, deployment.yaml, service.yaml), un README qui explique l'ordre d'application et les commandes de vérification, et un script de contrôle qui valide la cohérence des manifestes avant tout kubectl apply.\n\nOn raisonne en trois niveaux : chaque objet est correct seul (DEVOPS-09 et 11), les objets sont cohérents entre eux (ce projet), et l'ensemble tourne réellement (kubectl rollout status, kubectl get endpoints)."
+    },
+    {
+      "title": "Exemple résolu : valider la cohérence entre objets",
+      "conceptCodes": [
+        "DEVOPS-K8S-PROJECT"
+      ],
+      "content": "Problème : la plupart des pannes de déploiement ne viennent pas d'un objet invalide, mais d'un lien rompu entre deux objets valides.\n\nRaisonnement, étape par étape :\n1. Le sélecteur du Deployment doit se retrouver dans les étiquettes de son modèle de pod, sinon l'API refuse l'objet.\n2. Le sélecteur du Service doit se retrouver dans ces mêmes étiquettes, sinon ses endpoints sont vides.\n3. Le targetPort du Service doit être un port que le conteneur écoute : sinon le trafic arrive à un port fermé.\n4. Chaque configMapRef et secretKeyRef doit viser un objet qui existe (même nom, même namespace) : sinon le pod reste en CreateContainerConfigError.\n5. Le nombre de réplicas doit permettre une mise à jour sans coupure : au moins 2.\n6. Le contrôle affiche chaque vérification et conclut par le nombre de problèmes.\n```python\ndef service_matches(service, deployment):\n    labels = deployment['spec']['template']['metadata']['labels']\n    selector = service['spec']['selector']\n    return all(labels.get(k) == v for k, v in selector.items())\n```"
+    },
+    {
+      "title": "Ordre d'application et vérification",
+      "content": "Kubernetes accepte presque n'importe quel ordre, mais un pod ne démarre que si ce qu'il référence existe déjà. L'ordre logique : Namespace, puis ConfigMap et Secret, puis Deployment, puis Service, enfin Ingress. kubectl apply -f k8s/ applique les fichiers par ordre alphabétique : il faut donc nommer les fichiers dans l'ordre voulu (00-namespace.yaml, 10-config.yaml, 20-deployment.yaml) ou appliquer par étapes.\n\nVérifications après application : kubectl rollout status deployment/shop attend la fin du déploiement, kubectl get pods -n shop -o wide montre l'état des pods, kubectl get endpoints shop -n shop confirme que le Service trouve des pods, kubectl describe pod expose les événements en cas de blocage, kubectl logs lit la sortie de l'application.\n\nLe nettoyage se fait aussi par manifeste : kubectl delete -f k8s/ supprime exactement ce qui a été créé."
+    },
+    {
+      "title": "Erreurs fréquentes et critères de réussite",
+      "content": "Erreurs fréquentes :\n1. targetPort différent du port d'écoute réel du conteneur.\n2. Nom de Secret ou de ConfigMap avec une faute de frappe : le pod ne démarre pas.\n3. Un seul réplica : la moindre mise à jour ou panne de nœud coupe le service.\n4. Un Secret avec sa vraie valeur commité dans Git.\n5. Objets créés dans le namespace default par oubli de metadata.namespace.\n6. kubectl edit en production : l'état réel diverge du dépôt.\n\nCritères de réussite : le script de contrôle passe sans problème, un redéploiement depuis zéro avec les seuls manifestes du dépôt fonctionne, aucune valeur sensible n'apparaît dans l'historique Git, et le README permet à une autre personne de déployer sans te poser de question."
+    }
+  ],
+  "keyConcepts": [
+    {
+      "code": "DEVOPS-K8S-PROJECT",
+      "name": "Déploiement Kubernetes cohérent et reproductible",
+      "definition": "Un déploiement Kubernetes réussi est un ensemble de manifestes dont les objets se référencent correctement (sélecteurs, ports, configuration) et s'appliquent dans un ordre qui respecte leurs dépendances.",
+      "whyExists": "Les objets Kubernetes sont indépendants : rien n'empêche un Service de viser des pods inexistants. La cohérence d'ensemble est une responsabilité de l'équipe.",
+      "whyImportant": "Un contrôle automatique des liens entre objets attrape en quelques secondes des erreurs qui coûtent sinon une demi-heure de diagnostic en production.",
+      "minimalExample": "Un Deployment et un Service dont les étiquettes et les ports se correspondent.",
+      "professionalExample": "Une équipe déploie sa boutique depuis un dépôt de manifestes. Un script de contrôle tourne dans la CI avant chaque fusion : il vérifie sélecteurs, ports et références, et refuse un Deployment à un seul réplica. Un jour, un renommage de Secret casse une référence : la CI échoue en trente secondes avec un message précis, au lieu d'un pod en CreateContainerConfigError découvert en production.",
+      "codeExample": "k8s/\n  00-namespace.yaml\n  10-configmap.yaml\n  10-secret.yaml      # modèle sans valeur réelle\n  20-deployment.yaml\n  30-service.yaml\n\nkubectl apply -f k8s/\nkubectl rollout status deployment/shop -n shop\nkubectl get endpoints shop -n shop",
+      "commonMistake": "Valider chaque fichier isolément sans vérifier que les objets se visent correctement.",
+      "masteryQuestion": "Quels liens entre objets faut-il vérifier avant d'appliquer un déploiement, et dans quel ordre appliquer les objets ?",
+      "masteryProof": "Écrire un contrôle de cohérence entre manifestes (réplicas, sélecteurs, ports, références) et un ordre d'application déterministe."
+    }
+  ],
+  "exercises": [
+    {
+      "code": "DEVOPS-12-E1",
+      "title": "Valider la cohérence d'un déploiement",
+      "statement": "Écris le contrôle de cohérence d'un ensemble de manifestes (liste de dictionnaires). Vérifie, dans cet ordre : le nombre de réplicas du Deployment (au moins 2), la cohérence du sélecteur du Service avec les étiquettes du modèle de pod, la présence du targetPort du Service parmi les containerPort du conteneur, l'existence du ConfigMap référencé par configMapRef et du Secret référencé par secretKeyRef. Affiche une ligne par vérification (OK ou ÉCHEC avec un conseil), puis le verdict.",
+      "starterCode": "MANIFESTS = [\n    {\"kind\": \"ConfigMap\", \"metadata\": {\"name\": \"shop-config\"}},\n    {\"kind\": \"Secret\", \"metadata\": {\"name\": \"shop-secrets\"}},\n    {\n        \"kind\": \"Deployment\",\n        \"metadata\": {\"name\": \"shop\"},\n        \"spec\": {\n            \"replicas\": 1,\n            \"selector\": {\"matchLabels\": {\"app\": \"shop\"}},\n            \"template\": {\n                \"metadata\": {\"labels\": {\"app\": \"shop\"}},\n                \"spec\": {\n                    \"containers\": [\n                        {\n                            \"name\": \"shop\",\n                            \"image\": \"shop:1.0.0\",\n                            \"ports\": [{\"containerPort\": 8080}],\n                            \"envFrom\": [{\"configMapRef\": {\"name\": \"shop-config\"}}],\n                            \"env\": [\n                                {\"name\": \"DB_PASSWORD\", \"valueFrom\": {\"secretKeyRef\": {\"name\": \"shop-secret\", \"key\": \"db\"}}}\n                            ],\n                        }\n                    ]\n                },\n            },\n        },\n    },\n    {\n        \"kind\": \"Service\",\n        \"metadata\": {\"name\": \"shop\"},\n        \"spec\": {\"selector\": {\"app\": \"shop\"}, \"ports\": [{\"port\": 80, \"targetPort\": 80}]},\n    },\n]\n\ndeployment = next(m for m in MANIFESTS if m[\"kind\"] == \"Deployment\")\nservice = next(m for m in MANIFESTS if m[\"kind\"] == \"Service\")\ncontainer = deployment[\"spec\"][\"template\"][\"spec\"][\"containers\"][0]\nlabels = deployment[\"spec\"][\"template\"][\"metadata\"][\"labels\"]\nproblems = 0\n\n\ndef report(ok: bool, success: str, failure: str) -> None:\n    global problems\n    if ok:\n        print(f\"OK    {success}\")\n    else:\n        print(f\"ÉCHEC {failure}\")\n        problems += 1\n\n\n# TODO 1 : replicas >= 2\n#   succès \"replicas=<n>\" ; échec \"replicas=<n> -> prévois au moins 2 réplicas\"\n# TODO 2 : tous les couples du sélecteur du Service se retrouvent dans labels\n#   succès \"le Service sélectionne les pods du Deployment\" ; échec \"le sélecteur du Service ne trouve aucun pod -> aligne les étiquettes\"\n# TODO 3 : le targetPort du Service est l'un des containerPort du conteneur\n#   succès \"targetPort <p> écouté par le conteneur\" ; échec \"targetPort <p> absent des ports <liste> -> aligne targetPort sur containerPort\"\n# TODO 4 : le ConfigMap de configMapRef existe (kind ConfigMap, même nom)\n#   succès \"ConfigMap <nom> trouvé\" ; échec \"ConfigMap <nom> introuvable -> crée-le ou corrige le nom\"\n# TODO 5 : le Secret de secretKeyRef existe (kind Secret, même nom)\n#   succès \"Secret <nom> trouvé\" ; échec \"Secret <nom> introuvable -> crée-le ou corrige le nom\"\n\nprint(f\"Verdict: {problems} problème(s)\")\n",
+      "expectedOutput": "ÉCHEC replicas=1 -> prévois au moins 2 réplicas\nOK    le Service sélectionne les pods du Deployment\nÉCHEC targetPort 80 absent des ports [8080] -> aligne targetPort sur containerPort\nOK    ConfigMap shop-config trouvé\nÉCHEC Secret shop-secret introuvable -> crée-le ou corrige le nom\nVerdict: 3 problème(s)"
+    },
+    {
+      "code": "DEVOPS-12-T1",
+      "title": "Transfert : ordonner l'application des objets",
+      "statement": "Même notion, autre contexte : une liste de ressources (type, nom) arrive dans le désordre. Ordonne-les pour qu'un objet soit appliqué après ce dont il dépend : Namespace, puis ConfigMap, Secret, Deployment, Service, Ingress. À rang égal, trie par nom. Affiche « n. Type/nom » pour chaque ressource, en numérotant à partir de 1. Aucun indice n'est proposé et cet exercice ne compte pas dans le score. Sortie exacte :\n1. Namespace/shop\n2. ConfigMap/shop-config\n3. Secret/shop-secrets\n4. Deployment/shop\n5. Deployment/worker\n6. Service/shop\n7. Ingress/shop",
+      "starterCode": "RESOURCES = [\n    (\"Ingress\", \"shop\"),\n    (\"Deployment\", \"worker\"),\n    (\"Service\", \"shop\"),\n    (\"Secret\", \"shop-secrets\"),\n    (\"Namespace\", \"shop\"),\n    (\"Deployment\", \"shop\"),\n    (\"ConfigMap\", \"shop-config\"),\n]\nRANK = {\"Namespace\": 0, \"ConfigMap\": 1, \"Secret\": 2, \"Deployment\": 3, \"Service\": 4, \"Ingress\": 5}\n# À toi : écris la suite, sans étapes imposées.\n",
+      "expectedOutput": "1. Namespace/shop\n2. ConfigMap/shop-config\n3. Secret/shop-secrets\n4. Deployment/shop\n5. Deployment/worker\n6. Service/shop\n7. Ingress/shop",
+      "kind": "TRANSFER"
+    }
+  ],
+  "quiz": [
+    {
+      "code": "DEVOPS-12-Q1",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Un Service a pour sélecteur app: shop-api alors que les pods portent app: shop. Quel est le symptôme ?",
+      "choices": [
+        "L'API refuse le Service à la création",
+        "Le Service est créé mais ses endpoints sont vides : aucune requête n'aboutit",
+        "Les pods sont supprimés",
+        "Le Service choisit un autre sélecteur automatiquement"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Le Service est un objet valide : il n'a simplement trouvé aucun pod. kubectl get endpoints le montre immédiatement vide."
+    },
+    {
+      "code": "DEVOPS-12-Q2",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Un pod reste en CreateContainerConfigError. Quelle cause est la plus probable ?",
+      "choices": [
+        "L'image est trop grosse",
+        "Un Secret ou un ConfigMap référencé n'existe pas (nom erroné, mauvais namespace)",
+        "Le Service est de type ClusterIP",
+        "Le nombre de réplicas est trop élevé"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Le conteneur ne peut pas être créé car sa configuration référence un objet introuvable. kubectl describe pod donne le nom exact de ce qui manque."
+    },
+    {
+      "code": "DEVOPS-12-Q3",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Le Service expose port: 80, targetPort: 80, mais l'application écoute sur 8080 (containerPort: 8080). Que se passe-t-il ?",
+      "choices": [
+        "Tout fonctionne : Kubernetes corrige le port",
+        "Le Service est refusé par l'API",
+        "Le Service trouve les pods mais ses requêtes arrivent sur un port où rien n'écoute : elles échouent",
+        "Les pods redémarrent en boucle"
+      ],
+      "correctChoice": 2,
+      "expectedKeywords": [],
+      "explanation": "targetPort désigne le port du conteneur. Les endpoints existent, mais la connexion est refusée. Il faut aligner targetPort sur le port d'écoute réel."
+    },
+    {
+      "code": "DEVOPS-12-Q4",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Pourquoi exiger au moins deux réplicas pour un Deployment de production ?",
+      "choices": [
+        "Kubernetes refuse un seul réplica",
+        "Avec un seul pod, une mise à jour, une panne ou une éviction coupe le service",
+        "Un Service ne fonctionne qu'avec deux pods",
+        "Pour doubler la vitesse de chaque requête"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Un seul pod est un point de défaillance unique : tant qu'il est remplacé ou redémarré, plus personne ne répond. Deux réplicas permettent de continuer à servir pendant l'opération."
+    },
+    {
+      "code": "DEVOPS-12-Q5",
+      "type": "FREE_TEXT",
+      "prompt": "Sans relire le cours, explique avec tes mots quels liens entre objets il faut vérifier avant de déployer, et pourquoi un contrôle automatique est utile.",
+      "choices": [],
+      "correctChoice": null,
+      "expectedKeywords": [
+        "selecteur",
+        "port",
+        "secret",
+        "configmap",
+        "ordre"
+      ],
+      "modelAnswer": "Il faut vérifier que le sélecteur du Service retrouve les étiquettes des pods, que le targetPort correspond au port d'écoute du conteneur, que les ConfigMap et Secret référencés existent, et appliquer les objets dans l'ordre de leurs dépendances. Chaque objet peut être valide seul alors que le lien entre deux objets est rompu : un contrôle automatique en CI attrape ces erreurs en secondes plutôt qu'en production.",
+      "explanation": "Une bonne réponse cite au moins trois liens (sélecteur, port, références de configuration), l'ordre d'application, et explique que l'erreur vient de la relation entre objets, pas d'un objet isolé."
+    }
+  ],
+  "checklist": [
+    "Mes manifestes décrivent tout le déploiement, sans commande manuelle",
+    "Un script de contrôle vérifie sélecteurs, ports, références et nombre de réplicas",
+    "Les objets sont appliqués dans l'ordre de leurs dépendances",
+    "Mon README permet à quelqu'un d'autre de déployer et de vérifier"
+  ]
+}

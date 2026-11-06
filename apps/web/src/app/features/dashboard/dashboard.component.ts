@@ -19,6 +19,35 @@ import { DashboardApiService } from '../../core/api/dashboard-api.service';
           <div><p>Bonjour {{ state.data.profile.displayName }}</p><h1>Prêt pour la prochaine étape ?</h1><span>{{ state.data.profile.weekdayMinutes }} minutes prévues aujourd’hui</span></div>
           @if (state.data.nextLabCode) { <a [routerLink]="['/labs', state.data.nextLabCode]">Continuer {{ state.data.nextLabCode }} →</a> }
         </header>
+        @if (state.data.overall; as overall) {
+          <section class="overall" aria-labelledby="overall-title">
+            <div class="overall-head">
+              <div><h2 id="overall-title">Progression générale</h2><span>{{ overall.validatedLabs }} laboratoire{{ overall.validatedLabs > 1 ? 's' : '' }} validé{{ overall.validatedLabs > 1 ? 's' : '' }} sur {{ overall.totalLabs }}, tous parcours confondus</span></div>
+              <strong class="overall-percent">{{ overall.progressPercent }} %</strong>
+            </div>
+            <div class="overall-bar" role="img" [attr.aria-label]="overall.progressPercent + ' % de progression générale'">
+              <i class="seg validated" [style.width.%]="share(overall.validatedLabs, overall.totalLabs)"></i>
+              <i class="seg consolidate" [style.width.%]="share(overall.toConsolidateLabs, overall.totalLabs)"></i>
+              <i class="seg running" [style.width.%]="share(overall.inProgressLabs, overall.totalLabs)"></i>
+            </div>
+            <ul class="overall-legend">
+              <li><i class="dot validated"></i><strong>{{ overall.validatedLabs }}</strong> validés</li>
+              <li><i class="dot consolidate"></i><strong>{{ overall.toConsolidateLabs }}</strong> à consolider</li>
+              <li><i class="dot running"></i><strong>{{ overall.inProgressLabs }}</strong> en cours</li>
+              <li><i class="dot todo"></i><strong>{{ overall.notStartedLabs }}</strong> à faire</li>
+            </ul>
+            <div class="overall-paths">
+              @for (path of overall.paths; track path.pathCode) {
+                <a [routerLink]="['/paths']">
+                  <span>{{ path.title }}</span>
+                  <i class="track"><b [style.width.%]="path.progressPercent"></b></i>
+                  <em>{{ path.validatedLabs }} / {{ path.totalLabs }} · {{ path.progressPercent }} %</em>
+                </a>
+              }
+            </div>
+            <p class="overall-note">Un laboratoire validé compte 100 %, terminé sous le seuil 60 %, en cours 25 %, pas commencé 0 %.</p>
+          </section>
+        }
         <section class="metrics" aria-label="Indicateurs de progression">
           <article><span>Progression Java</span><strong>{{ state.data.progressPercent }} %</strong><small>{{ state.data.completedLabs }} / {{ state.data.totalLabs }} laboratoires</small></article>
           <article><span>Score moyen</span><strong>{{ state.data.averageScore }} %</strong><small>Tentatives terminées</small></article>
@@ -49,7 +78,7 @@ import { DashboardApiService } from '../../core/api/dashboard-api.service';
             <span class="activity-chevron" aria-hidden="true">▾</span>
           </button>
           <div class="activity-slide" id="recent-activity" [attr.inert]="activityOpen() ? null : ''">
-            <div class="activity-list">
+            <div class="activity-list" tabindex="0" aria-label="Activité récente, liste défilante">
               @if (state.data.recentAttempts.length === 0) {
                 <p>Aucune tentative pour le moment. Commence par JAVA-01.</p>
               } @else {
@@ -72,7 +101,12 @@ import { DashboardApiService } from '../../core/api/dashboard-api.service';
     .achievements,.activity { background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);margin-top:1rem;padding:1.15rem}.achievements>div{display:grid;gap:.6rem;grid-template-columns:repeat(5,1fr)}.achievements article{align-items:center;border:1px solid var(--border);border-radius:.7rem;display:flex;gap:.65rem;opacity:.48;padding:.7rem}.achievements article.unlocked{background:var(--success-soft);border-color:#2c765f;opacity:1}.achievements article>span{align-items:center;background:#222d48;border-radius:50%;display:flex;height:1.7rem;justify-content:center;width:1.7rem}.achievements .unlocked>span{background:var(--success);color:#07150d}.achievements article div{display:grid}.achievements small{color:var(--text-muted);font-size:.65rem}.activity-list>a { align-items:center; border-top:1px solid var(--border); color:var(--text); display:grid; gap:1rem; grid-template-columns:auto 1fr auto; padding:.8rem 0; text-decoration:none; } .activity b { color:var(--success); }
     .activity-toggle { align-items:center; background:none; border:0; color:inherit; cursor:pointer; display:flex; font:inherit; gap:.8rem; padding:0; text-align:left; width:100%; } .activity-toggle h2 { flex:1; margin:0; } .activity-toggle:focus-visible { outline:2px solid var(--accent); outline-offset:4px; border-radius:.4rem; }
     .activity-summary { color:var(--text-muted); font-size:.85rem; } .activity-count { background:var(--accent-soft); border-radius:999px; font-size:.75rem; font-weight:750; min-width:1.5rem; padding:.1rem .5rem; text-align:center; } .activity-chevron { color:var(--text-muted); display:inline-block; transition:transform .25s ease; } .activity.open .activity-chevron { transform:rotate(180deg); }
-    .activity-slide { display:grid; grid-template-rows:0fr; transition:grid-template-rows .3s ease; } .activity.open .activity-slide { grid-template-rows:1fr; margin-top:1rem; } .activity-list { min-height:0; overflow:hidden; } .activity-list>p { margin:0; }
+    .activity-slide { display:grid; grid-template-rows:0fr; transition:grid-template-rows .3s ease; } .activity.open .activity-slide { grid-template-rows:1fr; margin-top:1rem; } .activity-list { max-height:22rem; min-height:0; overflow-x:hidden; overflow-y:auto; overscroll-behavior:contain; scrollbar-gutter:stable; } .activity:not(.open) .activity-list { overflow:hidden; } .activity-list>p { margin:0; }
+    .overall { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); margin-top:1rem; padding:1.15rem; } .overall-head { align-items:flex-start; display:flex; gap:1rem; justify-content:space-between; } .overall-head h2 { margin:0 0 .25rem; } .overall-head span { color:var(--text-muted); font-size:.85rem; } .overall-percent { color:var(--accent); font-size:2.2rem; line-height:1; }
+    .overall-bar { background:var(--background); border-radius:999px; display:flex; height:.9rem; margin:1rem 0 .7rem; overflow:hidden; } .seg { display:block; height:100%; } .seg.validated,.dot.validated { background:var(--success); } .seg.consolidate,.dot.consolidate { background:#e0a33a; } .seg.running,.dot.running { background:var(--accent); } .dot.todo { background:var(--border); }
+    .overall-legend { color:var(--text-muted); display:flex; flex-wrap:wrap; font-size:.85rem; gap:.4rem 1.2rem; list-style:none; margin:0 0 1rem; padding:0; } .overall-legend strong { color:var(--text); } .dot { border-radius:50%; display:inline-block; height:.65rem; margin-right:.4rem; width:.65rem; }
+    .overall-paths { display:grid; gap:.45rem .9rem; grid-template-columns:repeat(2,minmax(0,1fr)); } .overall-paths a { align-items:center; color:var(--text); display:grid; gap:.2rem .6rem; grid-template-columns:minmax(7rem,9rem) 1fr auto; text-decoration:none; } .overall-paths span { font-size:.85rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; } .overall-paths .track { height:.5rem; } .overall-paths .track b { background:linear-gradient(90deg,var(--accent),#7aa7ff); display:block; height:100%; } .overall-paths em { color:var(--text-muted); font-size:.75rem; font-style:normal; white-space:nowrap; } .overall-note { color:var(--text-muted); font-size:.75rem; margin:1rem 0 0; }
+    @media(max-width:900px){.overall-paths{grid-template-columns:1fr}} @media(max-width:620px){.overall-head{flex-direction:column}.overall-paths a{grid-template-columns:1fr auto}.overall-paths .track{grid-column:1/-1;grid-row:2}}
     @media(prefers-reduced-motion:reduce){.activity-slide,.activity-chevron{transition:none}}
     .state { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:1rem; } .state.error { color:var(--danger); display:grid; gap:.35rem; }
     @media(max-width:1100px){.achievements>div{grid-template-columns:repeat(3,1fr)}}@media(max-width:900px){.metrics{grid-template-columns:repeat(2,1fr)}} @media(max-width:620px){.hero{align-items:flex-start;flex-direction:column;gap:1rem}.metrics{grid-template-columns:1fr 1fr}.achievements>div{grid-template-columns:1fr}.activity-list>a{grid-template-columns:1fr auto}.activity-list span{grid-column:1/-1}}
@@ -106,6 +140,10 @@ export class DashboardComponent {
     } catch {
       return true;
     }
+  }
+
+  share(part: number, total: number): number {
+    return total === 0 ? 0 : (part * 100) / total;
   }
 
   formatMinutes(minutes: number): string {

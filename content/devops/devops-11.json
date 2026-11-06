@@ -1,0 +1,152 @@
+{
+  "code": "DEVOPS-11",
+  "language": "PYTHON",
+  "number": 11,
+  "slug": "kubernetes-configuration-secrets-sondes-et-ressources",
+  "title": "Configuration, secrets, sondes et ressources",
+  "difficulty": "PROFESSIONNEL",
+  "threshold": 75,
+  "activityType": "LAB",
+  "prerequisites": [
+    "DEVOPS-10"
+  ],
+  "objectives": [
+    "Externaliser la configuration avec ConfigMap et Secret, sans rien écrire en clair dans le Deployment.",
+    "Choisir entre readiness, liveness et startup probe selon ce qu'on veut déclencher.",
+    "Régler requests et limits, et prévoir ce qui arrive en cas de dépassement.",
+    "Déduire la classe de QoS d'un pod et l'ordre d'éviction."
+  ],
+  "sections": [
+    {
+      "title": "ConfigMap et Secret : séparer la configuration de l'image",
+      "content": "Une même image doit tourner en développement, en recette et en production : seule la configuration change. Kubernetes la fournit par deux objets. Un ConfigMap contient des paires clé/valeur non sensibles (niveau de log, URL d'un service). Un Secret contient des données sensibles (mot de passe, jeton).\n\nOn les consomme par variables d'environnement (valueFrom: configMapKeyRef ou secretKeyRef) ou par fichiers montés en volume. Un Deployment ne porte jamais de secret en valeur littérale : il fait référence à un Secret par son nom et sa clé.\n\nAttention : un Secret n'est qu'encodé en base64, pas chiffré. Quiconque peut lire l'objet le décode. La protection vient du contrôle d'accès (RBAC), du chiffrement d'etcd au repos, d'un gestionnaire de secrets externe, et surtout de ne jamais commiter le YAML d'un Secret contenant la vraie valeur."
+    },
+    {
+      "title": "Exemple résolu : auditer un Deployment",
+      "conceptCodes": [
+        "DEVOPS-K8S-CONFIG"
+      ],
+      "content": "Problème : examiner les conteneurs d'un Deployment et signaler les secrets en clair, les sondes manquantes et l'absence de limite mémoire.\n\nRaisonnement, étape par étape :\n1. Une variable d'environnement dont le nom contient PASSWORD, TOKEN, SECRET ou KEY est sensible. Si elle porte une valeur littérale (value), c'est une fuite ; si elle utilise valueFrom, c'est correct.\n2. Sans readinessProbe, du trafic arrive avant que l'application soit prête.\n3. Sans livenessProbe, un blocage de l'application n'est jamais détecté.\n4. Sans limite mémoire, un conteneur peut consommer toute la mémoire du nœud.\n5. Le contrôle produit un message par risque, conteneur par conteneur, puis un décompte.\n6. Vérification : DB_PASSWORD en valeur littérale + pas de livenessProbe + pas de limite mémoire donnent trois messages.\n```python\nSENSIBLES = ('PASSWORD', 'TOKEN', 'SECRET', 'KEY')\n\ndef audit(container):\n    name, findings = container['name'], []\n    for var in container.get('env', []):\n        if any(m in var['name'] for m in SENSIBLES) and 'value' in var:\n            findings.append(f\"{name}: {var['name']} en clair -> utilise secretKeyRef\")\n    if 'readinessProbe' not in container:\n        findings.append(f\"{name}: pas de readinessProbe\")\n    return findings\n```"
+    },
+    {
+      "title": "Sondes : readiness, liveness, startup",
+      "content": "Trois sondes, trois effets différents :\n- readinessProbe : « suis-je prêt à recevoir du trafic ? ». En cas d'échec, le pod est retiré des endpoints du Service mais n'est pas redémarré. C'est elle qui protège les mises à jour progressives.\n- livenessProbe : « suis-je encore en vie ? ». En cas d'échec répété, kubelet redémarre le conteneur. Elle sert à sortir d'un blocage.\n- startupProbe : laisse un démarrage lent se terminer avant que liveness ne s'applique.\n\nUne liveness trop stricte est dangereuse : si elle teste une dépendance externe (la base de données), une panne de la base fait redémarrer en boucle toute l'application. La liveness doit tester le processus lui-même ; la readiness peut tester ce dont il dépend pour servir.\n\nParamètres : initialDelaySeconds, periodSeconds, timeoutSeconds, failureThreshold. Un seuil d'échecs trop bas provoque des redémarrages inutiles."
+    },
+    {
+      "title": "Ressources : requests, limits et classes de QoS",
+      "content": "requests est la quantité réservée : l'ordonnanceur s'en sert pour choisir un nœud. limits est le plafond. Dépasser la limite mémoire tue le conteneur (OOMKilled, code 137) ; dépasser la limite CPU le ralentit (throttling), sans le tuer.\n\nSelon requests et limits, chaque pod reçoit une classe de QoS :\n- Guaranteed : chaque conteneur a requests et limits pour le CPU et la mémoire, et ils sont égaux.\n- Burstable : au moins une request ou une limit, sans être Guaranteed.\n- BestEffort : aucune request ni limit.\n\nQuand un nœud manque de mémoire, les pods sont évincés dans cet ordre : BestEffort d'abord, puis Burstable, puis Guaranteed en dernier. Erreurs fréquentes : ne rien définir (BestEffort par défaut), des limits très supérieures aux requests (nœuds surchargés), une limit mémoire sous le besoin réel (OOMKilled en boucle)."
+    }
+  ],
+  "keyConcepts": [
+    {
+      "code": "DEVOPS-K8S-CONFIG",
+      "name": "Configuration, sondes et ressources",
+      "definition": "La configuration et les secrets sont fournis au pod par référence, les sondes indiquent à Kubernetes quand un pod est prêt ou bloqué, et les requests/limits bornent sa consommation.",
+      "whyExists": "Une image identique doit servir partout, et le cluster doit savoir quand envoyer du trafic, quand redémarrer et combien de place réserver.",
+      "whyImportant": "Sans sondes ni limites, un déploiement « réussit » mais envoie des requêtes à des pods qui ne sont pas prêts, ne détecte pas les blocages et peut être évincé en pleine charge.",
+      "minimalExample": "Un conteneur avec une readinessProbe HTTP sur /ready, une limite mémoire de 256 Mi et un mot de passe lu par secretKeyRef.",
+      "professionalExample": "Après plusieurs coupures, une équipe audite ses Deployments. Elle découvre un mot de passe de base en clair dans un manifeste versionné, aucune readiness probe (les mises à jour envoyaient du trafic à des pods encore en démarrage) et des pods sans limite mémoire évincés à chaque pic de charge. Elle passe les secrets en secretKeyRef, ajoute les probes et fixe requests et limits ; les mises à jour deviennent invisibles pour les utilisateurs et les évictions cessent.",
+      "codeExample": "containers:\n  - name: api\n    image: api:2.1.0\n    env:\n      - name: LOG_LEVEL\n        valueFrom:\n          configMapKeyRef:\n            name: api-config\n            key: log-level\n      - name: DB_PASSWORD\n        valueFrom:\n          secretKeyRef:\n            name: api-secrets\n            key: db-password\n    readinessProbe:\n      httpGet:\n        path: /ready\n        port: 8080\n      periodSeconds: 5\n    livenessProbe:\n      httpGet:\n        path: /live\n        port: 8080\n      failureThreshold: 3\n    resources:\n      requests:\n        cpu: 100m\n        memory: 128Mi\n      limits:\n        memory: 256Mi",
+      "commonMistake": "Mettre le mot de passe en valeur littérale dans le Deployment, ou faire dépendre la liveness probe de la base de données.",
+      "masteryQuestion": "Quelle différence de comportement entre l'échec d'une readiness et d'une liveness probe, et pourquoi les distinguer ?",
+      "masteryProof": "Écrire un contrôle de Deployment qui détecte secrets en clair, sondes absentes et limite mémoire manquante, puis déduire la classe de QoS d'un pod."
+    }
+  ],
+  "exercises": [
+    {
+      "code": "DEVOPS-11-E1",
+      "title": "Auditer les conteneurs d'un Deployment",
+      "statement": "Écris un contrôle de conteneur : toute variable d'environnement dont le nom contient PASSWORD, TOKEN, SECRET ou KEY et qui porte une valeur littérale (clé value) est un secret en clair ; signale aussi l'absence de readinessProbe, de livenessProbe, et de limite mémoire (resources.limits.memory). Affiche un message par risque, conteneur par conteneur, puis le nombre de problèmes.",
+      "starterCode": "CONTAINERS = [\n    {\n        \"name\": \"api\",\n        \"image\": \"api:2.1.0\",\n        \"env\": [\n            {\"name\": \"DB_PASSWORD\", \"value\": \"admin123\"},\n            {\"name\": \"LOG_LEVEL\", \"value\": \"info\"},\n            {\"name\": \"API_TOKEN\", \"valueFrom\": {\"secretKeyRef\": {\"name\": \"api\", \"key\": \"token\"}}},\n        ],\n        \"readinessProbe\": {\"httpGet\": {\"path\": \"/ready\", \"port\": 8080}},\n        \"resources\": {\"requests\": {\"cpu\": \"100m\", \"memory\": \"128Mi\"}},\n    },\n    {\n        \"name\": \"log-agent\",\n        \"image\": \"fluent-bit:3.1\",\n        \"readinessProbe\": {\"httpGet\": {\"path\": \"/\", \"port\": 2020}},\n        \"livenessProbe\": {\"httpGet\": {\"path\": \"/\", \"port\": 2020}},\n        \"resources\": {\"limits\": {\"memory\": \"64Mi\"}},\n    },\n]\nSENSITIVE = (\"PASSWORD\", \"TOKEN\", \"SECRET\", \"KEY\")\n\n\ndef audit(container: dict) -> list[str]:\n    name = container[\"name\"]\n    findings: list[str] = []\n    # TODO 1 : pour chaque variable de container.get(\"env\", []) dont le nom contient un mot sensible\n    #          et qui a une clé \"value\", ajoute \"<nom>: <VARIABLE> en clair -> utilise secretKeyRef\"\n    # TODO 2 : si \"readinessProbe\" est absent, ajoute \"<nom>: pas de readinessProbe -> du trafic peut arriver trop tôt\"\n    # TODO 3 : si \"livenessProbe\" est absent, ajoute \"<nom>: pas de livenessProbe -> un blocage ne sera pas détecté\"\n    # TODO 4 : si \"memory\" n'est pas dans resources.limits, ajoute \"<nom>: pas de limite mémoire -> risque d'OOM ou d'éviction\"\n    return findings\n\n\nfindings = [finding for container in CONTAINERS for finding in audit(container)]\nfor finding in findings:\n    print(finding)\nprint(f\"Problèmes: {len(findings)}\")\n",
+      "expectedOutput": "api: DB_PASSWORD en clair -> utilise secretKeyRef\napi: pas de livenessProbe -> un blocage ne sera pas détecté\napi: pas de limite mémoire -> risque d'OOM ou d'éviction\nProblèmes: 3"
+    },
+    {
+      "code": "DEVOPS-11-T1",
+      "title": "Transfert : déduire la classe de QoS d'un pod",
+      "statement": "Même notion, autre contexte : déduis la classe de QoS de chaque pod. Guaranteed : chaque conteneur a requests et limits pour cpu et memory, égaux. BestEffort : aucun conteneur n'a de requests ni de limits. Burstable : tous les autres cas. Affiche « nom: classe » dans l'ordre des pods, puis « Ordre d'éviction: » suivi des noms séparés par une virgule et une espace : BestEffort d'abord, puis Burstable, puis Guaranteed (à classe égale, l'ordre d'origine). Aucun indice n'est proposé et cet exercice ne compte pas dans le score. Sortie exacte :\napi: Guaranteed\nworker: Burstable\ndebug: BestEffort\nOrdre d'éviction: debug, worker, api",
+      "starterCode": "PODS = {\n    \"api\": [{\"requests\": {\"cpu\": \"500m\", \"memory\": \"256Mi\"}, \"limits\": {\"cpu\": \"500m\", \"memory\": \"256Mi\"}}],\n    \"worker\": [{\"requests\": {\"cpu\": \"100m\"}, \"limits\": {\"memory\": \"512Mi\"}}],\n    \"debug\": [{}],\n}\n# À toi : écris la suite, sans étapes imposées.\n",
+      "expectedOutput": "api: Guaranteed\nworker: Burstable\ndebug: BestEffort\nOrdre d'éviction: debug, worker, api",
+      "kind": "TRANSFER"
+    }
+  ],
+  "quiz": [
+    {
+      "code": "DEVOPS-11-Q1",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Une readiness probe échoue sur un pod. Que fait Kubernetes ?",
+      "choices": [
+        "Il redémarre le conteneur",
+        "Il retire le pod des endpoints du Service, sans le redémarrer",
+        "Il supprime le Deployment",
+        "Il augmente la limite mémoire"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "La readiness décide si le pod reçoit du trafic. Un échec le sort des endpoints tant qu'il n'est pas redevenu prêt. Seule la liveness provoque un redémarrage."
+    },
+    {
+      "code": "DEVOPS-11-Q2",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Un conteneur avec une limite mémoire de 256 Mi en consomme 400 Mi. Que se passe-t-il ?",
+      "choices": [
+        "Il est ralenti jusqu'à repasser sous 256 Mi",
+        "Kubernetes augmente la limite automatiquement",
+        "Le conteneur est tué (OOMKilled, code 137) puis redémarré",
+        "Rien, la limite n'est qu'indicative"
+      ],
+      "correctChoice": 2,
+      "expectedKeywords": [],
+      "explanation": "La mémoire n'est pas compressible : au-delà de la limite, le noyau tue le processus. Le CPU, lui, est compressible : au-delà de la limite il est ralenti, pas tué."
+    },
+    {
+      "code": "DEVOPS-11-Q3",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Pourquoi un Secret Kubernetes ne suffit-il pas, à lui seul, à protéger un mot de passe ?",
+      "choices": [
+        "Il est limité à 10 caractères",
+        "Il ne peut pas être lu par un pod",
+        "Il est seulement encodé en base64 : il faut contrôler l'accès, chiffrer etcd et ne jamais commiter sa valeur",
+        "Il est supprimé au bout d'une heure"
+      ],
+      "correctChoice": 2,
+      "expectedKeywords": [],
+      "explanation": "Base64 n'est pas du chiffrement : quiconque lit l'objet ou le dépôt le décode. La protection vient de RBAC, du chiffrement au repos et d'un circuit qui n'expose pas la valeur."
+    },
+    {
+      "code": "DEVOPS-11-Q4",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Un pod a requests cpu=100m (sans limits) et aucune configuration mémoire. Quelle classe de QoS a-t-il ?",
+      "choices": [
+        "Guaranteed",
+        "Burstable",
+        "BestEffort",
+        "Critical"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Il a au moins une request, sans que requests et limits soient égales pour cpu et memory : Burstable. BestEffort demande l'absence de toute request et limit."
+    },
+    {
+      "code": "DEVOPS-11-Q5",
+      "type": "FREE_TEXT",
+      "prompt": "Sans relire le cours, explique avec tes mots la différence entre une readiness et une liveness probe, et ce que chacune déclenche.",
+      "choices": [],
+      "correctChoice": null,
+      "expectedKeywords": [
+        "readiness",
+        "liveness",
+        "redemarr",
+        "trafic",
+        "sonde"
+      ],
+      "modelAnswer": "La readiness indique si le pod peut recevoir du trafic : en cas d'échec il est retiré du Service mais pas redémarré, ce qui protège les mises à jour. La liveness indique si le conteneur est encore vivant : en cas d'échec répété, kubelet le redémarre pour sortir d'un blocage. Une liveness qui teste une dépendance externe peut provoquer des redémarrages en boucle.",
+      "explanation": "Une bonne réponse distingue les effets (retrait du trafic contre redémarrage) et donne un cas d'usage de chacune ; la mise en garde sur la liveness est un plus."
+    }
+  ],
+  "checklist": [
+    "Mes manifestes ne contiennent aucune valeur de secret en clair",
+    "Chaque conteneur a une readiness probe, une liveness adaptée, des requests et des limits",
+    "Je sais prévoir OOMKilled et le throttling CPU",
+    "Je sais déduire la classe de QoS d'un pod et l'ordre d'éviction"
+  ]
+}

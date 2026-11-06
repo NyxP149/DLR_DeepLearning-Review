@@ -14,6 +14,10 @@ import java.util.Map;
 @Service
 public class PathProgressService {
 
+    private static final double CREDIT_VALIDATED = 1.0;
+    private static final double CREDIT_TO_CONSOLIDATE = 0.6;
+    private static final double CREDIT_IN_PROGRESS = 0.25;
+
     private final LabCatalog catalog;
     private final JdbcTemplate jdbcTemplate;
 
@@ -44,6 +48,53 @@ public class PathProgressService {
                 .findFirst().map(LabProgress::code).orElse(null);
         return new PathProgress(normalized, labs.size(), completed,
                 labs.isEmpty() ? 0 : completed * 100 / labs.size(), next, labProgress);
+    }
+
+    /**
+     * Progression générale : tous les laboratoires de tous les parcours comptent, chacun selon son état réel.
+     * Validé 100 %, terminé sous le seuil 60 % (à consolider), en cours 25 %, pas commencé 0 %.
+     */
+    public OverallProgress overall() {
+        Map<String, AttemptProgress> attempts = loadAttempts();
+        List<LabContent> allLabs = catalog.findAll();
+        List<PathShare> paths = new java.util.ArrayList<>();
+        int total = 0;
+        int validated = 0;
+        int toConsolidate = 0;
+        int inProgress = 0;
+        double credit = 0;
+        for (var path : catalog.findPaths()) {
+            int pathTotal = 0;
+            int pathValidated = 0;
+            double pathCredit = 0;
+            for (LabContent lab : allLabs) {
+                if (!belongsToPath(lab, path.code())) continue;
+                AttemptProgress attempt = attempts.getOrDefault(lab.code(), AttemptProgress.EMPTY);
+                pathTotal++;
+                if (attempt.qualifies()) {
+                    pathValidated++;
+                    pathCredit += CREDIT_VALIDATED;
+                } else if (attempt.actionRequired()) {
+                    toConsolidate++;
+                    pathCredit += CREDIT_TO_CONSOLIDATE;
+                } else if (attempt.inProgress()) {
+                    inProgress++;
+                    pathCredit += CREDIT_IN_PROGRESS;
+                }
+            }
+            if (pathTotal == 0) continue;
+            total += pathTotal;
+            validated += pathValidated;
+            credit += pathCredit;
+            paths.add(new PathShare(path.code(), path.title(), pathTotal, pathValidated, percent(pathCredit, pathTotal)));
+        }
+        return new OverallProgress(percent(credit, total), total, validated, toConsolidate, inProgress,
+                total - validated - toConsolidate - inProgress, paths);
+    }
+
+    /** Pourcentage à une décimale. */
+    private static double percent(double credit, int total) {
+        return total == 0 ? 0 : Math.round(credit * 1000.0 / total) / 10.0;
     }
 
     public void requireUnlocked(LabContent lab) {
@@ -91,6 +142,9 @@ public class PathProgressService {
         return lab.code().startsWith(prefix);
     }
 
+    public record PathShare(String pathCode, String title, int totalLabs, int validatedLabs, double progressPercent) {}
+    public record OverallProgress(double progressPercent, int totalLabs, int validatedLabs, int toConsolidateLabs,
+                                  int inProgressLabs, int notStartedLabs, List<PathShare> paths) {}
     public enum LabState { LOCKED, AVAILABLE, IN_PROGRESS, ACTION_REQUIRED, COMPLETED }
     public record LabProgress(String code, String title, String activityType, List<String> prerequisites,
                               LabState state, BigDecimal bestScore) {}

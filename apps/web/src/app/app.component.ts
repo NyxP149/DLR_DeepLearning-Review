@@ -33,9 +33,10 @@ import { ThemeService } from './core/theme/theme.service';
           <a routerLink="/settings" routerLinkActive="active">Paramètres</a>
         </nav>
           <div class="side-goal">
-            <small>Objectif V2</small>
-        <strong>172 activités disponibles</strong>
-            <span><i [style.width.%]="goalProgress()"></i></span>
+            <small>Progression générale</small>
+            <strong>{{ goalProgress() }} %</strong>
+            <span role="img" [attr.aria-label]="goalProgress() + ' % de progression générale'"><i [style.width.%]="goalProgress()"></i></span>
+            <small>{{ goalDetail() }}</small>
           </div>
           <p class="build-label">DLR V2 · local-first</p>
         </aside>
@@ -51,6 +52,7 @@ export class AppComponent {
   private readonly dashboard = inject(DashboardApiService);
   private readonly theme = inject(ThemeService);
   readonly goalProgress = signal(0);
+  readonly goalDetail = signal('');
   readonly dailyMinutes = signal(90);
   readonly displayName = signal('Apprenant DLR');
 
@@ -58,7 +60,10 @@ export class AppComponent {
     void this.theme.current();
     this.dashboard.get().subscribe({
       next: (data) => {
-        this.goalProgress.set(data.progressPercent);
+        this.goalProgress.set(data.overall?.progressPercent ?? data.progressPercent);
+        if (data.overall) {
+          this.goalDetail.set(`${data.overall.validatedLabs} / ${data.overall.totalLabs} laboratoires validés`);
+        }
         this.dailyMinutes.set(data.profile.weekdayMinutes);
         this.displayName.set(data.profile.displayName);
       }

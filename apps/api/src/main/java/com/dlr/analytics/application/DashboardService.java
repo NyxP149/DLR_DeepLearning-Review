@@ -3,6 +3,7 @@ package com.dlr.analytics.application;
 import com.dlr.analytics.infrastructure.DashboardQueries;
 import com.dlr.analytics.domain.StreakCalculator;
 import com.dlr.catalog.application.LabCatalog;
+import com.dlr.catalog.application.PathProgressService;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -15,11 +16,14 @@ public class DashboardService {
     private final DashboardQueries queries;
     private final LabCatalog catalog;
     private final StreakCalculator streakCalculator;
+    private final PathProgressService pathProgressService;
 
-    public DashboardService(DashboardQueries queries, LabCatalog catalog, StreakCalculator streakCalculator) {
+    public DashboardService(DashboardQueries queries, LabCatalog catalog, StreakCalculator streakCalculator,
+                            PathProgressService pathProgressService) {
         this.queries = queries;
         this.catalog = catalog;
         this.streakCalculator = streakCalculator;
+        this.pathProgressService = pathProgressService;
     }
 
     public Dashboard dashboard() {
@@ -48,7 +52,8 @@ public class DashboardService {
                 totalLabs == 0 ? 0 : (completed * 100) / totalLabs,
                 queries.averageScore(), queries.inProgressAttempts(), queries.pendingReviews(),
                 studyMinutes, streak.current(), streak.best(), xp, level,
-                badges(completed, completedReviews, studyMinutes, streak.best()), nextLab, queries.recentAttempts());
+                badges(completed, completedReviews, studyMinutes, streak.best()), nextLab, queries.recentAttempts(),
+                pathProgressService.overall());
     }
 
     private List<Badge> badges(int completedLabs, int completedReviews, int studyMinutes, int bestStreak) {
@@ -76,7 +81,8 @@ public class DashboardService {
             int level,
             List<Badge> badges,
             String nextLabCode,
-            List<DashboardQueries.RecentAttempt> recentAttempts
+            List<DashboardQueries.RecentAttempt> recentAttempts,
+            PathProgressService.OverallProgress overall
     ) {
     }
 

@@ -44,7 +44,7 @@ class LabControllerTest {
     void exposesAllCompletedProfessionalPaths() throws Exception {
         mockMvc.perform(get("/api/labs"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.length()").value(172))
+                .andExpect(jsonPath("$.length()").value(177))
                 .andExpect(jsonPath("$[?(@.code == 'JAVA-23' && @.activityType == 'PROJECT')]").exists())
                 .andExpect(jsonPath("$[?(@.code == 'JAVA-24' && @.activityType == 'CHALLENGE')]").exists())
                 .andExpect(jsonPath("$[?(@.code == 'PYTHON-01')]").exists())
@@ -87,7 +87,7 @@ class LabControllerTest {
         assertPath("SPRING_BOOT", 12);
         assertPath("ANGULAR", 10);
         assertPath("SQL", 10);
-        assertPath("DEVOPS", 8);
+        assertPath("DEVOPS", 13);
         assertPath("ARCHITECTURE", 24);
         assertPath("TERMINAL", 24);
     }

@@ -1,0 +1,152 @@
+{
+  "code": "DEVOPS-10",
+  "language": "PYTHON",
+  "number": 10,
+  "slug": "kubernetes-deployments-services-et-mises-a-jour",
+  "title": "Deployments, Services et mises à jour progressives",
+  "difficulty": "INTERMEDIAIRE",
+  "threshold": 70,
+  "activityType": "LAB",
+  "prerequisites": [
+    "DEVOPS-09"
+  ],
+  "objectives": [
+    "Décrire une application avec un Deployment : réplicas, sélecteur, modèle de pod.",
+    "Expliquer une mise à jour progressive et le rôle de maxSurge et maxUnavailable.",
+    "Exposer des pods avec un Service et comprendre le lien par les étiquettes.",
+    "Revenir à une version précédente avec rollout undo."
+  ],
+  "sections": [
+    {
+      "title": "Deployment : réplicas et modèle de pod",
+      "content": "Un Deployment déclare : combien de copies (replicas), comment retrouver ses pods (spec.selector.matchLabels) et à quoi ressemble un pod (spec.template : étiquettes et conteneurs). Il crée un ReplicaSet par version du modèle, et c'est le ReplicaSet qui maintient le nombre de pods.\n\nRègle essentielle : les étiquettes du modèle de pod doivent contenir celles du sélecteur, sinon le serveur d'API refuse le Deployment. Changer l'image dans le modèle crée un nouveau ReplicaSet et déclenche une mise à jour ; changer replicas ne crée pas de nouvelle version, il ajuste seulement le nombre de copies.\n\nUn Deployment convient aux applications sans état, où n'importe quelle copie peut répondre. Les bases de données et services avec identité stable relèvent plutôt d'un StatefulSet."
+    },
+    {
+      "title": "Exemple résolu : simuler une mise à jour progressive",
+      "conceptCodes": [
+        "DEVOPS-K8S-ROLLOUT"
+      ],
+      "content": "Problème : remplacer 4 pods anciens par 4 nouveaux sans interrompre le service, en respectant deux limites : maxSurge (combien de pods en plus du nombre voulu on peut créer) et maxUnavailable (combien de pods on peut perdre).\n\nRaisonnement, étape par étape :\n1. Total autorisé : replicas + maxSurge. Disponibilité minimale : replicas - maxUnavailable.\n2. À chaque étape on crée d'abord de nouveaux pods dans la limite du total autorisé.\n3. Une fois les nouveaux prêts, on supprime des anciens tant que la disponibilité minimale est respectée.\n4. On recommence jusqu'à avoir 0 ancien et 4 nouveaux.\n5. Si maxSurge et maxUnavailable valent 0, on ne peut ni créer ni supprimer : la mise à jour est bloquée. Il faut toujours une marge.\n6. Vérification : avec 4 réplicas, maxSurge=1 et maxUnavailable=1, la mise à jour se termine en 3 étapes sans jamais passer sous 3 pods disponibles.\n```python\ndef rolling(replicas, surge, unavailable):\n    old, new, steps = replicas, 0, []\n    while new < replicas:\n        create = min(replicas - new, replicas + surge - (old + new))\n        new += create\n        remove = min(old, old + new - (replicas - unavailable))\n        old -= remove\n        if create == 0 and remove == 0:\n            return steps, True\n        steps.append((old, new))\n    return steps, False\n```"
+    },
+    {
+      "title": "Service : un nom stable devant des pods éphémères",
+      "content": "Les pods changent d'adresse à chaque recréation. Un Service donne un nom DNS et une IP virtuelle stables, et répartit le trafic entre les pods dont les étiquettes correspondent à son sélecteur. La liste des pods réellement joignables s'appelle les endpoints : un pod qui n'est pas prêt (readiness) en est retiré.\n\nTypes : ClusterIP (par défaut, interne au cluster), NodePort (un port ouvert sur chaque nœud, plutôt pour des tests), LoadBalancer (une IP externe fournie par le cloud). Pour du HTTP public, on place un Ingress devant des Services.\n\nDans un Service, port est le port exposé, targetPort celui du conteneur. Si targetPort ne correspond pas au port d'écoute réel du conteneur, le Service existe mais les requêtes échouent. Un Service dont le sélecteur ne trouve aucun pod a des endpoints vides : première chose à vérifier quand « le service ne répond pas »."
+    },
+    {
+      "title": "Observer, annuler, éviter les pièges",
+      "content": "Commandes utiles : kubectl rollout status deployment/web (attendre la fin), kubectl rollout history (révisions), kubectl rollout undo deployment/web (revenir à la révision précédente), kubectl get endpoints web (qui reçoit le trafic).\n\nErreurs fréquentes :\n1. Une image qui n'existe pas : les nouveaux pods restent en ImagePullBackOff, l'ancienne version continue de servir tant que maxUnavailable le permet. Le rollout est bloqué, pas cassé : on annule avec undo.\n2. Pas de readiness probe : Kubernetes croit le nouveau pod prêt dès qu'il démarre et lui envoie du trafic trop tôt.\n3. Étiquettes du Service et du Deployment qui divergent.\n4. maxUnavailable trop grand avec peu de réplicas : on perd la capacité pendant la mise à jour.\n5. Modifier un pod à la main : le contrôleur l'écrase à la prochaine réconciliation. La source de vérité est le manifeste."
+    }
+  ],
+  "keyConcepts": [
+    {
+      "code": "DEVOPS-K8S-ROLLOUT",
+      "name": "Deployments, Services et mises à jour progressives",
+      "definition": "Un Deployment maintient un nombre de pods identiques et les remplace version par version selon maxSurge et maxUnavailable ; un Service donne un point d'accès stable aux pods choisis par étiquettes.",
+      "whyExists": "Remplacer des pods d'un coup coupe le service, et leurs adresses changent sans cesse : il faut une mise à jour par étapes et un nom stable.",
+      "whyImportant": "C'est le mécanisme qui permet de livrer plusieurs fois par jour sans interruption, et de revenir en arrière en une commande.",
+      "minimalExample": "Un Deployment de 3 réplicas web:1.0 exposé par un Service ClusterIP sur le port 80.",
+      "professionalExample": "Une équipe publie une nouvelle version de son API. Le Deployment crée des pods avec la nouvelle image un par un ; chacun n'entre dans le Service qu'une fois sa readiness probe au vert, et un ancien pod n'est retiré qu'ensuite. La version 2.3 contient un bug qui fait échouer la probe : le rollout s'arrête, les anciens pods continuent de répondre, personne ne voit de coupure, et un kubectl rollout undo restaure la version 2.2 en quelques secondes.",
+      "codeExample": "apiVersion: apps/v1\nkind: Deployment\nmetadata:\n  name: web\nspec:\n  replicas: 4\n  selector:\n    matchLabels:\n      app: web\n  strategy:\n    type: RollingUpdate\n    rollingUpdate:\n      maxSurge: 1\n      maxUnavailable: 1\n  template:\n    metadata:\n      labels:\n        app: web\n    spec:\n      containers:\n        - name: web\n          image: web:2.3.0\n---\napiVersion: v1\nkind: Service\nmetadata:\n  name: web\nspec:\n  selector:\n    app: web\n  ports:\n    - port: 80\n      targetPort: 8080",
+      "commonMistake": "Écrire un sélecteur de Service qui ne correspond à aucune étiquette de pod, ou lancer une mise à jour sans marge (maxSurge et maxUnavailable à zéro).",
+      "masteryQuestion": "Comment une mise à jour progressive évite-t-elle une coupure, et que faire si la nouvelle version est défaillante ?",
+      "masteryProof": "Simuler une mise à jour progressive : étapes, durée, et détection d'un rollout bloqué faute de marge."
+    }
+  ],
+  "exercises": [
+    {
+      "code": "DEVOPS-10-E1",
+      "title": "Simuler une mise à jour progressive",
+      "statement": "Écris la simulation d'une mise à jour progressive. À chaque étape, on crée des pods nouveaux dans la limite de replicas + maxSurge, puis on supprime des anciens tant qu'il reste au moins replicas - maxUnavailable pods disponibles. Retourne la liste des états (anciens, nouveaux) après chaque étape, et si la mise à jour est bloquée faute de marge. Affiche les étapes de deux scénarios.",
+      "starterCode": "def rolling(replicas: int, surge: int, unavailable: int) -> tuple[list[tuple[int, int]], bool]:\n    old, new = replicas, 0\n    steps: list[tuple[int, int]] = []\n    # TODO 1 : tant que new < replicas :\n    #   create = min(replicas - new, replicas + surge - (old + new)) ; new += create\n    #   remove = min(old, old + new - (replicas - unavailable)) ; old -= remove\n    # TODO 2 : si create == 0 et remove == 0, retourne (steps, True) : bloqué\n    # TODO 3 : sinon ajoute (old, new) à steps\n    return steps, False\n\n\nfor surge, unavailable in [(1, 1), (0, 0)]:\n    print(f\"maxSurge={surge} maxUnavailable={unavailable}\")\n    steps, blocked = rolling(4, surge, unavailable)\n    for number, (old, new) in enumerate(steps, start=1):\n        print(f\"  étape {number}: anciens={old} nouveaux={new}\")\n    if blocked:\n        print(\"  bloqué : aucune marge pour remplacer un pod\")\n    else:\n        print(f\"  terminé en {len(steps)} étapes\")\n",
+      "expectedOutput": "maxSurge=1 maxUnavailable=1\n  étape 1: anciens=2 nouveaux=1\n  étape 2: anciens=0 nouveaux=3\n  étape 3: anciens=0 nouveaux=4\n  terminé en 3 étapes\nmaxSurge=0 maxUnavailable=0\n  bloqué : aucune marge pour remplacer un pod"
+    },
+    {
+      "code": "DEVOPS-10-T1",
+      "title": "Transfert : la part de trafic d'une version canary",
+      "statement": "Même notion, autre contexte : un Service répartit le trafic à parts égales entre tous les pods qu'il sélectionne, donc la part d'une version canary est son nombre de pods divisé par le total. Pour chaque couple (pods stables, pods canary), affiche « stable=S canary=C -> canary P % » (P arrondi à l'entier). Puis affiche « Max 5 % sur 20 pods : N canary », où N est le plus grand nombre de pods canary qui ne dépasse pas 5 % de 20 pods. Aucun indice n'est proposé et cet exercice ne compte pas dans le score. Sortie exacte :\nstable=9 canary=1 -> canary 10 %\nstable=8 canary=2 -> canary 20 %\nstable=3 canary=1 -> canary 25 %\nMax 5 % sur 20 pods : 1 canary",
+      "starterCode": "SCENARIOS = [(9, 1), (8, 2), (3, 1)]\nTOTAL = 20\nLIMIT_PERCENT = 5\n# À toi : écris la suite, sans étapes imposées.\n",
+      "expectedOutput": "stable=9 canary=1 -> canary 10 %\nstable=8 canary=2 -> canary 20 %\nstable=3 canary=1 -> canary 25 %\nMax 5 % sur 20 pods : 1 canary",
+      "kind": "TRANSFER"
+    }
+  ],
+  "quiz": [
+    {
+      "code": "DEVOPS-10-Q1",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Dans un Deployment, quelle règle lie spec.selector.matchLabels et spec.template.metadata.labels ?",
+      "choices": [
+        "Aucune : ils sont indépendants",
+        "Les étiquettes du modèle de pod doivent contenir celles du sélecteur, sinon l'API refuse le Deployment",
+        "Ils doivent avoir exactement le même nombre de lignes",
+        "Seul le nom du Deployment compte"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Le sélecteur sert au Deployment à reconnaître ses pods. Si le modèle produit des pods qui ne correspondent pas au sélecteur, il ne pourrait jamais les retrouver : l'API refuse la configuration."
+    },
+    {
+      "code": "DEVOPS-10-Q2",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Prédis : replicas=6, maxSurge=2, maxUnavailable=0. Combien de pods existent au maximum pendant la mise à jour ?",
+      "choices": [
+        "6",
+        "7",
+        "8",
+        "10"
+      ],
+      "correctChoice": 2,
+      "expectedKeywords": [],
+      "explanation": "Le total autorisé est replicas + maxSurge = 6 + 2 = 8. Avec maxUnavailable=0, on ne retire un ancien pod qu'une fois un nouveau prêt."
+    },
+    {
+      "code": "DEVOPS-10-Q3",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Trouve le défaut. Les pods du Deployment portent l'étiquette app: web.\n```yaml\nkind: Service\nmetadata:\n  name: web\nspec:\n  selector:\n    app: web-api\n  ports:\n    - port: 80\n```\n",
+      "choices": [
+        "Un Service ne peut pas avoir de port",
+        "Le sélecteur app: web-api ne correspond à aucun pod : les endpoints du Service sont vides",
+        "Il manque le type LoadBalancer",
+        "Le nom web est réservé"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Le Service existe mais ne trouve aucun pod : kubectl get endpoints web serait vide. Le sélecteur doit reprendre les étiquettes des pods (app: web)."
+    },
+    {
+      "code": "DEVOPS-10-Q4",
+      "type": "SINGLE_CHOICE",
+      "prompt": "La version 2.3 vient d'être déployée et provoque des erreurs. Quelle commande restaure la version précédente ?",
+      "choices": [
+        "kubectl delete deployment web",
+        "kubectl rollout undo deployment/web",
+        "kubectl scale deployment web --replicas=0",
+        "kubectl get pods"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Chaque modification du modèle crée une révision. rollout undo repasse à la révision précédente, avec la même mise à jour progressive, sans supprimer l'application."
+    },
+    {
+      "code": "DEVOPS-10-Q5",
+      "type": "FREE_TEXT",
+      "prompt": "Sans relire le cours, explique avec tes mots comment une mise à jour progressive évite une coupure, et le rôle de maxSurge et maxUnavailable.",
+      "choices": [],
+      "correctChoice": null,
+      "expectedKeywords": [
+        "progressi",
+        "maxsurge",
+        "maxunavailable",
+        "ancien",
+        "nouveau"
+      ],
+      "modelAnswer": "Au lieu de tout remplacer d'un coup, Kubernetes crée quelques nouveaux pods puis retire des anciens, étape par étape, de sorte qu'il reste toujours des pods disponibles pour répondre. maxSurge fixe combien de pods en plus du nombre voulu on peut créer, maxUnavailable combien on peut en perdre. Les nouveaux pods ne reçoivent du trafic qu'une fois prêts ; si la version est défaillante, le rollout s'arrête et on peut annuler avec rollout undo.",
+      "explanation": "Une bonne réponse explique le remplacement par étapes (anciens et nouveaux pods coexistent), définit maxSurge (pods en plus) et maxUnavailable (pods en moins), et cite la disponibilité conservée."
+    }
+  ],
+  "checklist": [
+    "Je sais écrire un Deployment avec réplicas, sélecteur et modèle de pod cohérents",
+    "Je sais calculer le nombre maximal de pods pendant une mise à jour",
+    "Je vérifie les endpoints d'un Service quand il ne répond pas",
+    "Je sais revenir à la version précédente avec kubectl rollout undo"
+  ]
+}

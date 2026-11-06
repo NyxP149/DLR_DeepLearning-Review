@@ -73,6 +73,9 @@
           </div>
         </article>
       } @else {
+      @if (pretest()?.status === 'ANSWERED' && !completion() && pretest()?.start; as start) {
+        <p class="pretest-gain pretest-recorded" role="status">Quiz de départ enregistré (hors score) : {{ start.correct }}/{{ start.total }} juste{{ start.unknown > 0 ? ' (' + start.unknown + ' « Je ne sais pas »)' : '' }}. La comparaison avec ton quiz final apparaîtra dans le bilan.</p>
+      }
       <div class="workspace-grid">
         <section class="lesson-column">
           <article class="panel objectives">
@@ -401,7 +404,9 @@
                   ci-dessus puis clique de nouveau sur « Recalculer mon score » — pas besoin de réinitialiser le laboratoire.
                 </p>
                 @if (pretest()?.gain; as gain) {
-                  <p class="pretest-gain">Quiz de départ : {{ gain.correctAtStart }}/{{ gain.total }} avant le cours, {{ gain.correctAtEnd }}/{{ gain.total }} à ta première réponse du quiz final, sur les mêmes questions.</p>
+                  <p class="pretest-gain">Quiz de départ (hors score) : {{ gain.correctAtStart }}/{{ gain.total }} juste avant le cours{{ gain.unknownAtStart > 0 ? ' (' + gain.unknownAtStart + ' « Je ne sais pas »)' : '' }}, {{ gain.correctAtEnd }}/{{ gain.total }} à ta première réponse du quiz final, sur les mêmes questions.</p>
+                } @else if (pretest()?.start; as start) {
+                  <p class="pretest-gain">Quiz de départ (hors score) : {{ start.correct }}/{{ start.total }} juste avant le cours{{ start.unknown > 0 ? ' (' + start.unknown + ' « Je ne sais pas »)' : '' }}.</p>
                 }
                 @if (result.reviewScheduled) {
                   <p>Une révision prioritaire a été programmée pour demain.</p>

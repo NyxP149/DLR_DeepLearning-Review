@@ -88,7 +88,7 @@ public class DashboardQueries {
                 select lab_id, status, score, started_at, completed_at
                 from attempt
                 order by started_at desc
-                limit 5
+                limit 50
                 """,
                 (result, row) -> {
                     Timestamp completed = result.getTimestamp("completed_at");

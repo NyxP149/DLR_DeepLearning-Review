@@ -508,3 +508,16 @@ Au bilan de JAVA-10, la ligne « Explication » indiquait 0 % alors que la répo
 
 **Solution**
 La sauvegarde automatique du texte passait par la même route que « Vérifier » et était journalisée comme une vraie réponse ; le score V2 prenait donc pour « première réponse » un brouillon de quelques mots. La sauvegarde automatique envoie maintenant `draft: true` et n'est plus journalisée, et la migration V25 retire les anciens brouillons du journal. « Recalculer mon score » donne alors la valeur correcte.
+
+---
+
+## La liste d'activité récente du tableau de bord ne montrait que cinq entrées
+- severity: low
+- date: 2026-11
+- tags: Interface, Tableau de bord
+
+**Problème**
+Le panneau « Activité récente » du tableau de bord n'affichait que les cinq dernières tentatives et n'était pas défilant : les laboratoires plus anciens n'étaient plus visibles.
+
+**Solution**
+L'API renvoie désormais 50 tentatives et la liste du panneau défile dans une hauteur limitée (22 rem), sans masquer le reste de la page.

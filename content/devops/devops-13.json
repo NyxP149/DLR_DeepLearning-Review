@@ -1,0 +1,152 @@
+{
+  "code": "DEVOPS-13",
+  "language": "PYTHON",
+  "number": 13,
+  "slug": "defi-kubernetes-diagnostiquer-un-deploiement-en-panne",
+  "title": "Défi : diagnostiquer un déploiement Kubernetes en panne",
+  "difficulty": "DEFI",
+  "threshold": 85,
+  "activityType": "CHALLENGE",
+  "prerequisites": [
+    "DEVOPS-12"
+  ],
+  "objectives": [
+    "Lire l'état d'un cluster pour relier un symptôme (Pending, ImagePullBackOff, CrashLoopBackOff, non prêt) à sa cause.",
+    "Suivre une méthode de diagnostic : observer, lire les événements, lire les journaux, formuler une hypothèse.",
+    "Remonter d'une cascade de pannes à la cause racine.",
+    "Décider d'une action corrective ou d'un retour arrière."
+  ],
+  "sections": [
+    {
+      "title": "Une méthode avant les commandes",
+      "content": "Face à un déploiement en panne, la tentation est d'enchaîner les commandes au hasard. Une méthode est plus rapide :\n1. Observer : kubectl get pods -n <ns> indique la phase et la colonne READY ; kubectl get endpoints <service> dit si le Service a des destinataires.\n2. Expliquer : kubectl describe pod <nom> affiche les événements en bas, qui disent presque toujours pourquoi (échec de planification, image introuvable, sonde en échec).\n3. Lire les journaux : kubectl logs <pod> et, si le conteneur redémarre, kubectl logs <pod> --previous pour voir la sortie de l'exécution qui a planté.\n4. Formuler une hypothèse, la tester, puis corriger le manifeste (pas le pod : il sera recréé).\n\nPendant un incident, une règle domine : d'abord arrêter les dégâts (rollout undo), ensuite comprendre."
+    },
+    {
+      "title": "Exemple résolu : du symptôme à la cause",
+      "conceptCodes": [
+        "DEVOPS-K8S-CHALLENGE"
+      ],
+      "content": "Problème : transformer l'état brut d'un cluster en diagnostics lisibles.\n\nRaisonnement, étape par étape :\n1. Pending avec Unschedulable : l'ordonnanceur ne trouve aucun nœud ayant assez de CPU ou de mémoire pour les requests demandées.\n2. ImagePullBackOff : l'image ou son tag n'existe pas, ou le registre refuse l'accès.\n3. CrashLoopBackOff : le conteneur démarre puis s'arrête en boucle ; si la dernière cause est OOMKilled (code 137), la limite mémoire est trop basse ou l'application fuit.\n4. Running mais non prêt : la readiness probe échoue (mauvais chemin ou port, démarrage trop lent, dépendance absente).\n5. Un Service sans endpoint : aucun pod prêt, ou sélecteur incorrect.\n6. Le diagnostic produit un message par anomalie, avec le symptôme et la piste, dans l'ordre des pods.\n```python\ndef diagnose(pod):\n    if pod['reason'] == 'Unschedulable':\n        return f\"{pod['name']}: Pending (Unschedulable) -> manque de ressources\"\n    if pod['reason'] == 'ImagePullBackOff':\n        return f\"{pod['name']}: ImagePullBackOff -> image ou accès registre\"\n    return None\n```"
+    },
+    {
+      "title": "Cascade de pannes et cause racine",
+      "content": "Dans une architecture de services, une panne se propage : si la base de données tombe, l'API échoue, puis le site web. Les alertes arrivent dans le désordre et le premier symptôme visible est rarement la cause. Pour remonter à la cause racine, on repère le composant en panne qui ne dépend d'aucun autre composant en panne : c'est lui qu'on répare d'abord. Réparer l'API alors que la base est tombée ne sert à rien.\n\nLe journal des événements aide : la première défaillance horodatée dans la chaîne de dépendances est souvent la bonne piste, mais on la confirme par les journaux avant d'agir. Après l'incident, on documente la cause, la détection, la correction et ce qui évitera la récidive (alerte, test, limite, sonde)."
+    },
+    {
+      "title": "Erreurs fréquentes pendant un incident",
+      "content": "1. Supprimer des pods « pour voir » : ils sont recréés, mais l'état qui aidait au diagnostic disparaît.\n2. Corriger à la main avec kubectl edit : le dépôt diverge du cluster et la correction sera écrasée au prochain déploiement.\n3. Lire seulement la dernière ligne des journaux d'un conteneur qui redémarre : utilise --previous.\n4. Réparer le symptôme le plus visible (le site) sans chercher la cause racine (la base).\n5. Augmenter les limites sans comprendre : une fuite mémoire revient, plus tard.\n6. Ne pas conclure : sans note sur la cause et la prévention, l'incident se reproduira."
+    }
+  ],
+  "keyConcepts": [
+    {
+      "code": "DEVOPS-K8S-CHALLENGE",
+      "name": "Diagnostic méthodique et cause racine",
+      "definition": "Le diagnostic Kubernetes consiste à relier un symptôme observable (phase, état, événements, journaux) à une cause précise, puis à agir sur la cause racine plutôt que sur le symptôme.",
+      "whyExists": "Les pannes de cluster produisent beaucoup de bruit : plusieurs pods en erreur, des alertes en cascade, des symptômes éloignés de la cause.",
+      "whyImportant": "Une méthode réduit le temps de rétablissement et évite les corrections aveugles qui aggravent l'incident.",
+      "minimalExample": "Un pod en ImagePullBackOff dont les événements indiquent un tag d'image inexistant.",
+      "professionalExample": "Un vendredi soir, le site renvoie des erreurs. Trois pods sont en échec et deux alertes sonnent. L'astreinte observe l'état, lit les événements, remarque que la base de données manque de mémoire et a été évincée, que l'API échoue à cause de la base puis que le site échoue à cause de l'API. Elle répare la base d'abord, les autres reprennent seuls. Le compte rendu fixe une limite mémoire correcte et ajoute une alerte sur les évictions.",
+      "codeExample": "kubectl get pods -n shop\nkubectl describe pod worker-9f2 -n shop      # événements en bas\nkubectl logs worker-9f2 -n shop --previous   # sortie avant le crash\nkubectl get endpoints shop -n shop\nkubectl rollout undo deployment/shop -n shop # arrêter les dégâts",
+      "commonMistake": "Corriger le symptôme le plus visible sans chercher la cause racine, ou modifier un pod à la main.",
+      "masteryQuestion": "Face à plusieurs pods en erreur et à des services en cascade, comment trouver la cause racine et par où commencer la réparation ?",
+      "masteryProof": "Écrire un diagnostic d'état de cluster (symptôme, cause probable, piste) et remonter la cause racine d'une cascade de pannes."
+    }
+  ],
+  "exercises": [
+    {
+      "code": "DEVOPS-13-E1",
+      "title": "Diagnostiquer l'état d'un cluster en panne",
+      "statement": "Écris le diagnostic d'un état de cluster. Pour chaque pod, dans l'ordre : Unschedulable, ImagePullBackOff, CrashLoopBackOff (avec la cause OOMKilled si lastReason le dit, sinon un message générique), ou Running et non prêt, donne un message ; un pod prêt ne produit rien. Signale ensuite chaque service sans endpoint. Termine par le nombre de pods en échec sur le total et le nombre de services sans endpoint.",
+      "starterCode": "PODS = [\n    {\"name\": \"web-7d9\", \"phase\": \"Pending\", \"reason\": \"Unschedulable\"},\n    {\"name\": \"api-5c1\", \"phase\": \"Running\", \"ready\": False, \"reason\": None},\n    {\"name\": \"worker-9f2\", \"phase\": \"Running\", \"ready\": False, \"reason\": \"CrashLoopBackOff\", \"lastReason\": \"OOMKilled\"},\n    {\"name\": \"job-3a\", \"phase\": \"Pending\", \"reason\": \"ImagePullBackOff\"},\n    {\"name\": \"db-1\", \"phase\": \"Running\", \"ready\": True, \"reason\": None},\n]\nENDPOINTS = {\"shop\": 0, \"db\": 1}\n\n\ndef diagnose(pod: dict) -> str | None:\n    name = pod[\"name\"]\n    # TODO 1 : reason == \"Unschedulable\" ->\n    #          \"<nom>: Pending (Unschedulable) -> manque de ressources sur les nœuds : réduis les requests ou ajoute un nœud\"\n    # TODO 2 : reason == \"ImagePullBackOff\" ->\n    #          \"<nom>: ImagePullBackOff -> image ou tag introuvable, ou accès au registre refusé\"\n    # TODO 3 : reason == \"CrashLoopBackOff\" : si lastReason == \"OOMKilled\" ->\n    #          \"<nom>: CrashLoopBackOff, OOMKilled (code 137) -> augmente la limite mémoire ou corrige la fuite\"\n    #          sinon \"<nom>: CrashLoopBackOff -> lis kubectl logs --previous\"\n    # TODO 4 : phase == \"Running\" et ready faux ->\n    #          \"<nom>: Running mais non prêt -> la readiness probe échoue : vérifie chemin, port et démarrage\"\n    return None\n\n\nfindings = [message for pod in PODS if (message := diagnose(pod))]\nfor message in findings:\n    print(message)\n# TODO 5 : pour chaque service de ENDPOINTS à 0 endpoint, affiche\n#          \"service <nom>: aucun endpoint -> aucun pod prêt ou sélecteur incorrect\"\nprint(f\"Pods en échec: {len(findings)} sur {len(PODS)}\")\n",
+      "expectedOutput": "web-7d9: Pending (Unschedulable) -> manque de ressources sur les nœuds : réduis les requests ou ajoute un nœud\napi-5c1: Running mais non prêt -> la readiness probe échoue : vérifie chemin, port et démarrage\nworker-9f2: CrashLoopBackOff, OOMKilled (code 137) -> augmente la limite mémoire ou corrige la fuite\njob-3a: ImagePullBackOff -> image ou tag introuvable, ou accès au registre refusé\nservice shop: aucun endpoint -> aucun pod prêt ou sélecteur incorrect\nPods en échec: 4 sur 5\nServices sans endpoint: 1"
+    },
+    {
+      "code": "DEVOPS-13-T1",
+      "title": "Transfert : remonter à la cause racine d'une cascade",
+      "statement": "Même notion, autre contexte : des composants dépendent les uns des autres et certains sont en panne, avec l'heure (en minutes) de leur première défaillance. La cause racine est le composant en panne dont aucune dépendance n'est en panne. Affiche « Cause racine: nom », puis « Impactés: » suivi des autres composants en panne par ordre de première défaillance, séparés par une virgule et une espace. Aucun indice n'est proposé et cet exercice ne compte pas dans le score. Sortie exacte :\nCause racine: db\nImpactés: api, web",
+      "starterCode": "DEPENDS = {\"web\": [\"api\", \"cdn\"], \"api\": [\"db\", \"cache\"], \"db\": [], \"cache\": [], \"cdn\": []}\nFAILED_AT = {\"web\": 4, \"api\": 2, \"db\": 1}\n# À toi : écris la suite, sans étapes imposées.\n",
+      "expectedOutput": "Cause racine: db\nImpactés: api, web",
+      "kind": "TRANSFER"
+    }
+  ],
+  "quiz": [
+    {
+      "code": "DEVOPS-13-Q1",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Un pod est en CrashLoopBackOff et kubectl describe indique « Last State: Terminated, Reason: OOMKilled, Exit Code: 137 ». Quelle est la cause ?",
+      "choices": [
+        "L'image est introuvable",
+        "Le conteneur dépasse sa limite mémoire et est tué par le noyau",
+        "La readiness probe échoue",
+        "Le Service n'a pas de sélecteur"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "OOMKilled et le code 137 signalent un dépassement de la limite mémoire. Il faut augmenter la limite si le besoin est réel, ou chercher une fuite si la consommation croît sans cesse."
+    },
+    {
+      "code": "DEVOPS-13-Q2",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Un pod reste Pending et les événements disent « 0/3 nodes are available: Insufficient memory ». Que faire ?",
+      "choices": [
+        "Redémarrer le pod",
+        "Vérifier les requests mémoire du pod et la capacité des nœuds, puis réduire la demande ou ajouter de la capacité",
+        "Changer l'image",
+        "Supprimer le Service"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "L'ordonnanceur ne trouve aucun nœud avec assez de mémoire pour les requests. Redémarrer ne change rien : il faut agir sur la demande ou sur la capacité du cluster."
+    },
+    {
+      "code": "DEVOPS-13-Q3",
+      "type": "SINGLE_CHOICE",
+      "prompt": "kubectl get pods affiche « 0/1 Running » pour l'API depuis dix minutes, sans redémarrage. Quelle piste vérifier en premier ?",
+      "choices": [
+        "La limite CPU",
+        "Le type du Service",
+        "La readiness probe : chemin, port ou démarrage trop lent, ou une dépendance indisponible",
+        "Le nom du namespace"
+      ],
+      "correctChoice": 2,
+      "expectedKeywords": [],
+      "explanation": "Le pod tourne (Running) mais n'est pas prêt : c'est la signature d'une readiness probe qui échoue. describe pod en donne la raison exacte dans les événements."
+    },
+    {
+      "code": "DEVOPS-13-Q4",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Dans quel ordre mener un diagnostic avec kubectl ?",
+      "choices": [
+        "delete pod, puis apply, puis get",
+        "logs, puis edit, puis delete",
+        "get pods (observer), describe pod (événements), logs et logs --previous (journaux), puis corriger le manifeste",
+        "scale à zéro, puis scale à dix"
+      ],
+      "correctChoice": 2,
+      "expectedKeywords": [],
+      "explanation": "On observe l'état, on lit les événements qui expliquent la plupart des blocages, puis les journaux ; on corrige enfin la source (le manifeste), pas le pod."
+    },
+    {
+      "code": "DEVOPS-13-Q5",
+      "type": "FREE_TEXT",
+      "prompt": "Sans relire le cours, explique avec tes mots comment tu diagnostiquerais un déploiement dont plusieurs pods sont en erreur, et comment trouver la cause racine.",
+      "choices": [],
+      "correctChoice": null,
+      "expectedKeywords": [
+        "kubectl",
+        "describe",
+        "logs",
+        "evenement",
+        "cause"
+      ],
+      "modelAnswer": "J'observe d'abord l'état avec kubectl get pods et les endpoints des services, puis je lis les événements avec kubectl describe pod, puis les journaux avec kubectl logs (et --previous si le conteneur redémarre). Je formule une hypothèse, je la teste et je corrige le manifeste. S'il y a une cascade, je cherche le composant en panne dont aucune dépendance n'est en panne : c'est la cause racine, que je répare en premier. Si le service est dégradé, je commence par un rollout undo pour arrêter les dégâts.",
+      "explanation": "Une bonne réponse suit une méthode (observer, événements, journaux, hypothèse), cite les commandes kubectl utiles et explique la cause racine d'une cascade (le composant en panne sans dépendance en panne)."
+    }
+  ],
+  "checklist": [
+    "Je suis une méthode : observer, événements, journaux, hypothèse, correction",
+    "Je relie Pending, ImagePullBackOff, CrashLoopBackOff et non prêt à leurs causes probables",
+    "Je remonte une cascade de pannes jusqu'à la cause racine",
+    "Je corrige le manifeste et non le pod, et je note la prévention"
+  ]
+}

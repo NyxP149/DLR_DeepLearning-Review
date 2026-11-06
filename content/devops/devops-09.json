@@ -1,0 +1,152 @@
+{
+  "code": "DEVOPS-09",
+  "language": "PYTHON",
+  "number": 9,
+  "slug": "kubernetes-pods-manifestes-et-objets",
+  "title": "Kubernetes : pods, manifestes et objets",
+  "difficulty": "INTERMEDIAIRE",
+  "threshold": 70,
+  "activityType": "LAB",
+  "prerequisites": [
+    "DEVOPS-08"
+  ],
+  "objectives": [
+    "Expliquer ce que Kubernetes ajoute à Docker : décrire un état désiré et laisser des contrôleurs le maintenir.",
+    "Lire un manifeste YAML : apiVersion, kind, metadata, spec.",
+    "Distinguer Pod, ReplicaSet, Deployment, Service, Namespace, ConfigMap et Secret.",
+    "Écrire un contrôle automatique d'un manifeste : image épinglée, limites de ressources, utilisateur non root."
+  ],
+  "sections": [
+    {
+      "title": "De la commande à l'état désiré",
+      "content": "Avec Docker, tu dis « lance ce conteneur » : c'est une commande, elle s'exécute une fois. Avec Kubernetes, tu décris un état désiré (« je veux trois copies de cette application, joignables sous ce nom ») et des contrôleurs travaillent en boucle pour que la réalité rejoigne cette description : ils comparent l'état observé à l'état voulu et corrigent l'écart. Un pod qui disparaît est recréé sans que personne n'intervienne.\n\nUn cluster se compose d'un plan de contrôle (serveur d'API, etcd qui stocke l'état, ordonnanceur qui choisit le nœud, gestionnaire de contrôleurs) et de nœuds de travail (kubelet, runtime de conteneurs). Tu parles toujours au serveur d'API, avec kubectl ou des fichiers YAML appliqués par kubectl apply -f.\n\nLa plus petite unité déployable est le Pod : un ou plusieurs conteneurs qui partagent la même adresse IP et les mêmes volumes. Un pod est éphémère : son IP et son nom changent s'il est recréé. On ne s'y attache jamais directement."
+    },
+    {
+      "title": "Exemple résolu : contrôler un manifeste de Pod",
+      "conceptCodes": [
+        "DEVOPS-K8S-OBJECTS"
+      ],
+      "content": "Problème : relire un manifeste avant de l'appliquer et signaler les risques évidents, avec un conseil pour chacun.\n\nRaisonnement, étape par étape :\n1. Un manifeste est un dictionnaire : metadata, puis spec.containers, une liste de conteneurs.\n2. Image non épinglée : pas de tag (nginx) ou tag latest. Le même manifeste ne produit alors pas toujours la même chose, et un retour arrière devient impossible.\n3. Pas de resources.limits : un conteneur gourmand peut priver ses voisins de mémoire ou de CPU.\n4. runAsNonRoot absent : le processus peut tourner en root dans le conteneur.\n5. Le contrôle produit un message par risque, conteneur par conteneur, dans un ordre stable, puis un décompte.\n6. Vérification : un conteneur nginx:latest sans limites ni securityContext donne trois messages ; le même conteneur corrigé n'en donne aucun.\n```python\ndef audit(pod):\n    findings = []\n    for c in pod['spec']['containers']:\n        name, image = c['name'], c['image']\n        if ':' not in image or image.endswith(':latest'):\n            findings.append(f\"{name}: image non épinglée ({image}) -> utilise un tag de version\")\n        if 'limits' not in c.get('resources', {}):\n            findings.append(f\"{name}: pas de limites de ressources -> définis resources.limits\")\n        if not c.get('securityContext', {}).get('runAsNonRoot'):\n            findings.append(f\"{name}: peut tourner en root -> ajoute runAsNonRoot: true\")\n    return findings\n```"
+    },
+    {
+      "title": "Les objets à connaître",
+      "content": "- Namespace : une cloison logique (équipe, environnement) qui isole les noms et les droits.\n- Pod : un ou plusieurs conteneurs, éphémère.\n- ReplicaSet : maintient N copies identiques d'un pod. On l'utilise rarement seul.\n- Deployment : gère un ReplicaSet et les mises à jour progressives. C'est l'objet normal pour une application sans état.\n- Service : un nom et une IP stables devant un ensemble de pods choisis par étiquettes.\n- ConfigMap et Secret : configuration et données sensibles, séparées de l'image.\n- Ingress : routage HTTP depuis l'extérieur vers des services.\n- Job et CronJob : tâches ponctuelles ou planifiées.\n\nTout objet a un nom (metadata.name), un namespace et des étiquettes (labels), des paires clé/valeur. Un sélecteur retrouve des objets par leurs étiquettes : c'est ainsi qu'un Service ou un ReplicaSet sait quels pods lui appartiennent. Les commandes de base : kubectl get, describe, logs, apply, delete, et kubectl get pods -l app=web pour filtrer par étiquette."
+    },
+    {
+      "title": "Erreurs fréquentes à reconnaître",
+      "content": "1. Utiliser l'étiquette latest : impossible de savoir quelle version tourne ni de revenir en arrière.\n2. Lancer un Pod « nu » en production : aucun contrôleur ne le recrée si son nœud tombe.\n3. Oublier le tiret d'un élément de liste : containers est une liste, chaque conteneur commence par « - ».\n4. Des étiquettes incohérentes entre un Service et ses pods : le Service ne trouve rien.\n5. Croire qu'un Secret est chiffré : il est seulement encodé en base64.\n6. Oublier le namespace : la ressource est créée dans default, pas là où on la cherche.\n\nRetrouve ces erreurs de mémoire avant l'exercice, puis vérifie-toi avec le quiz : c'est la récupération, pas la relecture, qui fixe la notion."
+    }
+  ],
+  "keyConcepts": [
+    {
+      "code": "DEVOPS-K8S-OBJECTS",
+      "name": "Objets Kubernetes et état désiré",
+      "definition": "Kubernetes est un système déclaratif : on décrit des objets (Pod, Deployment, Service) dans des manifestes, et des contrôleurs ramènent en continu l'état réel vers cet état désiré.",
+      "whyExists": "Faire tourner quelques conteneurs à la main est simple ; en faire tourner des dizaines sur plusieurs machines, les remplacer sans coupure et les réparer seuls ne l'est pas.",
+      "whyImportant": "Un manifeste versionné décrit l'environnement entier : il se relit, se révise, se rejoue et se compare, comme du code.",
+      "minimalExample": "Un Pod avec un conteneur nginx:1.27 et l'étiquette app=web.",
+      "professionalExample": "Une équipe déploie son API avec un Deployment de trois réplicas. Un nœud tombe en pleine nuit : le contrôleur constate qu'il manque un pod par rapport à l'état désiré et en recrée un sur un autre nœud, sans astreinte. Le manifeste est dans Git ; la revue de code vérifie l'image épinglée et les limites de ressources avant que quoi que ce soit n'atteigne le cluster.",
+      "codeExample": "apiVersion: v1\nkind: Pod\nmetadata:\n  name: web\n  labels:\n    app: web\nspec:\n  containers:\n    - name: web\n      image: nginx:1.27.2\n      ports:\n        - containerPort: 80\n      resources:\n        limits:\n          memory: 128Mi\n          cpu: 250m\n      securityContext:\n        runAsNonRoot: true",
+      "commonMistake": "Appliquer un manifeste sans le relire : image latest, pas de limites, root.",
+      "masteryQuestion": "Que se passe-t-il quand un pod géré par un Deployment disparaît, et pourquoi ?",
+      "masteryProof": "Écrire un contrôle de manifeste qui signale image non épinglée, absence de limites et risque root, avec un conseil par risque."
+    }
+  ],
+  "exercises": [
+    {
+      "code": "DEVOPS-09-E1",
+      "title": "Contrôler un manifeste de Pod",
+      "statement": "Un manifeste de Pod est lu comme un dictionnaire. Écris un contrôle qui, pour chaque conteneur, signale : une image non épinglée (sans tag ou en latest), l'absence de resources.limits, et l'absence de securityContext.runAsNonRoot vrai. Affiche un message par risque, dans l'ordre des conteneurs, puis le nombre de problèmes.",
+      "starterCode": "POD = {\n    \"apiVersion\": \"v1\",\n    \"kind\": \"Pod\",\n    \"metadata\": {\"name\": \"web\", \"labels\": {\"app\": \"web\"}},\n    \"spec\": {\n        \"containers\": [\n            {\n                \"name\": \"web\",\n                \"image\": \"nginx:latest\",\n                \"resources\": {\"limits\": {\"memory\": \"128Mi\"}},\n                \"securityContext\": {\"runAsNonRoot\": True},\n            },\n            {\"name\": \"sidecar\", \"image\": \"busybox\"},\n        ]\n    },\n}\n\n\ndef audit(pod: dict) -> list[str]:\n    findings: list[str] = []\n    for container in pod[\"spec\"][\"containers\"]:\n        name = container[\"name\"]\n        image = container[\"image\"]\n        # TODO 1 : si l'image n'a pas de tag (pas de \":\") ou finit par \":latest\", ajoute\n        #          \"<nom>: image non épinglée (<image>) -> utilise un tag de version\"\n        # TODO 2 : si \"limits\" n'est pas dans container.get(\"resources\", {}), ajoute\n        #          \"<nom>: pas de limites de ressources -> définis resources.limits\"\n        # TODO 3 : si securityContext.runAsNonRoot n'est pas vrai, ajoute\n        #          \"<nom>: peut tourner en root -> ajoute runAsNonRoot: true\"\n        pass\n    return findings\n\n\nfindings = audit(POD)\nfor finding in findings:\n    print(finding)\nprint(f\"Problèmes: {len(findings)}\")\n",
+      "expectedOutput": "web: image non épinglée (nginx:latest) -> utilise un tag de version\nsidecar: image non épinglée (busybox) -> utilise un tag de version\nsidecar: pas de limites de ressources -> définis resources.limits\nsidecar: peut tourner en root -> ajoute runAsNonRoot: true\nProblèmes: 4"
+    },
+    {
+      "code": "DEVOPS-09-T1",
+      "title": "Transfert : relier un Service à ses Pods par les étiquettes",
+      "statement": "Même notion, autre contexte : un Service retrouve ses pods par un sélecteur d'étiquettes : un pod est choisi si toutes les paires du sélecteur figurent dans ses étiquettes. Pour chaque service (dans l'ordre du dictionnaire), affiche « nom: » suivi des noms des pods choisis séparés par une virgule et une espace, ou « nom: AUCUN POD -> vérifie les étiquettes » si aucun ne correspond. Termine par le nombre de services sans pod. Aucun indice n'est proposé et cet exercice ne compte pas dans le score. Sortie exacte :\nfront: web-1, web-2\nstatic: AUCUN POD -> vérifie les étiquettes\nstrict: web-1, web-2\nServices sans pod: 1",
+      "starterCode": "PODS = [\n    {\"name\": \"web-1\", \"labels\": {\"app\": \"web\", \"tier\": \"front\"}},\n    {\"name\": \"web-2\", \"labels\": {\"app\": \"web\", \"tier\": \"front\"}},\n    {\"name\": \"db-1\", \"labels\": {\"app\": \"db\"}},\n    {\"name\": \"web-old\", \"labels\": {\"app\": \"web-v1\"}},\n]\nSERVICES = {\n    \"front\": {\"app\": \"web\"},\n    \"static\": {\"app\": \"cache\"},\n    \"strict\": {\"app\": \"web\", \"tier\": \"front\"},\n}\n# À toi : écris la suite, sans étapes imposées.\n",
+      "expectedOutput": "front: web-1, web-2\nstatic: AUCUN POD -> vérifie les étiquettes\nstrict: web-1, web-2\nServices sans pod: 1",
+      "kind": "TRANSFER"
+    }
+  ],
+  "quiz": [
+    {
+      "code": "DEVOPS-09-Q1",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Un pod géré par un Deployment disparaît parce que son nœud tombe. Que fait Kubernetes ?",
+      "choices": [
+        "Rien : il faut relancer le pod à la main",
+        "Le contrôleur constate l'écart avec l'état désiré et recrée un pod sur un nœud sain",
+        "Il redémarre tout le cluster",
+        "Il envoie un message et attend une validation"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "Les contrôleurs comparent en boucle l'état observé (2 pods) à l'état désiré (3 pods) et créent ce qui manque. C'est la boucle de réconciliation, le cœur du modèle déclaratif."
+    },
+    {
+      "code": "DEVOPS-09-Q2",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Prédis le nombre de problèmes avec le contrôle du cours : un conteneur app avec image « app:1.4.2 », sans resources, et securityContext { runAsNonRoot: true }.",
+      "choices": [
+        "0",
+        "1",
+        "2",
+        "3"
+      ],
+      "correctChoice": 1,
+      "expectedKeywords": [],
+      "explanation": "L'image a un tag de version (rien à signaler) et le conteneur est non root. Il ne reste que l'absence de resources.limits : un seul problème."
+    },
+    {
+      "code": "DEVOPS-09-Q3",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Trouve le défaut :\n```yaml\napiVersion: v1\nkind: Pod\nmetadata:\n  name: web\nspec:\n  containers:\n    name: web\n    image: nginx:1.27\n```\n",
+      "choices": [
+        "containers doit être une liste : il manque le tiret devant name",
+        "Il manque un port",
+        "Le nom web est interdit",
+        "apiVersion devrait valoir v2"
+      ],
+      "correctChoice": 0,
+      "expectedKeywords": [],
+      "explanation": "spec.containers est une liste de conteneurs. Chaque élément commence par un tiret : « - name: web ». Sans lui, le serveur d'API refuse le manifeste."
+    },
+    {
+      "code": "DEVOPS-09-Q4",
+      "type": "SINGLE_CHOICE",
+      "prompt": "Pourquoi éviter les Pods « nus » (sans Deployment) pour une application en production ?",
+      "choices": [
+        "Ils consomment plus de mémoire",
+        "Ils ne peuvent pas avoir d'étiquettes",
+        "Aucun contrôleur ne les recrée s'ils disparaissent ou si leur nœud tombe",
+        "Kubernetes les interdit hors du namespace default"
+      ],
+      "correctChoice": 2,
+      "expectedKeywords": [],
+      "explanation": "Un Pod seul n'est surveillé par personne. Le Deployment (via son ReplicaSet) maintient le nombre de copies voulu et gère les mises à jour."
+    },
+    {
+      "code": "DEVOPS-09-Q5",
+      "type": "FREE_TEXT",
+      "prompt": "Sans relire le cours, explique avec tes mots ce qu'est un état désiré dans Kubernetes et le rôle des contrôleurs.",
+      "choices": [],
+      "correctChoice": null,
+      "expectedKeywords": [
+        "desire",
+        "controleur",
+        "ecart",
+        "manifeste",
+        "pod"
+      ],
+      "modelAnswer": "On décrit dans un manifeste l'état voulu (par exemple trois pods d'une image donnée). Les contrôleurs observent en continu l'état réel, repèrent l'écart avec l'état désiré et agissent pour le corriger : recréer un pod disparu, en supprimer un en trop, appliquer une nouvelle version. On ne dit donc pas comment faire, on dit ce qu'on veut.",
+      "explanation": "Une bonne réponse oppose l'approche déclarative (décrire un état) à l'approche impérative (enchaîner des commandes), et cite la boucle de réconciliation : observer, comparer, corriger."
+    }
+  ],
+  "checklist": [
+    "Je sais expliquer la différence entre une commande Docker et un état désiré Kubernetes",
+    "Je sais lire un manifeste : apiVersion, kind, metadata, spec",
+    "Je distingue Pod, Deployment, Service, ConfigMap et Secret",
+    "Je relis image, limites et utilisateur non root avant d'appliquer un manifeste"
+  ]
+}

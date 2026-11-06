@@ -31,4 +31,15 @@ class DashboardControllerTest {
                 .andExpect(jsonPath("$.badges.length()").value(6))
                 .andExpect(jsonPath("$.badges[5].code").value("JAVA_PRO"));
     }
+
+    @Test
+    void exposesAnOverallProgressThatCountsEveryLabOfEveryPath() throws Exception {
+        mockMvc.perform(get("/api/dashboard"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.overall.totalLabs").value(org.hamcrest.Matchers.greaterThan(24)))
+                .andExpect(jsonPath("$.overall.paths.length()").value(10))
+                .andExpect(jsonPath("$.overall.progressPercent").isNumber())
+                .andExpect(jsonPath("$.overall.paths[0].pathCode").value("JAVA"))
+                .andExpect(jsonPath("$.overall.paths[0].totalLabs").value(24));
+    }
 }

@@ -52,7 +52,10 @@ class PretestControllerTest {
     void storesTheAnswersOnceAndThenStopsOfferingThePretest() throws Exception {
         mockMvc.perform(post("/api/labs/JAVA-01/pretest").contentType(MediaType.APPLICATION_JSON).content(answers(1, null, 0)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.status").value("ANSWERED"));
+                .andExpect(jsonPath("$.status").value("ANSWERED"))
+                .andExpect(jsonPath("$.start.total").value(3))
+                .andExpect(jsonPath("$.start.unknown").value(1))
+                .andExpect(jsonPath("$.start.correct").isNumber());
 
         Integer stored = jdbcTemplate.queryForObject("select count(*) from lab_pretest_answer where lab_code = 'JAVA-01'", Integer.class);
         org.junit.jupiter.api.Assertions.assertEquals(3, stored);

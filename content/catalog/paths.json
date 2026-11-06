@@ -57,11 +57,11 @@
     "project": "Schéma analytique", "challenge": "Réduire le coût de requêtes réelles", "portfolioSkills": ["SQL", "PostgreSQL", "performance"], "expectedActivityCount": 10
   },
   {
-    "code": "DEVOPS", "title": "Docker et CI/CD", "status": "AVAILABLE",
-    "professionalObjectives": ["Livrer une application reproductible et observable"], "prerequisites": ["JAVA"],
-    "keyConcepts": ["conteneurs", "réseaux", "pipelines", "sécurité"], "activityTypes": ["LAB", "PROJECT", "CHALLENGE"],
+    "code": "DEVOPS", "title": "Docker, Kubernetes et CI/CD", "status": "AVAILABLE",
+    "professionalObjectives": ["Livrer une application reproductible et observable", "Déployer et diagnostiquer une application sur Kubernetes"], "prerequisites": ["JAVA"],
+    "keyConcepts": ["conteneurs", "réseaux", "pipelines", "sécurité", "Kubernetes", "déploiements", "sondes"], "activityTypes": ["LAB", "PROJECT", "CHALLENGE"],
     "executionEnvironment": "docker-isolated", "assessmentStrategy": "Contrôles de configuration et scénarios d'incident",
-    "project": "Pipeline de livraison", "challenge": "Diagnostiquer une panne de production simulée", "portfolioSkills": ["Docker", "CI/CD", "exploitation"], "expectedActivityCount": 8
+    "project": "Pipeline de livraison et déploiement Kubernetes", "challenge": "Diagnostiquer une panne de production simulée, puis un déploiement Kubernetes en panne", "portfolioSkills": ["Docker", "Kubernetes", "CI/CD", "exploitation"], "expectedActivityCount": 13
   },
   {
     "code": "ARCHITECTURE", "title": "Architecture Système", "status": "AVAILABLE",

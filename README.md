@@ -7,7 +7,7 @@ DLR est une application locale d'apprentissage de la programmation, avec évalua
 - API Spring Boot Java 21 ;
 - application Angular standalone en thème sombre ;
 - persistance PostgreSQL versionnée par Flyway ;
-- 172 activités disponibles : Java 24, Python 24, TypeScript 24, Spring Boot 12, Angular 10, SQL 10, Docker/CI-CD 8, Learn LLMs 12, Architecture Système 24 et Terminal et IA en ligne de commande 24 ;
+- 177 activités disponibles : Java 24, Python 24, TypeScript 24, Spring Boot 12, Angular 10, SQL 10, Docker, Kubernetes et CI/CD 13, Learn LLMs 12, Architecture Système 24 et Terminal et IA en ligne de commande 24 ;
 - parcours, laboratoire, éditeur CodeMirror, reprise de brouillon, quiz, checklist et import `.java` ;
 - exécution Docker isolée, assertions privées et score déterministe ;
 - tableau de bord, concepts clés, révisions espacées et planning ;
@@ -24,11 +24,12 @@ DLR est une application locale d'apprentissage de la programmation, avec évalua
 - portfolio privé avec aperçu Markdown, export ZIP GitHub-ready, filtrage des secrets et brouillon du formulaire enregistré en base ;
 - révisions par question de rappel sans le cours, confiance déclarée avant correction, feedback immédiat par question et score V2 sans aide ;
 - tableau de bord de calibration sur la page Coach : confiance déclarée contre réussite réelle, verdict, angles morts et évolution semaine après semaine ;
-- exercices de transfert facultatifs, sans indice ni score, à côté de l'exercice guidé dans les 172 labos (solutions validées dans Docker) ;
+- exercices de transfert facultatifs, sans indice ni score, à côté de l'exercice guidé dans les 177 labos (solutions validées dans Docker) ;
 - mesure de rétention différée sur la page Coach : rappel après quelques jours comparé au quiz initial, labos retenus et oublis ;
 - maîtrise des concepts pilotée par le dernier rappel : un oubli renvoie le concept à revoir et devient la priorité du coach ;
 - quiz de départ avant le cours (sans correction ni effet sur le score), comparé au quiz final dans le bilan puis agrégé sur la page Coach (gain moyen, questions apprises ou perdues, détail par labo) ;
-- 172 laboratoires au modèle v2 (cours en sections avec exemple travaillé, 5 questions expliquées, exercices validés dans le conteneur Docker) ;
+- 177 laboratoires au modèle v2 (cours en sections avec exemple travaillé, 5 questions expliquées, exercices validés dans le conteneur Docker) ;
+- progression générale sur le tableau de bord : tous les laboratoires de tous les parcours comptent (validé 100 %, à consolider 60 %, en cours 25 %), avec le détail par parcours, et liste d'activité récente défilante ;
 - catalogue extensible avec dix parcours complets, projets portfolio et défis de synthèse.
 - carnet personnel par laboratoire, page de notes groupée par langage et autosauvegarde des réponses de réflexion ;
 - analyses Ollama persistantes sous chaque réponse, avec suppression explicite ;

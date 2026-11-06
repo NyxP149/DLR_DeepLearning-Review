@@ -49,7 +49,30 @@ public class PretestService {
         LabContent lab = requireLab(labCode);
         List<LabContent.QuizQuestion> questions = selection(lab);
         String status = status(lab, questions);
-        return new Pretest(status, questions.stream().map(LabContent.QuizQuestion::code).toList(), gain(lab, questions, status));
+        return new Pretest(status, questions.stream().map(LabContent.QuizQuestion::code).toList(),
+                gain(lab, questions, status), start(lab, questions, status));
+    }
+
+    /** Résultat enregistré du quiz de départ, disponible dès sa validation, avant même la fin du laboratoire. */
+    private Start start(LabContent lab, List<LabContent.QuizQuestion> questions, String status) {
+        if (!"ANSWERED".equals(status)) {
+            return null;
+        }
+        Map<String, Integer> startChoices = new HashMap<>();
+        Set<String> answered = new HashSet<>();
+        jdbcTemplate.query("select question_id, selected_choice from lab_pretest_answer where lab_code = ?",
+                result -> {
+                    answered.add(result.getString("question_id"));
+                    int choice = result.getInt("selected_choice");
+                    if (!result.wasNull()) startChoices.put(result.getString("question_id"), choice);
+                }, lab.code());
+        int correct = 0;
+        int unknown = 0;
+        for (LabContent.QuizQuestion question : questions) {
+            if (question.correctChoice() != null && question.correctChoice().equals(startChoices.get(question.code()))) correct++;
+            if (answered.contains(question.code()) && !startChoices.containsKey(question.code())) unknown++;
+        }
+        return new Start(questions.size(), correct, unknown);
     }
 
     @Transactional
@@ -181,6 +204,10 @@ public class PretestService {
     public record Gain(int total, int correctAtStart, int correctAtEnd, int learned, int lost, int unknownAtStart) {
     }
 
-    public record Pretest(String status, List<String> questionCodes, Gain gain) {
+    /** Ce que le quiz de départ a donné : bonnes réponses et « Je ne sais pas » sur le nombre de questions. */
+    public record Start(int total, int correct, int unknown) {
+    }
+
+    public record Pretest(String status, List<String> questionCodes, Gain gain, Start start) {
     }
 }
